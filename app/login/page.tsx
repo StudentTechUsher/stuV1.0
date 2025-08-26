@@ -18,7 +18,7 @@ export default function LogInPage() {
       <Auth
         supabaseClient={supabase}
         appearance={{ theme: ThemeSupa }}
-        providers={["google", "apple"]}
+        providers={["google"]}
         view="sign_in"          // <-- was "sign_up"
         redirectTo={redirect}   // send signed-in users to your app, not create-account
         showLinks={false}

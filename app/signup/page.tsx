@@ -18,7 +18,7 @@ export default function SignUpPage() {
       <Auth
         supabaseClient={supabase}
         appearance={{ theme: ThemeSupa }}
-        providers={["google", "apple"]}
+        providers={["google"]}
         view="sign_up"
         redirectTo={redirect}
         showLinks={false}    // <= hide internal “sign in / sign up” switcher
