@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import Chip from "@mui/material/Chip";
 
 type Option = { id: number; name: string };
 
@@ -21,6 +22,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
   // Lookups
   const [universities, setUniversities] = useState<Option[]>([]);
   const [majorsOpts, setMajorsOpts] = useState<Option[]>([]);
+  const [minorsOpts, setMinorsOpts] = useState<Option[]>([]);
   const [interestsOpts, setInterestsOpts] = useState<Option[]>([]);
   const [careerOpts, setCareerOpts] = useState<Option[]>([]);
   const [classPrefOpts, setClassPrefOpts] = useState<Option[]>([]);
@@ -28,6 +30,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
   // Selected values
   const [universityId, setUniversityId] = useState<number | null>(null); // single
   const [majors, setMajors] = useState<number[]>([]);
+  const [minors, setMinors] = useState<number[]>([]);
   const [interests, setInterests] = useState<number[]>([]);
   const [careerSelections, setCareerSelections] = useState<number[]>([]);
   const [classPreferences, setClassPreferences] = useState<number[]>([]);
@@ -45,7 +48,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
           supabase.from("class_preferences").select("id,name").order("name"),
           supabase
             .from("student")
-            .select("university_id, selected_majors, selected_interests, career_options, class_preferences")
+            .select("university_id, selected_majors, selected_minors, selected_interests, career_options, class_preferences")
             .eq("profile_id", userId)
             .maybeSingle(),
         ]);
@@ -66,6 +69,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
           | {
               university_id: number | null;
               selected_majors: number[] | null;
+              selected_minors: number[] | null;
               selected_interests: number[] | null;
               career_options: number[] | null;
               class_preferences: number[] | null;
@@ -76,17 +80,28 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
           setInterests(existing.selected_interests ?? []);
           setCareerSelections(existing.career_options ?? []);
           setClassPreferences(existing.class_preferences ?? []);
-          // Load majors filtered by university, then set selections
+          setMinors(existing.selected_minors ?? []);
+          // Load majors/minors filtered by university, then set selections
           const uni = existing.university_id;
           if (uni != null) {
-            const { data: majorsData, error: majorsErr } = await supabase
-              .from("major")
-              .select("id,name")
-              .eq("university_id", uni)
-              .order("name");
-            if (majorsErr) throw majorsErr;
-            setMajorsOpts((majorsData ?? []) as Option[]);
+            const [majorsQuery, minorsQuery] = await Promise.all([
+              supabase
+                .from("major")
+                .select("id,name")
+                .eq("university_id", uni)
+                .order("name"),
+              supabase
+                .from("minor")
+                .select("id,name")
+                .eq("university_id", uni)
+                .order("name"),
+            ]);
+            if (majorsQuery.error) throw majorsQuery.error;
+            if (minorsQuery.error) throw minorsQuery.error;
+            setMajorsOpts((majorsQuery.data ?? []) as Option[]);
+            setMinorsOpts((minorsQuery.data ?? []) as Option[]);
             setMajors(existing.selected_majors ?? []);
+            setMinors(existing.selected_minors ?? []);
           }
         }
       } catch (err) {
@@ -97,27 +112,41 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
     })();
   }, [userId]);
 
-  // When university changes, (re)load majors list
+  // When university changes, (re)load majors and minors lists
   useEffect(() => {
     (async () => {
       if (universityId == null) {
         setMajorsOpts([]);
+        setMinorsOpts([]);
         setMajors([]);
+        setMinors([]);
         return;
       }
-      const { data, error } = await supabase
-        .from("major")
-        .select("id,name")
-        .eq("university_id", universityId)
-        .order("name");
-      if (error) {
-        setError(error.message);
+      const [{ data: majorsData, error: majorsErr }, { data: minorsData, error: minorsErr }] =
+        await Promise.all([
+          supabase
+            .from("major")
+            .select("id,name")
+            .eq("university_id", universityId)
+            .order("name"),
+          supabase
+            .from("minor")
+            .select("id,name")
+            .eq("university_id", universityId)
+            .order("name"),
+        ]);
+      if (majorsErr || minorsErr) {
+        setError((majorsErr ?? minorsErr)?.message ?? null);
         setMajorsOpts([]);
+        setMinorsOpts([]);
         setMajors([]);
+        setMinors([]);
         return;
       }
-      setMajorsOpts((data ?? []) as Option[]);
+      setMajorsOpts((majorsData ?? []) as Option[]);
+      setMinorsOpts((minorsData ?? []) as Option[]);
       setMajors([]); // clear selections when switching universities
+      setMinors([]);
     })();
   }, [universityId]);
 
@@ -134,6 +163,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
           profile_id: userId,
           university_id: universityId,
           selected_majors: majors,
+          selected_minors: minors,
           selected_interests: interests,
           career_options: careerSelections,
           class_preferences: classPreferences,
@@ -185,6 +215,17 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
         values={majors}
         onChange={setMajors}
         disabled={universityId == null || majorsOpts.length === 0}
+      />
+
+      <ChipsField
+        label="Minor(s)"
+        helper={universityId == null
+          ? "Choose a university first to see available minors."
+          : "Choose one or more minors you’re pursuing or considering."}
+        options={minorsOpts}
+        values={minors}
+        onChange={setMinors}
+        disabled={universityId == null || minorsOpts.length === 0}
       />
 
       <ChipsField
@@ -307,36 +348,24 @@ function ChipsField({
     <div style={{ marginBottom: 16, opacity: disabled ? 0.6 : 1 }}>
       <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>{label}</label>
       {helper && <div style={{ color: "#666", marginBottom: 8 }}>{helper}</div>}
-      <select
-        multiple
-        size={Math.max(3, Math.min(options.length, 8))}
-        value={values.map(String)}
-        onChange={(e) => {
-          if (disabled) return;
-          const selected = Array.from(e.target.selectedOptions).map((opt) => Number(opt.value));
-          onChange(selected);
-        }}
-        disabled={disabled}
-        style={{
-          width: "100%",
-          minHeight: 44,
-          borderRadius: 8,
-          border: "1px solid #e5e5e5",
-          padding: "8px",
-          background: "white",
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        {options.map((opt) => (
-          <option key={opt.id} value={String(opt.id)}>
-            {opt.name}
-          </option>
-        ))}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {options.map((opt) => {
+          const selected = values.includes(opt.id);
+          return (
+            <Chip
+              key={opt.id}
+              label={opt.name}
+              color={selected ? "primary" : "default"}
+              variant={selected ? "filled" : "outlined"}
+              onClick={() => toggle(opt.id)}
+              style={{ cursor: disabled ? "not-allowed" : "pointer" }}
+            />
+          );
+        })}
         {options.length === 0 && (
-          <option disabled>No options available.</option>
+          <div style={{ color: "#666" }}>No options available.</div>
         )}
-      </select>
+      </div>
     </div>
   );
 }
