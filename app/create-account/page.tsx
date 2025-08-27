@@ -1,40 +1,37 @@
-"use client";
+import CreateAccountClient from "@/components/create-account/CreateAccountClient";
+import {
+  listUniversities,
+  listMajors,
+  listMinors,
+  listStudentInterests,
+  listCareerOptions,
+  listClassPreferences,
+} from "@/components/create-account/server-actions"; // your server-only queries
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
-import CreateAccountForm from "@/components/create-account/CreateAccountForm";
-
-export default function CreateAccount() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-      if (!session) {
-        router.replace("/login");
-        return;
-      }
-      setUserId(session.user.id);
-      setLoading(false);
-    })();
-  }, [router]);
-
-  if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
-  if (!userId) return null;
+export default async function CreateAccountPage() {
+  const [universities, majorsAll, minorsAll, interests, careers, classPrefs] =
+    await Promise.all([
+      listUniversities(),
+      listMajors(),
+      listMinors(),
+      listStudentInterests(),
+      listCareerOptions(),
+      listClassPreferences(),
+    ]);
 
   return (
-    <main style={{ maxWidth: 560, margin: "3rem auto", padding: "0 1rem" }}>
+    <main style={{ maxWidth: 720, margin: "3rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "2rem", marginBottom: 12 }}>Create your account</h1>
       <p style={{ color: "#666", marginBottom: 16 }}>
         Tell us a bit about your academic interests. You can change this later.
       </p>
 
-      <CreateAccountForm userId={userId} nextHref="/dashboard" />
-      {/* change nextHref to whatever the next section is */}
+      <CreateAccountClient
+        nextHref="/dashboard"
+        preload={{ universities, majorsAll, minorsAll, interests, careers, classPrefs }}
+        // optional: pass initial selection if you fetched it server-side
+        // initial={studentRowOrNull}
+      />
     </main>
   );
 }

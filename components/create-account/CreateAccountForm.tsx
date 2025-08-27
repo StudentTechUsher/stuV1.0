@@ -1,125 +1,97 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
 
-type Option = { id: number; name: string };
+type Option = { id: number; name: string; university_id?: number | null };
 
-type Props = {
-  userId: string;   // auth.users.id (uuid)
-  nextHref: string;
+type Preload = {
+  universities: Option[];
+  majorsAll: Option[];   // include university_id
+  minorsAll: Option[];   // include university_id
+  interests: Option[];
+  careers: Option[];
+  classPrefs: Option[];
 };
 
-export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>) {
+type Initial = {
+  university_id: number | null;
+  selected_majors: number[] | null;
+  selected_minors: number[] | null;
+  selected_interests: number[] | null;
+  career_options: number[] | null;
+  class_preferences: number[] | null;
+} | null;
+
+type Props = {
+  userId: string;
+  nextHref: string;
+  preload: Preload;
+  initial?: Initial;
+};
+
+export default function CreateAccountForm({ userId, nextHref, preload, initial }: Readonly<Props>) {
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Lookups
-  const [universities, setUniversities] = useState<Option[]>([]);
+  // Lookups (static from server)
+  const [universities] = useState<Option[]>(preload.universities);
   const [majorsOpts, setMajorsOpts] = useState<Option[]>([]);
-  const [interestsOpts, setInterestsOpts] = useState<Option[]>([]);
-  const [careerOpts, setCareerOpts] = useState<Option[]>([]);
-  const [classPrefOpts, setClassPrefOpts] = useState<Option[]>([]);
+  const [minorsOpts, setMinorsOpts] = useState<Option[]>([]);
+  const [interestsOpts] = useState<Option[]>(preload.interests);
+  const [careerOpts] = useState<Option[]>(preload.careers);
+  const [classPrefOpts] = useState<Option[]>(preload.classPrefs);
 
   // Selected values
-  const [universityId, setUniversityId] = useState<number | null>(null); // single
+  const [universityId, setUniversityId] = useState<number | null>(null);
   const [majors, setMajors] = useState<number[]>([]);
+  const [minors, setMinors] = useState<number[]>([]);
   const [interests, setInterests] = useState<number[]>([]);
   const [careerSelections, setCareerSelections] = useState<number[]>([]);
   const [classPreferences, setClassPreferences] = useState<number[]>([]);
 
-  // Load lookups + existing row
+  // Helper: keep only values that exist in options
+  const clampToOptions = useCallback((values: number[], options: Option[]) => {
+    const valid = new Set(options.map(o => o.id));
+    return values.filter(v => valid.has(v));
+  }, []);
+
+  // Prefill from server-provided initial (once)
   useEffect(() => {
-    (async () => {
-      setError(null);
-      setLoading(true);
-      try {
-        const [uniRes, interestsRes, careerRes, classRes, existingRes] = await Promise.all([
-          supabase.from("university").select("id,name").order("name"),
-          supabase.from("student_interests").select("id,name").order("name"),
-          supabase.from("career_options").select("id,name").order("name"),
-          supabase.from("class_preferences").select("id,name").order("name"),
-          supabase
-            .from("student")
-            .select("university_id, selected_majors, selected_interests, career_options, class_preferences")
-            .eq("profile_id", userId)
-            .maybeSingle(),
-        ]);
+    if (!initial) return;
+    setUniversityId(initial.university_id ?? null);
+    setMajors(initial.selected_majors ?? []);
+    setMinors(initial.selected_minors ?? []);
+    setInterests(initial.selected_interests ?? []);
+    setCareerSelections(initial.career_options ?? []);
+    setClassPreferences(initial.class_preferences ?? []);
+  }, [initial]);
 
-        if (uniRes.error) throw uniRes.error;
-        if (interestsRes.error) throw interestsRes.error;
-        if (careerRes.error) throw careerRes.error;
-        if (classRes.error) throw classRes.error;
-        if (existingRes.error && existingRes.error.code !== "PGRST116") throw existingRes.error;
-
-        setUniversities((uniRes.data ?? []) as Option[]);
-        setInterestsOpts((interestsRes.data ?? []) as Option[]);
-        setCareerOpts((careerRes.data ?? []) as Option[]);
-        setClassPrefOpts((classRes.data ?? []) as Option[]);
-
-        const existing = existingRes.data as
-          | null
-          | {
-              university_id: number | null;
-              selected_majors: number[] | null;
-              selected_interests: number[] | null;
-              career_options: number[] | null;
-              class_preferences: number[] | null;
-            };
-
-        if (existing) {
-          setUniversityId(existing.university_id ?? null);
-          setInterests(existing.selected_interests ?? []);
-          setCareerSelections(existing.career_options ?? []);
-          setClassPreferences(existing.class_preferences ?? []);
-          // Load majors filtered by university, then set selections
-          const uni = existing.university_id;
-          if (uni != null) {
-            const { data: majorsData, error: majorsErr } = await supabase
-              .from("major")
-              .select("id,name")
-              .eq("university_id", uni)
-              .order("name");
-            if (majorsErr) throw majorsErr;
-            setMajorsOpts((majorsData ?? []) as Option[]);
-            setMajors(existing.selected_majors ?? []);
-          }
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId]);
-
-  // When university changes, (re)load majors list
+  // Filter majors/minors by selected university (and clamp existing selections instead of clearing)
   useEffect(() => {
-    (async () => {
-      if (universityId == null) {
-        setMajorsOpts([]);
-        setMajors([]);
-        return;
-      }
-      const { data, error } = await supabase
-        .from("major")
-        .select("id,name")
-        .eq("university_id", universityId)
-        .order("name");
-      if (error) {
-        setError(error.message);
-        setMajorsOpts([]);
-        setMajors([]);
-        return;
-      }
-      setMajorsOpts((data ?? []) as Option[]);
-      setMajors([]); // clear selections when switching universities
-    })();
-  }, [universityId]);
+    if (universityId == null) {
+      setMajorsOpts([]);
+      setMinorsOpts([]); // show all minors if no uni picked
+      setMajors(prev => []);            // no majors until a uni is chosen
+      setMinors(prev => []);
+      return;
+    }
+
+    const nextMajorsOpts = preload.majorsAll.filter(m => m.university_id === universityId);
+    const nextMinorsOpts = preload.minorsAll.filter(m => m.university_id === universityId);
+
+    setMajorsOpts(nextMajorsOpts);
+    setMinorsOpts(nextMinorsOpts);
+
+    // Keep selections that still exist under this university
+    setMajors(prev => clampToOptions(prev, nextMajorsOpts));
+    setMinors(prev => clampToOptions(prev, nextMinorsOpts));
+  }, [universityId, preload.majorsAll, preload.minorsAll, clampToOptions]);
 
   const canSubmit = useMemo(() => universityId != null, [universityId]);
 
@@ -127,33 +99,57 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
     e.preventDefault();
     setSaving(true);
     setError(null);
+
     try {
       if (universityId == null) throw new Error("Please select your university.");
-      const { error } = await supabase.from("student").upsert(
-        {
-          profile_id: userId,
-          university_id: universityId,
-          selected_majors: majors,
-          selected_interests: interests,
-          career_options: careerSelections,
-          class_preferences: classPreferences,
-        },
-        { onConflict: "profile_id" }
-      );
-      if (error) throw error;
+
+      // Sanitize & log before sending
+      const uniq = (xs: number[]) => Array.from(new Set(xs.filter(n => Number.isFinite(n))));
+      const row = {
+        profile_id: userId,                    // must be a UUID matching auth.users.id
+        selected_majors:      uniq(majors),    // int8[]
+        selected_minors:      uniq(minors),    // int8[]
+        selected_interests:   uniq(interests), // int8[]
+        career_options:       uniq(careerSelections), // int8[]
+        class_preferences:    uniq(classPreferences), // int8[]
+      };
+      const profileUpdate: Record<string, unknown> = { id: userId, universityId: universityId }; 
+
+      console.log("[CreateAccount] Upserting student row →", row);
+
+      // Ask PostgREST to return the row so errors include context
+      const { error: profileError } = await supabase
+        .from("profile")
+        .upsert(profileUpdate, { onConflict: "id" });
+
+      const { data, error } = await supabase
+        .from("student")
+        .upsert(row, { onConflict: "profile_id" })
+        .select("profile_id, university_id, selected_majors, selected_minors, selected_interests, career_options, class_preferences")
+        .single();
+
+      if (error) {
+        console.error("[CreateAccount] Upsert error:", error);
+        // Show a concise error to the user but keep full detail in the console
+        setError(error.message || "Could not save your preferences.");
+        setSaving(false);
+        return;
+      }
+
+      console.log("[CreateAccount] Upsert OK:", data);
       router.push(nextHref);
     } catch (err) {
+      console.error("[CreateAccount] Submit exception:", err);
       setError(err instanceof Error ? err.message : String(err));
       setSaving(false);
     }
   }
 
-  if (loading) return <div>Loading form…</div>;
-
   return (
     <form onSubmit={onSubmit}>
       {error && (
         <div
+          role="alert"
           style={{
             background: "#fee",
             border: "1px solid #fca5a5",
@@ -167,7 +163,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
         </div>
       )}
 
-      <SingleField
+      <SingleSelect
         label="University"
         helper="Select your current university."
         options={universities}
@@ -178,13 +174,24 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
 
       <ChipsField
         label="Major(s)"
-        helper={universityId == null
-          ? "Choose a university first to see available majors."
-          : "Choose one or more majors you’re pursuing or considering."}
+        helper={
+          universityId == null
+            ? "Choose a university first to see available majors."
+            : "Choose one or more majors you’re pursuing or considering."
+        }
         options={majorsOpts}
         values={majors}
         onChange={setMajors}
         disabled={universityId == null || majorsOpts.length === 0}
+      />
+
+      <ChipsField
+        label="Minor(s)"
+        helper="Optional – pick any minors you’re considering."
+        options={minorsOpts}
+        values={minors}
+        onChange={setMinors}
+        disabled={minorsOpts.length === 0}
       />
 
       <ChipsField
@@ -215,6 +222,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
         <button
           type="submit"
           disabled={!canSubmit || saving}
+          aria-disabled={!canSubmit || saving}
           style={{
             padding: "10px 14px",
             borderRadius: 10,
@@ -233,7 +241,7 @@ export default function CreateAccountForm({ userId, nextHref }: Readonly<Props>)
 
 /* ---------- UI helpers ---------- */
 
-function SingleField({
+function SingleSelect({
   label,
   helper,
   options,
@@ -248,11 +256,22 @@ function SingleField({
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   placeholder?: string;
 }>) {
+  const id = `sel-${label.replace(/\s+/g, "-").toLowerCase()}`;
+  const helperId = helper ? `${id}-help` : undefined;
+
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>{label}</label>
-      {helper && <div style={{ color: "#666", marginBottom: 8 }}>{helper}</div>}
+      <label htmlFor={id} style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
+        {label}
+      </label>
+      {helper && (
+        <div id={helperId} style={{ color: "#666", marginBottom: 8 }}>
+          {helper}
+        </div>
+      )}
       <select
+        id={id}
+        aria-describedby={helperId}
         value={value == null ? "" : String(value)}
         onChange={onChange}
         style={{
@@ -292,51 +311,66 @@ function ChipsField({
   onChange: (next: number[]) => void;
   disabled?: boolean;
 }>) {
-  function toggle(id: number) {
-    if (disabled) return;
-    const set = new Set(values);
-    if (set.has(id)) {
-      set.delete(id);
-    } else {
-      set.add(id);
-    }
-    onChange(Array.from(set));
-  }
+  const id = `chips-${label.replace(/\s+/g, "-").toLowerCase()}`;
+
+  const toggle = useCallback(
+    (val: number) => {
+      if (disabled) return;
+      onChange(((prev: Iterable<unknown> | null | undefined) => {
+        const set = new Set(prev);
+        set.has(val) ? set.delete(val) : set.add(val);
+        return Array.from(set);
+      }) as unknown as number[]); // TS appeasement for functional updates
+    },
+    [disabled, onChange]
+  );
 
   return (
     <div style={{ marginBottom: 16, opacity: disabled ? 0.6 : 1 }}>
-      <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>{label}</label>
-      {helper && <div style={{ color: "#666", marginBottom: 8 }}>{helper}</div>}
-      <select
-        multiple
-        size={Math.max(3, Math.min(options.length, 8))}
-        value={values.map(String)}
-        onChange={(e) => {
-          if (disabled) return;
-          const selected = Array.from(e.target.selectedOptions).map((opt) => Number(opt.value));
-          onChange(selected);
-        }}
-        disabled={disabled}
-        style={{
-          width: "100%",
-          minHeight: 44,
-          borderRadius: 8,
-          border: "1px solid #e5e5e5",
-          padding: "8px",
-          background: "white",
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        {options.map((opt) => (
-          <option key={opt.id} value={String(opt.id)}>
-            {opt.name}
-          </option>
-        ))}
-        {options.length === 0 && (
-          <option disabled>No options available.</option>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <label htmlFor={id} style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
+          {label}
+        </label>
+        {values.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            style={{ fontSize: 12, color: "#555", textDecoration: "underline", background: "none" }}
+            aria-label={`Clear ${label} selections`}
+          >
+            Clear
+          </button>
         )}
-      </select>
+      </div>
+      {helper && <div style={{ color: "#666", marginBottom: 8 }}>{helper}</div>}
+
+      <Stack
+        id={id}
+        role="listbox"
+        aria-multiselectable="true"
+        direction="row"
+        spacing={1}
+        useFlexGap
+        flexWrap="wrap"
+      >
+        {options.map((opt) => {
+          const selected = values.includes(opt.id);
+          return (
+            <Chip
+              key={opt.id}
+              label={opt.name}
+              onClick={() => toggle(opt.id)}
+              clickable
+              color={selected ? "primary" : "default"}
+              variant={selected ? "filled" : "outlined"}
+              sx={{ mb: 1 }}
+              role="option"
+              aria-selected={selected}
+            />
+          );
+        })}
+        {options.length === 0 && <span style={{ color: "#777" }}>No options available.</span>}
+      </Stack>
     </div>
   );
 }

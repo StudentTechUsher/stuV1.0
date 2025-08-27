@@ -1,4 +1,6 @@
-/**Supabase Client that enforces server-only rules and should never be on the client */
+/**Supabase Client that enforces server-only rules and should never be on the client,
+ * USE THIS FOR TRANSACTIONS NEEDING A BETTER GUARANTEE OF SECURITY
+ */
 // Enforce server-only use at import time
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
