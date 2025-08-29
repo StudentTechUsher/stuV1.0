@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import Chip from "@mui/material/Chip";
-import Stack from "@mui/material/Stack";
-
-type Option = { id: number; name: string; university_id?: number | null };
+import { Option } from "@/models/option";
+import ChipsField from "@/helpers/chips-field";
+import SingleSelect from "@/helpers/single-select";
+import { TextField } from "@mui/material";
 
 type Preload = {
   universities: Option[];
@@ -55,13 +55,17 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
   const [careerSelections, setCareerSelections] = useState<number[]>([]);
   const [classPreferences, setClassPreferences] = useState<number[]>([]);
 
+  // NEW: name fields required by profiles.fname/lname
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName]   = useState<string>("");
+
   // Helper: keep only values that exist in options
   const clampToOptions = useCallback((values: number[], options: Option[]) => {
     const valid = new Set(options.map(o => o.id));
     return values.filter(v => valid.has(v));
   }, []);
 
-  // Prefill from server-provided initial (once)
+  // Prefill from server-provided initial (once) — this only has student prefs
   useEffect(() => {
     if (!initial) return;
     setUniversityId(initial.university_id ?? null);
@@ -76,9 +80,9 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
   useEffect(() => {
     if (universityId == null) {
       setMajorsOpts([]);
-      setMinorsOpts([]); // show all minors if no uni picked
-      setMajors(prev => []);            // no majors until a uni is chosen
-      setMinors(prev => []);
+      setMinorsOpts([]);
+      setMajors(() => []);
+      setMinors(() => []);
       return;
     }
 
@@ -93,7 +97,13 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
     setMinors(prev => clampToOptions(prev, nextMinorsOpts));
   }, [universityId, preload.majorsAll, preload.minorsAll, clampToOptions]);
 
-  const canSubmit = useMemo(() => universityId != null, [universityId]);
+  const canSubmit = useMemo(() => {
+    return (
+      universityId != null &&
+      firstName.trim().length > 0 &&
+      lastName.trim().length > 0
+    );
+  }, [universityId, firstName, lastName]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,37 +111,50 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
     setError(null);
 
     try {
+      const fname = firstName.trim();
+      const lname = lastName.trim();
+      if (!fname || !lname) throw new Error("Please enter your first and last name.");
       if (universityId == null) throw new Error("Please select your university.");
 
-      // Sanitize & log before sending
       const uniq = (xs: number[]) => Array.from(new Set(xs.filter(n => Number.isFinite(n))));
-      const row = {
-        profile_id: userId,                    // must be a UUID matching auth.users.id
+
+      // 1) Ensure profile exists (now including fname/lname + university_id)
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(
+          { id: userId, fname, lname, university_id: universityId },
+          { onConflict: "id" }
+        )
+        .select("id")
+        .single();
+
+      if (profileError) {
+        console.error("[CreateAccount] Profile upsert error:", profileError);
+        setError(profileError.message || "Could not save your profile.");
+        setSaving(false);
+        return;
+      }
+
+      // 2) Upsert student preferences referencing that profile
+      const studentRow = {
+        profile_id: userId,                    // FK → profiles.id
         selected_majors:      uniq(majors),    // int8[]
         selected_minors:      uniq(minors),    // int8[]
         selected_interests:   uniq(interests), // int8[]
         career_options:       uniq(careerSelections), // int8[]
         class_preferences:    uniq(classPreferences), // int8[]
       };
-      const profileUpdate: Record<string, unknown> = { id: userId, universityId: universityId }; 
 
-      console.log("[CreateAccount] Upserting student row →", row);
-
-      // Ask PostgREST to return the row so errors include context
-      const { error: profileError } = await supabase
-        .from("profile")
-        .upsert(profileUpdate, { onConflict: "id" })
-        .select("university_id");
+      console.log("[CreateAccount] Upserting student row →", studentRow);
 
       const { data, error } = await supabase
         .from("student")
-        .upsert(row, { onConflict: "profile_id" })
+        .upsert(studentRow, { onConflict: "profile_id" })
         .select("profile_id, selected_majors, selected_minors, selected_interests, career_options, class_preferences")
         .single();
 
       if (error) {
-        console.error("[CreateAccount] Upsert error:", error);
-        // Show a concise error to the user but keep full detail in the console
+        console.error("[CreateAccount] Student upsert error:", error);
         setError(error.message || "Could not save your preferences.");
         setSaving(false);
         return;
@@ -163,6 +186,30 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
           {error}
         </div>
       )}
+
+      {/* Names (required by profiles.fname/lname) */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <TextField
+          id="fname"
+          label="First name"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          required
+          inputProps={{ maxLength: 100 }}
+        />
+        <TextField
+          id="lname"
+          label="Last name"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          required
+          inputProps={{ maxLength: 100 }}
+        />
+      </div>
+
+      <p style={{ color: "#666", marginBottom: 16 }}>
+        Tell us a bit about your academic goals and interests. You can change these later.
+      </p>
 
       <SingleSelect
         label="University"
@@ -237,141 +284,5 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
         </button>
       </div>
     </form>
-  );
-}
-
-/* ---------- UI helpers ---------- */
-
-function SingleSelect({
-  label,
-  helper,
-  options,
-  value,
-  onChange,
-  placeholder,
-}: Readonly<{
-  label: string;
-  helper?: string;
-  options: Option[];
-  value: number | null;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  placeholder?: string;
-}>) {
-  const id = `sel-${label.replace(/\s+/g, "-").toLowerCase()}`;
-  const helperId = helper ? `${id}-help` : undefined;
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <label htmlFor={id} style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
-        {label}
-      </label>
-      {helper && (
-        <div id={helperId} style={{ color: "#666", marginBottom: 8 }}>
-          {helper}
-        </div>
-      )}
-      <select
-        id={id}
-        aria-describedby={helperId}
-        value={value == null ? "" : String(value)}
-        onChange={onChange}
-        style={{
-          width: "100%",
-          height: 44,
-          borderRadius: 8,
-          border: "1px solid #e5e5e5",
-          padding: "0 8px",
-          background: "white",
-        }}
-      >
-        <option value="" disabled>
-          {placeholder ?? "Select…"}
-        </option>
-        {options.map((opt) => (
-          <option key={opt.id} value={String(opt.id)}>
-            {opt.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function ChipsField({
-  label,
-  helper,
-  options,
-  values,
-  onChange,
-  disabled,
-}: Readonly<{
-  label: string;
-  helper?: string;
-  options: Option[];
-  values: number[];
-  onChange: (next: number[]) => void;
-  disabled?: boolean;
-}>) {
-  const id = `chips-${label.replace(/\s+/g, "-").toLowerCase()}`;
-
-  const toggle = useCallback(
-    (val: number) => {
-      if (disabled) return;
-      onChange(((prev: Iterable<unknown> | null | undefined) => {
-        const set = new Set(prev);
-        set.has(val) ? set.delete(val) : set.add(val);
-        return Array.from(set);
-      }) as unknown as number[]); // TS appeasement for functional updates
-    },
-    [disabled, onChange]
-  );
-
-  return (
-    <div style={{ marginBottom: 16, opacity: disabled ? 0.6 : 1 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <label htmlFor={id} style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
-          {label}
-        </label>
-        {values.length > 0 && (
-          <button
-            type="button"
-            onClick={() => onChange([])}
-            style={{ fontSize: 12, color: "#555", textDecoration: "underline", background: "none" }}
-            aria-label={`Clear ${label} selections`}
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      {helper && <div style={{ color: "#666", marginBottom: 8 }}>{helper}</div>}
-
-      <Stack
-        id={id}
-        role="listbox"
-        aria-multiselectable="true"
-        direction="row"
-        spacing={1}
-        useFlexGap
-        flexWrap="wrap"
-      >
-        {options.map((opt) => {
-          const selected = values.includes(opt.id);
-          return (
-            <Chip
-              key={opt.id}
-              label={opt.name}
-              onClick={() => toggle(opt.id)}
-              clickable
-              color={selected ? "primary" : "default"}
-              variant={selected ? "filled" : "outlined"}
-              sx={{ mb: 1 }}
-              role="option"
-              aria-selected={selected}
-            />
-          );
-        })}
-        {options.length === 0 && <span style={{ color: "#777" }}>No options available.</span>}
-      </Stack>
-    </div>
   );
 }

@@ -1,0 +1,1 @@
+export type Option = { id: number; name: string; university_id?: number | null };
