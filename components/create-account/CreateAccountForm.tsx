@@ -120,12 +120,13 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
       // Ask PostgREST to return the row so errors include context
       const { error: profileError } = await supabase
         .from("profile")
-        .upsert(profileUpdate, { onConflict: "id" });
+        .upsert(profileUpdate, { onConflict: "id" })
+        .select("university_id");
 
       const { data, error } = await supabase
         .from("student")
         .upsert(row, { onConflict: "profile_id" })
-        .select("profile_id, university_id, selected_majors, selected_minors, selected_interests, career_options, class_preferences")
+        .select("profile_id, selected_majors, selected_minors, selected_interests, career_options, class_preferences")
         .single();
 
       if (error) {
