@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import CreateAccountForm from "@/components/create-account/CreateAccountForm";
+import CreateAccountForm from "@/components/create-account/create-account-form";
 
 type Option = { id: number; name: string; university_id?: number | null };
 type Preload = {

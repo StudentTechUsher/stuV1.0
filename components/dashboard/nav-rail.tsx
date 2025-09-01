@@ -2,17 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Divider from "@mui/material/Divider";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
-import ClassRounded from "@mui/icons-material/ClassRounded";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import ProfileIcon from "@mui/icons-material/PersonRounded";
-//import AutomateIcon from "@mui/icons-material/AutoAwesome";
 import ChecklistIcon from "@mui/icons-material/ChecklistRounded";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 
@@ -20,15 +18,14 @@ const MINT = "#38E3C2";
 const RAIL_WIDTH = 88;
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: <DashboardIcon /> },
-  { href: "/dashboard/four-year-plan", label: "Four Year Planner", icon: <SchoolRounded /> },
-  { href: "/dashboard/scheduler", label: "Schedule Your Next Semester", icon: <ChecklistIcon /> },
-  { href: "/dashboard/profile", label: "Profile", icon: <ProfileIcon /> },
+  { href: "/dashboard",                segment: null,              label: "Overview",               icon: <DashboardIcon /> },
+  { href: "/dashboard/four-year-plan", segment: "four-year-plan",  label: "Four Year Planner",      icon: <SchoolRounded /> },
+  { href: "/dashboard/scheduler",      segment: "scheduler",       label: "Schedule Your Semester", icon: <ChecklistIcon /> },
+  { href: "/dashboard/profile",        segment: "profile",         label: "Profile",                icon: <ProfileIcon /> },
 ];
 
 export default function NavRail() {
-  const pathname = usePathname();
-  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+  const seg = useSelectedLayoutSegment();
 
   return (
     <Box
@@ -65,7 +62,7 @@ export default function NavRail() {
       {/* Items */}
       <Stack spacing={1} alignItems="center" sx={{ flex: 1 }}>
         {NAV_ITEMS.map((item) => {
-          const active = isActive(item.href);
+          const active = item.segment === seg;
           return (
             <Tooltip key={item.href} title={item.label} placement="right">
               <Box

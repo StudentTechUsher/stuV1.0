@@ -8,7 +8,7 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 export default function LogInPage() {
   const redirect =
     typeof window !== "undefined"
-      ? `${window.location.origin}/`
+      ? `${window.location.origin}/dashboard`
       : undefined;
 
   return (
@@ -19,7 +19,7 @@ export default function LogInPage() {
         supabaseClient={supabase}
         appearance={{ theme: ThemeSupa }}
         providers={["google"]}
-        view="sign_in"          // <-- was "sign_up"
+        view="sign_in"
         redirectTo={redirect}   // send signed-in users to your app, not create-account
         showLinks={false}
       />

@@ -1,4 +1,4 @@
-import CreateAccountClient from "@/components/create-account/CreateAccountClient";
+import CreateAccountClient from "@/components/create-account/create-account-client";
 import {
   listUniversities,
   listMajors,
