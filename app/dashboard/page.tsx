@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import AcademicSummarySkeleton from "@/components/dashboard/skeletons/academic-summary-skeleton";
 import CalendarSkeleton from "@/components/dashboard/skeletons/calendar-skeleton";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
+import AcademicSummary from "@/components/dashboard/academic-summary";
 
 // Async server components (each does its own data fetch)
 const RAIL_WIDTH = 88;
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
     <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
       <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
         <Suspense fallback={<AcademicSummarySkeleton />}>
-            <AcademicSummarySkeleton />
+            <AcademicSummary />
         </Suspense>
 
         <Suspense fallback={<CalendarSkeleton />}>

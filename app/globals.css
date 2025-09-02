@@ -187,3 +187,14 @@
   font-weight: 700;
   box-shadow: 0 2px 0 rgba(0,0,0,0.15);
 }
+
+/* Page width + centering helper */
+.page-wrap {
+  max-width: 80rem;            /* ~max-w-7xl */
+  margin-inline: auto;         /* centers horizontally */
+  padding-inline: 1rem;        /* px-4 */
+}
+
+@media (min-width: 768px) {
+  .page-wrap { padding-inline: 1.5rem; } /* md:px-6 */
+}

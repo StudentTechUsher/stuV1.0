@@ -32,7 +32,7 @@ export default function CalendarPanelClient({
   slotMaxTime = "18:00:00",
   firstDay = 1,
   hiddenDays = [0],
-  semester = "Ex: Winter 2026",
+  semester = "Upcoming Winter 2026",
 }: Readonly<Props>) {
   return (
     <Card elevation={0} sx={{ borderRadius: 3, overflowY: "auto", height: "50%" }}>
