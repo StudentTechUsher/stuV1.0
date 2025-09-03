@@ -19,11 +19,11 @@ const MINT = "#38E3C2";
 const RAIL_WIDTH = 88;
 
 const NAV_ITEMS = [
-  { href: "/dashboard",                       segment: null,                 label: "Overview",               icon: <DashboardIcon /> },
-  { href: "/dashboard/four-year-plan",        segment: "four-year-plan",     label: "Four Year Planner",      icon: <SchoolRounded /> },
-  { href: "/dashboard/semester-scheduler",    segment: "semester-scheduler", label: "Schedule Your Semester", icon: <ChecklistIcon /> },
-  { href: "/dashboard/meet-with-advisor",     segment: "calendar",           label: "Meet with an Advisor",   icon: <CalendarClock /> },
-  { href: "/dashboard/profile",               segment: "profile",            label: "Profile",                icon: <ProfileIcon /> },
+  { href: "/dashboard",                       segment: null,                 label: "Overview",                icon: <DashboardIcon /> },
+  { href: "/dashboard/four-year-plan",        segment: "four-year-plan",     label: "Four Year Planner",       icon: <SchoolRounded /> },
+  { href: "/dashboard/semester-scheduler",    segment: "semester-scheduler", label: "Schedule Your Semester",  icon: <ChecklistIcon /> },
+  { href: "/dashboard/meet-with-advisor",     segment: "calendar",           label: "Meet with an Advisor",    icon: <CalendarClock /> },
+  { href: "/dashboard/profile",               segment: "profile",            label: "Profile",                 icon: <ProfileIcon /> },
 ];
 
 export default function NavRail() {

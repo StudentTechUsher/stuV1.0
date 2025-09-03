@@ -1,8 +1,11 @@
+import SchedulingWidget from "@/components/meet-with-advisor/scheduling-widget";
+
+const RAIL_WIDTH = 88;
+
 export default function MeetWithAdvisorPage() {
   return (
-    <div>
-      <h1>Meet with an Advisor</h1>
-      <p>Schedule a meeting with your academic advisor.</p>
+    <div style={{ marginLeft: `${RAIL_WIDTH}px`, padding: 16 }}>
+      <SchedulingWidget />
     </div>
   );
 }

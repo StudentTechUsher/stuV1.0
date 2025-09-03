@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -13,7 +14,13 @@ export default function SignUpPage() {
 
   return (
     <main style={{ maxWidth: 420, margin: "4rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>Sign Up</h1>
+      <Image
+        src="/stu_icon_black.png"
+        alt="Logo"
+        width={75}
+        height={75}
+        style={{ marginBottom: "2rem", display: "block", marginLeft: "auto", marginRight: "auto" }}
+      />
 
       <Auth
         supabaseClient={supabase}
