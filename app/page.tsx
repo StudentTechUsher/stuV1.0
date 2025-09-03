@@ -3,8 +3,7 @@
 import LandingFeatures from "@/components/landing/landing-features"
 import LandingHero from "@/components/landing/landing-hero"
 import LandingNavbar from "@/components/landing/landing-navbar"
-
-
+import Footer from "@/components/ui/footer"
 
 export default function LandingPage() {
   return (
@@ -15,6 +14,7 @@ export default function LandingPage() {
         <br />
         <LandingFeatures />
       </main>
+      <Footer />
     </div>
   )
 }
