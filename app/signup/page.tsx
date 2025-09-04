@@ -26,9 +26,10 @@ export default function SignUpPage() {
         supabaseClient={supabase}
         appearance={{ theme: ThemeSupa }}
         providers={["google"]}
+        onlyThirdPartyProviders
         view="sign_up"
         redirectTo={redirect}
-        showLinks={false}    // <= hide internal “sign in / sign up” switcher
+        showLinks={true}    // <= hide internal “sign in / sign up” switcher
       />
 
       <p style={{ marginTop: 12 }}>

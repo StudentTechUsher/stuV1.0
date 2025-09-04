@@ -8,25 +8,44 @@ import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Divider from "@mui/material/Divider";
+
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
-import ProfileIcon from "@mui/icons-material/PersonRounded";
-import ChecklistIcon from "@mui/icons-material/ChecklistRounded";
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import { CalendarClock } from "lucide-react";
+import PersonRounded from "@mui/icons-material/PersonRounded";
+import ChecklistRounded from "@mui/icons-material/ChecklistRounded";
+import DashboardRounded from "@mui/icons-material/Dashboard";
+import GroupsRounded from "@mui/icons-material/Groups";
+import EventAvailableRounded from "@mui/icons-material/EventAvailable";
+import BarChartRounded from "@mui/icons-material/BarChart";
+import PeopleAltRounded from "@mui/icons-material/PeopleAlt";
+import AccountTreeRounded from "@mui/icons-material/AccountTree";
+import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettings";
+import type { NavItem } from "@/app/dashboard/layout";
+import { JSX } from "react";
 
 const MINT = "#38E3C2";
-const RAIL_WIDTH = 88;
 
-const NAV_ITEMS = [
-  { href: "/dashboard",                       segment: null,                 label: "Overview",                icon: <DashboardIcon /> },
-  { href: "/dashboard/four-year-plan",        segment: "four-year-plan",     label: "Four Year Planner",       icon: <SchoolRounded /> },
-  { href: "/dashboard/semester-scheduler",    segment: "semester-scheduler", label: "Schedule Your Semester",  icon: <ChecklistIcon /> },
-  { href: "/dashboard/meet-with-advisor",     segment: "calendar",           label: "Meet with an Advisor",    icon: <CalendarClock /> },
-  { href: "/dashboard/profile",               segment: "profile",            label: "Profile",                 icon: <ProfileIcon /> },
-];
+type Props = {
+  items: NavItem[];
+  railWidth?: number;
+  showSettings?: boolean;
+};
 
-export default function NavRail() {
+const iconMap: Record<NavItem["icon"], JSX.Element> = {
+  dashboard: <DashboardRounded />,
+  planner: <SchoolRounded />,
+  semester: <ChecklistRounded />,
+  meet: <EventAvailableRounded />,
+  profile: <PersonRounded />,
+  advisees: <GroupsRounded />,
+  appointments: <EventAvailableRounded />,
+  reports: <BarChartRounded />,
+  users: <PeopleAltRounded />,
+  programs: <AccountTreeRounded />,
+  system: <AdminPanelSettingsRounded />,
+};
+
+export default function NavRail({ items, railWidth = 88, showSettings = true }: Props) {
   const seg = useSelectedLayoutSegment();
 
   return (
@@ -37,7 +56,7 @@ export default function NavRail() {
         position: "fixed",
         inset: 0,
         right: "auto",
-        width: RAIL_WIDTH,
+        width: railWidth,
         bgcolor: "#404040",
         color: "#fff",
         borderRight: "1px solid rgba(255,255,255,0.12)",
@@ -50,12 +69,12 @@ export default function NavRail() {
     >
       {/* Logo */}
       <Link href="/" aria-label="Home">
-        <Image 
-          src="/stu_icon_black.png" 
-          alt="Logo" 
-          width={44} 
-          height={44} 
-          style={{ filter: 'invert(1)' }}
+        <Image
+          src="/stu_icon_black.png"
+          alt="Logo"
+          width={44}
+          height={44}
+          style={{ filter: "invert(1)" }}
         />
       </Link>
 
@@ -63,7 +82,7 @@ export default function NavRail() {
 
       {/* Items */}
       <Stack spacing={1} alignItems="center" sx={{ flex: 1 }}>
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = item.segment === seg;
           return (
             <Tooltip key={item.href} title={item.label} placement="right">
@@ -80,7 +99,9 @@ export default function NavRail() {
                     left: 0,
                     top: "50%",
                     transform: "translate(-8px, -50%)",
-                    height: 28, width: 3, borderRadius: 2,
+                    height: 28,
+                    width: 3,
+                    borderRadius: 2,
                     bgcolor: active ? MINT : "transparent",
                   },
                 }}
@@ -97,7 +118,7 @@ export default function NavRail() {
                     },
                   }}
                 >
-                  {item.icon}
+                  {iconMap[item.icon]}
                 </IconButton>
               </Box>
             </Tooltip>
@@ -105,15 +126,21 @@ export default function NavRail() {
         })}
       </Stack>
 
-      <Divider sx={{ width: 40, borderColor: "rgba(255,255,255,0.12)", mb: 1 }} />
-
-      <Tooltip title="Settings" placement="right">
-        <Box component={Link} href="/dashboard/settings">
-          <IconButton size="large" sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}>
-            <SettingsRounded />
-          </IconButton>
-        </Box>
-      </Tooltip>
+      {showSettings && (
+        <>
+          <Divider sx={{ width: 40, borderColor: "rgba(255,255,255,0.12)", mb: 1 }} />
+          <Tooltip title="Settings" placement="right">
+            <Box component={Link} href="/dashboard/settings">
+              <IconButton
+                size="large"
+                sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}
+              >
+                <SettingsRounded />
+              </IconButton>
+            </Box>
+          </Tooltip>
+        </>
+      )}
     </Box>
   );
 }

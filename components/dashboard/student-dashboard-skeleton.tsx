@@ -1,6 +1,6 @@
 import { Card, CardContent, Stack, Skeleton, Box } from "@mui/material";
 
-export default function DashboardSkeleton() {
+export default function StudentDashboardSkeleton() {
     return (
         <Box
             sx={{
