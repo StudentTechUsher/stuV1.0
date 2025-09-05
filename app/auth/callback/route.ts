@@ -1,36 +1,63 @@
-import { NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+// app/auth/callback/route.ts
+import { type NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url)
-  const code = url.searchParams.get("code")      // OAuth / magic-link code
-  const next = url.searchParams.get("next") || "/dashboard"
-  const cookieStore = cookies()
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const code = url.searchParams.get("code");
+  const next = url.searchParams.get("next") ?? "/dashboard";
 
-  // Prepare a redirect response we can write cookies to
-  const res = NextResponse.redirect(new URL(next, url.origin))
+  if (!code) {
+    // If you ever see a URL with #access_token here, you’re still on implicit flow.
+    return NextResponse.redirect(new URL("/login?error=missing_code", url.origin));
+  }
+
+  // Create a response object to collect Set-Cookie from Supabase
+  const cookieCollector = new NextResponse();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: async (name) => (await cookieStore).get(name)?.value,
-        set: async (name, value, options) => {
-          (await cookieStore).set({ name, value, ...options })
+        getAll() {
+          return req.cookies.getAll();
         },
-        remove: async (name, options) => {
-          (await cookieStore).set({ name, value: "", ...options, maxAge: 0 })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieCollector.cookies.set({ name, value, ...options });
+          });
         },
       },
     }
-  )
+  );
 
-  if (code) {
-    // Exchange the code for a session & set cookies on `res`
-    await supabase.auth.exchangeCodeForSession(code)
+  // 1) Exchange the PKCE code for a session (writes cookies via setAll above)
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  if (exchangeError) {
+    return NextResponse.redirect(new URL("/login?error=exchange_failed", url.origin), {
+      headers: cookieCollector.headers, // forward Set-Cookie
+    });
   }
 
-  return res
+  // 2) Decide destination based on onboarding
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.redirect(new URL("/login", url.origin), {
+      headers: cookieCollector.headers,
+    });
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarded")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const dest = profile?.onboarded ? next : "/create-account";
+
+  // 3) Return the final redirect, carrying along any Set-Cookie headers
+  return NextResponse.redirect(new URL(dest, url.origin), {
+    headers: cookieCollector.headers,
+  });
 }

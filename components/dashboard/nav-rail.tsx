@@ -68,7 +68,7 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
       }}
     >
       {/* Logo */}
-      <Link href="/" aria-label="Home">
+      <Link href="/home" aria-label="Home">
         <Image
           src="/stu_icon_black.png"
           alt="Logo"
