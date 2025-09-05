@@ -22,6 +22,7 @@ import AccountTreeRounded from "@mui/icons-material/AccountTree";
 import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettings";
 import type { NavItem } from "@/app/dashboard/layout";
 import { JSX } from "react";
+import { CheckCircleIcon } from "lucide-react";
 
 const MINT = "#38E3C2";
 
@@ -34,6 +35,7 @@ type Props = {
 const iconMap: Record<NavItem["icon"], JSX.Element> = {
   dashboard: <DashboardRounded />,
   planner: <SchoolRounded />,
+  approve: <CheckCircleIcon />,
   semester: <ChecklistRounded />,
   meet: <EventAvailableRounded />,
   profile: <PersonRounded />,

@@ -4,7 +4,11 @@ import AcademicSummarySkeleton from "@/components/dashboard/skeletons/academic-s
 import CalendarSkeleton from "@/components/dashboard/skeletons/calendar-skeleton";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
 import AcademicSummary from "@/components/dashboard/academic-summary";
-import { getEnvRole } from "@/lib/mock-role";
+import AdvisorDailyInsightsSkeleton from "@/components/dashboard/skeletons/advisor-daily-insights-skeleton";
+import AdvisorDailyInsights from "./advisor-daily-insights";
+import AdvisorTasksToday from "@/components/dashboard/advisor-components/advisor-tasks";
+import AdvisorTasksSkeleton from "@/components/dashboard/skeletons/advisor-tasks-skeleton";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 // For now, hard-code a role. Later, replace with a real fetch.
 type Role = "student" | "advisor" | "admin";
@@ -12,22 +16,26 @@ type Role = "student" | "advisor" | "admin";
 const RAIL_WIDTH = 88;
 
 export default async function DashboardPage() {
-  // TODO: replace with real role lookup
-  const user: Role = getEnvRole();
+  const user = await getCurrentUser();
+  console.log(user);
+  const role: Role = user?.role ?? "student";
+
+  const advisorId =
+    role === "advisor" ? user?.id ?? "advisor-unknown" : "";
 
   return (
     <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
-      <RoleView role={user} />
+      <RoleView role={role} advisorId={advisorId} />
     </Box>
   );
 }
 
-function RoleView({ role }: { role: Role }) {
+function RoleView({ role, advisorId }: { role: Role; advisorId?: string }) {
   switch (role) {
     case "student":
       return <StudentDashboard />;
     case "advisor":
-      return <AdvisorDashboard />;
+      return <AdvisorDashboard advisorId={advisorId} />;
     case "admin":
       return <AdminDashboard />;
     default:
@@ -51,16 +59,15 @@ function StudentDashboard() {
 }
 
 /** ADVISOR VIEW (example stub—swap in real components) */
-function AdvisorDashboard() {
+function AdvisorDashboard({ advisorId }: { advisorId?: string }) {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "2fr 1fr" }, gap: 2 }}>
-      <Suspense fallback={<AcademicSummarySkeleton />}>
-        {/* e.g., an advisee list, alerts, etc. */}
-        <div>Advisor: Advisee Overview (stub)</div>
+      <Suspense fallback={<AdvisorDailyInsightsSkeleton />}>
+        <AdvisorDailyInsights advisorId={advisorId ?? ""} />
       </Suspense>
 
-      <Suspense fallback={<CalendarSkeleton />}>
-        <div>Advisor: Appointments (stub)</div>
+      <Suspense fallback={<AdvisorTasksSkeleton />}>
+        <AdvisorTasksToday advisorId={advisorId ?? ""} />
       </Suspense>
     </Box>
   );

@@ -1,36 +1,36 @@
-import { NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url)
-  const code = url.searchParams.get("code")      // OAuth / magic-link code
-  const next = url.searchParams.get("next") || "/dashboard"
-  const cookieStore = cookies()
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const code = url.searchParams.get("code");
+  const next = url.searchParams.get("next") || "/dashboard";
 
-  // Prepare a redirect response we can write cookies to
-  const res = NextResponse.redirect(new URL(next, url.origin))
+  const cookieStore = cookies();
+  const res = NextResponse.redirect(new URL(next, url.origin));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: async (name) => (await cookieStore).get(name)?.value,
-        set: async (name, value, options) => {
-          (await cookieStore).set({ name, value, ...options })
+        async get(name) {
+          return (await cookieStore).get(name)?.value;
         },
-        remove: async (name, options) => {
-          (await cookieStore).set({ name, value: "", ...options, maxAge: 0 })
+        set(name, value, options) {
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name, options) {
+          res.cookies.set({ name, value: "", ...options });
         },
       },
     }
-  )
+  );
 
   if (code) {
-    // Exchange the code for a session & set cookies on `res`
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return NextResponse.redirect(new URL("/login?error=oauth", url.origin));
   }
-
-  return res
+  return res;
 }
