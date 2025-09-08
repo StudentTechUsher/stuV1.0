@@ -132,11 +132,11 @@ function getNavItems(role: Role): NavItem[] {
 
     case "admin":
       return [
-        { href: "/dashboard",              segment: null,           label: "Overview",      icon: "dashboard" },
-        { href: "/dashboard/users",        segment: "users",        label: "Users",         icon: "users" },
-        { href: "/dashboard/programs",     segment: "programs",     label: "Programs",      icon: "programs" },
-        { href: "/dashboard/system",       segment: "system",       label: "System",        icon: "system" },
-        { href: "/dashboard/profile",      segment: "profile",      label: "Profile",       icon: "profile" },
+        { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/dashboard/users",                 segment: "users",                 label: "Users",                  icon: "users" },
+        { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
+        { href: "/dashboard/system",                segment: "system",                label: "System",                 icon: "system" },
+        { href: "/dashboard/profile",               segment: "profile",               label: "Profile",                icon: "profile" },
       ];
   }
 }

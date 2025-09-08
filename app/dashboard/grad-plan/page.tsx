@@ -1,4 +1,4 @@
-import FourYearPlanner from "@/components/four-year-planner/four-year-planner";
+import FourYearPlanner from "@/components/grad-planner/four-year-planner";
 import { Box } from "@mui/material";
 
 const RAIL_WIDTH = 80;
