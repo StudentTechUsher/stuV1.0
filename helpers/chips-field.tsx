@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Option } from "@/models/option";
+import { Option } from "@/types/option";
 import { Stack, Chip } from "@mui/material";
 
 export default function ChipsField({

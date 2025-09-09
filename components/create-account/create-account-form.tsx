@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Option } from "@/models/option";
+import { Option } from "@/types/option";
 import ChipsField from "@/helpers/chips-field";
 import SingleSelect from "@/helpers/single-select";
 import { TextField } from "@mui/material";

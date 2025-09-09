@@ -11,50 +11,60 @@ import { createServerClient } from "@supabase/ssr";
 
 type Role = "student" | "advisor" | "admin";
 
-/** Map your role_id UUIDs (or ints) to one of the three Role strings. */
+// Consider replacing with a DB enum/table. Keep for now:
 const ROLE_MAP: Record<string, Role> = {
-  1 : "admin",
-  2 : "advisor",
-  3 : "student",
+  1: "admin",
+  2: "advisor",
+  3: "student",
 };
 
 export default async function DashboardPage() {
-  // Supabase server client (reads HttpOnly cookies set during auth)
   const cookieStore = await cookies();
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll() { /* no-op in Server Components */ },
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {
+          /* no-op in Server Components */
+        },
       },
     }
   );
 
-  // Require auth
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) redirect("/login");
+  // ✅ Trustworthy user (hits Supabase Auth to verify the JWT)
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
 
-  const userId = session.user.id;
+  if (userErr || !user) {
+    // Not authenticated or token invalid → force login
+    redirect("/login");
+  }
 
-  // Fetch the user's role_id from profiles; RLS should allow reading only own row
-  const { data: profile, error } = await supabase
+  // Use the verified user id
+  const userId = user.id;
+
+  // Least-privilege data fetch; RLS should enforce row ownership
+  const { data: profile, error: profileErr } = await supabase
     .from("profiles")
     .select("role_id")
     .eq("id", userId)
     .maybeSingle();
 
-  if (error) {
-    // In production you might route to an error page or show a fallback
-    console.error("profiles fetch error:", error.message);
+  if (profileErr) {
+    // Optionally log to your observability tool
+    console.error("profiles fetch error:", profileErr.message);
   }
 
-  // Decide the Role to render
   const role: Role = (profile?.role_id && ROLE_MAP[profile.role_id]) ?? "student";
 
   return (
-    // NOTE: no left margin here — your layout already sets ml: RAIL_WIDTH
     <Box sx={{ p: 2 }}>
       <RoleView role={role} userId={userId} />
     </Box>
@@ -74,14 +84,12 @@ function RoleView({ role, userId }: Readonly<{ role: Role; userId: string }>) {
   }
 }
 
-/** STUDENT VIEW */
 function StudentDashboard({ userId }: Readonly<{ userId: string }>) {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
       <Suspense fallback={<AcademicSummarySkeleton />}>
         <AcademicSummary />
       </Suspense>
-
       <Suspense fallback={<CalendarSkeleton />}>
         <CalendarPanel userId={userId} />
       </Suspense>
@@ -89,7 +97,6 @@ function StudentDashboard({ userId }: Readonly<{ userId: string }>) {
   );
 }
 
-/** ADVISOR VIEW (stub) */
 function AdvisorDashboard() {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "2fr 1fr" }, gap: 2 }}>
@@ -103,7 +110,6 @@ function AdvisorDashboard() {
   );
 }
 
-/** ADMIN VIEW (stub) */
 function AdminDashboard() {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr 1fr" }, gap: 2 }}>

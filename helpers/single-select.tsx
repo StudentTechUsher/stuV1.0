@@ -1,4 +1,4 @@
-import { Option } from "@/models/option";
+import { Option } from "@/types/option";
 
 export default function SingleSelect({
   label,
