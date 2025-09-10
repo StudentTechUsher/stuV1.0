@@ -2,9 +2,6 @@
 "use client"
 
 import * as React from "react"
-import Fab from "@mui/material/Fab"
-import Tooltip from "@mui/material/Tooltip"
-import SmartToyIcon from "@mui/icons-material/SmartToy"
 import ChatbotDrawer from "@/components/ai-chat/chatbot-drawer"
 
 type Role = "student" | "advisor" | "admin"
@@ -18,7 +15,7 @@ const ROLE_PRESETS: Record<Role, QuickAction[]> = {
     { label: "Graduation check", prompt: "Am I on track to graduate on time? What classes am I missing?" },
   ],
   advisor: [
-    { label: "Daily advisee digest", prompt: "Summarize today’s advisee alerts and top follow-ups." },
+    { label: "Daily advisee digest", prompt: "Summarize today's advisee alerts and top follow-ups." },
     { label: "Prep for meeting", prompt: "Given this student ID, summarize their academic standing and risks: <STUDENT_ID>." },
     { label: "Outreach draft", prompt: "Draft an outreach email to students who missed last advising window." },
   ],
@@ -29,43 +26,28 @@ const ROLE_PRESETS: Record<Role, QuickAction[]> = {
   ],
 }
 
-export default function DashboardChatFab({ role }: { role: Role }) {
+export default function DashboardChatFab({ 
+  role, 
+  onDrawerToggle 
+}: { 
+  role: Role
+  onDrawerToggle?: (open: boolean) => void
+}) {
   const [chatOpen, setChatOpen] = React.useState(false)
   const presetPrompts = ROLE_PRESETS[role] ?? []
 
+  const handleToggle = (open: boolean) => {
+    setChatOpen(open)
+    onDrawerToggle?.(open)
+  }
+
   return (
-    <>
-      <Tooltip title="Chatbot" placement="left">
-        <Fab
-          color="success"
-          aria-label="Open chatbot"
-          onClick={() => setChatOpen(true)}
-          sx={{
-            position: "fixed",
-            right: { xs: 16, sm: 24 },
-            bottom: { xs: "calc(16px + env(safe-area-inset-bottom))", sm: 24 },
-            zIndex: (theme) => theme.zIndex.drawer + 1,
-            boxShadow: 6,
-          }}
-        >
-          <SmartToyIcon />
-        </Fab>
-      </Tooltip>
-
-      {/* If your ChatbotDrawer doesn’t support these props yet, add them as optional */}
-      <ChatbotDrawer
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        role={role}                      // optional: for internal behavior/styling
-        presetPrompts={presetPrompts}    // optional: to render role-specific quick actions
-      />
-    </>
+    <ChatbotDrawer
+      open={chatOpen}
+      onClose={() => handleToggle(false)}
+      onOpen={() => handleToggle(true)}
+      role={role}
+      presetPrompts={presetPrompts}
+    />
   )
-}
-
-type Props = {
-  open: boolean
-  onClose: () => void
-  presetPrompts?: QuickAction[]
-  role: Role
 }

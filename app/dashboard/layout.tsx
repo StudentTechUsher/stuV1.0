@@ -1,14 +1,10 @@
 // app/dashboard/layout.tsx
 import type { ReactNode } from "react";
-import Box from "@mui/material/Box";
-import NavRail from "@/components/dashboard/nav-rail";
-import DashboardChatFab from "@/components/dashboard/dashboard-chat-fab";
+import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-client";
 
 // 👇 NEW: read Supabase session in a server component
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-
-export const RAIL_WIDTH = 88;
 
 type Role = "student" | "advisor" | "admin";
 
@@ -96,17 +92,13 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   const decodedString = decoded ? JSON.stringify(decoded) : "No JWT/session found";
 
   return (
-    <Box sx={{ display: "flex" }}>
-      <NavRail items={items} railWidth={RAIL_WIDTH} />
-      <Box component="main" sx={{ ml: `${RAIL_WIDTH}px`, flex: 1, position: "relative" }}>
-        <Box sx={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, color: "text.secondary", borderBottom: "1px dashed", borderColor: "divider", px: 1, py: 0.5 }}>
-          Decoded JWT: {decodedString}
-        </Box>
-
-        {children}
-        <DashboardChatFab role={role} />
-      </Box>
-    </Box>
+    <DashboardLayoutClient
+      items={items}
+      role={role}
+      decodedString={decodedString}
+    >
+      {children}
+    </DashboardLayoutClient>
   );
 }
 
@@ -133,7 +125,7 @@ function getNavItems(role: Role): NavItem[] {
     case "admin":
       return [
         { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
-        { href: "/dashboard/users",                 segment: "users",                 label: "Users",                  icon: "users" },
+        { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/system",                segment: "system",                label: "System",                 icon: "system" },
         { href: "/dashboard/profile",               segment: "profile",               label: "Profile",                icon: "profile" },

@@ -14,6 +14,9 @@ import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import CloseIcon from "@mui/icons-material/Close";
 import { getEnvRole } from "@/lib/mock-role";
 
 type Role = "student" | "advisor" | "admin";
@@ -22,6 +25,7 @@ type QuickAction = { label: string; prompt: string };
 type Props = {
   open: boolean;
   onClose: () => void;
+  onOpen?: () => void;
   /** Optional: pass the current user role so we can tailor quick actions */
   role?: Role;
   /** Optional: override or extend the quick actions */
@@ -52,6 +56,7 @@ const DEFAULT_PRESETS: Record<Role, QuickAction[]> = {
 export default function ChatbotDrawer({
   open,
   onClose,
+  onOpen,
   role,
   presetPrompts,
   onSend,
@@ -90,13 +95,46 @@ export default function ChatbotDrawer({
   };
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      ModalProps={{ keepMounted: true }} // smoother on mobile
-      sx={{ "& .MuiDrawer-paper": { width: 360, boxSizing: "border-box" } }}
-    >
+    <>
+      {/* Toggle Button - Always visible, attached to drawer edge */}
+      <IconButton
+        onClick={open ? onClose : onOpen}
+        sx={{
+          position: "fixed",
+          right: open ? "30vw" : 0, // Positioned at drawer edge
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: (theme) => theme.zIndex.drawer + 2,
+          backgroundColor: "success.main",
+          color: "white",
+          width: 48,
+          height: 48,
+          borderRadius: open ? "50% 0 0 50%" : "50% 0 0 50%", // Rounded on left side
+          transition: "right 0.3s ease-in-out",
+          "&:hover": {
+            backgroundColor: "success.dark",
+          },
+          boxShadow: 2,
+        }}
+      >
+        {open ? <CloseIcon /> : <SmartToyIcon />}
+      </IconButton>
+
+      <Drawer
+        anchor="right"
+        open={open}
+        onClose={onClose}
+        variant="persistent" // This makes it push content instead of overlaying
+        ModalProps={{ keepMounted: true }} // smoother on mobile
+        sx={{ 
+          "& .MuiDrawer-paper": { 
+            width: "30vw", 
+            minWidth: 320, // minimum width for mobile
+            maxWidth: 480, // maximum width for very large screens
+            boxSizing: "border-box" 
+          } 
+        }}
+      >
       <Box role="presentation" sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
         {/* Header */}
         <Box sx={{ mb: 1 }}>
@@ -104,7 +142,7 @@ export default function ChatbotDrawer({
             AI Assistant
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Role: {role.charAt(0).toUpperCase() + role.slice(1)}
+            Role: {(role || getEnvRole()).charAt(0).toUpperCase() + (role || getEnvRole()).slice(1)}
           </Typography>
         </Box>
 
@@ -170,5 +208,6 @@ export default function ChatbotDrawer({
         </Stack>
       </Box>
     </Drawer>
+    </>
   );
 }

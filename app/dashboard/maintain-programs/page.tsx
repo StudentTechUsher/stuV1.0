@@ -6,7 +6,7 @@ import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { getSessionUser } from '@/lib/api/auth';
 import { getUserUniversityId } from '@/lib/api/profile';
 import type { ProgramRow } from '@/types/program';
-import EditRequirementsDialog from '@/components/maintain-programs/edit-requirements-table';
+import EditRequirementsDialog from '@/components/maintain-programs/edit-requirements-dialog';
 import ProgramsTable from '@/components/maintain-programs/programs-table';
 import { fetchProgramsByUniversity, updateProgramRequirements } from '@/lib/api/server-actions';
 
