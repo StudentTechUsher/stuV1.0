@@ -9,6 +9,7 @@ export type Course = {
   credits: number;        // allow decimals (e.g., 1.5)
   requirement: string;    // e.g., "Junior Core", "Business Core", etc.
   semester: SemesterId;   // 1..N
+  prerequisite?: string;  // course prerequisites
   meta?: Record<string, unknown>;
 };
 

@@ -32,6 +32,7 @@ export default function JsonPreview({
       credits: course.credits,
       semester: course.semester,
       requirement: course.requirement,
+      ...(course.prerequisite && { prerequisite: course.prerequisite }),
       // Add any other course properties
     })),
     semestersMeta,

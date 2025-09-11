@@ -63,9 +63,10 @@ export function normalizePlan(plan: GraduationPlan): {
         credits,
         requirement,
         semester: sid,
+        prerequisite: pc.prerequisite as string | undefined,
         meta: Object.fromEntries(
           Object.entries(pc).filter(([k]) =>
-            !['code', 'title', 'credits', 'fulfills', 'requirement'].includes(k)
+            !['code', 'title', 'credits', 'fulfills', 'requirement', 'prerequisite'].includes(k)
           )
         ),
       };

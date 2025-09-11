@@ -11,6 +11,7 @@ export default async function GetProgramsForUniversity(university_id: number) {
       console.error('Error fetching programs:', error);
       return [];
     }
+    console.log(data);
 
     return data;
 }
@@ -26,6 +27,7 @@ export async function GetGenEdsForUniversity(university_id: number) {
       console.error('Error fetching general education programs:', error);
       return [];
     }
+    console.log(data);
 
     return data;
 }

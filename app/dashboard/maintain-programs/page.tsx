@@ -1,4 +1,3 @@
-// src/app/maintain-programs/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import { getUserUniversityId } from '@/lib/api/profile';
 import type { ProgramRow } from '@/types/program';
 import EditRequirementsDialog from '@/components/maintain-programs/edit-requirements-dialog';
 import ProgramsTable from '@/components/maintain-programs/programs-table';
-import { fetchProgramsByUniversity, updateProgramRequirements } from '@/lib/api/server-actions';
+import { fetchProgramsByUniversity, deleteProgram } from '@/lib/api/server-actions';
 
 export default function MaintainProgramsPage() {
   const [rows, setRows] = React.useState<ProgramRow[]>([]);
@@ -59,17 +58,41 @@ export default function MaintainProgramsPage() {
     setEditingRow(null);
   };
 
-  // matches EditRequirementsDialog onSave signature (parsed, rawText)
-  const handleSaveEdit = async (parsed: unknown, _rawText?: string) => {
-    if (!editingRow) return;
+  // matches EditRequirementsDialog onSave signature (updatedProgram)
+  const handleSaveEdit = async (updatedProgram: ProgramRow) => {
     try {
-      await updateProgramRequirements(editingRow.id, parsed);
-      handleCloseEdit();
+      // Update the local state with the updated program
+      setRows(prevRows => 
+        prevRows.map(row => 
+          row.id === updatedProgram.id ? updatedProgram : row
+        )
+      );
+      
+      // Clear any existing error
+      setError(null);
     } catch (e: unknown) {
       if (e instanceof Error) {
         setError(e.message);
       } else {
         setError('Failed to update program');
+      }
+    }
+  };
+
+  const handleDeleteProgram = async (program: ProgramRow) => {
+    try {
+      setError(null);
+      
+      // Call the delete API
+      await deleteProgram(program.id);
+      
+      // Remove the program from local state
+      setRows(prevRows => prevRows.filter(row => row.id !== program.id));
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError('Failed to delete program');
       }
     }
   };
@@ -85,7 +108,7 @@ export default function MaintainProgramsPage() {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : (
-        <ProgramsTable rows={rows} onEdit={handleOpenEdit} />
+        <ProgramsTable rows={rows} onEdit={handleOpenEdit} onDelete={handleDeleteProgram} />
       )}
 
       <EditRequirementsDialog
