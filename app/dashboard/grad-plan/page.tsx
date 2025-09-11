@@ -141,7 +141,7 @@ const plan =
   }
 }
 
-export default function FourYearPlanPage() {
+export default function GradPlanPage() {
 
   return (
     <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Button from '@mui/material/Button';
+import AddIcon from '@mui/icons-material/Add';
 import type { 
   Course, 
   SemesterId, 
@@ -11,15 +12,26 @@ import type {
 import { buildSemesterList, normalizePlan } from './plan-utils';
 import { chipThemeFor, withAlpha } from './chip-themes';
 import JsonPreview from './json-preview';
+import CreateGradPlanDialog from './create-grad-plan-dialog';
+import GetProgramsForUniversity, { GetGenEdsForUniversity } from './server-actions';
 
-export default function GradPlanner({ plan, fetchPlan }: GradPlannerProps) {
+// pre-load the programs available at the student's institution
+const university_id = 1;
+const programs_data = await GetProgramsForUniversity(university_id);
+const gen_ed_data = await GetGenEdsForUniversity(university_id);
+
+
+export default function GradPlanner({ plan, fetchPlan }: Readonly<GradPlannerProps>) {
   const [showStart, setShowStart] = useState(true);
+  const [showCreatePlanDialog, setShowCreatePlanDialog] = useState(false);
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [semestersMeta, setSemestersMeta] = useState<Record<SemesterId, SemesterMeta>>({});
   const [leftovers, setLeftovers] = useState<Record<string, unknown>>({});
   const [headerTitle, setHeaderTitle] = useState<string>('Four-Year Planning Assistant (PoC)');
   const [termsPlanned, setTermsPlanned] = useState<number>(8); // default; will be overridden
+
+  // pre-load plan if exists
 
   useEffect(() => {
     let mounted = true;
@@ -70,7 +82,24 @@ export default function GradPlanner({ plan, fetchPlan }: GradPlannerProps) {
 
       <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8">
         <header className="mb-5 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{headerTitle}</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{headerTitle}</h1>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setShowCreatePlanDialog(true)}
+              sx={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                textTransform: 'none',
+                '&:hover': {
+                  backgroundColor: '#059669',
+                }
+              }}
+            >
+              Create New Grad Plan
+            </Button>
+          </div>
           <p className="text-zinc-600 mt-0.5 text-sm">
             Drag classes between semesters or use the dropdown to reassign.
           </p>
@@ -149,6 +178,14 @@ export default function GradPlanner({ plan, fetchPlan }: GradPlannerProps) {
           termsPlanned={termsPlanned}
           headerTitle={headerTitle}
           leftovers={leftovers}
+        />
+
+        {/* Create New Grad Plan Dialog */}
+        <CreateGradPlanDialog
+          open={showCreatePlanDialog}
+          onClose={() => setShowCreatePlanDialog(false)}
+          programsData={programs_data}
+          genEdData={gen_ed_data}
         />
       </div>
     </section>

@@ -2,7 +2,7 @@ export type ProgramRow = {
     id: string;
     university_id: number;
     name: string;
-    program_type: string; // consider: 'major' | 'minor'
+    program_type: string;
     version: string | number | null;
     created_at: string;
     modified_at: string | null;
