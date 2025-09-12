@@ -13,11 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Student Tech Usher",
-  description: "A platform to supercharge student planning and forecasting",
+  title: "stu.",
+  description: "welcome to stu.",
   icons: {
-    icon: "/favicon.ico",
-  }
+    icon: '/favicon-96x96.png',
+  },
 };
 
 export default function RootLayout({

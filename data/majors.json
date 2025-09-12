@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Computer Science",
+    "description": "Study of computation, automation, and information.",
+    "university_id": 1
+  },
+  {
+    "id": 2,
+    "name": "Business Administration",
+    "description": "Study of business operations and management.",
+    "university_id": 1
+  },
+  {
+    "id": 3,
+    "name": "Psychology",
+    "description": "Study of human behavior and mental processes.",
+    "university_id": 1
+  }
+]
