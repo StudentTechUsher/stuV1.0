@@ -5,7 +5,6 @@ import Button from '@mui/material/Button';
 import AddIcon from '@mui/icons-material/Add';
 import type { 
   Course, 
-  SemesterId, 
   SemesterMeta, 
   GradPlannerProps 
 } from '@/types/graduation-plan';
@@ -13,20 +12,19 @@ import { buildSemesterList, normalizePlan } from './plan-utils';
 import { chipThemeFor, withAlpha } from './chip-themes';
 import JsonPreview from './json-preview';
 import CreateGradPlanDialog from './create-grad-plan-dialog';
-import GetProgramsForUniversity, { GetGenEdsForUniversity } from './server-actions';
 
-// pre-load the programs available at the student's institution
-const university_id = 1;
-const programs_data = await GetProgramsForUniversity(university_id);
-const gen_ed_data = await GetGenEdsForUniversity(university_id);
-
-
-export default function GradPlanner({ plan, fetchPlan }: Readonly<GradPlannerProps>) {
+export default function GradPlanner({ 
+  plan, 
+  fetchPlan, 
+  programsData = [], 
+  genEdData = [], 
+  studentProfile // eslint-disable-line @typescript-eslint/no-unused-vars
+}: Readonly<GradPlannerProps>) {
   const [showStart, setShowStart] = useState(true);
   const [showCreatePlanDialog, setShowCreatePlanDialog] = useState(false);
 
   const [courses, setCourses] = useState<Course[]>([]);
-  const [semestersMeta, setSemestersMeta] = useState<Record<SemesterId, SemesterMeta>>({});
+  const [semestersMeta, setSemestersMeta] = useState<Record<number, SemesterMeta>>({});
   const [leftovers, setLeftovers] = useState<Record<string, unknown>>({});
   const [headerTitle, setHeaderTitle] = useState<string>('Four-Year Planning Assistant (PoC)');
   const [termsPlanned, setTermsPlanned] = useState<number>(8); // default; will be overridden
@@ -56,7 +54,7 @@ export default function GradPlanner({ plan, fetchPlan }: Readonly<GradPlannerPro
   const semesterList = useMemo(() => buildSemesterList(termsPlanned), [termsPlanned]);
 
   // move courses (drag/drop or select)
-  const moveCourse = (courseId: string, toSemester: SemesterId) => {
+  const moveCourse = (courseId: string, toSemester: number) => {
     setCourses(prev =>
       prev.map(c => (c.id === courseId ? { ...c, semester: toSemester } : c))
     );
@@ -64,7 +62,7 @@ export default function GradPlanner({ plan, fetchPlan }: Readonly<GradPlannerPro
 
   // totals (dynamic)
   const totals = useMemo(() => {
-    const bySemester = new Map<SemesterId, number>();
+    const bySemester = new Map<number, number>();
     let all = 0;
     for (const c of courses) {
       all += c.credits;
@@ -184,8 +182,8 @@ export default function GradPlanner({ plan, fetchPlan }: Readonly<GradPlannerPro
         <CreateGradPlanDialog
           open={showCreatePlanDialog}
           onClose={() => setShowCreatePlanDialog(false)}
-          programsData={programs_data}
-          genEdData={gen_ed_data}
+          programsData={programsData}
+          genEdData={genEdData}
         />
       </div>
     </section>
@@ -302,7 +300,7 @@ function SemesterContainer({
   checkpoints,
   semesterCredits,
 }: Readonly<{
-  semester: { id: SemesterId; label: string };
+  semester: { id: number; label: string };
   courses: Course[];
   onDropCourse: (courseId: string) => void;
   children: React.ReactNode;
@@ -378,8 +376,8 @@ function ClassCard({
   semesterList,
 }: Readonly<{
   course: Course;
-  onChangeSemester: (semester: SemesterId) => void;
-  semesterList: { id: SemesterId; label: string }[];
+  onChangeSemester: (semester: number) => void;
+  semesterList: { id: number; label: string }[];
 }>) {
   const handleDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.dataTransfer.setData('text/plain', course.id);
@@ -438,7 +436,7 @@ function ClassCard({
         <select
           id={`sem-${course.id}`}
           value={course.semester}
-          onChange={(e) => onChangeSemester(Number(e.target.value) as SemesterId)}
+          onChange={(e) => onChangeSemester(Number(e.target.value))}
           className="
             rounded-md border border-zinc-300 bg-white text-sm
             px-3 py-1.5 shadow-sm hover:border-zinc-400

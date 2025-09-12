@@ -1,6 +1,8 @@
 // Types for the graduation plan and four-year planner components
 
-export type SemesterId = number; // 1..N are semester terms
+import type { ProgramRow } from './program';
+
+// 1..N are semester terms
 
 export type Course = {
   id: string;
@@ -8,7 +10,7 @@ export type Course = {
   title: string;
   credits: number;        // allow decimals (e.g., 1.5)
   requirement: string;    // e.g., "Junior Core", "Business Core", etc.
-  semester: SemesterId;   // 1..N
+  semester: number;       // 1..N
   prerequisite?: string;  // course prerequisites
   meta?: Record<string, unknown>;
 };
@@ -57,11 +59,18 @@ export type ChipTheme = {
 };
 
 export type Semester = {
-  id: SemesterId;
+  id: number;
   label: string;
 };
 
 export type GradPlannerProps = {
   plan?: GraduationPlan;
   fetchPlan?: () => Promise<GraduationPlan>;
+  programsData?: ProgramRow[];
+  genEdData?: ProgramRow[];
+  studentProfile?: {
+    profile_id: string;
+    university_id: number;
+    [key: string]: unknown;
+  };
 };

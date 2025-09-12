@@ -1,99 +1,157 @@
-import type { 
-  SemesterId, 
-  Course, 
-  SemesterMeta, 
-  GraduationPlan, 
-  Semester 
-} from '@/types/graduation-plan';
+// ./plan-utils.ts
+import type { Course } from '@/types/graduation-plan';
 
-export const buildSemesterList = (n: number): Semester[] => [
-  ...Array.from({ length: Math.max(1, n) }, (_, i) => ({
-    id: (i + 1) as SemesterId,
-    label: `Semester ${i + 1}`,
-  })),
-];
-
-export const semFromLabel = (term?: string): SemesterId => {
-  if (!term) return 1;
-  const m = term.match(/semester\s*(\d+)/i);
-  const n = m ? Number(m[1]) : NaN;
-  return Number.isFinite(n) && n >= 1 ? (n as SemesterId) : 1;
+// Extend SemesterMeta to include optional creditsPlanned property
+type SemesterMeta = {
+  notes?: string[];
+  checkpoints?: {
+    action: string;
+    conditions?: string[];
+    notes?: string;
+  }[];
+  creditsPlanned?: number;
 };
 
-let idCounter = 0;
-export const newId = (prefix: string) =>
-  `${prefix}-${++idCounter}-${Math.random().toString(36).slice(2, 8)}`;
+/* ---------- input shapes (from your JSON) ---------- */
+type InputPlanTerm = {
+  term: string | number;
+  notes?: string | string[];
+  courses: {
+    code: string;
+    title: string;
+    credits: number | string;
+    fulfills?: string[];
+  }[];
+  credits_planned?: number | string;
+};
 
-export function normalizePlan(plan: GraduationPlan): {
+type InputCheckpoint = {
+  term: string | number;
+  action: string;
+  conditions?: string[];
+  notes?: string;
+};
+
+type RawPlan = {
+  plan?: InputPlanTerm[];
+  program?: string;
+  assumptions?: string[];
+  checkpoints?: InputCheckpoint[];
+  duration_years?: number;
+  requirement_buckets_covered?: Record<string, string[]>;
+  [k: string]: unknown;
+};
+
+/* ---------- public API ---------- */
+export function buildSemesterList(termsPlanned: number) {
+  // Labels kept simple; swap in Fall/Spring if you prefer
+  return Array.from({ length: termsPlanned }, (_, i) => {
+    const id = i + 1;
+    return { id, label: `Semester ${id}` };
+  });
+}
+
+/**
+ * Accepts either:
+ *  - your new raw JSON shape (with `plan`, `checkpoints`, etc.), or
+ *  - an already-normalized object (courses + semestersMeta), which we pass through.
+ */
+export function normalizePlan(source: unknown): {
   courses: Course[];
-  semestersMeta: Record<SemesterId, SemesterMeta>;
+  semestersMeta: Record<number, SemesterMeta>;
   leftovers: Record<string, unknown>;
   termsPlanned: number;
 } {
-  const semestersMeta: Record<SemesterId, SemesterMeta> = {};
+  // pass-through if already normalized
+  const s = source as { courses?: Course[]; semestersMeta?: Record<number, SemesterMeta>; termsPlanned?: number; leftovers?: Record<string, unknown> } | RawPlan;
+  if (s?.courses && s?.semestersMeta) {
+    const termsPlanned =
+      s.termsPlanned ??
+      Math.max(1, ...((s.courses as Course[]) || []).map(c => Number(c.semester) || 1));
+    return {
+      courses: s.courses as Course[],
+      semestersMeta: s.semestersMeta as Record<number, SemesterMeta>,
+      leftovers: s.leftovers ?? Object.create(null),
+      termsPlanned: Number(termsPlanned),
+    };
+  }
+
+  const raw = (source ?? {}) as RawPlan;
+  const terms: InputPlanTerm[] = Array.isArray(raw.plan) ? [...raw.plan] : [];
+  terms.sort((a, b) => Number(a.term) - Number(b.term));
+
+  // group checkpoints by term
+  const checkpointsByTerm = new Map<number, InputCheckpoint[]>();
+  for (const cp of raw.checkpoints ?? []) {
+    const t = Number(cp.term);
+    if (!checkpointsByTerm.has(t)) checkpointsByTerm.set(t, []);
+    checkpointsByTerm.get(t)!.push(cp);
+  }
+
+  const semestersMeta: Record<number, SemesterMeta> = {};
   const courses: Course[] = [];
-  let maxSeen = 1;
 
-  for (const t of plan.plan || []) {
-    const sid = semFromLabel(t.term);
-    if (sid > maxSeen) maxSeen = sid;
+  for (const t of terms) {
+    const termNum = Number(t.term);
+    if (!Number.isFinite(termNum) || termNum <= 0) continue;
 
-    const notesArr =
-      typeof t.notes === 'string' ? [t.notes] :
-      Array.isArray(t.notes) ? t.notes :
-      undefined;
-
-    if (!semestersMeta[sid]) semestersMeta[sid] = {};
-    if (notesArr?.length) {
-      semestersMeta[sid].notes = [...(semestersMeta[sid].notes || []), ...notesArr];
+    // notes + checkpoints into meta
+    let notesArray: string[] | undefined;
+    if (t.notes == null) {
+      notesArray = undefined;
+    } else if (Array.isArray(t.notes)) {
+      notesArray = t.notes;
+    } else {
+      notesArray = [t.notes];
     }
 
-    for (const pc of t.courses || []) {
-      const requirement = pc.requirement
-        ?? (Array.isArray(pc.fulfills) && pc.fulfills.length ? pc.fulfills[0] : '—');
+    const meta: SemesterMeta = {};
+    if (notesArray?.length) meta.notes = notesArray;
 
-      const credits = typeof pc.credits === 'number'
-        ? pc.credits
-        : Number(pc.credits) || 0;
-
-      const c: Course = {
-        id: newId(pc.code || 'course'),
-        code: pc.code || 'TBD',
-        title: pc.title || '',
-        credits,
-        requirement,
-        semester: sid,
-        prerequisite: pc.prerequisite as string | undefined,
-        meta: Object.fromEntries(
-          Object.entries(pc).filter(([k]) =>
-            !['code', 'title', 'credits', 'fulfills', 'requirement', 'prerequisite'].includes(k)
-          )
-        ),
-      };
-      courses.push(c);
+    // Add checkpoints if present
+    const cps = checkpointsByTerm.get(termNum);
+    if (cps?.length) {
+      meta.checkpoints = cps.map(c => ({
+        action: c.action,
+        conditions: c.conditions,
+        notes: c.notes,
+      }));
     }
-  }
 
-  for (const cp of plan.checkpoints || []) {
-    const sid = semFromLabel(cp.term);
-    if (sid > maxSeen) maxSeen = sid;
-    if (!semestersMeta[sid]) semestersMeta[sid] = {};
-    const arr = semestersMeta[sid].checkpoints || [];
-    arr.push({ action: cp.action, conditions: cp.conditions, notes: cp.notes });
-    semestersMeta[sid].checkpoints = arr;
-  }
-
-  const leftovers: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(plan)) {
-    if (!['program', 'duration_years', 'assumptions', 'checkpoints', 'plan', 'terms_planned'].includes(k)) {
-      leftovers[k] = v;
+    // Add creditsPlanned if present and valid
+    if (t.credits_planned != null) {
+      const n = Number(t.credits_planned);
+      if (!Number.isNaN(n)) meta.creditsPlanned = n; // optional; not required by UI
     }
+
+    if (Object.keys(meta).length) semestersMeta[termNum] = meta;
+
+    // push courses for this term
+    (t.courses || []).forEach((c, idx) => {
+      // ensure unique id even for repeated codes like "Free Elective"
+      const safeCode = (c.code || 'UNK').replace(/\s+/g, '_');
+      const id = `${termNum}-${safeCode}-${idx}`;
+      courses.push({
+        id,
+        code: c.code,
+        title: c.title,
+        credits: Number(c.credits) || 0,
+        semester: termNum,
+        // keep requirement short; UX looks best with first item
+        requirement: (Array.isArray(c.fulfills) && c.fulfills[0]) || '—',
+      } as Course);
+    });
   }
 
   const termsPlanned =
-    typeof plan.terms_planned === 'number' && plan.terms_planned > 0
-      ? Math.max(plan.terms_planned, maxSeen)
-      : Math.max(1, maxSeen);
+    terms.reduce((m, t) => Math.max(m, Number(t.term) || 0), 0) || 8;
+
+  // anything extra we want to keep around for debugging / preview
+  const leftovers: Record<string, unknown> = {};
+  if (raw.assumptions) leftovers.assumptions = raw.assumptions;
+  if (raw.requirement_buckets_covered)
+    leftovers.requirement_buckets_covered = raw.requirement_buckets_covered;
+  if (raw.duration_years) leftovers.duration_years = raw.duration_years;
 
   return { courses, semestersMeta, leftovers, termsPlanned };
 }

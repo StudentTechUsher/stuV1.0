@@ -561,7 +561,7 @@ export default function CreateGradPlanDialog({
                         {groupedPrograms[programType].map((program) => (
                           <Chip
                             key={program.id}
-                            label={`${program.name}${program.version ? ` (v${program.version})` : ''}`}
+                            label={`${program.name}${program.version ? ` (${program.version})` : ''}`}
                             onClick={() => handleProgramToggle(program.id)}
                             color={selectedPrograms.has(program.id) ? 'primary' : 'default'}
                             variant={selectedPrograms.has(program.id) ? 'filled' : 'outlined'}
