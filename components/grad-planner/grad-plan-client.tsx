@@ -4,13 +4,33 @@ import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
+import { submitGradPlanForApproval } from "@/lib/api/client-actions";
 import { GraduationPlan } from "@/types/graduation-plan";
 import { ProgramRow } from "@/types/program";
 import { PlusIcon } from 'lucide-react';
 
 const RAIL_WIDTH = 80;
+
+interface Term {
+  term: string;
+  notes?: string;
+  courses?: Array<{
+    code: string;
+    title: string;
+    credits: number;
+    fulfills?: string[];
+  }>;
+  credits_planned?: number;
+}
 
 interface GradPlanClientProps {
   user: {
@@ -30,9 +50,90 @@ interface GradPlanClientProps {
 
 export default function GradPlanClient({ user, studentRecord, gradPlanRecord, programsData, genEdData }: Readonly<GradPlanClientProps>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [currentPlanData, setCurrentPlanData] = useState<Term[] | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const handleCreatePlan = () => {
     setIsDialogOpen(true);
+  };
+
+  const handleEditPlan = async () => {
+    if (isEditMode) {
+      // Submit for approval
+      if (!studentRecord?.id || !currentPlanData) {
+        setNotification({
+          open: true,
+          message: 'Missing student information or plan data',
+          severity: 'error'
+        });
+        return;
+      }
+
+      setIsSubmitting(true);
+      
+      try {
+        const result = await submitGradPlanForApproval(studentRecord.id, currentPlanData);
+        
+        if (result.success) {
+          setNotification({
+            open: true,
+            message: result.message,
+            severity: 'success'
+          });
+          setIsEditMode(false);
+          setCurrentPlanData(null);
+        } else {
+          setNotification({
+            open: true,
+            message: result.message,
+            severity: 'error'
+          });
+        }
+      } catch (error) {
+        console.error('Error submitting plan for approval:', error);
+        setNotification({
+          open: true,
+          message: 'Failed to submit graduation plan for approval. Please try again.',
+          severity: 'error'
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Enter edit mode
+      setIsEditMode(true);
+    }
+  };
+
+  const handlePlanUpdate = (updatedPlan: Term[]) => {
+    setCurrentPlanData(updatedPlan);
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({ ...notification, open: false });
+  };
+
+  const handleCancelEdit = () => {
+    // Show confirmation dialog before canceling
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancel = () => {
+    // Exit edit mode without saving changes
+    console.log('Canceling edit mode...');
+    setIsEditMode(false);
+    setIsCancelDialogOpen(false);
+  };
+
+  const handleCloseCancelDialog = () => {
+    setIsCancelDialogOpen(false);
   };
 
   const handleCloseDialog = () => {
@@ -66,40 +167,77 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
   return (
     <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          Graduation Plan
-        </Typography>
-        <Button 
-          variant="contained" 
-          color="success"
-          onClick={handleCreatePlan}
-          sx={{ 
-            backgroundColor: '#4caf50',
-            '&:hover': {
-              backgroundColor: '#45a049'
-            }
-          }}
-        >
-            <PlusIcon style={{ marginRight: 2 }} />
-          Create New Grad Plan
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button 
+            variant="contained" 
+            color="success"
+            onClick={handleCreatePlan}
+            sx={{ 
+              backgroundColor: '#4caf50',
+              '&:hover': {
+                backgroundColor: '#45a049'
+              }
+            }}
+          >
+              <PlusIcon style={{ marginRight: 2 }} />
+            Create New Grad Plan
+          </Button>
+          
+          {gradPlanRecord && (
+            <>
+              <Button 
+                variant={isEditMode ? "contained" : "outlined"}
+                color={isEditMode ? "warning" : "primary"}
+                onClick={handleEditPlan}
+                disabled={isSubmitting}
+                sx={{ 
+                  ...(isEditMode ? {
+                    backgroundColor: '#ff9800',
+                    '&:hover': {
+                      backgroundColor: '#f57c00'
+                    }
+                  } : {
+                    borderColor: '#1976d2',
+                    color: '#1976d2',
+                    '&:hover': {
+                      borderColor: '#1565c0',
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
+                  })
+                }}
+              >
+                {isSubmitting ? 'Submitting...' : (isEditMode ? 'Submit for Approval' : 'Edit Current Grad Plan')}
+              </Button>
+              
+              {isEditMode && (
+                <Button 
+                  variant="outlined"
+                  color="error"
+                  onClick={handleCancelEdit}
+                  sx={{ 
+                    borderColor: '#f44336',
+                    color: '#f44336',
+                    '&:hover': {
+                      borderColor: '#d32f2f',
+                      backgroundColor: 'rgba(244, 67, 54, 0.04)'
+                    }
+                  }}
+                >
+                  Cancel Edit
+                </Button>
+              )}
+            </>
+          )}
+        </Box>
       </Box>
       
       {gradPlanRecord ? (
         <Box>
-          <Typography variant="h6" gutterBottom>
-            Database Output:
-          </Typography>
-          <pre style={{ 
-            background: '#f5f5f5', 
-            padding: '16px', 
-            borderRadius: '4px', 
-            overflow: 'auto',
-            fontSize: '12px'
-          }}>
-            {JSON.stringify(gradPlanRecord, null, 2)}
-          </pre>
-          <GraduationPlanner plan={gradPlanRecord} />
+          <GraduationPlanner 
+            plan={gradPlanRecord} 
+            isEditMode={isEditMode} 
+            onPlanUpdate={handlePlanUpdate}
+          />
         </Box>
       ) : (
         <Box>
@@ -131,6 +269,46 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
         programsData={programsData}
         genEdData={genEdData}
       />
+      
+      <Dialog
+        open={isCancelDialogOpen}
+        onClose={handleCloseCancelDialog}
+        aria-labelledby="cancel-edit-dialog-title"
+        aria-describedby="cancel-edit-dialog-description"
+      >
+        <DialogTitle id="cancel-edit-dialog-title">
+          Cancel Edit Mode?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="cancel-edit-dialog-description">
+            Are you sure you want to cancel edit mode? All unsaved changes to your graduation plan will be lost.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCancelDialog} color="primary">
+            Continue Editing
+          </Button>
+          <Button onClick={handleConfirmCancel} color="error" variant="contained">
+            Cancel Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notification.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

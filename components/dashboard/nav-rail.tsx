@@ -3,14 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSelectedLayoutSegment } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Divider from "@mui/material/Divider";
+import { supabase } from "@/lib/supabaseClient";
 
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
+import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import PersonRounded from "@mui/icons-material/PersonRounded";
 import ChecklistRounded from "@mui/icons-material/ChecklistRounded";
 import DashboardRounded from "@mui/icons-material/Dashboard";
@@ -47,6 +50,16 @@ const iconMap: Record<NavItem["icon"], JSX.Element> = {
 
 export default function NavRail({ items, railWidth = 88, showSettings = true }: Props) {
   const seg = useSelectedLayoutSegment();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <Box
@@ -129,6 +142,23 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
       {showSettings && (
         <>
           <Divider sx={{ width: 40, borderColor: "rgba(255,255,255,0.12)", mb: 1 }} />
+          
+          {/* Sign Out Button */}
+          <Tooltip title="Sign Out" placement="right">
+            <IconButton
+              size="large"
+              onClick={handleSignOut}
+              sx={{ 
+                color: "#fff", 
+                mb: 1,
+                "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } 
+              }}
+            >
+              <LogoutRounded />
+            </IconButton>
+          </Tooltip>
+
+          {/* Settings Button */}
           <Tooltip title="Settings" placement="right">
             <Box component={Link} href="/dashboard/settings">
               <IconButton

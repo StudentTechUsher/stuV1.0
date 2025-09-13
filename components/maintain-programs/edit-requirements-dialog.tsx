@@ -1,6 +1,6 @@
 'use client';
 import type { ProgramRow } from '@/types/program';
-import { updateProgram } from '@/lib/api/server-actions';
+import { updateProgram } from '@/lib/api/client-actions';
 import { 
     Dialog, 
     DialogTitle, 

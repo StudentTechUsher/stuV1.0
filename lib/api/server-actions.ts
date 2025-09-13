@@ -1,84 +1,229 @@
-import type { ProgramRow } from '@/types/program';
+'use server';
+
+import { getVerifiedUser } from '../supabase/auth';
 import { supabase } from '../supabase';
 
+// Secure server action that handles OpenAI API calls and user authentication
+export async function OrganizeCoursesIntoSemesters_ServerAction(coursesData: unknown): Promise<{ success: boolean; message: string; semesterPlan?: unknown }> {
+  console.log('🔍 OrganizeCoursesIntoSemesters_ServerAction called with:', coursesData);
+  
+  try {
+    // Get the current user from session
+    const user = await getVerifiedUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Validate OpenAI API key
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
 
-export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
-    const { data, error } = await supabase
-    .from('program')
-    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
-    .eq('university_id', universityId)
-    .order('created_at', { ascending: false });
+    // Prepare the prompt for OpenAI
+    const prompt = `
+    You are an academic advisor AI. Given the following selected courses and program requirements, 
+    organize them into a logical semester-by-semester plan for a 4-year degree.
+    
+    Consider:
+    - Prerequisites and course dependencies
+    - Typical course load (12-18 credits per semester)
+    - General education requirements should be spread throughout
+    - Major requirements should be sequenced appropriately
+    - Electives should fill gaps and meet credit requirements
+    - Most students take 8 semesters (4 years), but can adjust if needed
+    
+    Input data:
+    ${JSON.stringify(coursesData, null, 2)}
+    
+    Please return a JSON response with a logical semester plan structure.
+    `;
 
-    if (error) throw error;
-    return (data ?? []) as ProgramRow[];
-}
-
-
-export async function updateProgramRequirements(id: string, requirements: unknown): Promise<ProgramRow> {
-    const { data, error } = await supabase
-        .from('program')
-        .update({ requirements })
-        .eq('id', id)
-        .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
-        .single();
-
-    if (error) throw error;
-    return data as ProgramRow;
-}
-
-export async function updateProgram(id: string, updates: Partial<Omit<ProgramRow, 'id' | 'created_at'>>): Promise<ProgramRow> {
-    // Ensure modified_at is always updated
-    const updateData = {
-        ...updates,
-        modified_at: new Date().toISOString()
+    console.log('🔄 Using stub implementation - OpenAI integration is ready but commented out');
+    
+    // Simulate AI processing time
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Mock AI response with a sample semester plan
+    const mockSemesterPlan = {
+      "plan": [
+        {
+          "term": "1",
+          "notes": "Foundation semester - focus on core skills and general education",
+          "courses": [
+            {
+              "code": "UNIV 101",
+              "title": "University Foundations",
+              "credits": 2,
+              "fulfills": ["University Requirements"]
+            },
+            {
+              "code": "WRTG 150",
+              "title": "Writing & Rhetoric",
+              "credits": 3,
+              "fulfills": ["First-Year Writing"]
+            },
+            {
+              "code": "MATH 110",
+              "title": "College Algebra",
+              "credits": 4,
+              "fulfills": ["Quantitative Literacy"]
+            },
+            {
+              "code": "BIO 100",
+              "title": "Principles of Biology",
+              "credits": 3,
+              "fulfills": ["Physical Science"]
+            }
+          ],
+          "credits_planned": 12
+        },
+        {
+          "term": "2",
+          "notes": "Continue building foundation with major prerequisites",
+          "courses": [
+            {
+              "code": "ACC 200",
+              "title": "Principles of Accounting",
+              "credits": 3,
+              "fulfills": ["Business Prerequisites"]
+            },
+            {
+              "code": "ECON 110",
+              "title": "Economic Principles",
+              "credits": 3,
+              "fulfills": ["Social Science"]
+            },
+            {
+              "code": "ENG 201",
+              "title": "Literature Survey",
+              "credits": 3,
+              "fulfills": ["Humanities"]
+            },
+            {
+              "code": "HIST 101",
+              "title": "World History",
+              "credits": 3,
+              "fulfills": ["Social Science"]
+            }
+          ],
+          "credits_planned": 12
+        }
+      ]
     };
 
-    const { data, error } = await supabase
-        .from('program')
-        .update(updateData)
-        .eq('id', id)
-        .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
-        .single();
-
-    if (error) throw error;
-    return data as ProgramRow;
-}
-
-export async function deleteProgram(id: string): Promise<void> {
-    const { error } = await supabase
-        .from('program')
-        .delete()
-        .eq('id', id);
-
-    if (error) throw error;
-}
-
-export async function createGraduationPlan(planData: unknown): Promise<{ success: boolean; message: string; planId?: string }> {
-    // TODO: Implement graduation plan creation logic
-    // This is a stub function that will be implemented later
+    /* COMMENTED OUT - OpenAI Implementation Ready for Activation
+    console.log('Sending request to OpenAI...');
     
-    console.log('Creating graduation plan with data:', planData);
-    
-    try {
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // For now, just return a success response
-        return {
-            success: true,
-            message: 'Graduation plan created successfully!',
-            planId: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        };
-    } catch (error) {
-        console.error('Error creating graduation plan:', error);
-        return {
-            success: false,
-            message: 'Failed to create graduation plan. Please try again.'
-        };
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 4000,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI API Error:', response.status, errorData);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
+    
+    const aiResponse = await response.json();
+    const aiContent = aiResponse.choices[0]?.message?.content;
+    
+    if (!aiContent) {
+      throw new Error('No content received from OpenAI');
+    }
+    
+    // Parse the AI response (it should be JSON)
+    let semesterPlan;
+    try {
+      semesterPlan = JSON.parse(aiContent);
+    } catch (parseError) {
+      console.error('Error parsing AI response:', parseError);
+      throw new Error('Invalid JSON response from AI');
+    }
+    
+    // Store the AI response in the database
+    try {
+      const { error: insertError } = await supabase
+        .from('ai_responses')
+        .insert({
+          user_id: user.id,
+          response: aiContent
+        });
+      
+      if (insertError) {
+        console.error('Error storing AI response:', insertError);
+        // Don't throw here - we still want to return the plan even if storage fails
+      } else {
+        console.log('✅ AI response stored successfully for user:', user.id);
+      }
+    } catch (storageError) {
+      console.error('Error storing AI response:', storageError);
+      // Continue without throwing - storage failure shouldn't break the main functionality
+    }
+    
+    console.log('✅ AI-generated semester plan:', semesterPlan);
+    
+    return {
+      success: true,
+      message: 'Semester plan generated successfully!',
+      semesterPlan: semesterPlan
+    };
+    */
+    
+    // Store the mock response in the database
+    try {
+      const { error: insertError } = await supabase
+        .from('ai_responses')
+        .insert({
+          user_id: user.id,
+          response: JSON.stringify(mockSemesterPlan)
+        });
+      
+      if (insertError) {
+        console.error('Error storing AI response:', insertError);
+        // Don't throw here - we still want to return the plan even if storage fails
+      } else {
+        console.log('✅ AI response stored successfully for user:', user.id);
+      }
+    } catch (storageError) {
+      console.error('Error storing AI response:', storageError);
+      // Continue without throwing - storage failure shouldn't break the main functionality
+    }
+    
+    return {
+      success: true,
+      message: 'AI-organized semester plan generated successfully! (Using mock data)',
+      semesterPlan: mockSemesterPlan
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in OrganizeCoursesIntoSemesters_ServerAction:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to generate semester plan'
+    };
+  }
 }
 
+// Server-only functions that need to be called from server components
 export default async function GetProgramsForUniversity(university_id: number) {
+    console.log('🔍 GetProgramsForUniversity called with university_id:', university_id);
+    
     const { data, error } = await supabase
       .from('program')
       .select('*')
@@ -90,7 +235,7 @@ export default async function GetProgramsForUniversity(university_id: number) {
       return [];
     }
 
-    return data;
+    return data || [];
 }
 
 export async function GetGenEdsForUniversity(university_id: number) {
@@ -105,49 +250,42 @@ export async function GetGenEdsForUniversity(university_id: number) {
       return [];
     }
 
-    return data;
+    return data || [];
 }
 
-export async function GetStudentProfile(user_id: string) {
-  // First, let's try the student table
+export async function GetActiveGradPlan(profile_id: string) {
+  console.log('🔍 GetActiveGradPlan called with profile_id:', profile_id);
+  
+  // First, get the student record to get the numeric student_id
   const { data: studentData, error: studentError } = await supabase
     .from('student')
-    .select('*')
-    .eq('profile_id', user_id)
+    .select('id')
+    .eq('profile_id', profile_id)
     .single();
 
-  if (!studentError && studentData) {
-    return studentData;
-  }
-  
-  // If not found in student table, try profiles table
-  const { data: profileData, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, university_id')
-    .eq('id', user_id)
-    .single();
-
-  if (profileError) {
-    console.error('❌ Error fetching from both tables:', { studentError, profileError });
+  if (studentError) {
     return null;
   }
-  // Map the id to profile_id for consistency
-  return {
-    profile_id: profileData.id,
-    university_id: profileData.university_id
-  };
-}
 
-export async function GetActiveGradPlan(student_id: number) {
+  if (!studentData) {
+    return null;
+  }
+
+  console.log('✅ Found student_id:', studentData.id);
+
+  // Now get the active grad plan using the numeric student_id
   const { data, error } = await supabase
     .from('grad_plan')
     .select('*')
-    .eq('student_id', student_id)
+    .eq('student_id', studentData.id)
+    .eq('is_active', true)
     .single();
 
   if (error) {
     console.error('❌ Error fetching active grad plan:', error);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
     return null;
   }
+  
   return data;
 }
