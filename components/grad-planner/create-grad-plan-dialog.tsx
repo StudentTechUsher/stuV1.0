@@ -25,6 +25,18 @@ import CloseIcon from '@mui/icons-material/Close';
 import type { ProgramRow } from '@/types/program';
 import { createGraduationPlan, OrganizeCoursesIntoSemesters } from '@/lib/api/client-actions';
 
+interface Term {
+  term: string;
+  notes?: string;
+  courses?: Array<{
+    code: string;
+    title: string;
+    credits: number;
+    fulfills?: string[];
+  }>;
+  credits_planned?: number;
+}
+
 interface Course {
   code: string;
   title: string;
@@ -95,13 +107,15 @@ interface CreateGradPlanDialogProps {
   onClose: () => void;
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
+  onPlanCreated?: (aiGeneratedPlan: Term[]) => void;
 }
 
 export default function CreateGradPlanDialog({
   open,
   onClose,
   programsData,
-  genEdData
+  genEdData,
+  onPlanCreated
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: selected courses per requirement (array because we may need multiple dropdowns)
@@ -153,17 +167,22 @@ export default function CreateGradPlanDialog({
     return all;
   }, [genEdData]);
 
-  // Parse program requirements from programsData
-  const parseProgramRequirements = useCallback((): ProgramRequirement[] => {
-    if (!programsData || programsData.length === 0) {
-      console.log('❌ No programsData available');
+  // Parse program requirements from programsData for selected programs only
+  const parseProgramRequirements = useCallback((selectedProgramIds: Set<string>): ProgramRequirement[] => {
+    if (!programsData || programsData.length === 0 || selectedProgramIds.size === 0) {
+      console.log('❌ No programsData available or no programs selected');
       return [];
     }
     const all: ProgramRequirement[] = [];
 
+    // Only process programs that are actually selected
     programsData.forEach((program, index) => {
+      if (!selectedProgramIds.has(program.id)) {
+        return; // Skip programs that aren't selected
+      }
+      
       if (!program.requirements) {
-        console.log(`❌ No requirements in program ${index}`);
+        console.log(`❌ No requirements in program ${index} (${program.name})`);
         return;
       }
       try {
@@ -173,15 +192,16 @@ export default function CreateGradPlanDialog({
 
         // Look for programRequirements array
         if (Array.isArray(req?.programRequirements)) {
+          console.log(`📋 Processing ${req.programRequirements.length} requirements for program: ${program.name}`);
           req.programRequirements.forEach((progReq: unknown, reqIndex: number) => {
-            console.log(`📋 Processing programRequirement ${reqIndex}:`, progReq);
+            console.log(`📋 Processing programRequirement ${reqIndex} for ${program.name}:`, progReq);
           });
           all.push(...req.programRequirements);
         } else {
-          console.log('❌ No programRequirements array found in requirements');
+          console.log(`❌ No programRequirements array found in requirements for ${program.name}`);
         }
       } catch (e) {
-        console.error('❌ Error parsing program requirements:', e);
+        console.error(`❌ Error parsing program requirements for ${program.name}:`, e);
       }
     });
 
@@ -242,7 +262,7 @@ export default function CreateGradPlanDialog({
 
   // memoize parsed requirements for performance
   const requirements = useMemo(() => parseRequirementsFromGenEd(), [parseRequirementsFromGenEd]);
-  const programRequirements = useMemo(() => parseProgramRequirements(), [parseProgramRequirements]);
+  const programRequirements = useMemo(() => parseProgramRequirements(selectedPrograms), [parseProgramRequirements, selectedPrograms]);
 
   // course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
@@ -300,20 +320,22 @@ export default function CreateGradPlanDialog({
       }
     });
 
-    // Initialize slots for program requirements
-    programRequirements.forEach(req => {
-      if (req.courses) {
-        const dropdownCount = getProgramDropdownCount(req);
-        ensureProgramSlots(`req-${req.requirementId}`, dropdownCount);
-      }
-      if (req.subRequirements) {
-        req.subRequirements.forEach(subReq => {
-          const dropdownCount = getProgramDropdownCount(subReq);
-          ensureProgramSlots(`subreq-${subReq.requirementId}`, dropdownCount);
-        });
-      }
+    // Initialize slots for program requirements (for each selected program)
+    Array.from(selectedPrograms).forEach(programId => {
+      programRequirements.forEach(req => {
+        if (req.courses) {
+          const dropdownCount = getProgramDropdownCount(req);
+          ensureProgramSlots(`${programId}-req-${req.requirementId}`, dropdownCount);
+        }
+        if (req.subRequirements) {
+          req.subRequirements.forEach(subReq => {
+            const dropdownCount = getProgramDropdownCount(subReq);
+            ensureProgramSlots(`${programId}-subreq-${subReq.requirementId}`, dropdownCount);
+          });
+        }
+      });
     });
-  }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, getProgramDropdownCount, getDropdownCount, requirementCoursesMap]);
+  }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, getProgramDropdownCount, getDropdownCount, requirementCoursesMap, selectedPrograms]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -321,6 +343,21 @@ export default function CreateGradPlanDialog({
       setPlanCreationError(null);
     }
   }, [selectedCourses, selectedProgramCourses, selectedPrograms, planCreationError]);
+
+  // Clean up program course selections when programs are deselected
+  useEffect(() => {
+    setSelectedProgramCourses(prev => {
+      const filtered: Record<string, string[]> = {};
+      Object.keys(prev).forEach(key => {
+        const programId = key.split('-')[0]; // Extract program ID from key
+        if (selectedPrograms.has(programId)) {
+          filtered[key] = prev[key];
+        }
+        // Otherwise, we skip this key, effectively removing it
+      });
+      return filtered;
+    });
+  }, [selectedPrograms]);
 
   // handle a specific slot selection for a requirement
   const handleCourseSelection = (subtitle: string, slotIndex: number, courseCode: string) => {
@@ -357,6 +394,9 @@ export default function CreateGradPlanDialog({
 
   // Check if all required dropdowns are filled
   const areAllDropdownsFilled = useMemo(() => {
+    // Require at least one program to be selected
+    if (selectedPrograms.size === 0) return false;
+    
     // Check GenEd requirements
     const genEdFilled = requirements.every(req => {
       if (!req.requirement?.rule) return true; // Skip if no rule
@@ -430,14 +470,17 @@ export default function CreateGradPlanDialog({
     const selectedClasses = {
       timestamp: new Date().toISOString(),
       selectedPrograms: Array.from(selectedPrograms),
-      generalEducation: {} as Record<string, Array<{code: string, title: string, credits: string | number, prerequisite?: string}>>,
-      programRequirements: {} as Record<string, {
+      programs: {} as Record<string, {
+        programId: string;
         programName: string;
+        programType: string; // major, minor, emphasis
+        version?: string;
         requirements: Record<string, {
           description: string;
           courses: Array<{code: string, title: string, credits: string | number, prerequisite?: string}>;
         }>;
-      }>
+      }>,
+      generalEducation: {} as Record<string, Array<{code: string, title: string, credits: string | number, prerequisite?: string}>>,
     };
 
     // Add GenEd courses with details
@@ -457,18 +500,25 @@ export default function CreateGradPlanDialog({
       const program = programsData.find(p => p.id === programId);
       if (!program) return;
 
-      selectedClasses.programRequirements[programId] = {
+      selectedClasses.programs[programId] = {
+        programId: program.id,
         programName: program.name,
+        programType: program.program_type || 'unknown',
+        ...(program.version && { version: String(program.version) }),
         requirements: {}
       };
 
       programRequirements.forEach(req => {
+        console.log(`🔍 Processing requirement ${req.requirementId} for program ${program.name}:`, req);
+        
         // Main requirement courses
         if (req.courses && req.courses.length > 0) {
           const selected = selectedProgramCourses[`${programId}-req-${req.requirementId}`] || [];
           const filteredSelected = selected.filter(course => course && course.trim() !== '');
+          console.log(`📚 Selected courses for ${programId}-req-${req.requirementId}:`, filteredSelected);
+          
           if (filteredSelected.length > 0) {
-            selectedClasses.programRequirements[programId].requirements[`requirement-${req.requirementId}`] = {
+            selectedClasses.programs[programId].requirements[`requirement-${req.requirementId}`] = {
               description: req.description,
               courses: filteredSelected.map(courseCode => 
                 getCourseDetails(courseCode, req.courses || [])
@@ -482,8 +532,10 @@ export default function CreateGradPlanDialog({
           req.subRequirements.forEach(subReq => {
             const selected = selectedProgramCourses[`${programId}-subreq-${subReq.requirementId}`] || [];
             const filteredSelected = selected.filter(course => course && course.trim() !== '');
+            console.log(`📚 Selected sub-courses for ${programId}-subreq-${subReq.requirementId}:`, filteredSelected);
+            
             if (filteredSelected.length > 0) {
-              selectedClasses.programRequirements[programId].requirements[`subrequirement-${subReq.requirementId}`] = {
+              selectedClasses.programs[programId].requirements[`subrequirement-${subReq.requirementId}`] = {
                 description: subReq.description,
                 courses: filteredSelected.map(courseCode => 
                   getCourseDetails(courseCode, subReq.courses)
@@ -495,6 +547,10 @@ export default function CreateGradPlanDialog({
       });
     });
 
+    console.log('🔍 Generated selectedClasses JSON:', JSON.stringify(selectedClasses, null, 2));
+    console.log('🔍 programRequirements found:', programRequirements.length);
+    console.log('🔍 selectedProgramCourses state:', selectedProgramCourses);
+    
     return selectedClasses;
   }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap]);
 
@@ -531,6 +587,13 @@ export default function CreateGradPlanDialog({
       
       if (result.success) {
         console.log('Graduation plan created successfully:', result);
+        
+        // Call the onPlanCreated callback with the AI-generated plan
+        if (onPlanCreated && aiResult.semesterPlan) {
+          // Type assertion since we know the AI should return Term[] structure
+          onPlanCreated(aiResult.semesterPlan as Term[]);
+        }
+        
         // Close dialog on success
         onClose();
       } else {
@@ -543,10 +606,6 @@ export default function CreateGradPlanDialog({
       setIsCreatingPlan(false);
     }
   };
-
-  // all selected?
-  const isAnythingSelected = Object.values(selectedCourses).some(arr => arr?.some(Boolean)) ||
-                            Object.values(selectedProgramCourses).some(arr => arr?.some(Boolean));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -870,12 +929,37 @@ export default function CreateGradPlanDialog({
       )}
 
       <DialogActions sx={{ gap: 1 }}>
-        <Button onClick={onClose} disabled={isCreatingPlan}>Cancel</Button>
+        <Button 
+          onClick={onClose} 
+          disabled={isCreatingPlan}
+          sx={{ 
+            color: 'error.main',
+            borderColor: 'error.main',
+            '&:hover': {
+              borderColor: 'error.dark',
+              backgroundColor: 'error.main',
+              color: 'white'
+            }
+          }}
+          variant="outlined"
+        >
+          Cancel
+        </Button>
         <Button
           variant="contained"
           onClick={handleCreatePlan}
-          disabled={!isAnythingSelected || isCreatingPlan}
+          disabled={!areAllDropdownsFilled || isCreatingPlan}
           startIcon={isCreatingPlan ? <CircularProgress size={20} /> : undefined}
+          sx={{
+            backgroundColor: 'success.main',
+            '&:hover': {
+              backgroundColor: 'success.dark'
+            },
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled'
+            }
+          }}
         >
           {isCreatingPlan ? 'AI Organizing Courses...' : 'Create AI-Organized Plan'}
         </Button>

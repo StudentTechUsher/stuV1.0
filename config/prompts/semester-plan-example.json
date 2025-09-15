@@ -1,0 +1,60 @@
+{
+  "plan": [
+    {
+      "term": "1",
+      "notes": "Start with foundations and writing.",
+      "courses": [
+        {
+          "code": "UNIV 101",
+          "title": "Foundations for Student Success",
+          "credits": 2,
+          "fulfills": ["Foundations"]
+        },
+        {
+          "code": "WRTG 150",
+          "title": "Writing & Rhetoric",
+          "credits": 3,
+          "fulfills": ["First-Year Writing"]
+        }
+      ],
+      "credits_planned": 5
+    },
+    {
+      "term": "2",
+      "notes": "Introduce pre-business and religion.",
+      "courses": [
+        {
+          "code": "ACC 200",
+          "title": "Principles of Accounting",
+          "credits": 3,
+          "fulfills": ["Pre-Business Prereq"]
+        },
+        {
+          "code": "REL A 121",
+          "title": "The Book of Mormon",
+          "credits": 2,
+          "fulfills": ["Religion cornerstone"]
+        }
+      ],
+      "credits_planned": 5
+    }
+  ],
+  "program": "BS Accounting",
+  "assumptions": [
+    "Junior Core begins in Fall only.",
+    "Minimum B in ACC 200 before applying."
+  ],
+  "checkpoints": [
+    {
+      "term": "2",
+      "action": "Apply to Accounting Junior Core",
+      "conditions": ["ACC 200 completed with B+"]
+    }
+  ],
+  "duration_years": 4,
+  "requirement_buckets_covered": {
+    "pre_business": ["ACC 200"],
+    "religion_plan": ["REL A 121"],
+    "gen_ed_examples": ["UNIV 101", "WRTG 150"]
+  }
+}

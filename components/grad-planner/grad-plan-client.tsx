@@ -54,6 +54,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [currentPlanData, setCurrentPlanData] = useState<Term[] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canCancelEdit, setCanCancelEdit] = useState(true);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -89,6 +90,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
           });
           setIsEditMode(false);
           setCurrentPlanData(null);
+          setCanCancelEdit(true); // Reset after successful submission
         } else {
           setNotification({
             open: true,
@@ -107,8 +109,9 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
         setIsSubmitting(false);
       }
     } else {
-      // Enter edit mode
+      // Enter edit mode (manual entry, allow canceling)
       setIsEditMode(true);
+      setCanCancelEdit(true);
     }
   };
 
@@ -130,6 +133,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
     console.log('Canceling edit mode...');
     setIsEditMode(false);
     setIsCancelDialogOpen(false);
+    setCanCancelEdit(true); // Reset to allow canceling again
   };
 
   const handleCloseCancelDialog = () => {
@@ -138,6 +142,29 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
+  };
+
+  const handlePlanCreated = (aiGeneratedPlan: Term[]) => {
+    console.log('🎯 AI plan created, activating edit mode:', aiGeneratedPlan);
+    
+    // Update the current plan data with the AI-generated plan
+    setCurrentPlanData(aiGeneratedPlan);
+    
+    // Automatically activate edit mode
+    setIsEditMode(true);
+    
+    // Disable cancel edit since this is an AI-generated plan that requires approval
+    setCanCancelEdit(false);
+    
+    // Close the create plan dialog
+    setIsDialogOpen(false);
+    
+    // Show success notification
+    setNotification({
+      open: true,
+      message: 'AI has created your graduation plan! Review and submit for approval.',
+      severity: 'success'
+    });
   };
 
   if (!user) {
@@ -214,16 +241,21 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
                   variant="outlined"
                   color="error"
                   onClick={handleCancelEdit}
+                  disabled={!canCancelEdit}
                   sx={{ 
-                    borderColor: '#f44336',
-                    color: '#f44336',
-                    '&:hover': {
+                    borderColor: canCancelEdit ? '#f44336' : 'action.disabled',
+                    color: canCancelEdit ? '#f44336' : 'action.disabled',
+                    '&:hover': canCancelEdit ? {
                       borderColor: '#d32f2f',
                       backgroundColor: 'rgba(244, 67, 54, 0.04)'
+                    } : {},
+                    '&:disabled': {
+                      borderColor: 'action.disabled',
+                      color: 'action.disabled'
                     }
                   }}
                 >
-                  Cancel Edit
+                  {canCancelEdit ? 'Cancel Edit' : 'Submit Required'}
                 </Button>
               )}
             </>
@@ -268,6 +300,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
         onClose={handleCloseDialog}
         programsData={programsData}
         genEdData={genEdData}
+        onPlanCreated={handlePlanCreated}
       />
       
       <Dialog
