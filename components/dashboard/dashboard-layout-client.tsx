@@ -15,15 +15,13 @@ interface DashboardLayoutClientProps {
   children: React.ReactNode;
   items: NavItem[];
   role: Role;
-  decodedString: string;
 }
 
 export default function DashboardLayoutClient({
   children,
   items,
   role,
-  decodedString,
-}: DashboardLayoutClientProps) {
+}: Readonly<DashboardLayoutClientProps>) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -49,7 +47,6 @@ export default function DashboardLayoutClient({
           px: 1, 
           py: 0.5 
         }}>
-          Decoded JWT: {decodedString}
         </Box>
 
         {children}

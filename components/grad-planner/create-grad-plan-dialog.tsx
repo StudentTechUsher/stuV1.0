@@ -104,13 +104,6 @@ export default function CreateGradPlanDialog({
   genEdData
 }: Readonly<CreateGradPlanDialogProps>) {
 
-  // Debug logging to see what data we're receiving
-  console.log('🔍 CreateGradPlanDialog Debug:');
-  console.log('📊 programsData:', programsData);
-  console.log('📚 genEdData:', genEdData);
-  console.log('📏 programsData length:', programsData?.length || 0);
-  console.log('📏 genEdData length:', genEdData?.length || 0);
-
   // State: selected courses per requirement (array because we may need multiple dropdowns)
   const [selectedCourses, setSelectedCourses] = useState<Record<string, string[]>>({});
   // State: selected courses for program requirements
@@ -123,8 +116,7 @@ export default function CreateGradPlanDialog({
 
   // ---- Helpers ----
 
-  const parseRequirementsFromGenEd = useCallback((): RichRequirement[] => {
-    console.log('🔍 parseRequirementsFromGenEd called with genEdData:', genEdData);
+  const parseRequirementsFromGenEd = useCallback((): RichRequirement[] => {;
     if (!genEdData || genEdData.length === 0) {
       console.log('❌ No genEdData available');
       return [];
@@ -132,7 +124,6 @@ export default function CreateGradPlanDialog({
     const all: RichRequirement[] = [];
 
     genEdData.forEach((program, index) => {
-      console.log(`🔍 Processing genEd program ${index}:`, program);
       if (!program.requirements) {
         console.log(`❌ No requirements in program ${index}`);
         return;
@@ -141,8 +132,6 @@ export default function CreateGradPlanDialog({
         const req = typeof program.requirements === 'string'
           ? JSON.parse(program.requirements)
           : program.requirements;
-
-        console.log(`✅ Parsed requirements for program ${index}:`, req);
 
         if (Array.isArray(req)) {
           // We only keep objects that look like our RichRequirement
@@ -166,7 +155,6 @@ export default function CreateGradPlanDialog({
 
   // Parse program requirements from programsData
   const parseProgramRequirements = useCallback((): ProgramRequirement[] => {
-    console.log('🔍 parseProgramRequirements called with programsData:', programsData);
     if (!programsData || programsData.length === 0) {
       console.log('❌ No programsData available');
       return [];
@@ -174,7 +162,6 @@ export default function CreateGradPlanDialog({
     const all: ProgramRequirement[] = [];
 
     programsData.forEach((program, index) => {
-      console.log(`🔍 Processing program ${index}:`, program);
       if (!program.requirements) {
         console.log(`❌ No requirements in program ${index}`);
         return;
@@ -184,11 +171,8 @@ export default function CreateGradPlanDialog({
           ? JSON.parse(program.requirements)
           : program.requirements;
 
-        console.log(`✅ Parsed requirements for program ${index}:`, req);
-
         // Look for programRequirements array
         if (Array.isArray(req?.programRequirements)) {
-          console.log(`📋 Found programRequirements array with ${req.programRequirements.length} items`);
           req.programRequirements.forEach((progReq: unknown, reqIndex: number) => {
             console.log(`📋 Processing programRequirement ${reqIndex}:`, progReq);
           });
@@ -201,7 +185,6 @@ export default function CreateGradPlanDialog({
       }
     });
 
-    console.log('📊 Final parsed program requirements:', all);
     return all;
   }, [programsData]);
 
@@ -526,7 +509,6 @@ export default function CreateGradPlanDialog({
     setPlanCreationError(null);
 
     try {
-      console.log('📊 Sending course data to AI for semester organization:', generateSelectedClassesJson);
       
       // Step 1: Send the course data to AI for semester organization
       const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson);

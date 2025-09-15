@@ -87,15 +87,10 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
 
   const items = getNavItems(role);
 
-  // (keep your decoded JWT debug banner if you like)
-  const decoded = decodeJwtPayload(session?.access_token);
-  const decodedString = decoded ? JSON.stringify(decoded) : "No JWT/session found";
-
   return (
     <DashboardLayoutClient
       items={items}
       role={role}
-      decodedString={decodedString}
     >
       {children}
     </DashboardLayoutClient>
