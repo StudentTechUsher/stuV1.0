@@ -6,6 +6,9 @@ import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-clien
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+// Force dynamic rendering for this layout because it uses cookies
+export const dynamic = 'force-dynamic';
+
 type Role = "student" | "advisor" | "admin";
 
 const ROLE_MAP: Record<string, Role> = {

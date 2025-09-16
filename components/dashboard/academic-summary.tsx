@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Avatar,
   Box,
@@ -9,10 +10,11 @@ import {
   Typography,
   ButtonBase,
 } from "@mui/material";
+import { supabase } from "@/lib/supabaseClient";
 
-/** ----- Fake data for the PoC ----- */
-const DATA = {
-  name: "John Appleseed",
+/** ----- Default data for the PoC ----- */
+const DEFAULT_DATA = {
+  name: "Loading...",
   standing: "Junior",
   requiredCredits: 120,
   earnedCredits: 76,
@@ -132,7 +134,36 @@ function OptimizationBadge({ level }: Readonly<{ level: string }>) {
 }
 
 export default function AcademicSummary() {
-  const d = DATA;
+  const [userData, setUserData] = useState(DEFAULT_DATA);
+
+  useEffect(() => {
+    const getUserData = async () => {
+      try {
+        // Get the current user session
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Update the user data with the actual name from the session
+          const displayName = user.user_metadata?.full_name || 
+                              user.user_metadata?.name || 
+                              user.email?.split('@')[0] || 
+                              "Student";
+          
+          setUserData(prev => ({
+            ...prev,
+            name: displayName
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        // Keep default data if there's an error
+      }
+    };
+
+    getUserData();
+  }, []);
+
+  const d = userData;
 
   return (
     <Card

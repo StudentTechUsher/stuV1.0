@@ -73,8 +73,8 @@ export function PlanHeader({
         </SelectTrigger>
         <SelectContent>
           {majors.map((major) => (
-            <SelectItem key={major} value={major}>
-              {major}
+            <SelectItem key={major.id} value={major.name}>
+              {major.name}
             </SelectItem>
           ))}
         </SelectContent>

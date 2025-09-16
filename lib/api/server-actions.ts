@@ -2,6 +2,7 @@
 
 import { getVerifiedUser } from '../supabase/auth';
 import { supabase } from '../supabase';
+import type { ProgramRow } from '@/types/program';
 import fs from 'fs';
 import path from 'path';
 
@@ -360,4 +361,24 @@ export async function submitGradPlanForApproval(
             message: 'Failed to submit graduation plan for approval. Please try again.'
         };
     }
+}
+
+export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
+    const { data, error } = await supabase
+    .from('program')
+    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
+    .eq('university_id', universityId)
+    .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []) as ProgramRow[];
+}
+
+export async function deleteProgram(id: string): Promise<void> {
+    const { error } = await supabase
+        .from('program')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
 }

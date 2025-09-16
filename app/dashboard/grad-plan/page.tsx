@@ -2,6 +2,9 @@ import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import GradPlanClient from "@/components/grad-planner/grad-plan-client";
 import GetProgramsForUniversity, { GetActiveGradPlan, GetGenEdsForUniversity } from '@/lib/api/server-actions';
 
+// Force dynamic rendering for this page because it uses cookies
+export const dynamic = 'force-dynamic';
+
 export default async function GradPlanPage() {
   
   // STEP 1: Get the verified user (includes session validation)

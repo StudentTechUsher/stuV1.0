@@ -5,8 +5,12 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabaseClient';
 import { Typography } from '@mui/material';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic';
+
+function SignupContent() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/dashboard';
   const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
@@ -27,5 +31,13 @@ export default function LoginPage() {
         />
       </div>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

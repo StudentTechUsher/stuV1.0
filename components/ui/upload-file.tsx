@@ -28,7 +28,7 @@ export const UploadFile: React.FC = () => {
           })),
         }))
 
-        uploadPlan({ semesters })
+        uploadPlan(semesters)
         alert("✅ Plan uploaded and applied!")
       } catch (err) {
         console.error("Upload failed:", err)

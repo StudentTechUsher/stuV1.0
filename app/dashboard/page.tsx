@@ -9,6 +9,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 
+// Force dynamic rendering for this page because it uses cookies
+export const dynamic = 'force-dynamic';
+
 type Role = "student" | "advisor" | "admin";
 
 // Consider replacing with a DB enum/table. Keep for now:

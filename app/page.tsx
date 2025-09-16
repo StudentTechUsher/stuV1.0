@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ArrowRight, CheckCircle, Menu, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -159,7 +158,7 @@ export default function LandingPage() {
                   Comprehensive Academic Planning Solutions
                 </h2>
                 <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
-                  Help your students navigate their academic journey while providing valuable insights for your registrar's office.
+                  Help your students navigate their academic journey while providing valuable insights for your registrar&apos;s office.
                 </p>
               </div>
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -212,7 +211,7 @@ export default function LandingPage() {
                   Ready to Transform Academic Planning?
                 </h2>
                 <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
-                  Join leading universities who have improved graduation rates and student satisfaction with stu's planning platform.
+                  Join leading universities who have improved graduation rates and student satisfaction with stu&apos;s planning platform.
                 </p>
               </div>
               <div className="w-full max-w-md">

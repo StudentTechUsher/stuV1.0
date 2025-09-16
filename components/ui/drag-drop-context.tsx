@@ -74,7 +74,7 @@ export function DragDropContext({ children }: DragDropContextProps) {
     if (!over) return
 
     const activeCourse = getCourse(active.id)
-    if (!activeCourse) return
+    if (!activeCourse || !activeCourse.semesterTerm) return
 
     // Get the semester term from the over ID (either a course or semester)
     const overCourse = getCourse(over.id)
@@ -105,7 +105,7 @@ export function DragDropContext({ children }: DragDropContextProps) {
   }
 
   // Get active course for drag overlay
-  const activeCourseFull = activeCourseId ? getCourse(activeCourseId)?.course : null
+  const activeCourseFull = activeCourseId ? getCourse(activeCourseId) : null
 
   return (
     <DndContext
