@@ -130,15 +130,15 @@ export default function CreateGradPlanDialog({
 
   // ---- Helpers ----
 
-  const parseRequirementsFromGenEd = useCallback((): RichRequirement[] => {;
-    if (!genEdData || genEdData.length === 0) {
-      console.log('❌ No genEdData available');
+  const parseRequirementsFromGenEd = useCallback((): RichRequirement[] => {
+    if (!genEdData || !Array.isArray(genEdData) || genEdData.length === 0) {
+      console.log('❌ No genEdData available or not an array');
       return [];
     }
     const all: RichRequirement[] = [];
 
     genEdData.forEach((program, index) => {
-      if (!program.requirements) {
+      if (!program || !program.requirements) {
         console.log(`❌ No requirements in program ${index}`);
         return;
       }
@@ -160,7 +160,7 @@ export default function CreateGradPlanDialog({
           all.push(...filtered);
         }
       } catch (e) {
-        console.error('Error parsing requirements:', e);
+        console.error('Error parsing requirements for program', index, ':', e);
       }
     });
 
@@ -169,14 +169,14 @@ export default function CreateGradPlanDialog({
 
   // Parse program requirements from programsData for selected programs only
   const parseProgramRequirements = useCallback((selectedProgramIds: Set<string>): ProgramRequirement[] => {
-    if (!programsData || programsData.length === 0 || selectedProgramIds.size === 0) {
+    if (!programsData || !Array.isArray(programsData) || programsData.length === 0 || selectedProgramIds.size === 0) {
       return [];
     }
     const all: ProgramRequirement[] = [];
 
     // Only process programs that are actually selected
     programsData.forEach((program, index) => {
-      if (!selectedProgramIds.has(program.id)) {
+      if (!program || !selectedProgramIds.has(program.id)) {
         return; // Skip programs that aren't selected
       }
       
@@ -210,10 +210,38 @@ export default function CreateGradPlanDialog({
   // Get dropdown count for program requirements
   const getProgramDropdownCount = useCallback((req: ProgramRequirement | SubRequirement): number => {
     const description = req.description || '';
-    // Extract number from description like "Complete 2 Courses" or "Complete 1 of 3 Courses"
-    const regex = /Complete (\d+)/i;
-    const match = regex.exec(description);
-    return match ? parseInt(match[1], 10) : 1;
+    
+    // Handle credit-based requirements like "Complete 33 credits"
+    const creditMatch = /Complete (\d+) credits?/i.exec(description);
+    if (creditMatch) {
+      const totalCredits = parseInt(creditMatch[1], 10);
+      
+      // Calculate average credits per course from available courses
+      const courses = 'courses' in req ? (req.courses || []) : [];
+      if (courses.length > 0) {
+        const avgCredits = courses.reduce((sum, course) => sum + (course.credits || 3), 0) / courses.length;
+        const calculatedCount = Math.ceil(totalCredits / avgCredits);
+        console.log(`📊 Credit-based requirement: ${totalCredits} credits ÷ ${avgCredits.toFixed(1)} avg credits = ${calculatedCount} courses`);
+        return calculatedCount;
+      } else {
+        // Fallback: assume 3 credits per course if no courses available
+        const calculatedCount = Math.ceil(totalCredits / 3);
+        console.log(`📊 Credit-based requirement (fallback): ${totalCredits} credits ÷ 3 credits = ${calculatedCount} courses`);
+        return calculatedCount;
+      }
+    }
+    
+    // Handle course-based requirements like "Complete 2 Courses" or "Complete 1 of 3 Courses"
+    const courseMatch = /Complete (\d+)(?:\s+(?:of\s+\d+\s+)?(?:courses?|classes?))?/i.exec(description);
+    if (courseMatch) {
+      const courseCount = parseInt(courseMatch[1], 10);
+      console.log(`📚 Course-based requirement: ${courseCount} courses`);
+      return courseCount;
+    }
+    
+    // Default fallback
+    console.log(`❓ Unknown requirement pattern: "${description}", defaulting to 1 course`);
+    return 1;
   }, []);
 
   // Recursively collect course blocks from any nested structure
@@ -301,23 +329,6 @@ export default function CreateGradPlanDialog({
     requirements.forEach(req => {
       const dropdownCount = getDropdownCount(req);
       ensureSlots(req.subtitle, dropdownCount);
-      
-      // Auto-populate when dropdown count equals available course count
-      const courses = requirementCoursesMap[req.subtitle] || [];
-      if (courses.length > 0 && courses.length === dropdownCount) {
-        console.log(`🎯 Auto-populating ${req.subtitle}: ${dropdownCount} dropdowns = ${courses.length} courses`);
-        // Auto-populate all slots with available courses
-        setSelectedCourses(prev => {
-          const existing = prev[req.subtitle] ?? [];
-          const next = [...existing];
-          courses.forEach((course, index) => {
-            if (index < dropdownCount && !next[index]) { // Only set if not already selected
-              next[index] = course.code;
-            }
-          });
-          return { ...prev, [req.subtitle]: next };
-        });
-      }
     });
 
     // Initialize slots for program requirements (for each selected program)
@@ -325,49 +336,136 @@ export default function CreateGradPlanDialog({
       programRequirements.forEach(req => {
         if (req.courses) {
           const dropdownCount = getProgramDropdownCount(req);
-          ensureProgramSlots(`${programId}-req-${req.requirementId}`, dropdownCount);
+          const requirementKey = `${programId}-req-${req.requirementId}`;
           
-          // Auto-populate when dropdown count equals available course count
-          const courses = req.courses || [];
-          if (courses.length > 0 && courses.length === dropdownCount) {
-            console.log(`🎯 Auto-populating program requirement ${programId}-req-${req.requirementId}: ${dropdownCount} dropdowns = ${courses.length} courses`);
-            setSelectedProgramCourses(prev => {
-              const existing = prev[`${programId}-req-${req.requirementId}`] ?? [];
-              const next = [...existing];
-              courses.forEach((course, index) => {
-                if (index < dropdownCount && !next[index]) { // Only set if not already selected
-                  next[index] = course.code;
-                }
-              });
-              return { ...prev, [`${programId}-req-${req.requirementId}`]: next };
-            });
-          }
+          // Just ensure slots exist (auto-population handled by separate effect)
+          ensureProgramSlots(requirementKey, dropdownCount);
         }
         if (req.subRequirements) {
           req.subRequirements.forEach(subReq => {
             const dropdownCount = getProgramDropdownCount(subReq);
             ensureProgramSlots(`${programId}-subreq-${subReq.requirementId}`, dropdownCount);
-            
-            // Auto-populate when dropdown count equals available course count
-            const courses = subReq.courses || [];
-            if (courses.length > 0 && courses.length === dropdownCount) {
-              console.log(`🎯 Auto-populating program sub-requirement ${programId}-subreq-${subReq.requirementId}: ${dropdownCount} dropdowns = ${courses.length} courses`);
-              setSelectedProgramCourses(prev => {
-                const existing = prev[`${programId}-subreq-${subReq.requirementId}`] ?? [];
-                const next = [...existing];
-                courses.forEach((course, index) => {
-                  if (index < dropdownCount && !next[index]) { // Only set if not already selected
-                    next[index] = course.code;
-                  }
-                });
-                return { ...prev, [`${programId}-subreq-${subReq.requirementId}`]: next };
-              });
-            }
           });
         }
       });
     });
-  }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, getProgramDropdownCount, getDropdownCount, requirementCoursesMap, selectedPrograms]);
+  }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, getProgramDropdownCount, getDropdownCount, selectedPrograms]);
+
+  // Dedicated auto-population effect that runs when dialog opens or programs change
+  useEffect(() => {
+    if (!open) return;
+
+    console.log("🚀 Triggering auto-population check - open:", open, "selected programs:", selectedPrograms.size);
+    
+    // Auto-populate general requirements
+    requirements.forEach(req => {
+      const dropdownCount = getDropdownCount(req);
+      const courses = requirementCoursesMap[req.subtitle] || [];
+      if (courses.length > 0 && courses.length === dropdownCount) {
+        console.log(`🎯 Auto-populating on trigger: ${req.subtitle}`);
+        setSelectedCourses(prev => {
+          const existing = prev[req.subtitle] ?? [];
+          const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
+          
+          if (hasEmptySlots) {
+            const next = [...existing];
+            while (next.length < dropdownCount) next.push('');
+            
+            courses.forEach((course, index) => {
+              if (index < dropdownCount && (!next[index] || next[index].trim() === '')) {
+                next[index] = course.code;
+                console.log(`🔧 Auto-select general: ${course.code}`);
+              }
+            });
+            return { ...prev, [req.subtitle]: next };
+          }
+          return prev;
+        });
+      }
+    });
+
+    // Auto-populate program requirements (only if programs are selected)
+    if (selectedPrograms.size > 0) {
+      console.log(`🎯 Auto-populating for ${selectedPrograms.size} selected programs`);
+      Array.from(selectedPrograms).forEach(programId => {
+        programRequirements.forEach(req => {
+          if (req.courses) {
+            const dropdownCount = getProgramDropdownCount(req);
+            const requirementKey = `${programId}-req-${req.requirementId}`;
+            const courses = req.courses || [];
+            
+            if (courses.length > 0 && courses.length >= dropdownCount) {
+              console.log(`🎯 Auto-populating program requirement: ${requirementKey} (${courses.length} courses for ${dropdownCount} dropdowns)`);
+              setSelectedProgramCourses(prev => {
+                const existing = prev[requirementKey] ?? [];
+                const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
+                
+                if (hasEmptySlots) {
+                  const next = [...existing];
+                  while (next.length < dropdownCount) next.push('');
+                  
+                  for (let i = 0; i < dropdownCount && i < courses.length; i++) {
+                    if (!next[i] || next[i].trim() === '') {
+                      next[i] = courses[i].code;
+                      console.log(`🔧 Auto-select program: ${courses[i].code} for slot ${i}`);
+                    }
+                  }
+                  return { ...prev, [requirementKey]: next };
+                }
+                return prev;
+              });
+            }
+          }
+
+          // Handle sub-requirements
+          if (req.subRequirements) {
+            req.subRequirements.forEach(subReq => {
+              const dropdownCount = getProgramDropdownCount(subReq);
+              const subReqKey = `${programId}-subreq-${subReq.requirementId}`;
+              const courses = subReq.courses || [];
+              
+              if (courses.length > 0 && courses.length >= dropdownCount) {
+                console.log(`🎯 Auto-populating sub-requirement: ${subReqKey} (${courses.length} courses for ${dropdownCount} dropdowns)`);
+                setSelectedProgramCourses(prev => {
+                  const existing = prev[subReqKey] ?? [];
+                  const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
+                  
+                  if (hasEmptySlots) {
+                    const next = [...existing];
+                    while (next.length < dropdownCount) next.push('');
+                    
+                    for (let i = 0; i < dropdownCount && i < courses.length; i++) {
+                      if (!next[i] || next[i].trim() === '') {
+                        next[i] = courses[i].code;
+                        console.log(`🔧 Auto-select sub-requirement: ${courses[i].code} for slot ${i}`);
+                      }
+                    }
+                    return { ...prev, [subReqKey]: next };
+                  }
+                  return prev;
+                });
+              }
+            });
+          }
+        });
+      });
+    } else {
+      console.log("⏳ No programs selected yet, skipping program auto-population");
+    }
+  }, [open, requirements, programRequirements, selectedPrograms, requirementCoursesMap, getDropdownCount, getProgramDropdownCount]);
+
+  // Debug effect to track data availability
+  useEffect(() => {
+    console.log("📊 Data status update:", {
+      open,
+      selectedProgramsCount: selectedPrograms.size,
+      requirementsCount: requirements.length,
+      programRequirementsCount: programRequirements.length,
+      requirementCoursesMapKeys: Object.keys(requirementCoursesMap),
+      programsDataAvailable: programsData?.length || 0,
+      genEdDataAvailable: genEdData?.length || 0
+    });
+  }, [open, selectedPrograms.size, requirements.length, programRequirements.length, requirementCoursesMap, programsData?.length, genEdData?.length]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -647,6 +745,59 @@ export default function CreateGradPlanDialog({
       </DialogTitle>
 
       <DialogContent>
+        {/* Debug button to check state */}
+        
+        <Button 
+          onClick={() => {
+            console.log("🔧 Manual auto-population trigger");
+            // Trigger auto-population for general requirements
+            requirements.forEach(req => {
+              const dropdownCount = getDropdownCount(req);
+              const courses = requirementCoursesMap[req.subtitle] || [];
+              if (courses.length > 0 && courses.length === dropdownCount) {
+                console.log(`🎯 Manual auto-populating: ${req.subtitle}`);
+                setSelectedCourses(prev => {
+                  const next = new Array(dropdownCount).fill('');
+                  courses.forEach((course, index) => {
+                    if (index < dropdownCount) {
+                      next[index] = course.code;
+                    }
+                  });
+                  return { ...prev, [req.subtitle]: next };
+                });
+              }
+            });
+            
+            // Trigger auto-population for program requirements
+            Array.from(selectedPrograms).forEach(programId => {
+              programRequirements.forEach(req => {
+                if (req.courses) {
+                  const dropdownCount = getProgramDropdownCount(req);
+                  const requirementKey = `${programId}-req-${req.requirementId}`;
+                  const courses = req.courses || [];
+                  
+                  if (courses.length > 0 && courses.length >= dropdownCount) {
+                    console.log(`🎯 Manual auto-populating program: ${requirementKey}`);
+                    setSelectedProgramCourses(prev => {
+                      const next = new Array(dropdownCount).fill('');
+                      for (let i = 0; i < dropdownCount && i < courses.length; i++) {
+                        next[i] = courses[i].code;
+                      }
+                      return { ...prev, [requirementKey]: next };
+                    });
+                  }
+                }
+              });
+            });
+          }}
+          variant="contained" 
+          color="success"
+          size="small" 
+          sx={{ mb: 2 }}
+        >
+          Auto-Populate Eligible Fields
+        </Button>
+        
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Available Programs */}
           <Box>
@@ -676,7 +827,7 @@ export default function CreateGradPlanDialog({
                           fontWeight: 600, 
                           mb: 1,
                           textTransform: 'capitalize',
-                          color: 'primary.main'
+                          color: 'success.main'
                         }}
                       >
                         {programType}s ({groupedPrograms[programType].length})
@@ -687,14 +838,14 @@ export default function CreateGradPlanDialog({
                             key={program.id}
                             label={`${program.name}${program.version ? ` (${program.version})` : ''}`}
                             onClick={() => handleProgramToggle(program.id)}
-                            color={selectedPrograms.has(program.id) ? 'primary' : 'default'}
+                            color={selectedPrograms.has(program.id) ? 'success' : 'default'}
                             variant={selectedPrograms.has(program.id) ? 'filled' : 'outlined'}
                             sx={{ 
                               fontSize: '0.875rem',
                               cursor: 'pointer',
                               '&:hover': {
                                 backgroundColor: selectedPrograms.has(program.id) 
-                                  ? 'primary.dark' 
+                                  ? 'success.dark' 
                                   : 'action.hover'
                               }
                             }}
@@ -714,7 +865,7 @@ export default function CreateGradPlanDialog({
           <Box>
             <Typography variant="h6" sx={{ mb: 2 }}>General Education Requirements:</Typography>
 
-            {requirements.length ? (
+            {requirements && requirements.length ? (
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 {requirements.map((req, idx) => {
                   const dropdownCount = getDropdownCount(req);
@@ -759,11 +910,11 @@ export default function CreateGradPlanDialog({
                               onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
                             >
                               <MenuItem value=""><em>Select a course</em></MenuItem>
-                              {courses.map((c) => (
+                              {courses && Array.isArray(courses) ? courses.map((c) => (
                                 <MenuItem key={`${req.subtitle}-slot-${slot}-${c.code}`} value={c.code}>
                                   {c.code} — {c.title} ({creditText(c.credits)})
                                 </MenuItem>
-                              ))}
+                              )) : null}
                             </Select>
                           </FormControl>
                         ))}
@@ -781,19 +932,19 @@ export default function CreateGradPlanDialog({
           </Box>
 
           {/* Selected Program Requirements */}
-          {selectedPrograms.size > 0 && (
+          {selectedPrograms && selectedPrograms.size > 0 && (
             <>
               {Array.from(selectedPrograms).map((programId) => {
-                const program = programsData.find(p => p.id === programId);
+                const program = programsData?.find(p => p.id === programId);
                 if (!program) return null;
 
                 return (
                   <Box key={programId}>
-                    <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                    <Typography variant="h6" sx={{ mb: 2, color: 'success.main' }}>
                       {program.name} Requirements:
                     </Typography>
                     
-                    {programRequirements.length ? (
+                    {programRequirements && programRequirements.length ? (
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         {programRequirements.map((req, idx) => (
                           <Box key={`prog-req-${req.requirementId}-${idx}`} sx={{ py: 2 }}>
@@ -802,7 +953,7 @@ export default function CreateGradPlanDialog({
                               {(() => {
                                 const dropdownCount = getProgramDropdownCount(req);
                                 const courses = req.courses || [];
-                                const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                                const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
                                 return isAutoSelected && (
                                   <Chip 
                                     label="Auto-selected" 
@@ -817,10 +968,10 @@ export default function CreateGradPlanDialog({
                             {(() => {
                               const dropdownCount = getProgramDropdownCount(req);
                               const courses = req.courses || [];
-                              const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                              const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
                               return isAutoSelected && (
                                 <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
-                                  All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                                  Courses for this requirement have been automatically selected ({Math.min(dropdownCount, courses.length)} of {courses.length} course{courses.length === 1 ? '' : 's'}).
                                 </Typography>
                               );
                             })()}
@@ -837,7 +988,7 @@ export default function CreateGradPlanDialog({
                               </Typography>
                             )}
 
-                            {req.steps && (
+                            {req.steps && Array.isArray(req.steps) && (
                               <Box sx={{ mb: 2 }}>
                                 <Typography variant="body2" sx={{ mb: 1 }}>Steps:</Typography>
                                 <Box component="ul" sx={{ pl: 2 }}>
@@ -858,7 +1009,7 @@ export default function CreateGradPlanDialog({
                                   {Array.from({ length: getProgramDropdownCount(req) }).map((_, slot) => {
                                     const dropdownCount = getProgramDropdownCount(req);
                                     const courses = req.courses || [];
-                                    const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                                    const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
                                     
                                     return (
                                       <FormControl key={`req-${req.requirementId}-slot-${slot}-${programId}`} fullWidth>
@@ -876,6 +1027,7 @@ export default function CreateGradPlanDialog({
                                           }
                                           disabled={isAutoSelected}
                                           onChange={(e) => handleProgramCourseSelection(`${programId}-req-${req.requirementId}`, slot, e.target.value)}
+                                          onOpen={() => console.log(`🔍 Dropdown ${slot} value:`, selectedProgramCourses[`${programId}-req-${req.requirementId}`]?.[slot], 'Full state:', selectedProgramCourses[`${programId}-req-${req.requirementId}`])}
                                         >
                                           <MenuItem value=""><em>Select a course</em></MenuItem>
                                           {(req.courses || []).map((course) => (
@@ -892,7 +1044,7 @@ export default function CreateGradPlanDialog({
                             )}
 
                             {/* Sub-requirements */}
-                            {req.subRequirements && req.subRequirements.length > 0 && (
+                            {req.subRequirements && Array.isArray(req.subRequirements) && req.subRequirements.length > 0 && (
                               <Box sx={{ ml: 2 }}>
                                 {req.subRequirements.map((subReq, subIdx) => (
                                   <Box key={`subreq-${subReq.requirementId}-${subIdx}`} sx={{ mb: 2 }}>
@@ -901,7 +1053,7 @@ export default function CreateGradPlanDialog({
                                       {(() => {
                                         const dropdownCount = getProgramDropdownCount(subReq);
                                         const courses = subReq.courses || [];
-                                        const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                                        const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
                                         return isAutoSelected && (
                                           <Chip 
                                             label="Auto-selected" 
@@ -916,10 +1068,10 @@ export default function CreateGradPlanDialog({
                                     {(() => {
                                       const dropdownCount = getProgramDropdownCount(subReq);
                                       const courses = subReq.courses || [];
-                                      const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                                      const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
                                       return isAutoSelected && (
                                         <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
-                                          All available courses for this sub-requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                                          Courses for this sub-requirement have been automatically selected ({Math.min(dropdownCount, courses.length)} of {courses.length} course{courses.length === 1 ? '' : 's'}).
                                         </Typography>
                                       );
                                     })()}
@@ -928,7 +1080,7 @@ export default function CreateGradPlanDialog({
                                       {Array.from({ length: getProgramDropdownCount(subReq) }).map((_, slot) => {
                                         const dropdownCount = getProgramDropdownCount(subReq);
                                         const courses = subReq.courses || [];
-                                        const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                                        const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
                                         
                                         return (
                                           <FormControl key={`subreq-${subReq.requirementId}-slot-${slot}-${programId}`} fullWidth>
@@ -948,11 +1100,11 @@ export default function CreateGradPlanDialog({
                                               onChange={(e) => handleProgramCourseSelection(`${programId}-subreq-${subReq.requirementId}`, slot, e.target.value)}
                                             >
                                               <MenuItem value=""><em>Select a course</em></MenuItem>
-                                              {subReq.courses.map((course) => (
+                                              {subReq.courses && Array.isArray(subReq.courses) ? subReq.courses.map((course) => (
                                                 <MenuItem key={`${programId}-subreq-${subReq.requirementId}-slot-${slot}-${course.code}`} value={course.code}>
                                                   {course.code} — {course.title} ({course.credits} credits)
                                                 </MenuItem>
-                                              ))}
+                                              )) : null}
                                             </Select>
                                           </FormControl>
                                         );

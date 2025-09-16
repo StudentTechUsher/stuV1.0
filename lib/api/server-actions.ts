@@ -247,10 +247,17 @@ export async function GetActiveGradPlan(profile_id: string) {
     .single();
 
   if (studentError) {
+    // PGRST116 means no rows returned - this is normal for new users
+    if (studentError.code === 'PGRST116') {
+      console.log('ℹ️ No student record found for profile_id:', profile_id, '(new user)');
+      return null;
+    }
+    console.error('❌ Error fetching student record:', studentError);
     return null;
   }
 
   if (!studentData) {
+    console.log('ℹ️ No student data returned for profile_id:', profile_id);
     return null;
   }
 
@@ -263,11 +270,17 @@ export async function GetActiveGradPlan(profile_id: string) {
     .single();
 
   if (error) {
+    // PGRST116 means no rows returned - this is normal for users without grad plans
+    if (error.code === 'PGRST116') {
+      console.log('ℹ️ No active graduation plan found for student_id:', studentData.id, '(normal for new users)');
+      return null;
+    }
     console.error('❌ Error fetching active grad plan:', error);
     console.error('❌ Error details:', JSON.stringify(error, null, 2));
     return null;
   }
   
+  console.log('✅ Active graduation plan found for student_id:', studentData.id);
   return data;
 }
 
@@ -284,4 +297,67 @@ export async function GetAiPrompt(prompt_name: string) {
   }
 
   return data?.prompt || null;
+}
+
+export async function submitGradPlanForApproval(
+    profileId: string,
+    planDetails: unknown
+): Promise<{ success: boolean; message: string; planId?: string }> {
+    try {
+        // First, get the student_id (number) from the students table using the profile_id (UUID)
+        const { data: studentData, error: studentError } = await supabase
+            .from('student')
+            .select('id')
+            .eq('profile_id', profileId)
+            .single();
+
+        if (studentError || !studentData?.id) {
+            console.error('Error fetching student_id from students table:', studentError);
+            throw new Error('Could not find student record');
+        }
+
+        const { data, error } = await supabase
+            .from('grad_plan')
+            .insert({
+                student_id: studentData.id,
+                is_active: false,
+                plan_details: planDetails,
+                pending_approval: true,
+            })
+            .select('id')
+            .single();
+
+        if (error) {
+            console.error('Error submitting graduation plan for approval:', {
+                error: error,
+                errorMessage: error.message,
+                errorDetails: error.details,
+                errorHint: error.hint,
+                errorCode: error.code,
+                profileId: profileId,
+                studentId: studentData?.id,
+                planDetailsType: typeof planDetails,
+                planDetailsLength: Array.isArray(planDetails) ? planDetails.length : 'not an array'
+            });
+            throw error;
+        }
+
+        return {
+            success: true,
+            message: 'Graduation plan submitted for approval successfully!',
+            planId: data.id.toString()
+        };
+    } catch (error) {
+        console.error('Caught error in submitGradPlanForApproval:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error constructor:', error?.constructor?.name);
+        if (error instanceof Error) {
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        }
+        return {
+            success: false,
+            message: 'Failed to submit graduation plan for approval. Please try again.'
+        };
+    }
 }

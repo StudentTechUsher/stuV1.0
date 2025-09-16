@@ -65,8 +65,13 @@ export default function StudentPage() {
               For Universities
             </Link>
             <Link href="/login">
-              <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base">
+              <Button variant="outline" className="border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium px-6 py-2.5 text-base transition-all">
                 Sign In
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button className="bg-primary hover:bg-emerald-600 text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+                Sign Up
               </Button>
             </Link>
           </div>
@@ -104,12 +109,24 @@ export default function StudentPage() {
               </Link>
               <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
                 <Link
-                  href="#testimonials"
+                  href="/"
                   className="text-base font-medium hover:text-primary"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   For Universities
                 </Link>
+                <div className="flex flex-col gap-3 mt-4">
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full bg-primary hover:bg-emerald-600 text-zinc-900 hover:text-white border-none font-medium transition-all">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -156,7 +173,7 @@ export default function StudentPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium">
+                  <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                     <Link href="#cta" className="flex items-center">
                       Try{" "}
                       <Image

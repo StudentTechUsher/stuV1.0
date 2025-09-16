@@ -13,7 +13,7 @@ import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
-import { submitGradPlanForApproval } from "@/lib/api/client-actions";
+import { submitGradPlanForApproval } from "@/lib/api/server-actions";
 import { GraduationPlan } from "@/types/graduation-plan";
 import { ProgramRow } from "@/types/program";
 import { PlusIcon } from 'lucide-react';
@@ -38,7 +38,7 @@ interface GradPlanClientProps {
     email?: string;
   } | null;
   studentRecord: {
-    id: number;
+    id: string;
     profile_id: string;
     university_id: number;
     [key: string]: unknown;
@@ -195,20 +195,22 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
     <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="contained" 
-            color="success"
-            onClick={handleCreatePlan}
-            sx={{ 
-              backgroundColor: '#4caf50',
-              '&:hover': {
-                backgroundColor: '#45a049'
-              }
-            }}
-          >
-              <PlusIcon style={{ marginRight: 2 }} />
-            Create New Grad Plan
-          </Button>
+          {gradPlanRecord && (
+            <Button 
+              variant="contained" 
+              color="success"
+              onClick={handleCreatePlan}
+              sx={{ 
+                backgroundColor: '#4caf50',
+                '&:hover': {
+                  backgroundColor: '#45a049'
+                }
+              }}
+            >
+                <PlusIcon style={{ marginRight: 2 }} />
+              Create New Grad Plan
+            </Button>
+          )}
           
           {gradPlanRecord && (
             <>
@@ -272,9 +274,45 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
           />
         </Box>
       ) : (
-        <Box>
-          <Typography variant="body1" color="text.secondary">
-            No graduation plan found in database.
+        <Box 
+          sx={{ 
+            textAlign: 'center', 
+            py: 6,
+            px: 4,
+            backgroundColor: 'grey.50',
+            borderRadius: 2,
+            border: '2px dashed',
+            borderColor: 'grey.300'
+          }}
+        >
+          <Typography variant="h5" gutterBottom sx={{ color: 'text.primary', fontWeight: 600 }}>
+            Welcome to Your Graduation Planner! 🎓
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+            You don&apos;t have a graduation plan yet. Let&apos;s create one! Our AI assistant can help you build 
+            a personalized graduation plan based on your major, interests, and graduation requirements.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button 
+              variant="contained" 
+              color="success"
+              size="large"
+              onClick={handleCreatePlan}
+              sx={{ 
+                backgroundColor: '#22c55e',
+                px: 4,
+                py: 1.5,
+                '&:hover': {
+                  backgroundColor: '#16a34a'
+                }
+              }}
+            >
+              <PlusIcon style={{ marginRight: 8 }} />
+              Create My Graduation Plan
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+            Don&apos;t worry - you can always edit and customize your plan later!
           </Typography>
         </Box>
       )}
