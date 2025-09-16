@@ -7,9 +7,14 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/dashboard";
 
+  // Determine the correct base URL for redirects
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://stuplanning.com' 
+    : url.origin;
+
   if (!code) {
     // If you ever see a URL with #access_token here, you’re still on implicit flow.
-    return NextResponse.redirect(new URL("/login?error=missing_code", url.origin));
+    return NextResponse.redirect(new URL("/login?error=missing_code", baseUrl));
   }
 
   // Create a response object to collect Set-Cookie from Supabase
@@ -35,7 +40,7 @@ export async function GET(req: NextRequest) {
   // 1) Exchange the PKCE code for a session (writes cookies via setAll above)
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) {
-    return NextResponse.redirect(new URL("/login?error=exchange_failed", url.origin), {
+    return NextResponse.redirect(new URL("/login?error=exchange_failed", baseUrl), {
       headers: cookieCollector.headers, // forward Set-Cookie
     });
   }
@@ -43,7 +48,7 @@ export async function GET(req: NextRequest) {
   // 2) Decide destination based on onboarding
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(new URL("/login", url.origin), {
+    return NextResponse.redirect(new URL("/login", baseUrl), {
       headers: cookieCollector.headers,
     });
   }
@@ -57,7 +62,7 @@ export async function GET(req: NextRequest) {
   const dest = profile?.onboarded ? next : "/create-account";
 
   // 3) Return the final redirect, carrying along any Set-Cookie headers
-  return NextResponse.redirect(new URL(dest, url.origin), {
+  return NextResponse.redirect(new URL(dest, baseUrl), {
     headers: cookieCollector.headers,
   });
 }
