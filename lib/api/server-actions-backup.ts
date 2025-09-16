@@ -132,7 +132,6 @@ export async function submitGradPlanForApproval(
 }
 
 export default async function GetProgramsForUniversity(university_id: number) {
-    console.log('🔍 GetProgramsForUniversity called with university_id:', university_id);
     
     const { data, error } = await supabase
       .from('program')
@@ -202,7 +201,6 @@ export async function GetStudentProfile(user_id: string) {
 }
 
 export async function GetActiveGradPlan(profile_id: string) {
-  console.log('🔍 GetActiveGradPlan called with profile_id:', profile_id);
   
   // First, get the student record to get the numeric student_id
   const { data: studentData, error: studentError } = await supabase

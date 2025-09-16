@@ -64,6 +64,7 @@ export default function ChatbotDrawer({
   const actions = presetPrompts ?? DEFAULT_PRESETS[getEnvRole()];
   const [input, setInput] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const drawerRef = React.useRef<HTMLDivElement>(null);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -96,35 +97,37 @@ export default function ChatbotDrawer({
 
   return (
     <>
-      {/* Toggle Button - Always visible, attached to drawer edge */}
-      <IconButton
-        onClick={open ? onClose : onOpen}
-        sx={{
-          position: "fixed",
-          right: open ? "30vw" : 0, // Positioned at drawer edge
-          top: "50%",
-          transform: "translateY(-50%)",
-          zIndex: (theme) => theme.zIndex.drawer + 2,
-          backgroundColor: "success.main",
-          color: "white",
-          width: 48,
-          height: 48,
-          borderRadius: open ? "50% 0 0 50%" : "50% 0 0 50%", // Rounded on left side
-          transition: "right 0.3s ease-in-out",
-          "&:hover": {
-            backgroundColor: "success.dark",
-          },
-          boxShadow: 2,
-        }}
-      >
-        {open ? <CloseIcon /> : <SmartToyIcon />}
-      </IconButton>
+      {/* Floating FAB - Only visible when drawer is closed */}
+      {!open && (
+        <IconButton
+          onClick={onOpen}
+          sx={{
+            position: "fixed",
+            right: 24,
+            bottom: 24,
+            zIndex: (theme) => theme.zIndex.drawer + 2,
+            backgroundColor: "success.main",
+            color: "white",
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            "&:hover": {
+              backgroundColor: "success.dark",
+            },
+            boxShadow: 3,
+            transition: "all 0.3s ease-in-out",
+          }}
+        >
+          <SmartToyIcon />
+        </IconButton>
+      )}
 
       <Drawer
+        ref={drawerRef}
         anchor="right"
         open={open}
         onClose={onClose}
-        variant="persistent" // This makes it push content instead of overlaying
+        variant="temporary" // This enables click-outside-to-close functionality
         ModalProps={{ keepMounted: true }} // smoother on mobile
         sx={{ 
           "& .MuiDrawer-paper": { 
@@ -136,14 +139,28 @@ export default function ChatbotDrawer({
         }}
       >
       <Box role="presentation" sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
-        {/* Header */}
-        <Box sx={{ mb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            AI Assistant
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Role: {(role || getEnvRole()).charAt(0).toUpperCase() + (role || getEnvRole()).slice(1)}
-          </Typography>
+        {/* Header with close button */}
+        <Box sx={{ mb: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              AI Assistant
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Role: {(role || getEnvRole()).charAt(0).toUpperCase() + (role || getEnvRole()).slice(1)}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: "action.hover",
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
 
         {/* Quick actions */}

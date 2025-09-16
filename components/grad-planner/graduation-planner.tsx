@@ -125,7 +125,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         planRecord.plan_details !== null) {
       const planDetails = planRecord.plan_details as Record<string, unknown>;
       if (Array.isArray(planDetails.plan)) {
-        console.log('✅ Found plan_details.plan array with', planDetails.plan.length, 'terms');
         return planDetails.plan as Term[];
       }
     }

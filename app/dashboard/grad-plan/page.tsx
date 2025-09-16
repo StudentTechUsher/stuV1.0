@@ -6,7 +6,6 @@ export default async function GradPlanPage() {
   
   // STEP 1: Get the verified user (includes session validation)
   const user = await getVerifiedUser();
-  console.log('🔍 Page: Verified user:', user?.id);
 
   if (!user) {
     // This shouldn't happen due to middleware, but handle gracefully
@@ -16,7 +15,6 @@ export default async function GradPlanPage() {
 
   // STEP 2: Get user profile with university_id
   const userProfile = await getVerifiedUserProfile();
-  console.log('🔍 Page: User profile:', userProfile);
   
   if (!userProfile) {
     console.error('❌ Page: No user profile found');
@@ -25,16 +23,10 @@ export default async function GradPlanPage() {
 
   // STEP 3: Get graduation plan record
   const gradPlanRecord = userProfile.id ? await GetActiveGradPlan(userProfile.id) : null;
-  console.log('🔍 Page: Grad plan record:', gradPlanRecord);
 
   // STEP 4: Get programs data and general education data for user's university
   const programsData = userProfile.university_id ? await GetProgramsForUniversity(userProfile.university_id) : [];
   const genEdData = userProfile.university_id ? await GetGenEdsForUniversity(userProfile.university_id) : [];
-  
-  console.log('📊 Page: Final data being passed to client:');
-  console.log('📊 programsData length:', programsData?.length || 0);
-  console.log('📊 genEdData length:', genEdData?.length || 0);
-  console.log('📊 university_id:', userProfile.university_id);
 
   return (
     <GradPlanClient 

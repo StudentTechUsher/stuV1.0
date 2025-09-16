@@ -276,22 +276,6 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
           <Typography variant="body1" color="text.secondary">
             No graduation plan found in database.
           </Typography>
-          <Button 
-            variant="outlined" 
-            color="success"
-            onClick={handleCreatePlan}
-            sx={{ 
-              mt: 2,
-              borderColor: '#4caf50',
-              color: '#4caf50',
-              '&:hover': {
-                borderColor: '#45a049',
-                backgroundColor: 'rgba(76, 175, 80, 0.04)'
-              }
-            }}
-          >
-            Create Your First Grad Plan
-          </Button>
         </Box>
       )}
 

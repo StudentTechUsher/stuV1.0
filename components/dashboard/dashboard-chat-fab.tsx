@@ -27,25 +27,18 @@ const ROLE_PRESETS: Record<Role, QuickAction[]> = {
 }
 
 export default function DashboardChatFab({ 
-  role, 
-  onDrawerToggle 
+  role 
 }: { 
   role: Role
-  onDrawerToggle?: (open: boolean) => void
 }) {
   const [chatOpen, setChatOpen] = React.useState(false)
   const presetPrompts = ROLE_PRESETS[role] ?? []
 
-  const handleToggle = (open: boolean) => {
-    setChatOpen(open)
-    onDrawerToggle?.(open)
-  }
-
   return (
     <ChatbotDrawer
       open={chatOpen}
-      onClose={() => handleToggle(false)}
-      onOpen={() => handleToggle(true)}
+      onClose={() => setChatOpen(false)}
+      onOpen={() => setChatOpen(true)}
       role={role}
       presetPrompts={presetPrompts}
     />

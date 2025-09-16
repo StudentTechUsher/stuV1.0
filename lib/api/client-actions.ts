@@ -53,13 +53,16 @@ export async function deleteProgram(id: string): Promise<void> {
     if (error) throw error;
 }
 
-export async function createGraduationPlan(planData: unknown): Promise<{ success: boolean; message: string; planId?: string }> {
+export async function createGraduationPlan(planData?: unknown): Promise<{ success: boolean; message: string; planId?: string }> {
     // TODO: Implement graduation plan creation logic
     // This is a stub function that will be implemented later
     
-    console.log('Creating graduation plan with data:', planData);
-    
     try {
+        // Log the planData for debugging
+        if (planData) {
+            console.log('📋 Creating graduation plan with data:', planData);
+        }
+        
         // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -82,7 +85,6 @@ export async function submitGradPlanForApproval(
     studentId: number,
     gradPlanData: unknown
 ): Promise<{ success: boolean; message: string }> {
-    console.log('Submitting graduation plan for approval:', { studentId, gradPlanData });
     
     try {
         // TODO: Implement actual submission logic
@@ -103,7 +105,6 @@ export async function submitGradPlanForApproval(
 }
 
 export async function GetGenEdsForUniversity(university_id: number) {
-    console.log('🔍 GetGenEdsForUniversity called with university_id:', university_id);
     
     try {
         const { data, error } = await supabase
@@ -116,7 +117,6 @@ export async function GetGenEdsForUniversity(university_id: number) {
             throw error;
         }
         
-        console.log('✅ General education data fetched successfully:', data?.length, 'records');
         return data;
     } catch (error) {
         console.error('❌ Error in GetGenEdsForUniversity:', error);
@@ -125,7 +125,6 @@ export async function GetGenEdsForUniversity(university_id: number) {
 }
 
 export async function GetStudentProfile(user_id: string) {
-    console.log('🔍 GetStudentProfile called with user_id:', user_id);
     
     try {
         const { data, error } = await supabase
@@ -140,7 +139,6 @@ export async function GetStudentProfile(user_id: string) {
             return null;
         }
         
-        console.log('✅ Student profile fetched successfully:', data);
         return data;
     } catch (error) {
         console.error('❌ Error in GetStudentProfile:', error);
@@ -149,7 +147,6 @@ export async function GetStudentProfile(user_id: string) {
 }
 
 export async function GetActiveGradPlan(profile_id: string) {
-  console.log('🔍 GetActiveGradPlan called with profile_id:', profile_id);
   
   try {
     const { data, error } = await supabase

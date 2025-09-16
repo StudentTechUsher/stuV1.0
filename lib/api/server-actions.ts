@@ -207,7 +207,6 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
 
 // Server-only functions that need to be called from server components
 export default async function GetProgramsForUniversity(university_id: number) {
-    console.log('🔍 GetProgramsForUniversity called with university_id:', university_id);
     
     const { data, error } = await supabase
       .from('program')
@@ -239,7 +238,6 @@ export async function GetGenEdsForUniversity(university_id: number) {
 }
 
 export async function GetActiveGradPlan(profile_id: string) {
-  console.log('🔍 GetActiveGradPlan called with profile_id:', profile_id);
   
   // First, get the student record to get the numeric student_id
   const { data: studentData, error: studentError } = await supabase
