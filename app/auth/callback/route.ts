@@ -7,10 +7,31 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/dashboard";
 
-  // Determine the correct base URL for redirects
-  const baseUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://stuplanning.com' 
-    : url.origin;
+  // Determine the correct base URL from request headers (client-facing URL)
+  const getBaseUrl = () => {
+    // Check for forwarded headers from proxies/load balancers
+    const forwardedHost = req.headers.get('x-forwarded-host');
+    const forwardedProto = req.headers.get('x-forwarded-proto') || req.headers.get('x-forwarded-protocol');
+    const host = req.headers.get('host');
+    
+    if (forwardedHost) {
+      // Use forwarded headers if available (common in production with proxies)
+      const protocol = forwardedProto || 'https';
+      return `${protocol}://${forwardedHost}`;
+    } else if (host) {
+      // Use host header with appropriate protocol
+      const protocol = req.headers.get('x-forwarded-proto') || 
+                      (host.includes('localhost') ? 'http' : 'https');
+      return `${protocol}://${host}`;
+    } else {
+      // Fallback to environment-based detection
+      return process.env.NODE_ENV === 'production' 
+        ? 'https://stuplanning.com' 
+        : url.origin;
+    }
+  };
+  
+  const baseUrl = getBaseUrl();
 
   if (!code) {
     // If you ever see a URL with #access_token here, you’re still on implicit flow.
