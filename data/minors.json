@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Mathematics",
+    "description": "Study of mathematical concepts and theories",
+    "university_id": 1
+  },
+  {
+    "id": 2,
+    "name": "Economics",
+    "description": "Study of resource allocation and decision making",
+    "university_id": 1
+  },
+  {
+    "id": 3,
+    "name": "Information Systems",
+    "description": "Study of information technology in business contexts",
+    "university_id": 1
+  }
+]

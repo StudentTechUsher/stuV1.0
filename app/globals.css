@@ -45,8 +45,8 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-@import "tailwindcss/preflight";
-@tailwind utilities;
+@tailwind base;
+@tailwind components;
 @tailwind utilities;
 
 :root {
@@ -70,13 +70,6 @@
   --input: #e4e4e7;
   --ring: #12F987;
   --radius: 0.5rem;
-  --fc-button-bg-color:#38E3C2;
-  --fc-button-border-color:#38E3C2;
-  --fc-button-text-color:#000;
-  --fc-today-bg-color:rgba(56,227,194,.15);
-  --fc-border-color:#e5e5e5;
-  --fc-border-color: rgba(0,0,0,0.4);
-  --fc-today-bg-color: rgba(0,0,0,0.06);
 }
 
 .dark {
@@ -124,77 +117,4 @@
   .primary-glow {
     @apply bg-gradient-to-b from-primary/10 to-primary/5;
   }
-}
-
-/* Mint theme + grid look */
-.scheduleCard {
-  background: #38E3C2;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
-}
-.title {
-  margin: 0 0 8px 0;
-  font-weight: 800;
-  color: #003228; /* deep green for contrast, tweak as needed */
-}
-
-/* FullCalendar variables & tweaks */
-.fc .fc-timegrid-slot {
-  height: 48px; /* row height; tune to your eye */
-}
-.fc .fc-col-header-cell-cushion {
-  text-transform: uppercase; /* MON TUE WED ... */
-  font-weight: 700;
-}
-
-/* Event pills — black for registered, light gray for waitlisted */
-.fc .fc-event {
-  border: none;
-  border-radius: 12px;
-  padding: 4px 8px;
-}
-.evt-registered .fc-event-main {
-  background: #000;
-  color: #fff;
-  border-radius: 12px;
-}
-.evt-waitlisted .fc-event-main {
-  background: #e6e6e6;
-  color: #000;
-  border-radius: 12px;
-}
-
-/* Legend */
-.legend {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  margin-top: 10px;
-}
-.dot {
-  width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px;
-}
-.dot.reg { background: #000; }
-.dot.wait { background: #e6e6e6; border: 1px solid #cfcfcf; }
-.blockBtn {
-  margin-left: auto;
-  background: #fff;
-  color: #000;
-  border: 0;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-weight: 700;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.15);
-}
-
-/* Page width + centering helper */
-.page-wrap {
-  max-width: 80rem;            /* ~max-w-7xl */
-  margin-inline: auto;         /* centers horizontally */
-  padding-inline: 1rem;        /* px-4 */
-}
-
-@media (min-width: 768px) {
-  .page-wrap { padding-inline: 1.5rem; } /* md:px-6 */
 }

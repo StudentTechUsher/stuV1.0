@@ -1,14 +1,30 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ArrowRight, CheckCircle, Menu, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { Input } from "@/components/ui/input"
+import { SubmitEmailForm } from '@/components/ui/submit-email-form'  // Changed to named import
+import minorsData from "@/data/minors.json"
+import type { Minor } from '@/types'
 
-export default function LandingPage() {
+// Now you can use the Program type for your majors/minors
+
+export default function StudentPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [majors, setMajors] = useState<Minor[]>([])
+  const minors: Minor[] = minorsData
+
+  useEffect(() => {
+    const fetchMajors = async () => {
+      const response = await fetch('/api/majors')
+      const data = await response.json()
+      setMajors(data)
+    }
+    fetchMajors()
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -45,13 +61,12 @@ export default function LandingPage() {
           </nav>
 
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/students" className="text-base font-medium hover:text-primary transition-colors">
-              For Students
+            <Link href="/" className="text-base font-medium hover:text-primary transition-colors">
+              For Universities
             </Link>
-            <Link href="/demo">
+            <Link href="/login">
               <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base">
-                Request a demo
-                <ArrowRight className="ml-2 h-5 w-5" />
+                Sign In
               </Button>
             </Link>
           </div>
@@ -74,39 +89,26 @@ export default function LandingPage() {
                 Features
               </Link>
               <Link
+                href="/how-it-works"
+                className="text-base font-medium hover:text-primary"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                How It Works
+              </Link>
+              <Link
                 href="#testimonials"
                 className="text-base font-medium hover:text-primary"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Testimonials
-              </Link>
-              <Link
-                href="#pricing"
-                className="text-base font-medium hover:text-primary"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link
-                href="#faq"
-                className="text-base font-medium hover:text-primary"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                FAQ
+                Student Stories
               </Link>
               <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
                 <Link
-                  href="/students"
+                  href="#testimonials"
                   className="text-base font-medium hover:text-primary"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  For Students →
-                </Link>
-                <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium w-full py-2.5 text-base">
-                    Request a demo
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
+                  For Universities
                 </Link>
               </div>
             </div>
@@ -123,21 +125,51 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
-                    Revolutionize Academic Planning at Your University
+                    Your Degree, Your Schedule
+                  </h1>
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
+                    <div 
+                      className="h-full w-full flex items-center gap-3"
+                      role="banner"
+                      aria-label="Hero section"
+                    >
+                      Seamless with
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src="/stu_icon_black.png"
+                          alt="stu. logo"
+                          width={70}
+                          height={70}
+                          className="rounded-50"
+                          priority
+                          style={{ width: "auto", height: "1em" }}
+                        />
+                        <span>stu.</span>
+                      </div>
+                    </div>
                   </h1>
                   <p className="max-w-[600px] text-zinc-600 md:text-xl">
-                    Empower your students with an intelligent course scheduling platform that ensures smoother degree progression and higher graduation rates.
+                    Never stress about course planning again.
+                  </p>
+                  <p className="max-w-[600px] text-zinc-600 md:text-xl">
+                    stu helps you create the class schedule that fits your degree requirements and life commitments.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium">
-                    <Link href="/demo" className="flex items-center">
-                      Request a demo
+                    <Link href="#cta" className="flex items-center">
+                      Try{" "}
+                      <Image
+                        src="/stu_icon_black.png"
+                        alt="stu. logo"
+                        width={24}
+                        height={24}
+                        className="rounded-50 -mb-2 pb-3 m-1 ml-2 mr-2"
+                        priority
+                      />{" "}
+                      Today
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
-                  </Button>
-                  <Button className="bg-transparent border-2 border-primary text-zinc-900 hover:bg-primary/10">
-                    Learn More
                   </Button>
                 </div>
               </div>
@@ -151,45 +183,57 @@ export default function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center">
+        <section
+          id="features"
+          className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center"
+        >
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-                  Comprehensive Academic Planning Solutions
+                  Your Personal Academic Planner
                 </h2>
                 <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
-                  Help your students navigate their academic journey while providing valuable insights for your registrar's office.
+                  Everything you need to stay on track and graduate on time.
                 </p>
               </div>
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {[
                   {
-                    title: "Smart Degree Planning",
-                    description: "AI-powered course recommendations based on degree requirements and prerequisites.",
+                    title: "Smart Course Suggestions",
+                    description:
+                      "Get personalized course recommendations based on your degree requirements and prerequisites.",
                   },
                   {
-                    title: "Enrollment Analytics",
-                    description: "Gain insights into course demand and optimize class offerings each semester.",
+                    title: "4-Year Planning",
+                    description:
+                      "Map out your entire degree journey and adjust as needed with our flexible planning tools.",
                   },
                   {
-                    title: "Prerequisite Validation",
-                    description: "Automatically verify course prerequisites and degree progress requirements.",
+                    title: "Prerequisite Tracking",
+                    description:
+                      "Never miss a prerequisite with automatic requirement checking and course sequencing.",
                   },
                   {
-                    title: "Student Success Tracking",
-                    description: "Monitor degree progression and identify at-risk students early.",
+                    title: "Schedule Optimization",
+                    description:
+                      "Find the perfect balance between required courses and your preferred schedule.",
                   },
                   {
-                    title: "Integration Ready",
-                    description: "Seamlessly connects with existing Student Information Systems (SIS).",
+                    title: "Progress Tracking",
+                    description:
+                      "Stay on top of your degree progress with real-time tracking and milestone updates.",
                   },
                   {
-                    title: "Customizable Rules",
-                    description: "Easily configure degree requirements and academic policies specific to your institution.",
+                    title: "Mobile Friendly",
+                    description:
+                      "Access your schedule and make changes anywhere, anytime from any device.",
                   },
                 ].map((feature, i) => (
-                  <div key={i} className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10">
+                  <div
+                    key={i}
+                    className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                  >
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                       <CheckCircle className="h-6 w-6" />
                     </div>
@@ -202,29 +246,82 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Testimonials Section */}
+        <section
+          id="testimonials"
+          className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center"
+        >
+          <br /> <br />
+          <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { name: "Tyler S", state: "CA", text: '"The easiest way to class classes that would actually help with the major I\'m taking"' },
+              { name: "Isaac B", state: "WA", text: '"I love it!"' },
+              { name: "Zach W", state: "UT", text: '"This is great!"' },
+            ].map((review, i) => (
+              <div
+                key={i}
+                className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+              >
+                <h3 className="text-xl font-bold">
+                  {review.name}, {review.state}
+                </h3>
+                <p className="text-zinc-600">{review.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* CTA Section */}
-        <section className="relative py-20 overflow-hidden flex flex-col items-center justify-center text-center">
+        <section
+          id="cta"
+          className="relative py-20 overflow-hidden flex flex-col items-center justify-center text-center"
+        >
           <div className="absolute inset-0 primary-glow opacity-40"></div>
           <div className="container px-4 md:px-6 relative">
             <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-                  Ready to Transform Academic Planning?
+                  Ready to Simplify Your Academic Journey?
                 </h2>
                 <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
-                  Join leading universities who have improved graduation rates and student satisfaction with stu's planning platform.
+                  Join students across the country who are already using stu to plan their perfect semester.
                 </p>
               </div>
-              <div className="w-full max-w-md">
-                <Link href="/demo">
-                  <Button className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium py-3 text-lg">
-                    Request a demo
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
+              <div className="w-full max-w-md space-y-4">
+                <SubmitEmailForm />
+                <p className="text-xs text-center text-zinc-500">
+                  By joining, you agree to our{" "}
+                  <Link href="#" className="underline underline-offset-2 hover:text-primary">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="#" className="underline underline-offset-2 hover:text-primary">
+                    Privacy Policy
+                  </Link>
+                </p>
               </div>
             </div>
-        </div>
+          </div>
+        </section>
+
+        {/* Minors Section */}
+        <section className="py-20 bg-white flex flex-col items-center justify-center text-center">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
+              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {minors.map((minor) => (
+                  <div
+                    key={minor.id}
+                    className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                  >
+                    <h3 className="text-xl font-bold">{minor.name}</h3>
+                    <p className="text-zinc-600">{minor.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 
@@ -233,9 +330,9 @@ export default function LandingPage() {
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-4">
               <Link href="/" className="flex items-center gap-2 font-bold">
-          <Image
+                <Image
                   src="/favicon-96x96.png"
-                  alt="stu. logo" 
+                  alt="stu. logo"
                   width={32}
                   height={32}
                   className="rounded-50"
@@ -244,30 +341,25 @@ export default function LandingPage() {
                 <span>stu.</span>
               </Link>
               <p className="text-sm text-muted-foreground">
-                Empowering Universities to Build Better Academic Futures
+                Making Academic Planning Simple and Smart
               </p>
             </div>
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Product</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
+                  <Link href="#features" className="text-muted-foreground hover:text-primary">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Pricing
+                  <Link href="/how-it-works" className="text-muted-foreground hover:text-primary">
+                    How It Works
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Testimonials
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    FAQ
+                  <Link href="#testimonials" className="text-muted-foreground hover:text-primary">
+                    Student Stories
                   </Link>
                 </li>
               </ul>
@@ -276,18 +368,13 @@ export default function LandingPage() {
               <h3 className="text-sm font-medium">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li>
+                  <Link href="/" className="text-muted-foreground hover:text-primary">
+                    For Universities
+                  </Link>
+                </li>
+                <li>
                   <Link href="#" className="text-muted-foreground hover:text-primary">
                     About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Careers
                   </Link>
                 </li>
                 <li>
@@ -310,81 +397,15 @@ export default function LandingPage() {
                     Privacy
                   </Link>
                 </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Cookies
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Licenses
-                  </Link>
-                </li>
               </ul>
             </div>
           </div>
           <div className="mt-8 border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Stu Inc. All rights reserved.</p>
-            <div className="flex gap-4">
-              <Link href="#" className="text-muted-foreground hover:text-primary">
-                <span className="sr-only">Twitter</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                </svg>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary">
-                <span className="sr-only">GitHub</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-                  <path d="M9 18c-4.51 2-5-2-7-2" />
-                </svg>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary">
-                <span className="sr-only">LinkedIn</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-                  <rect width="4" height="12" x="2" y="9" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-              </Link>
-            </div>
+            <div className="flex gap-4"></div>
           </div>
         </div>
       </footer>
     </div>
   )
 }
-
