@@ -44,6 +44,23 @@ export async function updateProgram(id: string, updates: Partial<Omit<ProgramRow
     return data as ProgramRow;
 }
 
+export async function createProgram(programData: Omit<ProgramRow, 'id' | 'created_at' | 'modified_at'>): Promise<ProgramRow> {
+    const createData = {
+        ...programData,
+        created_at: new Date().toISOString(),
+        modified_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+        .from('program')
+        .insert(createData)
+        .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
+        .single();
+
+    if (error) throw error;
+    return data as ProgramRow;
+}
+
 export async function deleteProgram(id: string): Promise<void> {
     const { error } = await supabase
         .from('program')

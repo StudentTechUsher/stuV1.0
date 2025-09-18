@@ -18,8 +18,6 @@ import { GraduationPlan } from "@/types/graduation-plan";
 import { ProgramRow } from "@/types/program";
 import { PlusIcon } from 'lucide-react';
 
-const RAIL_WIDTH = 80;
-
 interface Term {
   term: string;
   notes?: string;
@@ -169,7 +167,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
 
   if (!user) {
     return (
-      <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
+      <Box sx={{ p: 2 }}>
         <div>Please log in to view your graduation plan.</div>
       </Box>
     );
@@ -177,7 +175,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
 
   if (!studentRecord) {
     return (
-      <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
+      <Box sx={{ p: 2 }}>
         <Typography variant="h4" gutterBottom>
           Graduation Plan
         </Typography>
@@ -192,7 +190,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
   }
 
   return (
-    <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
+    <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
           {gradPlanRecord && (
