@@ -305,7 +305,7 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
+                  <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
                     Privacy
                   </Link>
                 </li>

@@ -21,10 +21,11 @@ interface Term {
 interface GradPlanViewerProps {
   planDetails: unknown;
   studentName: string;
+  programs?: Array<{ id: number; name: string }>;
   onSuggestionsChange?: (hasSuggestions: boolean, suggestions: Record<string, string>) => void;
 }
 
-export default function GradPlanViewer({ planDetails, studentName, onSuggestionsChange }: GradPlanViewerProps) {
+export default function GradPlanViewer({ planDetails, studentName, programs, onSuggestionsChange }: GradPlanViewerProps) {
   // State for managing suggestion text fields
   const [activeSuggestions, setActiveSuggestions] = React.useState<Record<string, string>>({});
   
@@ -156,6 +157,34 @@ export default function GradPlanViewer({ planDetails, studentName, onSuggestions
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
         Graduation Plan for {studentName}
       </Typography>
+      
+      {/* Programs List */}
+      {programs && programs.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#666', mb: 1 }}>
+            🎓 Programs:
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {programs.map((program) => (
+              <Typography
+                key={program.id}
+                variant="body2"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  backgroundColor: '#f3e5f5',
+                  borderRadius: 1,
+                  border: '1px solid #ce93d8',
+                  color: '#6a1b9a',
+                  fontWeight: 500
+                }}
+              >
+                {program.name}
+              </Typography>
+            ))}
+          </Box>
+        </Box>
+      )}
       
       {/* Plan Summary */}
       <Box sx={{ display: 'flex', gap: 3, mb: 3, flexWrap: 'wrap' }}>

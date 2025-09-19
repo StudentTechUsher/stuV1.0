@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, CircularProgress, Alert, Button, Paper } from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { decodeAccessIdClient } from '@/lib/utils/access-id';
-import { fetchGradPlanById, updateGradPlanWithAdvisorNotes } from '@/lib/api/server-actions';
+import { fetchGradPlanById, updateGradPlanWithAdvisorNotes, approveGradPlan } from '@/lib/api/server-actions';
 import GradPlanViewer from '@/components/approve-grad-plans/grad-plan-viewer';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface GradPlanDetails {
   id: string;
@@ -16,7 +17,16 @@ interface GradPlanDetails {
   created_at: string;
   plan_details: unknown;
   student_id: number;
+  programs: Array<{ id: number; name: string }>;
 }
+
+type Role = "student" | "advisor" | "admin";
+
+const ROLE_MAP: Record<string, Role> = {
+  1: "admin",
+  2: "advisor",
+  3: "student",
+};
 
 export default function ApproveGradPlanPage() {
   const router = useRouter();
@@ -27,6 +37,26 @@ export default function ApproveGradPlanPage() {
   const [hasSuggestions, setHasSuggestions] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [isCheckingRole, setIsCheckingRole] = React.useState(true);
+  const [snackbar, setSnackbar] = React.useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
+  const supabase = createSupabaseBrowserClient();
+
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
 
   const handleSuggestionsChange = React.useCallback((hasSuggestions: boolean, suggestions: Record<string, string>) => {
     setHasSuggestions(hasSuggestions);
@@ -48,7 +78,56 @@ export default function ApproveGradPlanPage() {
       .join('\n');
   };
 
+  // Check if user is an advisor before allowing access
   React.useEffect(() => {
+    async function checkUserRole() {
+      try {
+        // Get the current user session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session?.user) {
+          console.error('Error getting session:', sessionError);
+          router.push('/home');
+          return;
+        }
+
+        // Fetch the user's profile to get their role_id
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role_id")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          router.push('/home');
+          return;
+        }
+
+        // Check if user is an advisor (role_id = 2)
+        const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
+        
+        if (role !== "advisor") {
+          console.log('Access denied: User is not an advisor');
+          router.push('/home');
+          return;
+        }
+
+        // User is an advisor, allow access
+        setIsCheckingRole(false);
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        router.push('/home');
+      }
+    }
+
+    checkUserRole();
+  }, [router, supabase]);
+
+  React.useEffect(() => {
+    // Don't fetch data until role check is complete
+    if (isCheckingRole) return;
+
     let active = true;
 
     (async () => {
@@ -90,16 +169,32 @@ export default function ApproveGradPlanPage() {
     return () => {
       active = false;
     };
-  }, [params.accessId]);
+  }, [params.accessId, isCheckingRole]);
 
   const handleBack = () => {
     router.push('/dashboard/approve-grad-plans');
   };
 
-  const handleApprove = () => {
-    // Implementation for approval logic will be added in future
-    console.log('Approving grad plan:', gradPlan?.id);
-    alert('Approval functionality will be implemented soon');
+  const handleApprove = async () => {
+    if (!gradPlan) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      const result = await approveGradPlan(gradPlan.id);
+      
+      if (result.success) {
+        showSnackbar('Graduation plan approved successfully! The student can now view their active plan.', 'success');
+        setTimeout(() => router.push('/dashboard/approve-grad-plans'), 2000);
+      } else {
+        showSnackbar(`Failed to approve plan: ${result.error || 'Unknown error'}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error approving graduation plan:', error);
+      showSnackbar('An unexpected error occurred while approving the plan.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleReject = async () => {
@@ -111,8 +206,8 @@ export default function ApproveGradPlanPage() {
       // Format suggestions into advisor notes
       const advisorNotes = formatSuggestionsForAdvisorNotes(suggestions);
       
-      if (hasSuggestions && advisorNotes.trim() === '') {
-        alert('Please provide feedback in the suggestion fields before rejecting.');
+      if (!hasSuggestions || advisorNotes.trim() === '') {
+        showSnackbar('Please add suggestions using the "+ Suggest Edit" buttons before submitting.', 'warning');
         return;
       }
       
@@ -120,26 +215,32 @@ export default function ApproveGradPlanPage() {
       const result = await updateGradPlanWithAdvisorNotes(gradPlan.id, advisorNotes);
       
       if (result.success) {
-        alert(`Plan rejected successfully. ${hasSuggestions ? 'Feedback has been sent to the student.' : ''}`);
-        router.push('/dashboard/approve-grad-plans');
+        showSnackbar('Suggested edits submitted successfully. Feedback has been sent to the student.', 'success');
+        setTimeout(() => router.push('/dashboard/approve-grad-plans'), 2000);
       } else {
-        alert(`Failed to reject plan: ${result.error || 'Unknown error'}`);
+        showSnackbar(`Failed to submit suggested edits: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (error) {
-      console.error('Error rejecting plan:', error);
-      alert('Failed to reject plan. Please try again.');
+      console.error('Error submitting suggested edits:', error);
+      showSnackbar('Failed to submit suggested edits. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (loading) {
+  const getApproveButtonText = () => {
+    if (isProcessing) return 'Processing...';
+    if (hasSuggestions) return 'Cannot Approve (Has Suggestions)';
+    return 'Approve Plan';
+  };
+
+  if (isCheckingRole || loading) {
     return (
       <Box sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <CircularProgress size={20} />
           <Typography variant="body2" color="text.secondary">
-            Loading graduation plan...
+            {isCheckingRole ? 'Checking permissions...' : 'Loading graduation plan...'}
           </Typography>
         </Box>
       </Box>
@@ -183,9 +284,9 @@ export default function ApproveGradPlanPage() {
   const studentName = `${gradPlan.student_first_name} ${gradPlan.student_last_name}`;
   
   const getRejectButtonText = () => {
-    if (isProcessing) return 'Processing...';
-    if (hasSuggestions) return 'Reject with Feedback';
-    return 'Reject Plan';
+    if (isProcessing) return 'Submitting...';
+    if (hasSuggestions) return 'Submit Suggested Edits';
+    return 'Submit Suggested Edits';
   };
 
   return (
@@ -204,10 +305,6 @@ export default function ApproveGradPlanPage() {
           Review Graduation Plan
         </Typography>
         
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-          Please review the graduation plan below and decide whether to approve or reject it.
-        </Typography>
-        
         <Typography variant="body2" color="text.secondary">
           Submitted: {new Date(gradPlan.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -224,14 +321,19 @@ export default function ApproveGradPlanPage() {
         <GradPlanViewer 
           planDetails={gradPlan.plan_details} 
           studentName={studentName} 
+          programs={gradPlan.programs}
           onSuggestionsChange={handleSuggestionsChange}
         />
       </Paper>
 
       {/* Action Buttons */}
-      {hasSuggestions && (
+      {hasSuggestions ? (
         <Alert severity="info" sx={{ mb: 2 }}>
-          You have suggestions for this plan. Please use the &quot;Reject Plan&quot; button to send feedback to the student.
+          You have suggestions for this plan. Click &quot;Submit Suggested Edits&quot; to send feedback to the student.
+        </Alert>
+      ) : (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          To provide feedback, click &quot;+ Suggest Edit&quot; on any term where you have suggestions, then submit your edits.
         </Alert>
       )}
       
@@ -242,16 +344,16 @@ export default function ApproveGradPlanPage() {
           size="large"
           startIcon={<CheckCircle />}
           onClick={handleApprove}
-          disabled={hasSuggestions}
+          disabled={hasSuggestions || isProcessing}
           sx={{ 
             px: 4, 
             py: 1.5,
             fontSize: '1.1rem',
             fontWeight: 'bold',
-            boxShadow: hasSuggestions ? 'none' : '0 4px 12px rgba(76, 175, 80, 0.3)',
-            opacity: hasSuggestions ? 0.6 : 1,
+            boxShadow: (hasSuggestions || isProcessing) ? 'none' : '0 4px 12px rgba(76, 175, 80, 0.3)',
+            opacity: (hasSuggestions || isProcessing) ? 0.6 : 1,
             '&:hover': {
-              boxShadow: hasSuggestions ? 'none' : '0 6px 16px rgba(76, 175, 80, 0.4)'
+              boxShadow: (hasSuggestions || isProcessing) ? 'none' : '0 6px 16px rgba(76, 175, 80, 0.4)'
             },
             '&:disabled': {
               backgroundColor: '#ccc',
@@ -259,34 +361,54 @@ export default function ApproveGradPlanPage() {
             }
           }}
         >
-          {hasSuggestions ? 'Cannot Approve (Has Suggestions)' : 'Approve Plan'}
+          {getApproveButtonText()}
         </Button>
         <Button
           variant="contained"
-          color="error"
           size="large"
           startIcon={<Cancel />}
           onClick={handleReject}
-          disabled={isProcessing}
+          disabled={isProcessing || !hasSuggestions}
           sx={{ 
             px: 4, 
             py: 1.5,
             fontSize: '1.1rem',
             fontWeight: 'bold',
-            boxShadow: isProcessing ? 'none' : '0 4px 12px rgba(244, 67, 54, 0.3)',
-            opacity: isProcessing ? 0.7 : 1,
+            backgroundColor: hasSuggestions && !isProcessing ? '#ffc107' : '#fff3cd',
+            color: hasSuggestions && !isProcessing ? '#000' : '#6c757d',
+            border: hasSuggestions && !isProcessing ? '1px solid #ffc107' : '1px solid #e0e0e0',
+            boxShadow: hasSuggestions && !isProcessing ? '0 4px 12px rgba(255, 193, 7, 0.3)' : 'none',
+            opacity: (!hasSuggestions || isProcessing) ? 0.6 : 1,
             '&:hover': {
-              boxShadow: isProcessing ? 'none' : '0 6px 16px rgba(244, 67, 54, 0.4)'
+              backgroundColor: hasSuggestions && !isProcessing ? '#ffb300' : '#fff3cd',
+              boxShadow: hasSuggestions && !isProcessing ? '0 6px 16px rgba(255, 193, 7, 0.4)' : 'none'
             },
             '&:disabled': {
-              backgroundColor: '#ffcdd2',
-              color: '#c62828'
+              backgroundColor: '#fff3cd',
+              color: '#6c757d',
+              border: '1px solid #e0e0e0'
             }
           }}
         >
           {getRejectButtonText()}
         </Button>
       </Box>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

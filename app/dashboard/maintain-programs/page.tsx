@@ -142,15 +142,21 @@ export default function MaintainProgramsPage() {
         </Button>
       </Box>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} /> Loading…
-        </Box>
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
-      ) : (
-        <ProgramsTable rows={rows} onEdit={handleOpenEdit} onDelete={handleDeleteProgram} />
-      )}
+      {(() => {
+        if (loading) {
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} /> Loading…
+            </Box>
+          );
+        } else if (error) {
+          return <Alert severity="error">{error}</Alert>;
+        } else {
+          return (
+            <ProgramsTable rows={rows} onEdit={handleOpenEdit} onDelete={handleDeleteProgram} />
+          );
+        }
+      })()}
 
       <EditRequirementsDialog
         open={editOpen}

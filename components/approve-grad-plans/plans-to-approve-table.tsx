@@ -58,8 +58,8 @@ export default function PlansToApproveTable({ plans, onRowClick }: PlansToApprov
           <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
             <TableCell sx={{ fontWeight: 600 }}>Student Name</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Submitted Date</TableCell>
-            <TableCell sx={{ fontWeight: 600, width: 60 }} align="center">
-              Action
+            <TableCell sx={{ fontWeight: 600, width: 150 }} align="center">
+              View Plan
             </TableCell>
           </TableRow>
         </TableHead>

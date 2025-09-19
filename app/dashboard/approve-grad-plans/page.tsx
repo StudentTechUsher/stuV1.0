@@ -7,14 +7,75 @@ import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approv
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
 import { fetchPendingGradPlans } from '@/lib/api/server-actions';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+
+type Role = "student" | "advisor" | "admin";
+
+const ROLE_MAP: Record<string, Role> = {
+  1: "admin",
+  2: "advisor",
+  3: "student",
+};
 
 export default function SelectGradPlansPage() {
   const router = useRouter();
   const [plans, setPlans] = React.useState<PendingGradPlan[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [isCheckingRole, setIsCheckingRole] = React.useState(true);
+
+  const supabase = createSupabaseBrowserClient();
+
+  // Check if user is an advisor before allowing access
+  React.useEffect(() => {
+    async function checkUserRole() {
+      try {
+        // Get the current user session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session?.user) {
+          console.error('Error getting session:', sessionError);
+          router.push('/home');
+          return;
+        }
+
+        // Fetch the user's profile to get their role_id
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role_id")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          router.push('/home');
+          return;
+        }
+
+        // Check if user is an advisor (role_id = 2)
+        const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
+        
+        if (role !== "advisor") {
+          console.log('Access denied: User is not an advisor');
+          router.push('/home');
+          return;
+        }
+
+        // User is an advisor, allow access
+        setIsCheckingRole(false);
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        router.push('/home');
+      }
+    }
+
+    checkUserRole();
+  }, [router, supabase]);
 
   React.useEffect(() => {
+    // Don't fetch data until role check is complete
+    if (isCheckingRole) return;
+
     let active = true;
 
     (async () => {
@@ -41,7 +102,7 @@ export default function SelectGradPlansPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isCheckingRole]);
 
   const handleRowClick = (plan: PendingGradPlan) => {
     try {
@@ -57,12 +118,12 @@ export default function SelectGradPlansPage() {
   };
 
   const renderContent = () => {
-    if (loading) {
+    if (isCheckingRole || loading) {
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3 }}>
           <CircularProgress size={20} />
           <Typography variant="body2" color="text.secondary">
-            Loading pending graduation plans...
+            {isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
           </Typography>
         </Box>
       );

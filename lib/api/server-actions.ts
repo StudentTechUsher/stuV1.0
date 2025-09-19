@@ -471,11 +471,12 @@ export async function fetchGradPlanById(gradPlanId: string): Promise<{
     created_at: string;
     plan_details: unknown;
     student_id: number;
+    programs: Array<{ id: number; name: string }>;
 } | null> {
     // First, get the grad plan
     const { data: gradPlanData, error: gradPlanError } = await supabase
         .from('grad_plan')
-        .select('id, created_at, student_id, plan_details')
+        .select('id, created_at, student_id, plan_details, programs_in_plan')
         .eq('id', gradPlanId)
         .eq('pending_approval', true)
         .single();
@@ -513,30 +514,52 @@ export async function fetchGradPlanById(gradPlanId: string): Promise<{
         throw profileError;
     }
 
+    // Get program names if programs_in_plan exists and is not empty
+    let programs: Array<{ id: number; name: string }> = [];
+    if (gradPlanData.programs_in_plan && Array.isArray(gradPlanData.programs_in_plan) && gradPlanData.programs_in_plan.length > 0) {
+        const { data: programsData, error: programsError } = await supabase
+            .from('program')
+            .select('id, name')
+            .in('id', gradPlanData.programs_in_plan);
+
+        if (programsError) {
+            console.error('❌ Error fetching program data:', programsError);
+            // Don't throw error, just log it and continue with empty array
+        } else {
+            programs = programsData || [];
+        }
+    }
+
     return {
         id: gradPlanData.id,
         student_first_name: profileData.fname || 'Unknown',
         student_last_name: profileData.lname || 'Unknown',
         created_at: gradPlanData.created_at,
         plan_details: gradPlanData.plan_details,
-        student_id: gradPlanData.student_id
+        student_id: gradPlanData.student_id,
+        programs: programs
     };
 }
 
 /**
- * Updates a graduation plan with advisor notes (typically for rejection feedback)
+ * Updates a graduation plan with advisor notes and sets status for pending edits
+ * Sets pending_edits: true and pending_approval: false to indicate student needs to review suggestions
  */
 export async function updateGradPlanWithAdvisorNotes(
     gradPlanId: string,
     advisorNotes: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        console.log('📝 Updating grad plan with advisor notes:', { gradPlanId, notesLength: advisorNotes.length });
+        console.log('📝 Updating grad plan with advisor notes and setting pending_edits=true:', { gradPlanId, notesLength: advisorNotes.length });
 
         // Update the graduation plan with advisor notes
         const { error } = await supabase
             .from('grad_plan')
-            .update({ advisor_notes: advisorNotes })
+            .update({ 
+                advisor_notes: advisorNotes, 
+                pending_edits: true,
+                pending_approval: false 
+            })
             .eq('id', gradPlanId);
 
         if (error) {
@@ -544,11 +567,78 @@ export async function updateGradPlanWithAdvisorNotes(
             return { success: false, error: error.message };
         }
 
-        console.log('✅ Successfully updated grad plan with advisor notes');
         return { success: true };
 
     } catch (error) {
         console.error('❌ Unexpected error updating grad plan:', error);
+        return { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        };
+    }
+}
+
+/**
+ * Approves a graduation plan by setting it as active and deactivating any previous active plans
+ * Sets pending_approval: false, is_active: true, and deactivates other plans for the same student
+ */
+export async function approveGradPlan(
+    gradPlanId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        console.log('✅ Approving grad plan:', { gradPlanId });
+
+        // First, get the grad plan to find the student_id
+        const { data: gradPlanData, error: gradPlanError } = await supabase
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (gradPlanError) {
+            console.error('❌ Error fetching grad plan for approval:', gradPlanError);
+            return { success: false, error: gradPlanError.message };
+        }
+
+        if (!gradPlanData) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        const studentId = gradPlanData.student_id;
+
+        // Start a transaction-like operation
+        // First, set all existing active plans for this student to inactive
+        const { error: deactivateError } = await supabase
+            .from('grad_plan')
+            .update({ is_active: false })
+            .eq('student_id', studentId)
+            .eq('is_active', true);
+
+        if (deactivateError) {
+            console.error('❌ Error deactivating previous plans:', deactivateError);
+            return { success: false, error: deactivateError.message };
+        }
+
+        // Now set the approved plan as active and not pending approval
+        const { error: approvalError } = await supabase
+            .from('grad_plan')
+            .update({ 
+                is_active: true,
+                pending_approval: false,
+                pending_edits: false // Clear any pending edits since plan is now approved
+            })
+            .eq('id', gradPlanId);
+
+        if (approvalError) {
+            console.error('❌ Error approving grad plan:', approvalError);
+            return { success: false, error: approvalError.message };
+        }
+
+        console.log('✅ Grad plan approved successfully:', { gradPlanId, studentId });
+        return { success: true };
+
+    } catch (error) {
+        console.error('❌ Unexpected error approving grad plan:', error);
         return { 
             success: false, 
             error: error instanceof Error ? error.message : 'Unknown error occurred' 
