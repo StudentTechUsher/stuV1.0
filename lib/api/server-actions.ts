@@ -382,3 +382,176 @@ export async function deleteProgram(id: string): Promise<void> {
 
     if (error) throw error;
 }
+
+export async function fetchPendingGradPlans(): Promise<Array<{
+    id: string;
+    student_first_name: string;
+    student_last_name: string;
+    created_at: string;
+    student_id: number;
+}>> {
+    // First, get all grad plans where pending_approval = true
+    const { data: gradPlansData, error: gradPlansError } = await supabase
+        .from('grad_plan')
+        .select('id, created_at, student_id')
+        .eq('pending_approval', true)
+        .order('created_at', { ascending: false });
+
+    if (gradPlansError) {
+        console.error('❌ Error fetching pending graduation plans:', gradPlansError);
+        throw gradPlansError;
+    }
+
+    if (!gradPlansData || gradPlansData.length === 0) {
+        return [];
+    }
+
+    // Get unique student_ids
+    const studentIds = [...new Set(gradPlansData.map(plan => plan.student_id))];
+
+    // Get profile_ids for these students
+    const { data: studentsData, error: studentsError } = await supabase
+        .from('student')
+        .select('id, profile_id')
+        .in('id', studentIds);
+
+    if (studentsError) {
+        console.error('❌ Error fetching student records:', studentsError);
+        throw studentsError;
+    }
+
+    if (!studentsData || studentsData.length === 0) {
+        console.warn('⚠️ No student records found for grad plans');
+        return gradPlansData.map(plan => ({
+            id: plan.id,
+            student_first_name: 'Unknown',
+            student_last_name: 'Unknown',
+            created_at: plan.created_at,
+            student_id: plan.student_id
+        }));
+    }
+
+    // Get unique profile_ids
+    const profileIds = [...new Set(studentsData.map(student => student.profile_id))];
+
+    // Get profile data (fname, lname)
+    const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, fname, lname')
+        .in('id', profileIds);
+
+    if (profilesError) {
+        console.error('❌ Error fetching profile records:', profilesError);
+        throw profilesError;
+    }
+
+    // Create maps for efficient lookup
+    const studentMap = new Map(studentsData.map(student => [student.id, student.profile_id]));
+    const profileMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+
+    // Transform the data to flatten the nested structure
+    return gradPlansData.map(plan => {
+        const profileId = studentMap.get(plan.student_id);
+        const profile = profileId ? profileMap.get(profileId) : null;
+
+        return {
+            id: plan.id,
+            student_first_name: profile?.fname || 'Unknown',
+            student_last_name: profile?.lname || 'Unknown',
+            created_at: plan.created_at,
+            student_id: plan.student_id
+        };
+    });
+}
+
+export async function fetchGradPlanById(gradPlanId: string): Promise<{
+    id: string;
+    student_first_name: string;
+    student_last_name: string;
+    created_at: string;
+    plan_details: unknown;
+    student_id: number;
+} | null> {
+    // First, get the grad plan
+    const { data: gradPlanData, error: gradPlanError } = await supabase
+        .from('grad_plan')
+        .select('id, created_at, student_id, plan_details')
+        .eq('id', gradPlanId)
+        .eq('pending_approval', true)
+        .single();
+
+    if (gradPlanError) {
+        console.error('❌ Error fetching grad plan:', gradPlanError);
+        throw gradPlanError;
+    }
+
+    if (!gradPlanData) {
+        return null;
+    }
+
+    // Get the student's profile_id
+    const { data: studentData, error: studentError } = await supabase
+        .from('student')
+        .select('profile_id')
+        .eq('id', gradPlanData.student_id)
+        .single();
+
+    if (studentError) {
+        console.error('❌ Error fetching student record:', studentError);
+        throw studentError;
+    }
+
+    // Get the profile data
+    const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('fname, lname')
+        .eq('id', studentData.profile_id)
+        .single();
+
+    if (profileError) {
+        console.error('❌ Error fetching profile record:', profileError);
+        throw profileError;
+    }
+
+    return {
+        id: gradPlanData.id,
+        student_first_name: profileData.fname || 'Unknown',
+        student_last_name: profileData.lname || 'Unknown',
+        created_at: gradPlanData.created_at,
+        plan_details: gradPlanData.plan_details,
+        student_id: gradPlanData.student_id
+    };
+}
+
+/**
+ * Updates a graduation plan with advisor notes (typically for rejection feedback)
+ */
+export async function updateGradPlanWithAdvisorNotes(
+    gradPlanId: string,
+    advisorNotes: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        console.log('📝 Updating grad plan with advisor notes:', { gradPlanId, notesLength: advisorNotes.length });
+
+        // Update the graduation plan with advisor notes
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ advisor_notes: advisorNotes })
+            .eq('id', gradPlanId);
+
+        if (error) {
+            console.error('❌ Error updating grad plan with advisor notes:', error);
+            return { success: false, error: error.message };
+        }
+
+        console.log('✅ Successfully updated grad plan with advisor notes');
+        return { success: true };
+
+    } catch (error) {
+        console.error('❌ Unexpected error updating grad plan:', error);
+        return { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        };
+    }
+}

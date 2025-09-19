@@ -23,6 +23,7 @@ import BarChartRounded from "@mui/icons-material/BarChart";
 import PeopleAltRounded from "@mui/icons-material/PeopleAlt";
 import AccountTreeRounded from "@mui/icons-material/AccountTree";
 import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettings";
+import MapRounded from "@mui/icons-material/MapRounded";
 import type { NavItem } from "@/app/dashboard/layout";
 import { JSX } from "react";
 
@@ -37,6 +38,7 @@ type Props = {
 const iconMap: Record<NavItem["icon"], JSX.Element> = {
   dashboard: <DashboardRounded />,
   planner: <SchoolRounded />,
+  map: <MapRounded />,
   semester: <ChecklistRounded />,
   meet: <EventAvailableRounded />,
   profile: <PersonRounded />,
