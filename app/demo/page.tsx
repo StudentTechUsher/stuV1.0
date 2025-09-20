@@ -32,7 +32,7 @@ export default function DemoPage() {
               <input type="hidden" name="_subject" value="New Demo Request from stu" />
               <input type="hidden" name="_template" value="table" />
               <input type="hidden" name="_captcha" value="false" />
-              <input type="hidden" name="_next" value="http://localhost:3003/demo/demo-thanks" />
+              <input type="hidden" name="_next" value="http://stuplanning.com/demo/demo-thanks" />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
