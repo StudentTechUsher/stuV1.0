@@ -70,7 +70,7 @@ export default function StudentPage() {
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-primary hover:bg-emerald-600 text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+              <Button className="bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
                 Sign Up
               </Button>
             </Link>
@@ -122,7 +122,7 @@ export default function StudentPage() {
                     </Button>
                   </Link>
                   <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-primary hover:bg-emerald-600 text-zinc-900 hover:text-white border-none font-medium transition-all">
+                    <Button className="w-full bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium transition-all">
                       Sign Up
                     </Button>
                   </Link>
