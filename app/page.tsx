@@ -164,57 +164,80 @@ export default function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-                  Comprehensive Academic Planning Solutions
-                </h2>
-                <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
-                  Help your students navigate their academic journey while providing valuable insights for your registrar&apos;s office.
-                </p>
-              </div>
-              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {[
-                  {
-                    title: "Smart Degree Planning",
-                    description: "Automate degree mapping with AI-powered course recommendations that account for prerequisites and custom academic rules.",
-                  },
-                  {
-                    title: "Enrollment Analytics",
-                    description: "Track real-time demand to optimize course offerings, reduce bottlenecks, and improve seat utilization.",
-                  },
-                  {
-                    title: "Prerequisite Validation",
-                    description: "Ensure students meet requirements automatically with built-in checks for prerequisites and co-requisites.",
-                  },
-                  {
-                    title: "Student Success Tracking",
-                    description: "Identify at-risk students early through real-time monitoring of academic progress and engagement.",
-                  },
-                  {
-                    title: "Integration Ready",
-                    description: "Connect instantly with your SIS and existing infrastructure—no disruption, no duplicate data entry.",
-                  },
-                  {
-                    title: "Customizable Policies",
-                    description: "Tailor degree requirements, course rules, and exceptions to reflect your institution’s unique policies.",
-                  },
-                ].map((feature, i) => (
-                  <div key={i} className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                      <CheckCircle className="h-6 w-6" />
+      import Image from "next/image";
+
+          {/* Features Section */}
+          <section id="features" className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center">
+            <div className="container px-4 md:px-6">
+              <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
+                    Comprehensive Academic Planning Solutions
+                  </h2>
+                  <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
+                    Help your students navigate their academic journey while providing valuable insights for your registrar&apos;s office.
+                  </p>
+                </div>
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    {
+                      title: "Smart Degree Planning",
+                      description:
+                        "Automate degree mapping with AI-powered course recommendations that account for prerequisites and custom academic rules.",
+                      icon: "/icons/icons8-graduation-scroll-50.png",
+                    },
+                    {
+                      title: "Enrollment Analytics",
+                      description:
+                        "Track real-time demand to optimize course offerings, reduce bottlenecks, and improve seat utilization.",
+                      icon: "/icons/icons8-analytics-60.png",
+                    },
+                    {
+                      title: "Prerequisite Validation",
+                      description:
+                        "Ensure students meet requirements automatically with built-in checks for prerequisites and co-requisites.",
+                      icon: "/icons/icons8-validation-48.png",
+                    },
+                    {
+                      title: "Student Success Tracking",
+                      description:
+                        "Identify at-risk students early through real-time monitoring of academic progress and engagement.",
+                      icon: "/icons/icons8-graduate-48.png",
+                    },
+                    {
+                      title: "Integration Ready",
+                      description:
+                        "Connect instantly with your SIS and existing infrastructure—no disruption, no duplicate data entry.",
+                      icon: "/icons/icons8-integration-48.png",
+                    },
+                    {
+                      title: "Customizable Policies",
+                      description:
+                        "Tailor degree requirements, course rules, and exceptions to reflect your institution’s unique policies.",
+                      icon: "/icons/icons8-policies-48.png",
+                    },
+                  ].map((feature, i) => (
+                    <div
+                      key={i}
+                      className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                        <Image
+                          src={feature.icon}
+                          alt={feature.title}
+                          width={32}
+                          height={32}
+                          className="object-contain"
+                        />
+                      </div>
+                      <h3 className="text-xl font-bold">{feature.title}</h3>
+                      <p className="text-zinc-600">{feature.description}</p>
                     </div>
-                    <h3 className="text-xl font-bold">{feature.title}</h3>
-                    <p className="text-zinc-600">{feature.description}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
-
+          </section>
 
         {/* Testimonials Section */}
         <section

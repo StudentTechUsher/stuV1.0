@@ -250,8 +250,21 @@ export default function StudentPage() {
                     key={i}
                     className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                      <CheckCircle className="h-6 w-6" />
+                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                      <Image
+                        src={`/icons/${[
+                          "icons8-course-assign-50.png",
+                          "stu_icon_black.png", // for graduation mapping
+                          "icons8-tracking-48.png",
+                          "icons8-schedule-48.png",
+                          "icons8-in-progress-60.png",
+                          "icons8-iphone-50.png"
+                        ][i]}`}
+                        alt={feature.title}
+                        width={32}
+                        height={32}
+                        className="object-contain"
+                      />
                     </div>
                     <h3 className="text-xl font-bold">{feature.title}</h3>
                     <p className="text-zinc-600">{feature.description}</p>
