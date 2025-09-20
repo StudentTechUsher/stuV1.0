@@ -113,40 +113,54 @@ export default function LandingPage() {
         )}
       </header>
 
-      <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
-          <div className="absolute inset-0 primary-glow opacity-50"></div>
-          <div className="container px-4 md:px-6 relative">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
-                    Revolutionize Academic Planning at Your University
-                  </h1>
-                  <p className="max-w-[600px] text-zinc-600 md:text-xl">
-                    Empower your students with an intelligent course scheduling platform that ensures smoother degree progression and higher graduation rates.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium">
-                    <Link href="/demo" className="flex items-center">
-                      Request a demo
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button className="bg-transparent border-2 border-primary text-zinc-900 hover:bg-primary/10">
-                    Learn More
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-center">
-                <div className="relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden bg-gradient-to-br from-mint-300/20 to-mint-200/10">
-                  {/* Placeholder for hero image */}
-                </div>
-              </div>
-            </div>
-          </div>
+     <main className="flex-1">
+        <section className="relative py-20 overflow-hidden animate-fade-in">
+        <div className="absolute inset-0 primary-glow opacity-50"></div>
+        <div className="container px-4 md:px-6 relative">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
+        <div className="flex flex-col justify-center space-y-5 max-w-full">
+        <div className="space-y-2 max-w-full">
+        {/* Matching style from /students */}
+        <h1
+        className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight"
+        style={{ fontFamily: 'Work Sans, sans-serif' }}
+        >
+        <div className="whitespace-nowrap">
+        Revolutionize Academic Planning
+        </div>
+        <div className="whitespace-nowrap">
+        at Your University
+        </div>
+        </h1>
+        <p
+        className="max-w-[600px] text-zinc-600 text-[clamp(1rem,1.5vw,2rem)] leading-snug"
+        style={{ fontFamily: 'Inter, sans-serif' }}
+        >
+        Empower your students and advisors with an intelligent course scheduling and graduation mapping platform that ensures smoother degree progression and higher graduation rates.
+        </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium text-base px-6 py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+        <Link href="/demo" className="flex items-center">
+        Request a demo
+        <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+        </Button>
+        <Button className="bg-transparent border-2 border-primary text-zinc-900 hover:bg-primary/10 font-medium text-base px-6 py-3">
+        Learn More
+        </Button>
+        </div>
+        </div>
+
+
+        <div className="flex items-center justify-center">
+        <div className="relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden bg-gradient-to-br from-mint-300/20 to-mint-200/10">
+        {/* Optional hero visual */}
+        </div>
+        </div>
+        </div>
+        </div>
         </section>
 
         {/* Features Section */}
@@ -165,27 +179,27 @@ export default function LandingPage() {
                 {[
                   {
                     title: "Smart Degree Planning",
-                    description: "AI-powered course recommendations based on degree requirements and prerequisites.",
+                    description: "Automate degree mapping with AI-powered course recommendations that account for prerequisites and custom academic rules.",
                   },
                   {
                     title: "Enrollment Analytics",
-                    description: "Gain insights into course demand and optimize class offerings each semester.",
+                    description: "Track real-time demand to optimize course offerings, reduce bottlenecks, and improve seat utilization.",
                   },
                   {
                     title: "Prerequisite Validation",
-                    description: "Automatically verify course prerequisites and degree progress requirements.",
+                    description: "Ensure students meet requirements automatically with built-in checks for prerequisites and co-requisites.",
                   },
                   {
                     title: "Student Success Tracking",
-                    description: "Monitor degree progression and identify at-risk students early.",
+                    description: "Identify at-risk students early through real-time monitoring of academic progress and engagement.",
                   },
                   {
                     title: "Integration Ready",
-                    description: "Seamlessly connects with existing Student Information Systems (SIS).",
+                    description: "Connect instantly with your SIS and existing infrastructure—no disruption, no duplicate data entry.",
                   },
                   {
-                    title: "Customizable Rules",
-                    description: "Easily configure degree requirements and academic policies specific to your institution.",
+                    title: "Customizable Policies",
+                    description: "Tailor degree requirements, course rules, and exceptions to reflect your institution’s unique policies.",
                   },
                 ].map((feature, i) => (
                   <div key={i} className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10">
@@ -201,6 +215,33 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+        {/* Testimonials Section */}
+        <section
+          id="testimonials"
+          className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center"
+        >
+          <br /> <br />
+          <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { name: "Tyler S", state: "CA", text: '"The easiest way to class classes that would actually help with the major I\'m taking"' },
+              { name: "Isaac B", state: "WA", text: '"I love it!"' },
+              { name: "Zach W", state: "UT", text: '"This is great!"' },
+            ].map((review, i) => (
+              <div
+                key={i}
+                className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+              >
+                <h3 className="text-xl font-bold">
+                  {review.name}, {review.state}
+                </h3>
+                <p className="text-zinc-600">{review.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* CTA Section */}
         <section className="relative py-20 overflow-hidden flex flex-col items-center justify-center text-center">
           <div className="absolute inset-0 primary-glow opacity-40"></div>
@@ -211,7 +252,7 @@ export default function LandingPage() {
                   Ready to Transform Academic Planning?
                 </h2>
                 <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
-                  Join leading universities who have improved graduation rates and student satisfaction with stu&apos;s planning platform.
+                  Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu&apos;s planning platform.
                 </p>
               </div>
               <div className="w-full max-w-md">
