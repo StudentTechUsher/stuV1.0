@@ -16,6 +16,7 @@ export default function StudentPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [majors, setMajors] = useState<Minor[]>([])
   const minors: Minor[] = minorsData
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchMajors = async () => {
@@ -24,6 +25,12 @@ export default function StudentPage() {
       setMajors(data)
     }
     fetchMajors()
+
+    // Load school logo from localStorage
+    const savedLogo = localStorage.getItem('schoolLogo')
+    if (savedLogo) {
+      setSchoolLogo(savedLogo)
+    }
   }, [])
 
   return (
@@ -31,16 +38,30 @@ export default function StudentPage() {
       <header className="sticky top-0 z-40 glass-effect">
         <div className="container mx-auto px-6 flex h-20 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/favicon-96x96.png"
-                alt="stu. logo"
-                width={32}
-                height={32}
-                className="rounded-50 -mb-2"
-                priority
-              />
-              <span className="text-4xl font-bold tracking-tight">stu.</span>
+            <Link href="/" className="flex items-center gap-3">
+              {schoolLogo && (
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={schoolLogo}
+                    alt="School logo"
+                    width={32}
+                    height={32}
+                    className="rounded object-contain"
+                  />
+                  <span className="text-xl font-bold text-gray-400">×</span>
+                </div>
+              )}
+              <div className="flex items-center">
+                <Image
+                  src="/favicon-96x96.png"
+                  alt="stu. logo"
+                  width={32}
+                  height={32}
+                  className="rounded-50 -mb-2"
+                  priority
+                />
+                <span className="text-4xl font-bold tracking-tight">stu.</span>
+              </div>
             </Link>
           </div>
 
@@ -248,7 +269,7 @@ export default function StudentPage() {
                 ].map((feature, i) => (
                   <div
                     key={i}
-                    className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                    className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
                   >
                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                       <Image
@@ -284,13 +305,13 @@ export default function StudentPage() {
           <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Student Reviews</h2>
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {[
-              { name: "Tyler S", state: "CA", text: '"The easiest way to class classes that would actually help with the major I\'m taking"' },
+              { name: "Tyler S", state: "CA", text: '"The easiest way to schedule classes that would actually help with the major I\'m taking"' },
               { name: "Isaac B", state: "WA", text: '"I love it!"' },
               { name: "Zach W", state: "UT", text: '"This is great!"' },
             ].map((review, i) => (
               <div
                 key={i}
-                className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
               >
                 <h3 className="text-xl font-bold">
                   {review.name}, {review.state}

@@ -76,11 +76,22 @@ export async function GET(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarded")
+    .select("onboarded, authorization_agreed")
     .eq("id", user.id)
     .maybeSingle();
 
-  const dest = profile?.onboarded ? next : "/create-account";
+  // Check authorization agreement first, then onboarding
+  let dest;
+  if (!profile?.authorization_agreed) {
+    // User hasn't agreed to authorization yet
+    dest = `/auth/authorize?next=${encodeURIComponent(next)}`;
+  } else if (!profile?.onboarded) {
+    // User has authorized but not completed onboarding
+    dest = "/create-account";
+  } else {
+    // User is fully set up
+    dest = next;
+  }
 
   // 3) Return the final redirect, carrying along any Set-Cookie headers
   return NextResponse.redirect(new URL(dest, baseUrl), {

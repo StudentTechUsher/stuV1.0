@@ -160,7 +160,7 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
 
           {/* Settings Button */}
           <Tooltip title="Settings" placement="right">
-            <Box component={Link} href="/dashboard/settings">
+            <Box component={Link} href="/settings">
               <IconButton
                 size="large"
                 sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}
