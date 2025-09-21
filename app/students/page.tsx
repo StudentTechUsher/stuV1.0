@@ -70,7 +70,7 @@ export default function StudentPage() {
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-primary hover:bg-emerald-600 text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+              <Button className="bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
                 Sign Up
               </Button>
             </Link>
@@ -122,7 +122,7 @@ export default function StudentPage() {
                     </Button>
                   </Link>
                   <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-primary hover:bg-emerald-600 text-zinc-900 hover:text-white border-none font-medium transition-all">
+                    <Button className="w-full bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium transition-all">
                       Sign Up
                     </Button>
                   </Link>
@@ -134,24 +134,18 @@ export default function StudentPage() {
       </header>
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
-          <div className="absolute inset-0 primary-glow opacity-50"></div>
-          <div className="container px-4 md:px-6 relative">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
-                    Your Degree, Your Schedule
-                  </h1>
-                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
-                    <div 
-                      className="h-full w-full flex items-center gap-3"
-                      role="banner"
-                      aria-label="Hero section"
-                    >
-                      Seamless with
-                      <div className="flex items-center gap-2">
+          {/* Hero Section */}
+          <section className="relative py-20 overflow-hidden animate-fade-in">
+            <div className="absolute inset-0 primary-glow opacity-50"></div>
+            <div className="container px-4 md:px-6 relative">
+              <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
+                <div className="flex flex-col justify-center space-y-5 max-w-full">
+                  <div className="space-y-2 max-w-full">
+                    {/* First heading */}
+                    <h1 className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight" style={{ fontFamily: 'Work Sans, sans-serif' }}>
+                      <div className="whitespace-nowrap">Your Degree, Your Schedule</div>
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        Seamless with
                         <Image
                           src="/stu_icon_black.png"
                           alt="stu. logo"
@@ -163,41 +157,46 @@ export default function StudentPage() {
                         />
                         <span>stu.</span>
                       </div>
-                    </div>
-                  </h1>
-                  <p className="max-w-[600px] text-zinc-600 md:text-xl">
-                    Never stress about course planning again.
-                  </p>
-                  <p className="max-w-[600px] text-zinc-600 md:text-xl">
-                    stu helps you create the class schedule that fits your degree requirements and life commitments.
-                  </p>
+                    </h1>
+                    <br />
+                    {/* Description */}
+                    <p className="max-w-[600px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Never stress about course planning again.
+                    </p>
+                    <p className="max-w-[1400px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      stu helps you create the class schedule and graduation roadmap that fits your degree requirements and life commitments.
+                    </p>
+                  </div>
+
+                  {/* CTA Button */}
+                  <div className="flex flex-col gap-2 min-[400px]:flex-row mt-4">
+                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-semibold px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                      <Link href="#cta" className="flex items-center">
+                        Try{" "}
+                        <Image
+                          src="/stu_icon_black.png"
+                          alt="stu. logo"
+                          width={24}
+                          height={24}
+                          className="rounded-50 -mb-2 pb-3 m-1 ml-2 mr-2"
+                          priority
+                        />{" "}
+                        Today
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                    <Link href="#cta" className="flex items-center">
-                      Try{" "}
-                      <Image
-                        src="/stu_icon_black.png"
-                        alt="stu. logo"
-                        width={24}
-                        height={24}
-                        className="rounded-50 -mb-2 pb-3 m-1 ml-2 mr-2"
-                        priority
-                      />{" "}
-                      Today
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-center">
-                <div className="relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden bg-gradient-to-br from-mint-300/20 to-mint-200/10">
-                  {/* Placeholder for hero image */}
+
+                {/* Hero Image placeholder */}
+                <div className="flex items-center justify-center">
+                  <div className="relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden bg-gradient-to-br from-mint-300/20 to-mint-200/10">
+                    {/* Placeholder for future image */}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
         {/* Features Section */}
         <section
@@ -219,40 +218,53 @@ export default function StudentPage() {
                   {
                     title: "Smart Course Suggestions",
                     description:
-                      "Get personalized course recommendations based on your degree requirements and prerequisites.",
+                      "Get tailored course recommendations based on your degree plan, completed credits, and personal preferences.",
                   },
                   {
-                    title: "4-Year Planning",
+                    title: "Automated Graduation Mapping",
                     description:
-                      "Map out your entire degree journey and adjust as needed with our flexible planning tools.",
+                      "Plan your full academic path with a dynamic roadmap that adjusts automatically as you go.",
                   },
                   {
                     title: "Prerequisite Tracking",
                     description:
-                      "Never miss a prerequisite with automatic requirement checking and course sequencing.",
+                      "Automatically monitor prerequisite chains and course sequencing—stu flags gaps before they become problems.",
                   },
                   {
                     title: "Schedule Optimization",
                     description:
-                      "Find the perfect balance between required courses and your preferred schedule.",
+                      "Input your work and personal commitments—stu builds the optimal schedule without compromising your progress.",
                   },
                   {
                     title: "Progress Tracking",
                     description:
-                      "Stay on top of your degree progress with real-time tracking and milestone updates.",
+                      "Stay on track with real-time updates—stu dynamically adjusts your roadmap as requirements shift and courses are completed.",
                   },
                   {
                     title: "Mobile Friendly",
                     description:
-                      "Access your schedule and make changes anywhere, anytime from any device.",
+                      "Access your schedule, graduation plan and account info anywhere, anytime from any device.",
                   },
                 ].map((feature, i) => (
                   <div
                     key={i}
                     className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                      <CheckCircle className="h-6 w-6" />
+                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                      <Image
+                        src={`/icons/${[
+                          "icons8-course-assign-50.png",
+                          "stu_icon_black.png", // for graduation mapping
+                          "icons8-tracking-48.png",
+                          "icons8-schedule-48.png",
+                          "icons8-in-progress-60.png",
+                          "icons8-iphone-50.png"
+                        ][i]}`}
+                        alt={feature.title}
+                        width={32}
+                        height={32}
+                        className="object-contain"
+                      />
                     </div>
                     <h3 className="text-xl font-bold">{feature.title}</h3>
                     <p className="text-zinc-600">{feature.description}</p>
@@ -301,7 +313,7 @@ export default function StudentPage() {
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
                   Ready to Simplify Your Academic Journey?
                 </h2>
-                <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
+               <p className="text-zinc-600 text-center whitespace-normal md:whitespace-nowrap">
                   Join students across the country who are already using stu to plan their perfect semester.
                 </p>
               </div>
@@ -317,25 +329,6 @@ export default function StudentPage() {
                     Privacy Policy
                   </Link>
                 </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Minors Section */}
-        <section className="py-20 bg-white flex flex-col items-center justify-center text-center">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
-              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {minors.map((minor) => (
-                  <div
-                    key={minor.id}
-                    className="group flex flex-col items-center gap-2 rounded-lg gradient-border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
-                  >
-                    <h3 className="text-xl font-bold">{minor.name}</h3>
-                    <p className="text-zinc-600">{minor.description}</p>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
