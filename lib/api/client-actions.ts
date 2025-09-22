@@ -192,7 +192,7 @@ export async function GetActiveGradPlan(profile_id: string) {
 
 // Client-safe wrapper for the AI course organization functionality
 // This calls the secure server action that handles OpenAI API and user authentication
-export async function OrganizeCoursesIntoSemesters(coursesData: unknown): Promise<{ success: boolean; message: string; semesterPlan?: unknown }> {
+export async function OrganizeCoursesIntoSemesters(coursesData: unknown): Promise<{ success: boolean; message: string; semesterPlan?: unknown; accessId?: string }> {
   console.log('🔍 Client wrapper: OrganizeCoursesIntoSemesters called with:', coursesData);
   
   try {

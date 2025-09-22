@@ -43,6 +43,7 @@ const iconMap: Record<NavItem["icon"], JSX.Element> = {
   meet: <EventAvailableRounded />,
   profile: <PersonRounded />,
   advisees: <GroupsRounded />,
+  advisors: <GroupsRounded />,
   appointments: <EventAvailableRounded />,
   reports: <BarChartRounded />,
   users: <PeopleAltRounded />,
