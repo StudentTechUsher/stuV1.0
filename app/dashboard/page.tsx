@@ -65,19 +65,38 @@ export default async function DashboardPage() {
     console.error("profiles fetch error:", profileErr.message);
   }
 
+  // Fetch student data for academic summary
+  const { data: studentData, error: studentErr } = await supabase
+    .from("student")
+    .select("year_in_school")
+    .eq("profile_id", userId)
+    .maybeSingle();
+
+  if (studentErr) {
+    console.error("student data fetch error:", studentErr.message);
+  }
+
   const role: Role = (profile?.role_id && ROLE_MAP[profile.role_id]) ?? "student";
 
   return (
     <Box sx={{ p: 2 }}>
-      <RoleView role={role} userId={userId} />
+      <RoleView role={role} userId={userId} studentData={studentData} />
     </Box>
   );
 }
 
-function RoleView({ role, userId }: Readonly<{ role: Role; userId: string }>) {
+function RoleView({ 
+  role, 
+  userId, 
+  studentData 
+}: Readonly<{ 
+  role: Role; 
+  userId: string; 
+  studentData: { year_in_school: string } | null; 
+}>) {
   switch (role) {
     case "student":
-      return <StudentDashboard userId={userId} />;
+      return <StudentDashboard userId={userId} studentData={studentData} />;
     case "advisor":
       return <AdvisorDashboard />;
     case "admin":
@@ -87,11 +106,17 @@ function RoleView({ role, userId }: Readonly<{ role: Role; userId: string }>) {
   }
 }
 
-function StudentDashboard({ userId }: Readonly<{ userId: string }>) {
+function StudentDashboard({ 
+  userId, 
+  studentData 
+}: Readonly<{ 
+  userId: string; 
+  studentData: { year_in_school: string } | null; 
+}>) {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
       <Suspense fallback={<AcademicSummarySkeleton />}>
-        <AcademicSummary />
+        <AcademicSummary yearInSchool={studentData?.year_in_school} />
       </Suspense>
       <Suspense fallback={<CalendarSkeleton />}>
         <CalendarPanel userId={userId} />

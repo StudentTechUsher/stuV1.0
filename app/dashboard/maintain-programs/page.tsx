@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { getSessionUser } from '@/lib/api/auth';
 import { getUserUniversityId } from '@/lib/api/profile';
 import type { ProgramRow } from '@/types/program';
@@ -13,6 +14,7 @@ export default function MaintainProgramsPage() {
   const [rows, setRows] = React.useState<ProgramRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [universityId, setUniversityId] = React.useState<number>(0);
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [editingRow, setEditingRow] = React.useState<ProgramRow | null>(null);
@@ -30,6 +32,7 @@ export default function MaintainProgramsPage() {
         const programs = await fetchProgramsByUniversity(universityId);
 
         if (!active) return;
+        setUniversityId(universityId);
         setRows(programs);
       } catch (e: unknown) {
         if (!active) return;
@@ -53,20 +56,30 @@ export default function MaintainProgramsPage() {
     setEditOpen(true);
   };
 
+  const handleAdd = () => {
+    setEditingRow(null); // null indicates creating a new program
+    setEditOpen(true);
+  };
+
   const handleCloseEdit = () => {
     setEditOpen(false);
     setEditingRow(null);
   };
 
   // matches EditRequirementsDialog onSave signature (updatedProgram)
-  const handleSaveEdit = async (updatedProgram: ProgramRow) => {
+  const handleSaveEdit = async (savedProgram: ProgramRow) => {
     try {
-      // Update the local state with the updated program
-      setRows(prevRows => 
-        prevRows.map(row => 
-          row.id === updatedProgram.id ? updatedProgram : row
-        )
-      );
+      if (editingRow) {
+        // Updating existing program
+        setRows(prevRows => 
+          prevRows.map(row => 
+            row.id === savedProgram.id ? savedProgram : row
+          )
+        );
+      } else {
+        // Adding new program
+        setRows(prevRows => [savedProgram, ...prevRows]);
+      }
       
       // Clear any existing error
       setError(null);
@@ -74,7 +87,7 @@ export default function MaintainProgramsPage() {
       if (e instanceof Error) {
         setError(e.message);
       } else {
-        setError('Failed to update program');
+        setError('Failed to save program');
       }
     }
   };
@@ -99,23 +112,58 @@ export default function MaintainProgramsPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>Maintain Programs</Typography>
+      {/* Header with Add Program button */}
+      <Box sx={{ 
+        mb: 3, 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        width: '100%'
+      }}>
+        <Typography variant="h5" sx={{ fontWeight: 600 }}>
+          Maintain Programs
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleAdd}
+          sx={{
+            backgroundColor: '#12F987',
+            color: '#0A0A0A',
+            fontWeight: 600,
+            px: 3,
+            py: 1,
+            '&:hover': {
+              backgroundColor: '#0ed676'
+            }
+          }}
+        >
+          Add Program
+        </Button>
+      </Box>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} /> Loading…
-        </Box>
-      ) : error ? (
-        <Alert severity="error">{error}</Alert>
-      ) : (
-        <ProgramsTable rows={rows} onEdit={handleOpenEdit} onDelete={handleDeleteProgram} />
-      )}
+      {(() => {
+        if (loading) {
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} /> Loading…
+            </Box>
+          );
+        } else if (error) {
+          return <Alert severity="error">{error}</Alert>;
+        } else {
+          return (
+            <ProgramsTable rows={rows} onEdit={handleOpenEdit} onDelete={handleDeleteProgram} />
+          );
+        }
+      })()}
 
       <EditRequirementsDialog
         open={editOpen}
         row={editingRow}
         onClose={handleCloseEdit}
         onSave={handleSaveEdit}
+        university_id={universityId}
       />
     </Box>
   );
