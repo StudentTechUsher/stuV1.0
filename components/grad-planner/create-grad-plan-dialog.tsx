@@ -137,14 +137,12 @@ export default function CreateGradPlanDialog({
 
   const parseRequirementsFromGenEd = useCallback((): RichRequirement[] => {
     if (!genEdData || !Array.isArray(genEdData) || genEdData.length === 0) {
-      console.log('❌ No genEdData available or not an array');
       return [];
     }
     const all: RichRequirement[] = [];
 
     genEdData.forEach((program, index) => {
       if (!program || !program.requirements) {
-        console.log(`❌ No requirements in program ${index}`);
         return;
       }
       try {
@@ -180,13 +178,12 @@ export default function CreateGradPlanDialog({
     const all: ProgramRequirement[] = [];
 
     // Only process programs that are actually selected
-    programsData.forEach((program, index) => {
+    programsData.forEach((program) => {
       if (!program || !selectedProgramIds.has(program.id)) {
         return; // Skip programs that aren't selected
       }
       
       if (!program.requirements) {
-        console.log(`❌ No requirements in program ${index} (${program.name})`);
         return;
       }
       try {
@@ -196,13 +193,7 @@ export default function CreateGradPlanDialog({
 
         // Look for programRequirements array
         if (Array.isArray(req?.programRequirements)) {
-          console.log(`📋 Processing ${req.programRequirements.length} requirements for program: ${program.name}`);
-          req.programRequirements.forEach((progReq: unknown, reqIndex: number) => {
-            console.log(`📋 Processing programRequirement ${reqIndex} for ${program.name}:`, progReq);
-          });
           all.push(...req.programRequirements);
-        } else {
-          console.log(`❌ No programRequirements array found in requirements for ${program.name}`);
         }
       } catch (e) {
         console.error(`❌ Error parsing program requirements for ${program.name}:`, e);
@@ -226,12 +217,10 @@ export default function CreateGradPlanDialog({
       if (courses.length > 0) {
         const avgCredits = courses.reduce((sum, course) => sum + (course.credits || 3), 0) / courses.length;
         const calculatedCount = Math.ceil(totalCredits / avgCredits);
-        console.log(`📊 Credit-based requirement: ${totalCredits} credits ÷ ${avgCredits.toFixed(1)} avg credits = ${calculatedCount} courses`);
         return calculatedCount;
       } else {
         // Fallback: assume 3 credits per course if no courses available
         const calculatedCount = Math.ceil(totalCredits / 3);
-        console.log(`📊 Credit-based requirement (fallback): ${totalCredits} credits ÷ 3 credits = ${calculatedCount} courses`);
         return calculatedCount;
       }
     }
@@ -240,12 +229,10 @@ export default function CreateGradPlanDialog({
     const courseMatch = /Complete (\d+)(?:\s+(?:of\s+\d+\s+)?(?:courses?|classes?))?/i.exec(description);
     if (courseMatch) {
       const courseCount = parseInt(courseMatch[1], 10);
-      console.log(`📚 Course-based requirement: ${courseCount} courses`);
       return courseCount;
     }
     
     // Default fallback
-    console.log(`❓ Unknown requirement pattern: "${description}", defaulting to 1 course`);
     return 1;
   }, []);
 
@@ -415,14 +402,11 @@ export default function CreateGradPlanDialog({
     if (!open) return;
 
     const timer = setTimeout(() => {
-      console.log("🚀 Auto-populating general requirements on dialog open");
-      
       // Auto-populate general requirements
       requirements.forEach(req => {
         const dropdownCount = getDropdownCount(req);
         const courses = requirementCoursesMap[req.subtitle] || [];
         if (courses.length > 0 && courses.length === dropdownCount) {
-          console.log(`🎯 Auto-populating general requirement: ${req.subtitle}`);
           setSelectedCourses(prev => {
             const existing = prev[req.subtitle] ?? [];
             const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
@@ -434,7 +418,6 @@ export default function CreateGradPlanDialog({
               courses.forEach((course, index) => {
                 if (index < dropdownCount && (!next[index] || next[index].trim() === '')) {
                   next[index] = course.code;
-                  console.log(`🔧 Auto-select general: ${course.code}`);
                 }
               });
               return { ...prev, [req.subtitle]: next };
@@ -453,8 +436,6 @@ export default function CreateGradPlanDialog({
     if (!open || selectedPrograms.size === 0) return;
 
     const timer = setTimeout(() => {
-      console.log(`🚀 Auto-populating program requirements for ${selectedPrograms.size} selected programs`);
-      
       Array.from(selectedPrograms).forEach(programId => {
         programRequirements.forEach(req => {
           if (req.courses) {
@@ -463,7 +444,6 @@ export default function CreateGradPlanDialog({
             const validCourses = getValidCourses(req);
             
             if (shouldAutoSelect(req, false)) {
-              console.log(`🎯 Auto-populating program requirement: ${requirementKey} (${validCourses.length} courses for ${dropdownCount} dropdowns)`);
               setSelectedProgramCourses(prev => {
                 const existing = prev[requirementKey] ?? [];
                 const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
@@ -475,7 +455,6 @@ export default function CreateGradPlanDialog({
                   for (let i = 0; i < dropdownCount && i < validCourses.length; i++) {
                     if (!next[i] || next[i].trim() === '') {
                       next[i] = validCourses[i].code;
-                      console.log(`🔧 Auto-select program: ${validCourses[i].code} for slot ${i}`);
                     }
                   }
                   return { ...prev, [requirementKey]: next };
@@ -490,19 +469,6 @@ export default function CreateGradPlanDialog({
 
     return () => clearTimeout(timer);
   }, [open, selectedPrograms, programRequirements, getProgramDropdownCount, shouldAutoSelect, getValidCourses, getRequirementKey]);
-
-  // Debug effect to track data availability
-  useEffect(() => {
-    console.log("📊 Data status update:", {
-      open,
-      selectedProgramsCount: selectedPrograms.size,
-      requirementsCount: requirements.length,
-      programRequirementsCount: programRequirements.length,
-      requirementCoursesMapKeys: Object.keys(requirementCoursesMap),
-      programsDataAvailable: programsData?.length || 0,
-      genEdDataAvailable: genEdData?.length || 0
-    });
-  }, [open, selectedPrograms.size, requirements.length, programRequirements.length, requirementCoursesMap, programsData?.length, genEdData?.length]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -734,12 +700,7 @@ export default function CreateGradPlanDialog({
         return;
       }
       
-      console.log('🤖 AI organized semester plan:', aiResult.semesterPlan);
-      console.log('🔑 Generated accessId:', aiResult.accessId);
-      
       if (aiResult.success && aiResult.accessId) {
-        console.log('Graduation plan created successfully with accessId:', aiResult.accessId);
-        
         // Call the onPlanCreated callback with the AI-generated plan
         if (onPlanCreated && aiResult.semesterPlan) {
           // Convert selected program IDs from strings to numbers
@@ -1132,7 +1093,6 @@ export default function CreateGradPlanDialog({
                                           }
                                           disabled={isAutoSelected}
                                           onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
-                                          onOpen={() => console.log(`🔍 Dropdown ${slot} value:`, selectedProgramCourses[key]?.[slot], 'Full state:', selectedProgramCourses[key])}
                                         >
                                           <MenuItem value=""><em>Select a course</em></MenuItem>
                                           {validCourses.map((course) => (

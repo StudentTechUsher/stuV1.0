@@ -35,9 +35,6 @@ export default async function GradPlanPage() {
   const programsData = userProfile.university_id ? await GetProgramsForUniversity(userProfile.university_id) : [];
   const genEdData = userProfile.university_id ? await GetGenEdsForUniversity(userProfile.university_id) : [];
 
-  // Log status for debugging (remove in production)
-  console.log(`📋 Grad Plan Page - User: ${user.id}, Profile: ${userProfile.id}, Plans: ${allGradPlans.length}, Active: ${activeGradPlan ? 'Found' : 'None'}`);
-
   return (
     <GradPlanClient 
       user={user}
