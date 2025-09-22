@@ -28,9 +28,9 @@ export default async function HomePage() {
     }
   );
 
-  // 1) Get session/user
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user.id;
+  // 1) Get user securely
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const userId = userError || !user ? null : user.id;
 
   // 2) Query profiles for role_id (RLS lets users read only their own row)
   let roleId: number | null = null;

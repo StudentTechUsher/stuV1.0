@@ -40,22 +40,6 @@ export type NavItem = {
   icon: IconKey;
 };
 
-// --- helper: decode JWT payload on the server ---
-function decodeJwtPayload(token?: string): Record<string, unknown> | null {
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    // base64url -> base64 and pad
-    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=");
-    const json = Buffer.from(padded, "base64").toString("utf8");
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
 export default async function DashboardLayout({ children }: Readonly<{ children: ReactNode }>) {
   // ---- Supabase server client (reads cookies; no writes in RSC) ----
   const cookieStore = await cookies();
@@ -70,9 +54,9 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     }
   );
 
-  // 1) Get session/user
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user.id;
+  // 1) Get user securely
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const userId = userError || !user ? null : user.id;
 
   // 2) Query profiles for role_id (RLS lets users read only their own row)
   let roleId: string | null = null;
@@ -109,6 +93,7 @@ function getNavItems(role: Role): NavItem[] {
         { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
         { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
+        { href: "/dashboard/pathfinder",         segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
         { href: "/dashboard/meet-with-advisor",  segment: "calendar",           label: "Meet with Advisor",    icon: "meet" },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",              icon: "profile" },
       ];

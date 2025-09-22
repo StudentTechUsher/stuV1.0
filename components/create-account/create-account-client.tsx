@@ -25,6 +25,9 @@ export default function CreateAccountClient({
   nextHref: string;
   isEditMode?: boolean;
   initial?: {
+    fname?: string;
+    lname?: string;
+    email?: string;
     university_id: number | null;
     selected_majors: number[] | null;
     selected_minors: number[] | null;
