@@ -163,8 +163,6 @@ export default function LandingPage() {
         </div>
         </section>
 
-        {/* Features Section */}
-      import Image from "next/image";
 
           {/* Features Section */}
           <section id="features" className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center">
