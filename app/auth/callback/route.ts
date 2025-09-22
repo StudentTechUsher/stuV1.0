@@ -4,24 +4,25 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+  const url = new URL(req.url);
+  const { searchParams } = url;
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
 
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? 'https://stuplanning.com'
-    : 'http://localhost:3000';
+  // Use request origin instead of NODE_ENV for reliable environment detection
+  const origin = `${url.protocol}//${url.host}`;
 
   // Debug logging to see what's happening
   console.log('Auth callback debug:', {
-    nodeEnv: process.env.NODE_ENV,
-    baseUrl,
+    origin,
+    host: url.host,
+    protocol: url.protocol,
     next,
     originalUrl: req.url
   });
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=missing_code", baseUrl));
+    return NextResponse.redirect(new URL("/login?error=missing_code", origin));
   }
 
   const cookieStore = await cookies();
@@ -46,13 +47,13 @@ export async function GET(req: Request) {
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) {
     console.error('Exchange error:', exchangeError);
-    return NextResponse.redirect(new URL("/login?error=exchange_failed", baseUrl));
+    return NextResponse.redirect(new URL("/login?error=exchange_failed", origin));
   }
 
   // Get user and check onboarding status
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(new URL("/login", baseUrl));
+    return NextResponse.redirect(new URL("/login", origin));
   }
 
   const { data: profile } = await supabase
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
   const dest = profile?.onboarded ? next : "/create-account";
   
   // Debug the final redirect
-  const finalUrl = new URL(dest, baseUrl);
+  const finalUrl = new URL(dest, origin);
   console.log('Final redirect URL:', finalUrl.toString());
   
   return NextResponse.redirect(finalUrl);

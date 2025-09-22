@@ -19,9 +19,11 @@ export default function CreateAccountClient({
   preload,
   nextHref,
   initial, // optional
+  isEditMode = false,
 }: Readonly<{
   preload: Preload;
   nextHref: string;
+  isEditMode?: boolean;
   initial?: {
     university_id: number | null;
     selected_majors: number[] | null;
@@ -56,6 +58,7 @@ export default function CreateAccountClient({
       nextHref={nextHref}
       preload={preload}
       initial={initial}
+      isEditMode={isEditMode}
     />
   );
 }

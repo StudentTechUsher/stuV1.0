@@ -107,7 +107,7 @@ interface CreateGradPlanDialogProps {
   onClose: () => void;
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
-  onPlanCreated?: (aiGeneratedPlan: Term[]) => void;
+  onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], planId?: string) => void;
 }
 
 export default function CreateGradPlanDialog({
@@ -127,6 +127,11 @@ export default function CreateGradPlanDialog({
   // State: plan creation
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
+  // State: dynamic loading message
+  const [loadingMessage, setLoadingMessage] = useState({
+    title: 'Creating Your Graduation Plan',
+    subtitle: 'AI is organizing your courses into semesters...'
+  });
 
   // ---- Helpers ----
 
@@ -405,86 +410,86 @@ export default function CreateGradPlanDialog({
     });
   }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, getProgramDropdownCount, getDropdownCount, selectedPrograms, getRequirementKey]);
 
-  // Dedicated auto-population effect that runs when dialog opens or programs change
+  // Auto-population effect for general requirements (runs once when dialog opens)
   useEffect(() => {
     if (!open) return;
 
-    console.log("🚀 Triggering auto-population check - open:", open, "selected programs:", selectedPrograms.size);
-    
-    // Auto-populate general requirements
-    requirements.forEach(req => {
-      const dropdownCount = getDropdownCount(req);
-      const courses = requirementCoursesMap[req.subtitle] || [];
-      if (courses.length > 0 && courses.length === dropdownCount) {
-        console.log(`🎯 Auto-populating on trigger: ${req.subtitle}`);
-        setSelectedCourses(prev => {
-          const existing = prev[req.subtitle] ?? [];
-          const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
-          
-          if (hasEmptySlots) {
-            const next = [...existing];
-            while (next.length < dropdownCount) next.push('');
+    const timer = setTimeout(() => {
+      console.log("🚀 Auto-populating general requirements on dialog open");
+      
+      // Auto-populate general requirements
+      requirements.forEach(req => {
+        const dropdownCount = getDropdownCount(req);
+        const courses = requirementCoursesMap[req.subtitle] || [];
+        if (courses.length > 0 && courses.length === dropdownCount) {
+          console.log(`🎯 Auto-populating general requirement: ${req.subtitle}`);
+          setSelectedCourses(prev => {
+            const existing = prev[req.subtitle] ?? [];
+            const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
             
-            courses.forEach((course, index) => {
-              if (index < dropdownCount && (!next[index] || next[index].trim() === '')) {
-                next[index] = course.code;
-                console.log(`🔧 Auto-select general: ${course.code}`);
-              }
-            });
-            return { ...prev, [req.subtitle]: next };
-          }
-          return prev;
-        });
-      }
-    });
+            if (hasEmptySlots) {
+              const next = [...existing];
+              while (next.length < dropdownCount) next.push('');
+              
+              courses.forEach((course, index) => {
+                if (index < dropdownCount && (!next[index] || next[index].trim() === '')) {
+                  next[index] = course.code;
+                  console.log(`🔧 Auto-select general: ${course.code}`);
+                }
+              });
+              return { ...prev, [req.subtitle]: next };
+            }
+            return prev;
+          });
+        }
+      });
+    }, 500); // 500ms delay
 
-    // Auto-populate program requirements (only if programs are selected)
-    if (selectedPrograms.size > 0) {
-      console.log(`🎯 Auto-populating for ${selectedPrograms.size} selected programs`);
+    return () => clearTimeout(timer);
+  }, [open, requirements, requirementCoursesMap, getDropdownCount]);
+
+  // Auto-population effect for program requirements (runs when programs are selected/changed)
+  useEffect(() => {
+    if (!open || selectedPrograms.size === 0) return;
+
+    const timer = setTimeout(() => {
+      console.log(`🚀 Auto-populating program requirements for ${selectedPrograms.size} selected programs`);
+      
       Array.from(selectedPrograms).forEach(programId => {
         programRequirements.forEach(req => {
-        if (req.courses) {
-          const dropdownCount = getProgramDropdownCount(req);
-          const requirementKey = getRequirementKey(programId, req);
-          const validCourses = getValidCourses(req);
-          
-          if (shouldAutoSelect(req, false)) {
-            console.log(`🎯 Auto-populating program requirement: ${requirementKey} (${validCourses.length} courses for ${dropdownCount} dropdowns)`);
-            setSelectedProgramCourses(prev => {
-              const existing = prev[requirementKey] ?? [];
-              const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
-              
-              if (hasEmptySlots) {
-                const next = [...existing];
-                while (next.length < dropdownCount) next.push('');
+          if (req.courses) {
+            const dropdownCount = getProgramDropdownCount(req);
+            const requirementKey = getRequirementKey(programId, req);
+            const validCourses = getValidCourses(req);
+            
+            if (shouldAutoSelect(req, false)) {
+              console.log(`🎯 Auto-populating program requirement: ${requirementKey} (${validCourses.length} courses for ${dropdownCount} dropdowns)`);
+              setSelectedProgramCourses(prev => {
+                const existing = prev[requirementKey] ?? [];
+                const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
                 
-                for (let i = 0; i < dropdownCount && i < validCourses.length; i++) {
-                  if (!next[i] || next[i].trim() === '') {
-                    next[i] = validCourses[i].code;
-                    console.log(`🔧 Auto-select program: ${validCourses[i].code} for slot ${i}`);
+                if (hasEmptySlots) {
+                  const next = [...existing];
+                  while (next.length < dropdownCount) next.push('');
+                  
+                  for (let i = 0; i < dropdownCount && i < validCourses.length; i++) {
+                    if (!next[i] || next[i].trim() === '') {
+                      next[i] = validCourses[i].code;
+                      console.log(`🔧 Auto-select program: ${validCourses[i].code} for slot ${i}`);
+                    }
                   }
+                  return { ...prev, [requirementKey]: next };
                 }
-                return { ...prev, [requirementKey]: next };
-              }
-              return prev;
-            });
-          }
-        }          // Handle sub-requirements - only initialize slots, no auto-population
-          if (req.subRequirements) {
-            req.subRequirements.forEach(subReq => {
-              const dropdownCount = getProgramDropdownCount(subReq);
-              const subReqKey = getRequirementKey(programId, subReq, true);
-              
-              // Only ensure slots exist, no auto-population for sub-requirements
-              console.log(`📝 Initializing sub-requirement slots: ${subReqKey} (${dropdownCount} dropdowns, no auto-selection)`);
-            });
+                return prev;
+              });
+            }
           }
         });
       });
-    } else {
-      console.log("⏳ No programs selected yet, skipping program auto-population");
-    }
-  }, [open, requirements, programRequirements, selectedPrograms, requirementCoursesMap, getDropdownCount, getProgramDropdownCount, shouldAutoSelect, getValidCourses, getRequirementKey, getFlattenedRequirements]);
+    }, 300); // 300ms delay for program selection changes
+
+    return () => clearTimeout(timer);
+  }, [open, selectedPrograms, programRequirements, getProgramDropdownCount, shouldAutoSelect, getValidCourses, getRequirementKey]);
 
   // Debug effect to track data availability
   useEffect(() => {
@@ -671,13 +676,11 @@ export default function CreateGradPlanDialog({
       };
 
       programRequirements.forEach(req => {
-        console.log(`🔍 Processing requirement ${req.requirementId} for program ${program.name}:`, req);
         
         // Main requirement courses
         if (req.courses && req.courses.length > 0) {
           const selected = selectedProgramCourses[`${programId}-req-${req.requirementId}`] || [];
           const filteredSelected = selected.filter(course => course && course.trim() !== '');
-          console.log(`📚 Selected courses for ${programId}-req-${req.requirementId}:`, filteredSelected);
           
           if (filteredSelected.length > 0) {
             selectedClasses.programs[programId].requirements[`requirement-${req.requirementId}`] = {
@@ -694,7 +697,6 @@ export default function CreateGradPlanDialog({
           req.subRequirements.forEach(subReq => {
             const selected = selectedProgramCourses[`${programId}-subreq-${subReq.requirementId}`] || [];
             const filteredSelected = selected.filter(course => course && course.trim() !== '');
-            console.log(`📚 Selected sub-courses for ${programId}-subreq-${subReq.requirementId}:`, filteredSelected);
             
             if (filteredSelected.length > 0) {
               selectedClasses.programs[programId].requirements[`subrequirement-${subReq.requirementId}`] = {
@@ -708,8 +710,6 @@ export default function CreateGradPlanDialog({
         }
       });
     });
-
-    console.log('🔍 selectedProgramCourses state:', selectedProgramCourses);
     
     return selectedClasses;
   }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap]);
@@ -750,8 +750,10 @@ export default function CreateGradPlanDialog({
         
         // Call the onPlanCreated callback with the AI-generated plan
         if (onPlanCreated && aiResult.semesterPlan) {
+          // Convert selected program IDs from strings to numbers
+          const programIds = Array.from(selectedPrograms).map(id => parseInt(id, 10));
           // Type assertion since we know the AI should return Term[] structure
-          onPlanCreated(aiResult.semesterPlan as Term[]);
+          onPlanCreated(aiResult.semesterPlan as Term[], programIds, result.planId);
         }
         
         // Close dialog on success
@@ -767,68 +769,140 @@ export default function CreateGradPlanDialog({
     }
   };
 
+  // Handle dialog close - prevent closing during plan creation
+  const handleDialogClose = (event: object, reason: 'backdropClick' | 'escapeKeyDown') => {
+    if (isCreatingPlan && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+      // Prevent closing during AI processing
+      return;
+    }
+    onClose();
+  };
+
+  // Handle manual close button
+  const handleManualClose = () => {
+    if (isCreatingPlan) {
+      // Show a warning or just prevent closing
+      return;
+    }
+    onClose();
+  };
+
+  // Add beforeunload event listener to warn about page refresh during processing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isCreatingPlan) {
+        e.preventDefault();
+        e.returnValue = 'Your graduation plan is being created. Are you sure you want to leave?';
+        return 'Your graduation plan is being created. Are you sure you want to leave?';
+      }
+    };
+
+    if (isCreatingPlan) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isCreatingPlan]);
+
+  // Dynamic loading message cycling effect
+  useEffect(() => {
+    if (!isCreatingPlan) {
+      // Reset to initial message when not creating
+      setLoadingMessage({
+        title: 'Creating Your Graduation Plan',
+        subtitle: 'AI is organizing your courses into semesters...'
+      });
+      return;
+    }
+
+    const messages = [
+      {
+        title: 'Creating Your Graduation Plan',
+        subtitle: 'AI is organizing your courses into semesters...'
+      },
+      {
+        title: 'Analyzing Course Requirements',
+        subtitle: 'Verifying prerequisites and sequencing...'
+      },
+      {
+        title: 'Optimizing Course Load',
+        subtitle: 'Balancing credits across semesters...'
+      },
+      {
+        title: 'Verifying Output Structure',
+        subtitle: 'Ensuring plan meets all requirements...'
+      },
+      {
+        title: 'Finalizing Details',
+        subtitle: 'Adding checkpoints and graduation timeline...'
+      }
+    ];
+
+    let currentIndex = 0;
+    setLoadingMessage(messages[currentIndex]);
+
+    const interval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % messages.length;
+      setLoadingMessage(messages[currentIndex]);
+    }, 35000); // 35 seconds
+
+    return () => clearInterval(interval);
+  }, [isCreatingPlan]);
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={handleDialogClose} 
+      maxWidth="sm" 
+      fullWidth
+      disableEscapeKeyDown={isCreatingPlan}
+    >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         Create New Grad Plan
-        <IconButton onClick={onClose} sx={{ color: 'text.secondary' }}>
+        <IconButton 
+          onClick={handleManualClose} 
+          sx={{ 
+            color: 'text.secondary',
+            opacity: isCreatingPlan ? 0.5 : 1,
+            cursor: isCreatingPlan ? 'not-allowed' : 'pointer'
+          }}
+          disabled={isCreatingPlan}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <DialogContent>
-        {/* Debug button to check state */}
         
-        <Button 
-          onClick={() => {
-            console.log("🔧 Manual auto-population trigger");
-            // Trigger auto-population for general requirements
-            requirements.forEach(req => {
-              const dropdownCount = getDropdownCount(req);
-              const courses = requirementCoursesMap[req.subtitle] || [];
-              if (courses.length > 0 && courses.length === dropdownCount) {
-                console.log(`🎯 Manual auto-populating: ${req.subtitle}`);
-                setSelectedCourses(prev => {
-                  const next = new Array(dropdownCount).fill('');
-                  courses.forEach((course, index) => {
-                    if (index < dropdownCount) {
-                      next[index] = course.code;
-                    }
-                  });
-                  return { ...prev, [req.subtitle]: next };
-                });
-              }
-            });
-            
-            // Trigger auto-population for program requirements
-            Array.from(selectedPrograms).forEach(programId => {
-              programRequirements.forEach(req => {
-                if (req.courses) {
-                  const dropdownCount = getProgramDropdownCount(req);
-                  const requirementKey = `${programId}-req-${req.requirementId}`;
-                  const courses = req.courses || [];
-                  
-                  if (courses.length > 0 && courses.length === dropdownCount) {
-                    console.log(`🎯 Manual auto-populating program: ${requirementKey}`);
-                    setSelectedProgramCourses(prev => {
-                      const next = new Array(dropdownCount).fill('');
-                      for (let i = 0; i < dropdownCount && i < courses.length; i++) {
-                        next[i] = courses[i].code;
-                      }
-                      return { ...prev, [requirementKey]: next };
-                    });
-                  }
-                }
-              });
-            });
-          }}
-          variant="contained" 
-          color="success"
-          size="small" 
-          sx={{ mb: 2 }}
-        >
-          Auto-Populate Eligible Fields
-        </Button>
+        {/* Loading overlay during AI processing */}
+        {isCreatingPlan && (
+          <Box sx={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            bgcolor: 'rgba(255, 255, 255, 0.8)', 
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              {loadingMessage.title}
+            </Typography>
+            <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary' }}>
+              {loadingMessage.subtitle}
+              <br />
+              This may take a moment. Please don&apos;t close this window.
+            </Typography>
+          </Box>
+        )}
         
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Available Programs */}
@@ -945,7 +1019,7 @@ export default function CreateGradPlanDialog({
                               {courses && Array.isArray(courses) ? courses
                                 .filter(c => c.status !== 'retired' && c.credits != null)
                                 .map((c) => (
-                                <MenuItem key={`${req.subtitle}-slot-${slot}-${c.code}`} value={c.code}>
+                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code}>
                                   {c.code} — {c.title} ({creditText(c.credits)})
                                 </MenuItem>
                               )) : null}
@@ -987,7 +1061,7 @@ export default function CreateGradPlanDialog({
                           const isAutoSelected = shouldAutoSelect(requirement, isSubRequirement);
 
                           return (
-                            <Box key={key} sx={{ py: 2, ...(isSubRequirement && { ml: 2 }) }}>
+                            <Box key={`${key}-${idx}`} sx={{ py: 2, ...(isSubRequirement && { ml: 2 }) }}>
                               <Typography 
                                 variant={isSubRequirement ? "body1" : "subtitle1"} 
                                 sx={{ 
@@ -1097,39 +1171,11 @@ export default function CreateGradPlanDialog({
           )}
         </Box>
 
-        {/* JSON Preview Section */}
+        {/* JSON Preview Section
         {areAllDropdownsFilled && generateSelectedClassesJson && (
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" color="success.main">
-                  ✅ All Requirements Complete - Selected Classes JSON Preview
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{ 
-                  bgcolor: 'background.paper', 
-                  p: 2, 
-                  borderRadius: 1, 
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  maxHeight: '400px',
-                  overflow: 'auto'
-                }}>
-                  <pre style={{ 
-                    margin: 0, 
-                    fontSize: '0.875rem', 
-                    fontFamily: 'monospace',
-                    whiteSpace: 'pre-wrap',
-                    wordWrap: 'break-word'
-                  }}>
-                    {JSON.stringify(generateSelectedClassesJson, null, 2)}
-                  </pre>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
+          <Box sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
           </Box>
-        )}
+        )} */}
       </DialogContent>
 
       {/* Error Display */}

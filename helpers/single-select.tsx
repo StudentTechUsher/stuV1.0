@@ -7,6 +7,7 @@ export default function SingleSelect({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }: Readonly<{
   label: string;
   helper?: string;
@@ -14,6 +15,7 @@ export default function SingleSelect({
   value: number | null;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   placeholder?: string;
+  disabled?: boolean;
 }>) {
   const id = `sel-${label.replace(/\s+/g, "-").toLowerCase()}`;
   const helperId = helper ? `${id}-help` : undefined;
@@ -33,13 +35,16 @@ export default function SingleSelect({
         aria-describedby={helperId}
         value={value == null ? "" : String(value)}
         onChange={onChange}
+        disabled={disabled}
         style={{
           width: "100%",
           height: 44,
           borderRadius: 8,
           border: "1px solid #e5e5e5",
           padding: "0 8px",
-          background: "white",
+          background: disabled ? "#f5f5f5" : "white",
+          color: disabled ? "#666" : "inherit",
+          cursor: disabled ? "not-allowed" : "pointer",
         }}
       >
         <option value="" disabled>
