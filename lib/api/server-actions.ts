@@ -10,7 +10,7 @@ import { encodeAccessId } from '@/lib/utils/access-id';
 // Secure server action that handles OpenAI API calls and user authentication
 export async function OrganizeCoursesIntoSemesters_ServerAction(
   coursesData: unknown,
-): Promise<{ success: boolean; message: string; semesterPlan?: unknown }> {
+): Promise<{ success: boolean; message: string; semesterPlan?: unknown; accessId?: string }> {
   const start = Date.now();
   const t = (label: string, since?: number) => {
     const now = Date.now();
@@ -136,7 +136,20 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     if (!resp.ok) {
       const errBody = await resp.text();
       console.error("❌ OpenAI HTTP error:", { status: resp.status, requestId: reqId, bodyPreview: trunc(errBody) });
-      throw new Error(`OpenAI error ${resp.status}`);
+      
+      // Provide more specific error messages based on status code
+      let errorMessage = `OpenAI API error (${resp.status})`;
+      if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
+        errorMessage = `OpenAI servers are temporarily unavailable (${resp.status}). Please try again in a few minutes.`;
+      } else if (resp.status === 429) {
+        errorMessage = `OpenAI API rate limit exceeded (${resp.status}). Please try again later.`;
+      } else if (resp.status === 401) {
+        errorMessage = `OpenAI API authentication failed (${resp.status}). Please check your API key.`;
+      } else if (resp.status >= 400 && resp.status < 500) {
+        errorMessage = `OpenAI API request error (${resp.status}). Please check your request.`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     type ResponsesApiResult = {
@@ -222,9 +235,21 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       console.error("⚠️ Exception storing AI response:", storageError);
     }
 
+    // Get the student_id (number) from the students table using the profile_id (UUID)
+    const { data: studentData, error: studentError } = await supabase
+      .from('student')
+      .select('id')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (studentError || !studentData?.id) {
+      console.error('Error fetching student_id from students table:', studentError);
+      throw new Error('Could not find student record');
+    }
+
     // Insert the AI response into the grad_plan table
     const { data: gradPlanData, error: gradPlanError } = await supabase.from("grad_plan").insert({
-      student_id: user.id, // Assuming user.id corresponds to the student_id
+      student_id: studentData.id,
       is_active: false,
       pending_edits: false,
       pending_approval: true,
@@ -232,13 +257,14 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       programs_in_plan: [] // Assuming no programs are associated initially
     }).select("id").single();
 
+    let accessId: string | undefined;
     if (gradPlanError) {
       console.error("⚠️ Error inserting into grad_plan table:", gradPlanError);
     } else {
       console.log("✅ AI response also stored in grad_plan table with ID:", gradPlanData.id);
 
       // Generate accessId for the new grad plan
-      const accessId = encodeAccessId(gradPlanData.id);
+      accessId = encodeAccessId(gradPlanData.id);
       console.log("🔑 Generated accessId:", accessId);
     }
 
@@ -247,6 +273,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       success: true,
       message: "Semester plan generated successfully!",
       semesterPlan,
+      accessId,
     };
   } catch (error) {
     console.error("🛑 Error generating semester plan:", error instanceof Error ? error.message : error, error);
@@ -335,6 +362,46 @@ export async function GetActiveGradPlan(profile_id: string) {
   
   console.log('✅ Active graduation plan found for student_id:', studentData.id);
   return data;
+}
+
+export async function GetAllGradPlans(profile_id: string) {
+  
+  // First, get the student record to get the numeric student_id
+  const { data: studentData, error: studentError } = await supabase
+    .from('student')
+    .select('id')
+    .eq('profile_id', profile_id)
+    .single();
+
+  if (studentError) {
+    // PGRST116 means no rows returned - this is normal for new users
+    if (studentError.code === 'PGRST116') {
+      console.log('ℹ️ No student record found for profile_id:', profile_id, '(new user)');
+      return [];
+    }
+    console.error('❌ Error fetching student record:', studentError);
+    return [];
+  }
+
+  if (!studentData) {
+    console.log('ℹ️ No student data returned for profile_id:', profile_id);
+    return [];
+  }
+
+  // Get all grad plans for this student, ordered by creation date (newest first)
+  const { data, error } = await supabase
+    .from('grad_plan')
+    .select('*')
+    .eq('student_id', studentData.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching all grad plans:', error);
+    return [];
+  }
+  
+  console.log(`✅ Found ${data?.length || 0} graduation plans for student_id:`, studentData.id);
+  return data || [];
 }
 
 export async function GetAiPrompt(prompt_name: string) {

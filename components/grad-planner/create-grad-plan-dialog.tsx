@@ -23,7 +23,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloseIcon from '@mui/icons-material/Close';
 import type { ProgramRow } from '@/types/program';
-import { createGraduationPlan, OrganizeCoursesIntoSemesters } from '@/lib/api/client-actions';
+import { OrganizeCoursesIntoSemesters } from '@/lib/api/client-actions';
 
 interface Term {
   term: string;
@@ -107,7 +107,7 @@ interface CreateGradPlanDialogProps {
   onClose: () => void;
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
-  onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], planId?: string) => void;
+  onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string) => void;
 }
 
 export default function CreateGradPlanDialog({
@@ -735,31 +735,23 @@ export default function CreateGradPlanDialog({
       }
       
       console.log('🤖 AI organized semester plan:', aiResult.semesterPlan);
+      console.log('🔑 Generated accessId:', aiResult.accessId);
       
-      // Step 2: Create the graduation plan with the AI-organized data
-      const planData = {
-        originalSelections: generateSelectedClassesJson,
-        aiOrganizedPlan: aiResult.semesterPlan,
-        timestamp: new Date().toISOString()
-      };
-      
-      const result = await createGraduationPlan(planData);
-      
-      if (result.success) {
-        console.log('Graduation plan created successfully:', result);
+      if (aiResult.success && aiResult.accessId) {
+        console.log('Graduation plan created successfully with accessId:', aiResult.accessId);
         
         // Call the onPlanCreated callback with the AI-generated plan
         if (onPlanCreated && aiResult.semesterPlan) {
           // Convert selected program IDs from strings to numbers
           const programIds = Array.from(selectedPrograms).map(id => parseInt(id, 10));
-          // Type assertion since we know the AI should return Term[] structure
-          onPlanCreated(aiResult.semesterPlan as Term[], programIds, result.planId);
+          // Use the accessId from the AI result
+          onPlanCreated(aiResult.semesterPlan as Term[], programIds, aiResult.accessId);
         }
         
         // Close dialog on success
         onClose();
       } else {
-        setPlanCreationError(result.message);
+        setPlanCreationError('Plan created but failed to generate access ID. Please try again.');
       }
     } catch (error) {
       console.error('Error creating graduation plan:', error);

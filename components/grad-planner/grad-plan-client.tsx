@@ -7,6 +7,10 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
 import { ProgramRow } from "@/types/program";
@@ -42,19 +46,27 @@ interface GradPlanClientProps {
     university_id: number;
     [key: string]: unknown;
   } | null;
-  gradPlanRecord: GradPlanRecord | null;
+  allGradPlans: GradPlanRecord[];
+  activeGradPlan: GradPlanRecord | null;
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
 }
 
-export default function GradPlanClient({ user, studentRecord, gradPlanRecord, programsData, genEdData }: Readonly<GradPlanClientProps>) {
+export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, programsData, genEdData }: Readonly<GradPlanClientProps>) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
     severity: 'success'
   });
+
+  const handleGradPlanSelection = (event: SelectChangeEvent<string>) => {
+    const selectedId = event.target.value;
+    const selectedPlan = allGradPlans.find(plan => plan.id === selectedId);
+    setSelectedGradPlan(selectedPlan || null);
+  };
 
   const handleCreatePlan = () => {
     setIsDialogOpen(true);
@@ -62,9 +74,9 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
 
   const handleEditPlan = async () => {
     // Always redirect to unified editing route
-    if (gradPlanRecord?.id) {
-      // gradPlanRecord is a database record with an id field
-      const planId = gradPlanRecord.id;
+    if (selectedGradPlan?.id) {
+      // selectedGradPlan is a database record with an id field
+      const planId = selectedGradPlan.id;
       const accessId = encodeAccessIdClient(planId);
       router.push(`/dashboard/grad-plan/${accessId}`);
     } else {
@@ -85,10 +97,10 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
     setIsDialogOpen(false);
   };
 
-  const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], planId?: string) => {
+  const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string) => {
     console.log('🎯 AI plan created, redirecting to unified editing view:', aiGeneratedPlan);
     console.log('📋 Selected program IDs:', programIds);
-    console.log('🆔 Plan ID:', planId);
+    console.log('🔑 Access ID:', accessId);
     
     // Close the create plan dialog
     setIsDialogOpen(false);
@@ -100,12 +112,11 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
       severity: 'success'
     });
 
-    // Redirect to the unified editing view using the plan ID
-    if (planId) {
-      const accessId = encodeAccessIdClient(planId);
+    // Redirect to the unified editing view using the accessId
+    if (accessId) {
       router.push(`/dashboard/grad-plan/${accessId}`);
     } else {
-      console.error('No plan ID returned from creation');
+      console.error('No access ID returned from creation');
       setNotification({
         open: true,
         message: 'Plan created but failed to redirect. Please refresh the page.',
@@ -141,8 +152,42 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
   return (
     <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {gradPlanRecord && (
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {allGradPlans.length > 1 && (
+            <FormControl sx={{ minWidth: 300 }}>
+              <InputLabel id="grad-plan-select-label">Select Graduation Plan</InputLabel>
+              <Select
+                labelId="grad-plan-select-label"
+                value={selectedGradPlan?.id || ''}
+                label="Select Graduation Plan"
+                onChange={handleGradPlanSelection}
+              >
+                {allGradPlans.map((plan) => {
+                  try {
+                    const createdAt = plan.created_at 
+                      ? new Date(plan.created_at as string).toLocaleString()
+                      : 'Unknown Date';
+                    return (
+                      <MenuItem key={plan.id} value={plan.id}>
+                        Plan made on {createdAt}
+                      </MenuItem>
+                    );
+                  } catch (error) {
+                    console.error('Error accessing plan data:', error);
+                    return (
+                      <MenuItem key={plan.id} value={plan.id}>
+                        Plan {plan.id.slice(0, 8)} - {plan.created_at 
+                          ? new Date(plan.created_at as string).toLocaleString()
+                          : 'Unknown Date'}
+                      </MenuItem>
+                    );
+                  }
+                })}
+              </Select>
+            </FormControl>
+          )}
+          
+          {selectedGradPlan && (
             <Button 
               variant="contained" 
               color="success"
@@ -159,7 +204,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
             </Button>
           )}
           
-          {gradPlanRecord && (
+          {selectedGradPlan && (
             <Button 
               variant="outlined"
               color="primary"
@@ -179,10 +224,10 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
         </Box>
       </Box>
       
-      {gradPlanRecord ? (
+      {selectedGradPlan ? (
         <Box>
           <GraduationPlanner 
-            plan={gradPlanRecord.plan_details as Record<string, unknown>} 
+            plan={selectedGradPlan.plan_details as Record<string, unknown>} 
             isEditMode={false}
           />
         </Box>
