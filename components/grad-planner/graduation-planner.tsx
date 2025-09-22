@@ -54,18 +54,15 @@ function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex
 
   // Update value when currentTerm changes (after course move)
   useEffect(() => {
-    console.log(`🔄 CourseMoveField [${courseUniqueId}] - currentTerm changed from ${value} to ${currentTerm}`);
     setValue(currentTerm);
   }, [currentTerm, courseUniqueId, value]);
 
   const handleChange = (event: SelectChangeEvent<number>) => {
     const newTermNumber = event.target.value as number;
-    console.log(`🎯 CourseMoveField [${courseUniqueId}] - handleChange: ${currentTerm} → ${newTermNumber}`);
     setValue(newTermNumber);
     
     // Immediately move the course when selection changes
     if (newTermNumber !== currentTerm && newTermNumber >= 1 && newTermNumber <= maxTerms) {
-      console.log(`📦 Moving course ${course.code} from term ${currentTerm} to term ${newTermNumber} (termIndex: ${termIndex}, courseIndex: ${courseIndex})`);
       onMoveCourse(termIndex, courseIndex, newTermNumber);
     }
   };
@@ -127,18 +124,8 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     
     const planRecord = plan as Record<string, unknown>;
     
-    console.log('🔍 GraduationPlanner planData analysis:', {
-      planType: typeof plan,
-      isArray: Array.isArray(plan),
-      hasplanDetails: Boolean(planRecord.plan_details),
-      hasPlanProperty: Boolean(planRecord.plan),
-      planStructure: Object.keys(planRecord),
-      rawPlan: plan
-    });
-    
     // Check if plan itself is an array of terms (direct plan_details passed)
     if (Array.isArray(plan)) {
-      console.log('📊 Using direct array structure, terms found:', plan.length);
       return plan;
     }
     
@@ -148,93 +135,50 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         planRecord.plan_details !== null) {
       const planDetails = planRecord.plan_details as Record<string, unknown>;
       if (Array.isArray(planDetails.plan)) {
-        console.log('📊 Using plan_details.plan structure, terms found:', planDetails.plan.length);
         return planDetails.plan as Term[];
       }
     }
     // Check if plan has a 'plan' property (nested structure) - AI RESPONSE FORMAT
     else if (Array.isArray(planRecord.plan)) {
-      console.log('📊 Using direct .plan structure (AI format), terms found:', planRecord.plan.length);
-      console.log('📊 Sample courses from Term 1:', planRecord.plan[0] ? (planRecord.plan[0] as Term).courses : 'No Term 1');
       return planRecord.plan as Term[];
     }
     
     // Add more flexible parsing similar to GradPlanViewer
     // Check for semesters property
     if (Array.isArray(planRecord.semesters)) {
-      console.log('📊 Using .semesters structure, terms found:', planRecord.semesters.length);
       return planRecord.semesters as Term[];
     }
     
     // Check for terms property
     if (Array.isArray(planRecord.terms)) {
-      console.log('📊 Using .terms structure, terms found:', planRecord.terms.length);
       return planRecord.terms as Term[];
     }
     
-    console.log('⚠️ No valid plan structure found');
     return [];
   }, [plan]);
 
   // Initialize editable plan data when plan changes or edit mode changes
   useEffect(() => {
     if (planData && planData.length > 0) {
-      console.log(`🔄 Initializing editable plan data:`, {
-        termsCount: planData.length,
-        isEditMode,
-        planData: planData.map((term, idx) => ({
-          termIndex: idx,
-          term: term.term,
-          coursesCount: term.courses?.length || 0,
-          courses: term.courses?.map(c => c.code) || []
-        }))
-      });
       setEditablePlanData(JSON.parse(JSON.stringify(planData))); // Deep copy
     }
   }, [planData, isEditMode]);
-
-  // Debug effect to track changes in editablePlanData
-  useEffect(() => {
-    if (editablePlanData.length > 0) {
-      console.log(`📊 EditablePlanData updated:`, {
-        termsCount: editablePlanData.length,
-        termsSummary: editablePlanData.map((term, idx) => ({
-          termIndex: idx,
-          term: term.term,
-          coursesCount: term.courses?.length || 0,
-          courses: term.courses?.map(c => `${c.code}`) || []
-        }))
-      });
-    }
-  }, [editablePlanData]);
 
   // Use editable data when in edit mode, otherwise use original data
   const currentPlanData = isEditMode ? editablePlanData : planData;
 
   // Function to move a course between terms
   const moveCourse = (fromTermIndex: number, courseIndex: number, toTermNumber: number) => {
-    console.log(`🚀 moveCourse called:`, {
-      fromTermIndex,
-      courseIndex,
-      toTermNumber,
-      isEditMode,
-      editablePlanDataLength: editablePlanData.length
-    });
-
     if (!isEditMode || toTermNumber < 1 || toTermNumber > editablePlanData.length) {
-      console.log(`❌ moveCourse aborted: invalid conditions`);
       return;
     }
 
     const toTermIndex = toTermNumber - 1;
     if (fromTermIndex === toTermIndex) {
-      console.log(`❌ moveCourse aborted: same term (${fromTermIndex})`);
       return; // No move needed
     }
 
     setEditablePlanData(prevData => {
-      console.log(`📊 moveCourse: Processing move...`);
-      
       // Create a deep copy to avoid reference issues
       const newData = prevData.map(term => ({
         ...term,
@@ -249,8 +193,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         return prevData;
       }
 
-      console.log(`📦 Moving course: ${course.code} (${course.title}) from Term ${fromTermIndex + 1} to Term ${toTermNumber}`);
-
       // Remove course from source term
       if (sourceTerm.courses) {
         sourceTerm.courses.splice(courseIndex, 1);
@@ -258,7 +200,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         // Update source term credits
         const sourceCredits = sourceTerm.courses.reduce((sum, c) => sum + (c.credits || 0), 0);
         sourceTerm.credits_planned = sourceCredits;
-        console.log(`📝 Source term ${fromTermIndex + 1} updated: ${sourceTerm.courses.length} courses, ${sourceCredits} credits`);
       }
 
       // Add course to destination term
@@ -271,9 +212,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       // Update destination term credits
       const destCredits = destTerm.courses.reduce((sum, c) => sum + (c.credits || 0), 0);
       destTerm.credits_planned = destCredits;
-      console.log(`📝 Destination term ${toTermNumber} updated: ${destTerm.courses.length} courses, ${destCredits} credits`);
-
-      console.log(`✅ Course ${course.code} successfully moved from term ${fromTermIndex + 1} to term ${toTermNumber}`);
       
       // Notify parent component of the change
       if (onPlanUpdate) {
@@ -399,27 +337,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
           }
         }}>
           {currentPlanData.map((term, index) => {
-            console.log(`🎯 Rendering term ${index + 1}:`, {
-              term: term.term,
-              coursesExist: Boolean(term.courses),
-              coursesIsArray: Array.isArray(term.courses),
-              coursesLength: term.courses ? term.courses.length : 0,
-              coursesPreview: term.courses ? term.courses.slice(0, 2) : null,
-              allCourses: term.courses,
-              IS400courses: term.courses ? term.courses.filter(c => c.code?.startsWith('IS 4')) : []
-            });
-
-            // Count valid vs invalid courses
-            if (term.courses && Array.isArray(term.courses)) {
-              const validCourses = term.courses.filter(c => c.code && c.title);
-              const invalidCourses = term.courses.filter(c => !c.code || !c.title);
-              console.log(`📊 Term ${index + 1} course validation:`, {
-                total: term.courses.length,
-                valid: validCourses.length,
-                invalid: invalidCourses.length,
-                invalidCourses: invalidCourses
-              });
-            }
             
             const termCredits = term.credits_planned || 
                                (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
@@ -461,39 +378,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                     {/* Single column of course cards within each term */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       {term.courses.map((course: Course, courseIndex: number) => {
-                        const courseUniqueKey = `term-${index}-course-${courseIndex}-${course.code}`;
-                        console.log(`🎨 Rendering course:`, {
-                          termIndex: index,
-                          courseIndex,
-                          courseCode: course.code,
-                          courseTitle: course.title,
-                          uniqueKey: courseUniqueKey,
-                          currentTerm: index + 1
-                        });
-                        console.log(`🔍 Rendering course ${courseIndex + 1} in term ${index + 1}:`, {
-                          code: course.code,
-                          title: course.title,
-                          credits: course.credits,
-                          fulfills: course.fulfills,
-                          courseObject: course,
-                          isIS400Level: course.code?.startsWith('IS 4'),
-                          hasValidCode: Boolean(course.code),
-                          hasValidTitle: Boolean(course.title),
-                          hasValidCredits: Boolean(course.credits),
-                          typeOfCredits: typeof course.credits
-                        });
-
-                        // Special logging for IS 400 level courses
-                        if (course.code?.startsWith('IS 4')) {
-                          console.log(`🎯 IS 400-level course detected:`, {
-                            code: course.code,
-                            title: course.title,
-                            credits: course.credits,
-                            willRender: Boolean(course.code && course.title),
-                            fullCourse: JSON.stringify(course, null, 2)
-                          });
-                        }
-
                         // Add validation to ensure we have required fields
                         if (!course.code || !course.title) {
                           console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course);
@@ -537,7 +421,6 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('Edit course:', course.code);
                                   // TODO: Add course edit functionality
                                 }}
                               >

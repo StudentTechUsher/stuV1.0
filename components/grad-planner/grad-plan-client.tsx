@@ -98,10 +98,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   };
 
   const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string) => {
-    console.log('🎯 AI plan created, redirecting to unified editing view:', aiGeneratedPlan);
-    console.log('📋 Selected program IDs:', programIds);
-    console.log('🔑 Access ID:', accessId);
-    
     // Close the create plan dialog
     setIsDialogOpen(false);
     
