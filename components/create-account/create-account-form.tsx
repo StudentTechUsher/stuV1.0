@@ -130,11 +130,11 @@ export default function CreateAccountForm({
 
       const uniq = (xs: number[]) => Array.from(new Set(xs.filter(n => Number.isFinite(n))));
 
-      // 1) Ensure profile exists (now including fname/lname + university_id)
+      // 1) Ensure profile exists (now including fname/lname + university_id + onboarded)
       const { error: profileError } = await supabase
         .from("profiles")
         .upsert(
-          { id: userId, fname, lname, university_id: universityId },
+          { id: userId, fname, lname, university_id: universityId, onboarded: true },
           { onConflict: "id" }
         )
         .select("id")
@@ -178,6 +178,21 @@ export default function CreateAccountForm({
       }
 
       console.log("[CreateAccount] Upsert OK:", data);
+
+      // 3) Mark profile as onboarded so auth callback redirects to dashboard
+      const { error: onboardError } = await supabase
+        .from("profiles")
+        .update({ onboarded: true })
+        .eq("id", userId);
+
+      if (onboardError) {
+        console.error("[CreateAccount] Onboarding flag error:", onboardError);
+        setError(onboardError.message || "Could not complete onboarding.");
+        setSaving(false);
+        return;
+      }
+
+      console.log("[CreateAccount] Onboarding complete!");
       router.push(nextHref);
     } catch (err) {
       console.error("[CreateAccount] Submit exception:", err);
