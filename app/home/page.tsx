@@ -16,7 +16,7 @@ const ROLE_MAP: Record<number, Role> = {
 
 export default async function HomePage() {
   // ---- Supabase server client (reads cookies; no writes in RSC) ----
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
