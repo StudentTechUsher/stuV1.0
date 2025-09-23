@@ -21,10 +21,12 @@ const ROLE_MAP: Record<string, Role> = {
 type IconKey =
   | "dashboard"
   | "planner"
+  | "map"
   | "semester"
   | "meet"
   | "profile"
   | "advisees"
+  | "advisors"
   | "appointments"
   | "reports"
   | "users"
@@ -37,22 +39,6 @@ export type NavItem = {
   label: string;
   icon: IconKey;
 };
-
-// --- helper: decode JWT payload on the server ---
-function decodeJwtPayload(token?: string): Record<string, unknown> | null {
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    // base64url -> base64 and pad
-    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=");
-    const json = Buffer.from(padded, "base64").toString("utf8");
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
 
 export default async function DashboardLayout({ children }: Readonly<{ children: ReactNode }>) {
   // ---- Supabase server client (reads cookies; no writes in RSC) ----
@@ -68,9 +54,9 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     }
   );
 
-  // 1) Get session/user
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user.id;
+  // 1) Get user securely
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const userId = userError || !user ? null : user.id;
 
   // 2) Query profiles for role_id (RLS lets users read only their own row)
   let roleId: string | null = null;
@@ -107,17 +93,19 @@ function getNavItems(role: Role): NavItem[] {
         { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
         { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
+        { href: "/dashboard/pathfinder",         segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
         { href: "/dashboard/meet-with-advisor",  segment: "calendar",           label: "Meet with Advisor",    icon: "meet" },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",              icon: "profile" },
       ];
 
     case "advisor":
       return [
-        { href: "/dashboard",               segment: null,            label: "Overview",       icon: "dashboard" },
-        { href: "/dashboard/advisees",      segment: "advisees",      label: "My Advisees",    icon: "advisees" },
-        { href: "/dashboard/appointments",  segment: "appointments",  label: "Appointments",   icon: "appointments" },
-        { href: "/dashboard/reports",       segment: "reports",       label: "Reports",        icon: "reports" },
-        { href: "/dashboard/profile",       segment: "profile",       label: "Profile",        icon: "profile" },
+        { href: "/dashboard",                    segment: null,                 label: "Overview",       icon: "dashboard" },
+        { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map" },
+        { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
+        { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
+        { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports" },
+        { href: "/dashboard/profile",            segment: "profile",            label: "Profile",        icon: "profile" },
       ];
 
     case "admin":
@@ -125,6 +113,7 @@ function getNavItems(role: Role): NavItem[] {
         { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
+        { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
         { href: "/dashboard/system",                segment: "system",                label: "System",                 icon: "system" },
         { href: "/dashboard/profile",               segment: "profile",               label: "Profile",                icon: "profile" },
       ];

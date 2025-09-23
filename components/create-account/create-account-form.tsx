@@ -18,6 +18,9 @@ type Preload = {
 };
 
 type Initial = {
+  fname?: string;
+  lname?: string;
+  email?: string;
   university_id: number | null;
   selected_majors: number[] | null;
   selected_minors: number[] | null;
@@ -31,9 +34,16 @@ type Props = {
   nextHref: string;
   preload: Preload;
   initial?: Initial;
+  isEditMode?: boolean;
 };
 
-export default function CreateAccountForm({ userId, nextHref, preload, initial }: Readonly<Props>) {
+export default function CreateAccountForm({ 
+  userId, 
+  nextHref, 
+  preload, 
+  initial, 
+  isEditMode = false 
+}: Readonly<Props>) {
   const router = useRouter();
 
   const [saving, setSaving] = useState(false);
@@ -68,6 +78,8 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
   // Prefill from server-provided initial (once) — this only has student prefs
   useEffect(() => {
     if (!initial) return;
+    setFirstName(initial.fname ?? "");
+    setLastName(initial.lname ?? "");
     setUniversityId(initial.university_id ?? null);
     setMajors(initial.selected_majors ?? []);
     setMinors(initial.selected_minors ?? []);
@@ -136,13 +148,18 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
       }
 
       // 2) Upsert student preferences referencing that profile
+      // Store just the program IDs in selected_programs
+      const selectedProgramIds = [...uniq(majors), ...uniq(minors)];
+
+      console.log("[CreateAccount] Selected program IDs:", selectedProgramIds);
+      console.log("[CreateAccount] Selected interests:", uniq(interests));
+
       const studentRow = {
-        profile_id: userId,                    // FK → profiles.id
-        selected_majors:      uniq(majors),    // int8[]
-        selected_minors:      uniq(minors),    // int8[]
-        selected_interests:   uniq(interests), // int8[]
-        career_options:       uniq(careerSelections), // int8[]
-        class_preferences:    uniq(classPreferences), // int8[]
+        profile_id: userId,                       // FK to profiles.id (UUID)
+        selected_programs: selectedProgramIds.length > 0 ? selectedProgramIds : null,
+        selected_interests: uniq(interests).length > 0 ? uniq(interests) : null,
+        career_options: uniq(careerSelections).length > 0 ? uniq(careerSelections) : null,
+        class_preferences: uniq(classPreferences).length > 0 ? uniq(classPreferences) : null,
       };
 
       console.log("[CreateAccount] Upserting student row →", studentRow);
@@ -150,7 +167,7 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
       const { data, error } = await supabase
         .from("student")
         .upsert(studentRow, { onConflict: "profile_id" })
-        .select("profile_id, selected_majors, selected_minors, selected_interests, career_options, class_preferences")
+        .select("profile_id, selected_programs, selected_interests, career_options, class_preferences")
         .single();
 
       if (error) {
@@ -213,11 +230,12 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
 
       <SingleSelect
         label="University"
-        helper="Select your current university."
+        helper={isEditMode ? "University cannot be changed after account creation." : "Select your current university."}
         options={universities}
         value={universityId}
         onChange={(e) => setUniversityId(e.target.value ? Number(e.target.value) : null)}
         placeholder="Choose a university"
+        disabled={isEditMode}
       />
 
       <ChipsField
@@ -280,7 +298,7 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
             fontWeight: 600,
           }}
         >
-          {saving ? "Saving…" : "Continue"}
+          {saving ? "Saving…" : (isEditMode ? "Update Profile" : "Continue")}
         </button>
       </div>
     </form>

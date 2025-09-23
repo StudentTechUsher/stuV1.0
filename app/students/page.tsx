@@ -1,16 +1,15 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, CheckCircle, Menu, X } from "lucide-react"
+import { ArrowRight, Menu, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Input } from "@/components/ui/input"
 import { SubmitEmailForm } from '@/components/ui/submit-email-form'  // Changed to named import
-import minorsData from "@/data/minors.json"
-import type { Minor } from '@/types'
 
-// Now you can use the Program type for your majors/minors
+function setMajors(data: any) {
+  throw new Error("Function not implemented.")
+}
 
 export default function StudentPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)

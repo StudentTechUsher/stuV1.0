@@ -12,7 +12,11 @@ export const dynamic = 'force-dynamic';
 function SignupContent() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/dashboard';
-  const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  
+  // Use window.location.origin to get the current origin dynamically
+  const redirectTo = typeof window !== 'undefined' 
+    ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+    : `/auth/callback?next=${encodeURIComponent(next)}`; // fallback for SSR
 
   return (
     <>
