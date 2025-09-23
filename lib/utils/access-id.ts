@@ -59,7 +59,7 @@ export function decodeAccessId(accessId: string): string | null {
     
     // Decode the payload and hash
     const payload = Buffer.from(urlSafeBase64ToBase64(encodedPayload), 'base64').toString();
-    const providedHash = Buffer.from(urlSafeBase64ToBase64(encodedHash), 'base64').toString('hex');
+    const providedHash = Buffer.from(urlSafeBase64ToBase64(encodedHash), 'base64').toString();
     
     // Verify the HMAC
     const hmac = crypto.createHmac('sha256', SECRET_KEY);
@@ -67,8 +67,9 @@ export function decodeAccessId(accessId: string): string | null {
     const expectedHash = hmac.digest('hex');
     
     // Use crypto.timingSafeEqual to prevent timing attacks
-    const providedBuffer = Buffer.from(providedHash, 'hex');
-    const expectedBuffer = Buffer.from(expectedHash, 'hex');
+    // Both hashes are hex strings, so compare them as buffers
+    const providedBuffer = Buffer.from(providedHash, 'utf8');
+    const expectedBuffer = Buffer.from(expectedHash, 'utf8');
     
     if (providedBuffer.length !== expectedBuffer.length || 
         !crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {

@@ -5,8 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { decodeAccessIdClient } from '@/lib/utils/access-id';
-import { fetchGradPlanForEditing, submitGradPlanForApproval } from '@/lib/api/server-actions';
+import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/api/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -108,14 +107,14 @@ export default function EditGradPlanPage() {
 
         // Decode the access ID to get the grad plan ID
         const accessId = params.accessId as string;
-        const gradPlanId = decodeAccessIdClient(accessId);
+        const decodeResult = await decodeAccessIdServerAction(accessId);
 
-        if (!gradPlanId) {
-          throw new Error('Invalid or expired access link');
+        if (!decodeResult.success || !decodeResult.gradPlanId) {
+          throw new Error(decodeResult.error || 'Invalid or expired access link');
         }
 
         // Fetch the detailed grad plan data using gradPlanId
-        const planData = await fetchGradPlanForEditing(gradPlanId);
+        const planData = await fetchGradPlanForEditing(decodeResult.gradPlanId);
         
         if (!planData) {
           throw new Error('Graduation plan not found');
