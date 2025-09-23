@@ -6,24 +6,31 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { SubmitEmailForm } from '@/components/ui/submit-email-form'  // Changed to named import
-
-function setMajors(data: any) {
-  throw new Error("Function not implemented.")
-}
+import type { ProgramRow } from '@/types/program'
 
 export default function StudentPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [majors, setMajors] = useState<Minor[]>([])
-  const minors: Minor[] = minorsData
+  // List of minor programs (filtered from program table)
+  const [minors, setMinors] = useState<ProgramRow[]>([])
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchMajors = async () => {
-      const response = await fetch('/api/majors')
-      const data = await response.json()
-      setMajors(data)
+    const fetchMinors = async () => {
+      try {
+        // Attempt to include university filter if stored locally
+        const storedUniversityId = typeof window !== 'undefined' ? localStorage.getItem('universityId') : null
+        const params = new URLSearchParams()
+        params.set('type', 'minor')
+        if (storedUniversityId) params.set('universityId', storedUniversityId)
+        const response = await fetch(`/api/programs?${params.toString()}`)
+        if (!response.ok) throw new Error('Failed to load minors')
+        const data: ProgramRow[] = await response.json()
+        setMinors(data)
+      } catch (e) {
+        console.error(e)
+      }
     }
-    fetchMajors()
+    fetchMinors()
 
     // Load school logo from localStorage
     const savedLogo = localStorage.getItem('schoolLogo')
@@ -91,7 +98,7 @@ export default function StudentPage() {
             </Link>
             <Link href="/signup">
               <Button className="bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
-                Sign Up
+                Get Started
               </Button>
             </Link>
           </div>
@@ -267,7 +274,7 @@ export default function StudentPage() {
                   },
                 ].map((feature, i) => (
                   <div
-                    key={i}
+                    key={feature.title}
                     className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
                   >
                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
@@ -307,9 +314,9 @@ export default function StudentPage() {
               { name: "Tyler S", state: "CA", text: '"The easiest way to schedule classes that would actually help with the major I\'m taking"' },
               { name: "Isaac B", state: "WA", text: '"I love it!"' },
               { name: "Zach W", state: "UT", text: '"This is great!"' },
-            ].map((review, i) => (
+            ].map((review) => (
               <div
-                key={i}
+                key={review.name}
                 className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
               >
                 <h3 className="text-xl font-bold">
