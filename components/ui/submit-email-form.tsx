@@ -171,7 +171,8 @@ export function SubmitEmailForm() {
         {/* Submit Button */}
         <Button
           type="submit"
-          sx={{ backgroundColor: "rgb(34, 197, 94)", color: "white", "&:hover": { backgroundColor: "rgb(22, 163, 74)" } }}
+          color="primary"
+          variant="contained"
           className="w-full"
           disabled={isSubmitting}
         >

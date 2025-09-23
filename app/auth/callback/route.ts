@@ -58,7 +58,7 @@ export async function GET(req: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarded")
+    .select("onboarded, authorization_agreed")
     .eq("id", user.id)
     .maybeSingle();
 
