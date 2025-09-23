@@ -63,19 +63,30 @@ export default function ChatbotDrawer({
 }: Readonly<Props>) {
   const actions = presetPrompts ?? DEFAULT_PRESETS[getEnvRole()];
   const [input, setInput] = React.useState("");
+  const [messages, setMessages] = React.useState<Array<{type: 'user' | 'bot', text: string, id: string}>>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const drawerRef = React.useRef<HTMLDivElement>(null);
 
   const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
+    
     try {
+      // Add user message to the chat
+      setMessages(prev => [...prev, { type: 'user', text, id: `user-${Date.now()}` }]);
+      
       if (onSend) {
         await onSend(text, { role });
       } else {
-        // Replace with your actual chat send logic
-        // (e.g., call your API route or Supabase function)
-        // Keeping this as a no-op for now.
+        // Add the temporary bot response
+        setTimeout(() => {
+          setMessages(prev => [...prev, { 
+            type: 'bot', 
+            text: "Hi, I'm still getting set up, but I'll be able to help you navigate the site and give you tips and advice along the way.",
+            id: `bot-${Date.now()}`
+          }]);
+        }, 500); // Small delay to simulate thinking
+        
         console.log(`[CHAT:${role}]`, text);
       }
       setInput("");
@@ -89,7 +100,21 @@ export default function ChatbotDrawer({
     setInput(qa.prompt);
     if (autoSend) {
       // small delay so TextField updates before send
-      setTimeout(handleSend, 0);
+      setTimeout(() => {
+        // Add user message immediately
+        setMessages(prev => [...prev, { type: 'user', text: qa.prompt, id: `user-${Date.now()}` }]);
+        
+        // Add bot response
+        setTimeout(() => {
+          setMessages(prev => [...prev, { 
+            type: 'bot', 
+            text: "Hi, I'm still getting set up, but I'll be able to help you navigate the site and give you tips and advice along the way.",
+            id: `bot-${Date.now()}`
+          }]);
+        }, 500);
+        
+        setInput("");
+      }, 0);
     } else {
       inputRef.current?.focus();
     }
@@ -138,7 +163,7 @@ export default function ChatbotDrawer({
           } 
         }}
       >
-      <Box role="presentation" sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
         {/* Header with close button */}
         <Box sx={{ mb: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box>
@@ -185,12 +210,59 @@ export default function ChatbotDrawer({
 
         <Divider sx={{ my: 1 }} />
 
+        {/* Chat Messages Area */}
+        <Box sx={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          mb: 2,
+          p: 1,
+          backgroundColor: 'grey.50',
+          borderRadius: 1,
+          minHeight: '200px'
+        }}>
+          {messages.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>
+              Start a conversation...
+            </Typography>
+          ) : (
+            <Stack spacing={2}>
+              {messages.map((message) => (
+                <Box
+                  key={message.id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: message.type === 'user' ? 'flex-end' : 'flex-start'
+                  }}
+                >
+                  <Box
+                    sx={{
+                      maxWidth: '80%',
+                      p: 1.5,
+                      borderRadius: 2,
+                      backgroundColor: message.type === 'user' ? 'success.main' : 'white',
+                      color: message.type === 'user' ? 'white' : 'text.primary',
+                      boxShadow: 1
+                    }}
+                  >
+                    <Typography variant="body2">
+                      {message.text}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Box>
+
         {/* Drawer actions list (kept from your original) */}
         <List dense>
           {["New chat", "Recent", "Settings"].map((text) => (
             <ListItem key={text} disablePadding>
               <ListItemButton onClick={() => {
-                if (text === "New chat") setInput("");
+                if (text === "New chat") {
+                  setInput("");
+                  setMessages([]);
+                }
                 // wire up "Recent" & "Settings" to your internal routes or handlers as needed
               }}>
                 <ListItemText primary={text} />
@@ -199,7 +271,7 @@ export default function ChatbotDrawer({
           ))}
         </List>
 
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 0 }} />
 
         {/* Composer */}
         <Stack direction="row" spacing={1} sx={{ pt: 1 }}>

@@ -5,11 +5,12 @@ import { supabase } from '../supabase';
 import type { ProgramRow } from '@/types/program';
 import fs from 'fs';
 import path from 'path';
+import { encodeAccessId, decodeAccessId } from '@/lib/utils/access-id';
 
 // Secure server action that handles OpenAI API calls and user authentication
 export async function OrganizeCoursesIntoSemesters_ServerAction(
   coursesData: unknown,
-): Promise<{ success: boolean; message: string; semesterPlan?: unknown }> {
+): Promise<{ success: boolean; message: string; semesterPlan?: unknown; accessId?: string }> {
   const start = Date.now();
   const t = (label: string, since?: number) => {
     const now = Date.now();
@@ -62,19 +63,40 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
 
     // Prepare the prompt for OpenAI
     const prompt = `
-    You are an academic advisor AI. Given the following selected courses and program requirements, 
-    organize them into a logical semester-by-semester plan for a 4-year degree.
-    
-    Consider:
-    - Prerequisites and course dependencies
-    - Typical course load (12-18 credits per semester)
-    - General education requirements should be spread throughout
-    - Major requirements should be sequenced appropriately
-    - Electives should fill gaps and meet credit requirements
-    - Most students take 8 semesters (4 years), but can adjust if needed
+    You are an academic advisor AI. Given the selected programs and general-education requirements, produce an 8-semester plan.
 
-    Output:
-    - Return **ONLY** JSON matching this schema exactly (no extra text):
+    Goals
+    - Create a term-by-term plan that balances workload and sequencing.
+    - Use only data provided in the input; do not invent courses.
+    - Use a "General Elective" placeholder to reach credit targets without overloading any single term.
+
+    Hard constraints (must follow)
+    - Catalog scope: Use only courses present in the input's "programs" and "generalEducation" sections.
+      - The only allowed placeholder is:
+        { "code": "ELECTIVE", "title": "General Elective", "credits": X, "fulfills": ["Elective"] }.
+    - Credit load per term: 12–18 credits.
+    - Total credits: Use input "target_total_credits" if provided; otherwise default to 120.
+      - If below target after scheduling requirements, add "ELECTIVE" items with appropriate credits to reach the target while respecting 12–18 credits/term.
+    - No duplicates: A course code may appear at most once in the entire plan.
+    - Fulfillment tagging:
+      - For general education, use the exact bucket names from the input (use the provided strings verbatim).
+      - For program requirements, use the exact requirement keys from the input (e.g., "requirement-2", "subrequirement-1.1"). Do not invent labels.
+      - For the elective placeholder, use ["Elective"] as the fulfills list.
+    - Sequencing and prerequisites:
+      - Respect textual prerequisites in the input. Do not place a course before its prerequisites are planned in an earlier term.
+      - If a course or requirement mentions program admission (e.g., "Acceptance into the program", "Junior Core"), schedule an "Apply/Admission" checkpoint before those courses and place such courses only in terms after that checkpoint.
+    - Distribution of requirements:
+      - Spread general education across the first four terms when possible; avoid front-loading or back-loading.
+      - Do not schedule a term composed only of "ELECTIVE" placeholders if unmet non-elective requirements remain.
+      - Limit "ELECTIVE" credit per term to a reasonable amount (typically 3–6) unless needed to achieve 12–18 credits or to meet the total-credit target.
+
+    Planning heuristics (should follow)
+    - Aim for 14–16 credits per term when feasible.
+    - Prefer pairing small-credit courses together to reduce underloaded terms.
+    - If multiple programs are selected, interleave their requirements and avoid conflicts; count a course once even if it satisfies multiple buckets, and reflect that in "fulfills".
+
+    Output format
+    Return ONLY JSON in this exact schema (no extra text):
 
     Example format:
     ${JSON.stringify(exampleStructure, null, 2)}
@@ -82,13 +104,12 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     Input data:
     ${JSON.stringify(coursesData, null, 2)}
     `;
-    console.log("🧾 Prompt length:", prompt.length);
 
     const payload = {
       model: "gpt-5-mini",
       input: prompt,
       text: { format: { type: "json_object" } }, // 👈 object, not "json_object" string
-      max_output_tokens: 10000,
+      max_output_tokens: 25000,
     };
     console.log("📦 OpenAI payload (preview):", { model: payload.model, max_output_tokens: payload.max_output_tokens });
 
@@ -115,7 +136,20 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     if (!resp.ok) {
       const errBody = await resp.text();
       console.error("❌ OpenAI HTTP error:", { status: resp.status, requestId: reqId, bodyPreview: trunc(errBody) });
-      throw new Error(`OpenAI error ${resp.status}`);
+      
+      // Provide more specific error messages based on status code
+      let errorMessage = `OpenAI API error (${resp.status})`;
+      if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
+        errorMessage = `OpenAI servers are temporarily unavailable (${resp.status}). Please try again in a few minutes.`;
+      } else if (resp.status === 429) {
+        errorMessage = `OpenAI API rate limit exceeded (${resp.status}). Please try again later.`;
+      } else if (resp.status === 401) {
+        errorMessage = `OpenAI API authentication failed (${resp.status}). Please check your API key.`;
+      } else if (resp.status >= 400 && resp.status < 500) {
+        errorMessage = `OpenAI API request error (${resp.status}). Please check your request.`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     type ResponsesApiResult = {
@@ -125,6 +159,11 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
         content?: Array<{ type?: string; text?: { value?: string } | null }>;
       }>;
       incomplete_details?: { reason?: string };
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+      };
     };
 
     let aiResponse: ResponsesApiResult;
@@ -179,15 +218,54 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     // Store the raw JSON string
     try {
       const tStore = Date.now();
-      const { error: insertError } = await supabase.from("ai_responses").insert({ user_id: user.id, response: aiText });
+      const outputTokens = aiResponse.usage?.completion_tokens || 0; // Default to 0 instead of null
+      const { error: insertError } = await supabase.from("ai_responses").insert({ 
+        user_id: user.id, 
+        response: aiText,
+        user_prompt: prompt,
+        output_tokens: outputTokens
+      });
       const storeMs = Date.now() - tStore;
       if (insertError) {
         console.error("⚠️ Error storing AI response:", insertError, "| took:", storeMs, "ms");
       } else {
-        console.log("💾 AI response stored successfully for user:", user.id, "| took:", storeMs, "ms");
+        console.log("💾 AI response stored successfully for user:", user.id, "| output_tokens:", outputTokens, "| took:", storeMs, "ms");
       }
     } catch (storageError) {
       console.error("⚠️ Exception storing AI response:", storageError);
+    }
+
+    // Get the student_id (number) from the students table using the profile_id (UUID)
+    const { data: studentData, error: studentError } = await supabase
+      .from('student')
+      .select('id')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (studentError || !studentData?.id) {
+      console.error('Error fetching student_id from students table:', studentError);
+      throw new Error('Could not find student record');
+    }
+
+    // Insert the AI response into the grad_plan table
+    const { data: gradPlanData, error: gradPlanError } = await supabase.from("grad_plan").insert({
+      student_id: studentData.id,
+      is_active: false,
+      pending_edits: false,
+      pending_approval: true,
+      plan_details: aiText, // Use the AI response as the plan details
+      programs_in_plan: [] // Assuming no programs are associated initially
+    }).select("id").single();
+
+    let accessId: string | undefined;
+    if (gradPlanError) {
+      console.error("⚠️ Error inserting into grad_plan table:", gradPlanError);
+    } else {
+      console.log("✅ AI response also stored in grad_plan table with ID:", gradPlanData.id);
+
+      // Generate accessId for the new grad plan
+      accessId = encodeAccessId(gradPlanData.id);
+      console.log("🔑 Generated accessId:", accessId);
     }
 
     console.log("🏁 Success; total time:", Date.now() - start, "ms");
@@ -195,6 +273,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       success: true,
       message: "Semester plan generated successfully!",
       semesterPlan,
+      accessId,
     };
   } catch (error) {
     console.error("🛑 Error generating semester plan:", error instanceof Error ? error.message : error, error);
@@ -285,6 +364,46 @@ export async function GetActiveGradPlan(profile_id: string) {
   return data;
 }
 
+export async function GetAllGradPlans(profile_id: string) {
+  
+  // First, get the student record to get the numeric student_id
+  const { data: studentData, error: studentError } = await supabase
+    .from('student')
+    .select('id')
+    .eq('profile_id', profile_id)
+    .single();
+
+  if (studentError) {
+    // PGRST116 means no rows returned - this is normal for new users
+    if (studentError.code === 'PGRST116') {
+      console.log('ℹ️ No student record found for profile_id:', profile_id, '(new user)');
+      return [];
+    }
+    console.error('❌ Error fetching student record:', studentError);
+    return [];
+  }
+
+  if (!studentData) {
+    console.log('ℹ️ No student data returned for profile_id:', profile_id);
+    return [];
+  }
+
+  // Get all grad plans for this student, ordered by creation date (newest first)
+  const { data, error } = await supabase
+    .from('grad_plan')
+    .select('*')
+    .eq('student_id', studentData.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching all grad plans:', error);
+    return [];
+  }
+  
+  console.log(`✅ Found ${data?.length || 0} graduation plans for student_id:`, studentData.id);
+  return data || [];
+}
+
 export async function GetAiPrompt(prompt_name: string) {
   const { data, error } = await supabase
     .from('ai_prompts')
@@ -302,8 +421,9 @@ export async function GetAiPrompt(prompt_name: string) {
 
 export async function submitGradPlanForApproval(
     profileId: string,
-    planDetails: unknown
-): Promise<{ success: boolean; message: string; planId?: string }> {
+    planDetails: unknown,
+    programIds: number[]
+): Promise<{ success: boolean; message?: string; accessId?: string }> {
     try {
         // First, get the student_id (number) from the students table using the profile_id (UUID)
         const { data: studentData, error: studentError } = await supabase
@@ -323,6 +443,7 @@ export async function submitGradPlanForApproval(
                 student_id: studentData.id,
                 is_active: false,
                 plan_details: planDetails,
+                programs_in_plan: programIds,
                 pending_approval: true,
             })
             .select('id')
@@ -335,19 +456,14 @@ export async function submitGradPlanForApproval(
                 errorDetails: error.details,
                 errorHint: error.hint,
                 errorCode: error.code,
-                profileId: profileId,
-                studentId: studentData?.id,
-                planDetailsType: typeof planDetails,
-                planDetailsLength: Array.isArray(planDetails) ? planDetails.length : 'not an array'
             });
             throw error;
         }
 
-        return {
-            success: true,
-            message: 'Graduation plan submitted for approval successfully!',
-            planId: data.id.toString()
-        };
+        // Encode the grad plan ID to generate the accessId
+        const accessId = encodeAccessId(data.id);
+
+        return { success: true, accessId };
     } catch (error) {
         console.error('Caught error in submitGradPlanForApproval:', error);
         console.error('Error type:', typeof error);
@@ -381,4 +497,361 @@ export async function deleteProgram(id: string): Promise<void> {
         .eq('id', id);
 
     if (error) throw error;
+}
+
+export async function fetchPendingGradPlans(): Promise<Array<{
+    id: string;
+    student_first_name: string;
+    student_last_name: string;
+    created_at: string;
+    student_id: number;
+}>> {
+    // First, get all grad plans where pending_approval = true
+    const { data: gradPlansData, error: gradPlansError } = await supabase
+        .from('grad_plan')
+        .select('id, created_at, student_id')
+        .eq('pending_approval', true)
+        .order('created_at', { ascending: false });
+
+    if (gradPlansError) {
+        console.error('❌ Error fetching pending graduation plans:', gradPlansError);
+        throw gradPlansError;
+    }
+
+    if (!gradPlansData || gradPlansData.length === 0) {
+        return [];
+    }
+
+    // Get unique student_ids
+    const studentIds = [...new Set(gradPlansData.map(plan => plan.student_id))];
+
+    // Get profile_ids for these students
+    const { data: studentsData, error: studentsError } = await supabase
+        .from('student')
+        .select('id, profile_id')
+        .in('id', studentIds);
+
+    if (studentsError) {
+        console.error('❌ Error fetching student records:', studentsError);
+        throw studentsError;
+    }
+
+    if (!studentsData || studentsData.length === 0) {
+        console.warn('⚠️ No student records found for grad plans');
+        return gradPlansData.map(plan => ({
+            id: plan.id,
+            student_first_name: 'Unknown',
+            student_last_name: 'Unknown',
+            created_at: plan.created_at,
+            student_id: plan.student_id
+        }));
+    }
+
+    // Get unique profile_ids
+    const profileIds = [...new Set(studentsData.map(student => student.profile_id))];
+
+    // Get profile data (fname, lname)
+    const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, fname, lname')
+        .in('id', profileIds);
+
+    if (profilesError) {
+        console.error('❌ Error fetching profile records:', profilesError);
+        throw profilesError;
+    }
+
+    // Create maps for efficient lookup
+    const studentMap = new Map(studentsData.map(student => [student.id, student.profile_id]));
+    const profileMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+
+    // Transform the data to flatten the nested structure
+    return gradPlansData.map(plan => {
+        const profileId = studentMap.get(plan.student_id);
+        const profile = profileId ? profileMap.get(profileId) : null;
+
+        return {
+            id: plan.id,
+            student_first_name: profile?.fname || 'Unknown',
+            student_last_name: profile?.lname || 'Unknown',
+            created_at: plan.created_at,
+            student_id: plan.student_id
+        };
+    });
+}
+
+export async function fetchGradPlanById(gradPlanId: string): Promise<{
+    id: string;
+    student_first_name: string;
+    student_last_name: string;
+    created_at: string;
+    plan_details: unknown;
+    student_id: number;
+    programs: Array<{ id: number; name: string }>;
+} | null> {
+    // First, get the grad plan
+    const { data: gradPlanData, error: gradPlanError } = await supabase
+        .from('grad_plan')
+        .select('id, created_at, student_id, plan_details, programs_in_plan')
+        .eq('id', gradPlanId)
+        .eq('pending_approval', true)
+        .single();
+
+    if (gradPlanError) {
+        console.error('❌ Error fetching grad plan:', gradPlanError);
+        throw gradPlanError;
+    }
+
+    if (!gradPlanData) {
+        return null;
+    }
+
+    // Get the student's profile_id
+    const { data: studentData, error: studentError } = await supabase
+        .from('student')
+        .select('profile_id')
+        .eq('id', gradPlanData.student_id)
+        .single();
+
+    if (studentError) {
+        console.error('❌ Error fetching student record:', studentError);
+        throw studentError;
+    }
+
+    // Get the profile data
+    const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('fname, lname')
+        .eq('id', studentData.profile_id)
+        .single();
+
+    if (profileError) {
+        console.error('❌ Error fetching profile record:', profileError);
+        throw profileError;
+    }
+
+    // Get program names if programs_in_plan exists and is not empty
+    let programs: Array<{ id: number; name: string }> = [];
+    if (gradPlanData.programs_in_plan && Array.isArray(gradPlanData.programs_in_plan) && gradPlanData.programs_in_plan.length > 0) {
+        const { data: programsData, error: programsError } = await supabase
+            .from('program')
+            .select('id, name')
+            .in('id', gradPlanData.programs_in_plan);
+
+        if (programsError) {
+            console.error('❌ Error fetching program data:', programsError);
+            // Don't throw error, just log it and continue with empty array
+        } else {
+            programs = programsData || [];
+        }
+    }
+
+    return {
+        id: gradPlanData.id,
+        student_first_name: profileData.fname || 'Unknown',
+        student_last_name: profileData.lname || 'Unknown',
+        created_at: gradPlanData.created_at,
+        plan_details: gradPlanData.plan_details,
+        student_id: gradPlanData.student_id,
+        programs: programs
+    };
+}
+
+/**
+ * Updates a graduation plan with advisor notes and sets status for pending edits
+ * Sets pending_edits: true and pending_approval: false to indicate student needs to review suggestions
+ */
+export async function updateGradPlanWithAdvisorNotes(
+    gradPlanId: string,
+    advisorNotes: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        console.log('📝 Updating grad plan with advisor notes and setting pending_edits=true:', { gradPlanId, notesLength: advisorNotes.length });
+
+        // Update the graduation plan with advisor notes
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ 
+                advisor_notes: advisorNotes, 
+                pending_edits: true,
+                pending_approval: false 
+            })
+            .eq('id', gradPlanId);
+
+        if (error) {
+            console.error('❌ Error updating grad plan with advisor notes:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+
+    } catch (error) {
+        console.error('❌ Unexpected error updating grad plan:', error);
+        return { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        };
+    }
+}
+
+/**
+ * Approves a graduation plan by setting it as active and deactivating any previous active plans
+ * Sets pending_approval: false, is_active: true, and deactivates other plans for the same student
+ */
+export async function approveGradPlan(
+    gradPlanId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        console.log('✅ Approving grad plan:', { gradPlanId });
+
+        // First, get the grad plan to find the student_id
+        const { data: gradPlanData, error: gradPlanError } = await supabase
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (gradPlanError) {
+            console.error('❌ Error fetching grad plan for approval:', gradPlanError);
+            return { success: false, error: gradPlanError.message };
+        }
+
+        if (!gradPlanData) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        const studentId = gradPlanData.student_id;
+
+        // Start a transaction-like operation
+        // First, set all existing active plans for this student to inactive
+        const { error: deactivateError } = await supabase
+            .from('grad_plan')
+            .update({ is_active: false })
+            .eq('student_id', studentId)
+            .eq('is_active', true);
+
+        if (deactivateError) {
+            console.error('❌ Error deactivating previous plans:', deactivateError);
+            return { success: false, error: deactivateError.message };
+        }
+
+        // Now set the approved plan as active and not pending approval
+        const { error: approvalError } = await supabase
+            .from('grad_plan')
+            .update({ 
+                is_active: true,
+                pending_approval: false,
+                pending_edits: false // Clear any pending edits since plan is now approved
+            })
+            .eq('id', gradPlanId);
+
+        if (approvalError) {
+            console.error('❌ Error approving grad plan:', approvalError);
+            return { success: false, error: approvalError.message };
+        }
+
+        console.log('✅ Grad plan approved successfully:', { gradPlanId, studentId });
+        return { success: true };
+
+    } catch (error) {
+        console.error('❌ Unexpected error approving grad plan:', error);
+        return { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        };
+    }
+}
+
+export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
+    id: string;
+    student_first_name: string;
+    student_last_name: string;
+    created_at: string;
+    plan_details: unknown;
+    student_id: number;
+    programs: Array<{ id: number; name: string }>;
+} | null> {
+    // Get the grad plan without filtering by pending_approval (for editing interface)
+    const { data: gradPlanData, error: gradPlanError } = await supabase
+        .from('grad_plan')
+        .select('id, created_at, student_id, plan_details, programs_in_plan')
+        .eq('id', gradPlanId)
+        .single();
+
+    if (gradPlanError) {
+        console.error('❌ Error fetching grad plan for editing:', gradPlanError);
+        throw gradPlanError;
+    }
+
+    if (!gradPlanData) {
+        return null;
+    }
+
+    // Get the student's profile_id
+    const { data: studentData, error: studentError } = await supabase
+        .from('student')
+        .select('profile_id')
+        .eq('id', gradPlanData.student_id)
+        .single();
+
+    if (studentError) {
+        console.error('❌ Error fetching student record:', studentError);
+        throw studentError;
+    }
+
+    // Get the profile data
+    const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('fname, lname')
+        .eq('id', studentData.profile_id)
+        .single();
+
+    if (profileError) {
+        console.error('❌ Error fetching profile data:', profileError);
+        throw profileError;
+    }
+
+    // Get program details
+    let programs: Array<{ id: number; name: string }> = [];
+    if (gradPlanData.programs_in_plan && Array.isArray(gradPlanData.programs_in_plan)) {
+        const { data: programsData, error: programsError } = await supabase
+            .from('program')
+            .select('id, name')
+            .in('id', gradPlanData.programs_in_plan);
+
+        if (programsError) {
+            console.error('❌ Error fetching programs:', programsError);
+            throw programsError;
+        }
+
+        programs = programsData || [];
+    }
+
+    return {
+        id: gradPlanData.id,
+        student_first_name: profileData.fname,
+        student_last_name: profileData.lname,
+        created_at: gradPlanData.created_at,
+        plan_details: gradPlanData.plan_details,
+        student_id: gradPlanData.student_id,
+        programs
+    };
+}
+
+/**
+ * Server action to decode access IDs securely using the crypto module
+ */
+export async function decodeAccessIdServerAction(accessId: string): Promise<{ success: boolean; gradPlanId?: string; error?: string }> {
+    try {
+        const gradPlanId = decodeAccessId(accessId);
+        
+        if (!gradPlanId) {
+            return { success: false, error: 'Invalid or expired access link' };
+        }
+        
+        return { success: true, gradPlanId };
+    } catch (error) {
+        console.error('Error decoding access ID:', error);
+        return { success: false, error: 'Failed to decode access ID' };
+    }
 }

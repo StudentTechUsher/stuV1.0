@@ -44,6 +44,23 @@ export async function updateProgram(id: string, updates: Partial<Omit<ProgramRow
     return data as ProgramRow;
 }
 
+export async function createProgram(programData: Omit<ProgramRow, 'id' | 'created_at' | 'modified_at'>): Promise<ProgramRow> {
+    const createData = {
+        ...programData,
+        created_at: new Date().toISOString(),
+        modified_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+        .from('program')
+        .insert(createData)
+        .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
+        .single();
+
+    if (error) throw error;
+    return data as ProgramRow;
+}
+
 export async function deleteProgram(id: string): Promise<void> {
     const { error } = await supabase
         .from('program')
@@ -175,7 +192,7 @@ export async function GetActiveGradPlan(profile_id: string) {
 
 // Client-safe wrapper for the AI course organization functionality
 // This calls the secure server action that handles OpenAI API and user authentication
-export async function OrganizeCoursesIntoSemesters(coursesData: unknown): Promise<{ success: boolean; message: string; semesterPlan?: unknown }> {
+export async function OrganizeCoursesIntoSemesters(coursesData: unknown): Promise<{ success: boolean; message: string; semesterPlan?: unknown; accessId?: string }> {
   console.log('🔍 Client wrapper: OrganizeCoursesIntoSemesters called with:', coursesData);
   
   try {

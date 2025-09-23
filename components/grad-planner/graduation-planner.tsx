@@ -48,11 +48,14 @@ interface CourseMoveFieldProps {
 
 function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex, onMoveCourse }: CourseMoveFieldProps) {
   const [value, setValue] = useState(currentTerm);
+  
+  // Create a unique identifier for this course instance
+  const courseUniqueId = `${termIndex}-${courseIndex}-${course.code}`;
 
   // Update value when currentTerm changes (after course move)
   useEffect(() => {
     setValue(currentTerm);
-  }, [currentTerm]);
+  }, [currentTerm, courseUniqueId, value]);
 
   const handleChange = (event: SelectChangeEvent<number>) => {
     const newTermNumber = event.target.value as number;
@@ -60,7 +63,6 @@ function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex
     
     // Immediately move the course when selection changes
     if (newTermNumber !== currentTerm && newTermNumber >= 1 && newTermNumber <= maxTerms) {
-      console.log(`Moving course ${course.code} from term ${currentTerm} to term ${newTermNumber}`);
       onMoveCourse(termIndex, courseIndex, newTermNumber);
     }
   };
@@ -76,29 +78,32 @@ function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex
   }
 
   return (
-    <FormControl size="small" sx={{ width: '100%', maxWidth: '140px' }}>
-      <InputLabel sx={{ fontSize: '0.75rem' }}>Move to Term</InputLabel>
+    <FormControl size="small" sx={{ width: '100%', maxWidth: '160px' }}>
+      <InputLabel sx={{ fontSize: '0.75rem', color: '#1976d2' }}>Select Term</InputLabel>
       <Select
         value={value}
         onChange={handleChange}
-        label="Move to Term"
+        label="Select Term"
         onClick={(e) => e.stopPropagation()}
         sx={{ 
           fontSize: '0.75rem',
-          height: '32px',
+          height: '36px',
+          backgroundColor: '#fff',
           '& .MuiSelect-select': {
-            paddingTop: '6px',
-            paddingBottom: '6px',
-            fontSize: '0.75rem'
+            paddingTop: '8px',
+            paddingBottom: '8px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold'
           },
           '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#ffb74d'
+            borderColor: '#1976d2',
+            borderWidth: '2px'
           },
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#ff9800'
+            borderColor: '#1565c0'
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#ff9800'
+            borderColor: '#1976d2'
           }
         }}
       >
@@ -119,6 +124,11 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     
     const planRecord = plan as Record<string, unknown>;
     
+    // Check if plan itself is an array of terms (direct plan_details passed)
+    if (Array.isArray(plan)) {
+      return plan;
+    }
+    
     // Check for the actual database structure: plan_details.plan
     if (planRecord.plan_details && 
         typeof planRecord.plan_details === 'object' && 
@@ -128,13 +138,20 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         return planDetails.plan as Term[];
       }
     }
-    // Check if plan has a 'plan' property (nested structure)
+    // Check if plan has a 'plan' property (nested structure) - AI RESPONSE FORMAT
     else if (Array.isArray(planRecord.plan)) {
       return planRecord.plan as Term[];
     }
-    // Check if plan itself is an array of terms
-    else if (Array.isArray(plan)) {
-      return plan;
+    
+    // Add more flexible parsing similar to GradPlanViewer
+    // Check for semesters property
+    if (Array.isArray(planRecord.semesters)) {
+      return planRecord.semesters as Term[];
+    }
+    
+    // Check for terms property
+    if (Array.isArray(planRecord.terms)) {
+      return planRecord.terms as Term[];
     }
     
     return [];
@@ -162,31 +179,39 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     }
 
     setEditablePlanData(prevData => {
-      const newData = [...prevData];
-      const course = newData[fromTermIndex].courses?.[courseIndex];
+      // Create a deep copy to avoid reference issues
+      const newData = prevData.map(term => ({
+        ...term,
+        courses: term.courses ? [...term.courses] : []
+      }));
       
-      if (!course) return prevData;
+      const sourceTerm = newData[fromTermIndex];
+      const course = sourceTerm.courses?.[courseIndex];
+      
+      if (!course) {
+        console.error(`❌ Course not found at term ${fromTermIndex}, index ${courseIndex}`);
+        return prevData;
+      }
 
       // Remove course from source term
-      if (newData[fromTermIndex].courses) {
-        newData[fromTermIndex].courses = newData[fromTermIndex].courses.filter((_, index) => index !== courseIndex);
+      if (sourceTerm.courses) {
+        sourceTerm.courses.splice(courseIndex, 1);
         
         // Update source term credits
-        const sourceCredits = newData[fromTermIndex].courses.reduce((sum, c) => sum + (c.credits || 0), 0);
-        newData[fromTermIndex].credits_planned = sourceCredits;
+        const sourceCredits = sourceTerm.courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+        sourceTerm.credits_planned = sourceCredits;
       }
 
       // Add course to destination term
-      if (!newData[toTermIndex].courses) {
-        newData[toTermIndex].courses = [];
+      const destTerm = newData[toTermIndex];
+      if (!destTerm.courses) {
+        destTerm.courses = [];
       }
-      newData[toTermIndex].courses.push(course);
+      destTerm.courses.push(course);
       
       // Update destination term credits
-      const destCredits = newData[toTermIndex].courses.reduce((sum, c) => sum + (c.credits || 0), 0);
-      newData[toTermIndex].credits_planned = destCredits;
-
-      console.log(`Moved course ${course.code} from term ${fromTermIndex + 1} to term ${toTermNumber}`);
+      const destCredits = destTerm.courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+      destTerm.credits_planned = destCredits;
       
       // Notify parent component of the change
       if (onPlanUpdate) {
@@ -219,31 +244,38 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     );
   }
 
-  // Extract additional info from plan_details if available
+  // Extract additional info from plan or plan_details if available
   const planRecord = plan as Record<string, unknown>;
-  const planDetails = (planRecord.plan_details as Record<string, unknown>) || {};
-  const programName = planDetails.program as string;
-  const assumptions = planDetails.assumptions as string[];
-  const durationYears = planDetails.duration_years as number;
+  
+  // If we're passed plan_details directly, metadata is at root level
+  // If we're passed the full database record, metadata is in plan_details
+  const sourceData = planRecord.plan_details ? 
+    (planRecord.plan_details as Record<string, unknown>) : 
+    planRecord;
+  
+  const programName = sourceData.program as string;
+  const assumptions = sourceData.assumptions as string[];
+  const durationYears = sourceData.duration_years as number;
 
   return (
     <Box sx={{ p: 2 }}>
       {isEditMode && (
         <Box sx={{ 
           mb: 3, 
-          p: 2, 
-          backgroundColor: '#fff3e0', 
-          borderRadius: 1, 
-          border: '2px solid #ff9800',
+          p: 3, 
+          backgroundColor: '#e8f5e8', 
+          borderRadius: 2, 
+          border: '2px solid #4caf50',
           display: 'flex',
           alignItems: 'center',
-          gap: 1
+          gap: 2,
+          boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)'
         }}>
-          <Typography variant="h6" sx={{ color: '#f57c00' }}>
+          <Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
             ✏️ Edit Mode Active
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Make changes to your graduation plan. Click &quot;Submit for Approval&quot; when finished.
+          <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+            Click and drag courses to move them between terms using the dropdown menu. Changes will be saved when you submit for approval.
           </Typography>
         </Box>
       )}
@@ -304,7 +336,8 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
             gridTemplateColumns: '1fr' // Single column on smaller screens
           }
         }}>
-          {currentPlanData.map((term, index) => {            
+          {currentPlanData.map((term, index) => {
+            
             const termCredits = term.credits_planned || 
                                (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
             
@@ -344,9 +377,16 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                     </Typography>
                     {/* Single column of course cards within each term */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {term.courses.map((course: Course, courseIndex: number) => (
+                      {term.courses.map((course: Course, courseIndex: number) => {
+                        // Add validation to ensure we have required fields
+                        if (!course.code || !course.title) {
+                          console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course);
+                          return null;
+                        }
+                        
+                        return (
                         <Box 
-                          key={`${course.code}-${courseIndex}`} 
+                          key={`term-${index}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`} 
                           sx={{ 
                             p: 2, 
                             backgroundColor: isEditMode ? '#fff8e1' : 'white', 
@@ -359,16 +399,17 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                             cursor: isEditMode ? 'pointer' : 'default',
                             '&:hover': isEditMode ? {
                               backgroundColor: '#fff3e0',
-                              borderColor: '#ff9800'
-                            } : {}
+                              borderColor: '#ff9800',
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                            } : {},
+                            transition: 'all 0.2s ease-in-out'
                           }}
-                          onClick={isEditMode ? () => {
-                            console.log('Edit course:', course.code);
-                            // TODO: Add course edit functionality
-                          } : undefined}
                         >
-                          <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                            {course.code}: {course.title}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold', flex: 1 }}>
+                              {course.code}: {course.title}
+                            </Typography>
                             {isEditMode && (
                               <IconButton 
                                 size="small" 
@@ -380,14 +421,13 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('Edit course:', course.code);
                                   // TODO: Add course edit functionality
                                 }}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             )}
-                          </Typography>
+                          </Box>
                           <Box>
                             <Typography variant="caption" color="text.secondary" display="block">
                               📖 {course.credits} credits
@@ -398,9 +438,20 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                               </Typography>
                             )}
                             {isEditMode && (
-                              <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #ddd', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-                                  📋
+                              <Box sx={{ 
+                                mt: 2, 
+                                pt: 1, 
+                                borderTop: '1px solid #ddd', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 1,
+                                backgroundColor: '#fff',
+                                borderRadius: 1,
+                                p: 1,
+                                border: '1px solid #e0e0e0'
+                              }}>
+                                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                                  📋 Move to:
                                 </Typography>
                                 <CourseMoveField
                                   currentTerm={index + 1}
@@ -414,7 +465,8 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                             )}
                           </Box>
                         </Box>
-                      ))}
+                        );
+                      }).filter(Boolean)} {/* Filter out null returns */}
                     </Box>
                   </Box>
                 ) : (

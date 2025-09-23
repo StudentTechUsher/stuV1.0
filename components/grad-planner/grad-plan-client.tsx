@@ -1,24 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
-import { submitGradPlanForApproval } from "@/lib/api/server-actions";
-import { GraduationPlan } from "@/types/graduation-plan";
 import { ProgramRow } from "@/types/program";
 import { PlusIcon } from 'lucide-react';
-
-const RAIL_WIDTH = 80;
+import { encodeAccessIdClient } from '@/lib/utils/access-id';
 
 interface Term {
   term: string;
@@ -32,6 +29,12 @@ interface Term {
   credits_planned?: number;
 }
 
+interface GradPlanRecord {
+  id: string;
+  plan_details: unknown;
+  [key: string]: unknown;
+}
+
 interface GradPlanClientProps {
   user: {
     id: string;
@@ -43,133 +46,84 @@ interface GradPlanClientProps {
     university_id: number;
     [key: string]: unknown;
   } | null;
-  gradPlanRecord: GraduationPlan | null;
+  allGradPlans: GradPlanRecord[];
+  activeGradPlan: GradPlanRecord | null;
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
 }
 
-export default function GradPlanClient({ user, studentRecord, gradPlanRecord, programsData, genEdData }: Readonly<GradPlanClientProps>) {
+export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, programsData, genEdData }: Readonly<GradPlanClientProps>) {
+  const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-  const [currentPlanData, setCurrentPlanData] = useState<Term[] | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [canCancelEdit, setCanCancelEdit] = useState(true);
+  const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
     severity: 'success'
   });
 
+  const handleGradPlanSelection = (event: SelectChangeEvent<string>) => {
+    const selectedId = event.target.value;
+    const selectedPlan = allGradPlans.find(plan => plan.id === selectedId);
+    setSelectedGradPlan(selectedPlan || null);
+  };
+
   const handleCreatePlan = () => {
     setIsDialogOpen(true);
   };
 
   const handleEditPlan = async () => {
-    if (isEditMode) {
-      // Submit for approval
-      if (!studentRecord?.id || !currentPlanData) {
-        setNotification({
-          open: true,
-          message: 'Missing student information or plan data',
-          severity: 'error'
-        });
-        return;
-      }
-
-      setIsSubmitting(true);
-      
-      try {
-        const result = await submitGradPlanForApproval(studentRecord.id, currentPlanData);
-        
-        if (result.success) {
-          setNotification({
-            open: true,
-            message: result.message,
-            severity: 'success'
-          });
-          setIsEditMode(false);
-          setCurrentPlanData(null);
-          setCanCancelEdit(true); // Reset after successful submission
-        } else {
-          setNotification({
-            open: true,
-            message: result.message,
-            severity: 'error'
-          });
-        }
-      } catch (error) {
-        console.error('Error submitting plan for approval:', error);
-        setNotification({
-          open: true,
-          message: 'Failed to submit graduation plan for approval. Please try again.',
-          severity: 'error'
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
+    // Always redirect to unified editing route
+    if (selectedGradPlan?.id) {
+      // selectedGradPlan is a database record with an id field
+      const planId = selectedGradPlan.id;
+      const accessId = encodeAccessIdClient(planId);
+      router.push(`/dashboard/grad-plan/${accessId}`);
     } else {
-      // Enter edit mode (manual entry, allow canceling)
-      setIsEditMode(true);
-      setCanCancelEdit(true);
+      // No plan exists, shouldn't happen but handle gracefully
+      setNotification({
+        open: true,
+        message: 'No graduation plan found to edit',
+        severity: 'error'
+      });
     }
-  };
-
-  const handlePlanUpdate = (updatedPlan: Term[]) => {
-    setCurrentPlanData(updatedPlan);
   };
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
 
-  const handleCancelEdit = () => {
-    // Show confirmation dialog before canceling
-    setIsCancelDialogOpen(true);
-  };
-
-  const handleConfirmCancel = () => {
-    // Exit edit mode without saving changes
-    console.log('Canceling edit mode...');
-    setIsEditMode(false);
-    setIsCancelDialogOpen(false);
-    setCanCancelEdit(true); // Reset to allow canceling again
-  };
-
-  const handleCloseCancelDialog = () => {
-    setIsCancelDialogOpen(false);
-  };
-
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
 
-  const handlePlanCreated = (aiGeneratedPlan: Term[]) => {
-    console.log('🎯 AI plan created, activating edit mode:', aiGeneratedPlan);
-    
-    // Update the current plan data with the AI-generated plan
-    setCurrentPlanData(aiGeneratedPlan);
-    
-    // Automatically activate edit mode
-    setIsEditMode(true);
-    
-    // Disable cancel edit since this is an AI-generated plan that requires approval
-    setCanCancelEdit(false);
-    
+  const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string) => {
     // Close the create plan dialog
     setIsDialogOpen(false);
     
     // Show success notification
     setNotification({
       open: true,
-      message: 'AI has created your graduation plan! Review and submit for approval.',
+      message: 'AI has created your graduation plan! Redirecting to editing view...',
       severity: 'success'
     });
+
+    // Redirect to the unified editing view using the accessId
+    if (accessId) {
+      router.push(`/dashboard/grad-plan/${accessId}`);
+    } else {
+      console.error('No access ID returned from creation');
+      setNotification({
+        open: true,
+        message: 'Plan created but failed to redirect. Please refresh the page.',
+        severity: 'error'
+      });
+    }
   };
 
   if (!user) {
     return (
-      <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
+      <Box sx={{ p: 2 }}>
         <div>Please log in to view your graduation plan.</div>
       </Box>
     );
@@ -177,7 +131,7 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
 
   if (!studentRecord) {
     return (
-      <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
+      <Box sx={{ p: 2 }}>
         <Typography variant="h4" gutterBottom>
           Graduation Plan
         </Typography>
@@ -192,10 +146,44 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
   }
 
   return (
-    <Box sx={{ ml: `${RAIL_WIDTH}px`, p: 2 }}>
+    <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {gradPlanRecord && (
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {allGradPlans.length > 1 && (
+            <FormControl sx={{ minWidth: 300 }}>
+              <InputLabel id="grad-plan-select-label">Select Graduation Plan</InputLabel>
+              <Select
+                labelId="grad-plan-select-label"
+                value={selectedGradPlan?.id || ''}
+                label="Select Graduation Plan"
+                onChange={handleGradPlanSelection}
+              >
+                {allGradPlans.map((plan) => {
+                  try {
+                    const createdAt = plan.created_at 
+                      ? new Date(plan.created_at as string).toLocaleString()
+                      : 'Unknown Date';
+                    return (
+                      <MenuItem key={plan.id} value={plan.id}>
+                        Plan made on {createdAt}
+                      </MenuItem>
+                    );
+                  } catch (error) {
+                    console.error('Error accessing plan data:', error);
+                    return (
+                      <MenuItem key={plan.id} value={plan.id}>
+                        Plan {plan.id.slice(0, 8)} - {plan.created_at 
+                          ? new Date(plan.created_at as string).toLocaleString()
+                          : 'Unknown Date'}
+                      </MenuItem>
+                    );
+                  }
+                })}
+              </Select>
+            </FormControl>
+          )}
+          
+          {selectedGradPlan && (
             <Button 
               variant="contained" 
               color="success"
@@ -212,65 +200,31 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
             </Button>
           )}
           
-          {gradPlanRecord && (
-            <>
-              <Button 
-                variant={isEditMode ? "contained" : "outlined"}
-                color={isEditMode ? "warning" : "primary"}
-                onClick={handleEditPlan}
-                disabled={isSubmitting}
-                sx={{ 
-                  ...(isEditMode ? {
-                    backgroundColor: '#ff9800',
-                    '&:hover': {
-                      backgroundColor: '#f57c00'
-                    }
-                  } : {
-                    borderColor: '#1976d2',
-                    color: '#1976d2',
-                    '&:hover': {
-                      borderColor: '#1565c0',
-                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                    }
-                  })
-                }}
-              >
-                {isSubmitting ? 'Submitting...' : (isEditMode ? 'Submit for Approval' : 'Edit Current Grad Plan')}
-              </Button>
-              
-              {isEditMode && (
-                <Button 
-                  variant="outlined"
-                  color="error"
-                  onClick={handleCancelEdit}
-                  disabled={!canCancelEdit}
-                  sx={{ 
-                    borderColor: canCancelEdit ? '#f44336' : 'action.disabled',
-                    color: canCancelEdit ? '#f44336' : 'action.disabled',
-                    '&:hover': canCancelEdit ? {
-                      borderColor: '#d32f2f',
-                      backgroundColor: 'rgba(244, 67, 54, 0.04)'
-                    } : {},
-                    '&:disabled': {
-                      borderColor: 'action.disabled',
-                      color: 'action.disabled'
-                    }
-                  }}
-                >
-                  {canCancelEdit ? 'Cancel Edit' : 'Submit Required'}
-                </Button>
-              )}
-            </>
+          {selectedGradPlan && (
+            <Button 
+              variant="outlined"
+              color="primary"
+              onClick={handleEditPlan}
+              sx={{ 
+                borderColor: '#1976d2',
+                color: '#1976d2',
+                '&:hover': {
+                  borderColor: '#1565c0',
+                  backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                }
+              }}
+            >
+              Edit Graduation Plan
+            </Button>
           )}
         </Box>
       </Box>
       
-      {gradPlanRecord ? (
+      {selectedGradPlan ? (
         <Box>
           <GraduationPlanner 
-            plan={gradPlanRecord} 
-            isEditMode={isEditMode} 
-            onPlanUpdate={handlePlanUpdate}
+            plan={selectedGradPlan.plan_details as Record<string, unknown>} 
+            isEditMode={false}
           />
         </Box>
       ) : (
@@ -324,30 +278,6 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
         genEdData={genEdData}
         onPlanCreated={handlePlanCreated}
       />
-      
-      <Dialog
-        open={isCancelDialogOpen}
-        onClose={handleCloseCancelDialog}
-        aria-labelledby="cancel-edit-dialog-title"
-        aria-describedby="cancel-edit-dialog-description"
-      >
-        <DialogTitle id="cancel-edit-dialog-title">
-          Cancel Edit Mode?
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="cancel-edit-dialog-description">
-            Are you sure you want to cancel edit mode? All unsaved changes to your graduation plan will be lost.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseCancelDialog} color="primary">
-            Continue Editing
-          </Button>
-          <Button onClick={handleConfirmCancel} color="error" variant="contained">
-            Cancel Changes
-          </Button>
-        </DialogActions>
-      </Dialog>
       
       <Snackbar
         open={notification.open}
