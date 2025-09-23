@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import type { ProgramRow } from '@/types/program';
 import fs from 'fs';
 import path from 'path';
-import { encodeAccessId } from '@/lib/utils/access-id';
+import { encodeAccessId, decodeAccessId } from '@/lib/utils/access-id';
 
 // Secure server action that handles OpenAI API calls and user authentication
 export async function OrganizeCoursesIntoSemesters_ServerAction(
@@ -836,4 +836,22 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
         student_id: gradPlanData.student_id,
         programs
     };
+}
+
+/**
+ * Server action to decode access IDs securely using the crypto module
+ */
+export async function decodeAccessIdServerAction(accessId: string): Promise<{ success: boolean; gradPlanId?: string; error?: string }> {
+    try {
+        const gradPlanId = decodeAccessId(accessId);
+        
+        if (!gradPlanId) {
+            return { success: false, error: 'Invalid or expired access link' };
+        }
+        
+        return { success: true, gradPlanId };
+    } catch (error) {
+        console.error('Error decoding access ID:', error);
+        return { success: false, error: 'Failed to decode access ID' };
+    }
 }
