@@ -133,10 +133,10 @@ export default function ProgramsTable({ rows, onEdit, onDelete }: ProgramsTableP
           Confirm Delete
         </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography className="font-body">
             Are you sure you want to delete the program <strong>&ldquo;{programToDelete?.name}&rdquo;</strong>?
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="body2" className="font-body" color="text.secondary" sx={{ mt: 1 }}>
             This action cannot be undone. All associated data will be permanently removed.
           </Typography>
         </DialogContent>

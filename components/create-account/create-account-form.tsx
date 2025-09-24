@@ -207,7 +207,7 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
         />
       </div>
 
-      <p style={{ color: "#666", marginBottom: 16 }}>
+      <p className="font-body" style={{ color: "var(--text-secondary, #666)", marginBottom: 16 }}>
         Tell us a bit about your academic goals and interests. You can change these later.
       </p>
 
@@ -271,13 +271,13 @@ export default function CreateAccountForm({ userId, nextHref, preload, initial }
           type="submit"
           disabled={!canSubmit || saving}
           aria-disabled={!canSubmit || saving}
+          className="font-body-medium"
           style={{
             padding: "10px 14px",
             borderRadius: 10,
-            border: "1px solid #ddd",
-            background: canSubmit && !saving ? "black" : "#999",
+            border: "1px solid var(--border-light)",
+            background: canSubmit && !saving ? "black" : "var(--text-muted, #999)",
             color: "white",
-            fontWeight: 600,
           }}
         >
           {saving ? "Saving…" : "Continue"}

@@ -45,13 +45,13 @@ export default function StartDialog({ onClose }: Readonly<StartDialogProps>) {
               border: '1px solid #e5e7eb',
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
               '&:hover': {
-                bgcolor: '#12F987',
-                borderColor: '#12F987',
+                bgcolor: 'var(--primary)',
+                borderColor: 'var(--primary)',
                 color: '#000000',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.10)',
               },
               '&:focus-visible': {
-                outline: '2px solid #12F987',
+                outline: '2px solid var(--primary)',
                 outlineOffset: '2px',
               },
             }}
@@ -75,10 +75,10 @@ export default function StartDialog({ onClose }: Readonly<StartDialogProps>) {
               borderColor: 'rgba(18,249,135,0.7)',
               '&:hover': {
                 bgcolor: 'rgba(18,249,135,0.10)',
-                borderColor: '#12F987',
+                borderColor: 'var(--primary)',
               },
               '&:focus-visible': {
-                outline: '2px solid #12F987',
+                outline: '2px solid var(--primary)',
                 outlineOffset: '2px',
               },
             }}

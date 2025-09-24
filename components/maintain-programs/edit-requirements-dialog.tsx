@@ -198,8 +198,8 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>
-                <Typography variant="h5">Edit Program</Typography>
-                <Typography variant="subtitle2" color="text.secondary">
+                <Typography variant="h5" className="font-header">Edit Program</Typography>
+                <Typography variant="subtitle2" className="font-body" color="text.secondary">
                     {row?.name} ({row?.program_type})
                 </Typography>
             </DialogTitle>
@@ -207,7 +207,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
             <DialogContent dividers>
                 <Box sx={{ p: 2 }}>
                     {/* Basic Information Section */}
-                    <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                    <Typography variant="h6" className="font-header" gutterBottom sx={{ mb: 3 }}>
                         Basic Information
                     </Typography>
                     
@@ -287,7 +287,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
                     {/* Requirements Section */}
                     <Accordion defaultExpanded>
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="h6">
+                            <Typography variant="h6" className="font-header">
                                 Program Requirements {!isJsonValid && '⚠️ Invalid JSON'}
                             </Typography>
                         </AccordionSummary>
@@ -307,7 +307,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
                                 }
                                 sx={{
                                     '& .MuiInputBase-input': {
-                                        fontFamily: 'monospace',
+                                        fontFamily: '"Courier New", monospace',
                                         fontSize: '0.875rem'
                                     }
                                 }}
@@ -315,7 +315,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
                             
                             {formData.requirements.trim() && isJsonValid && (
                                 <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                                    <Typography variant="subtitle2" gutterBottom>
+                                    <Typography variant="subtitle2" className="font-body" gutterBottom>
                                         JSON Preview:
                                     </Typography>
                                     <Box sx={{ 
@@ -330,7 +330,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
                                         <pre style={{ 
                                             margin: 0, 
                                             fontSize: '0.75rem', 
-                                            fontFamily: 'monospace',
+                                            fontFamily: '"Courier New", monospace',
                                             whiteSpace: 'pre-wrap',
                                             wordWrap: 'break-word'
                                         }}>

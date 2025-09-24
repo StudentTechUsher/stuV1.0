@@ -34,14 +34,14 @@ export default function ChipsField({
   return (
     <div style={{ marginBottom: 16, opacity: disabled ? 0.6 : 1 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <label htmlFor={id} style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
+        <label htmlFor={id} className="font-header font-semibold block mb-1.5">
           {label}
         </label>
         {values.length > 0 && (
           <button
             type="button"
             onClick={() => onChange([])}
-            style={{ fontSize: 12, color: "#555", textDecoration: "underline", background: "none" }}
+            className="text-xs text-muted-foreground underline bg-transparent border-none cursor-pointer"
             aria-label={`Clear ${label} selections`}
           >
             Clear

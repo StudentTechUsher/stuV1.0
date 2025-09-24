@@ -821,10 +821,10 @@ export default function CreateGradPlanDialog({
 
                   return orderedTypes.map((programType) => (
                     <Box key={programType} sx={{ mb: 3 }}>
-                      <Typography 
-                        variant="subtitle1" 
-                        sx={{ 
-                          fontWeight: 600, 
+                      <Typography
+                        variant="subtitle1"
+                        className="font-header"
+                        sx={{
                           mb: 1,
                           textTransform: 'capitalize',
                           color: 'success.main'
@@ -840,8 +840,7 @@ export default function CreateGradPlanDialog({
                             onClick={() => handleProgramToggle(program.id)}
                             color={selectedPrograms.has(program.id) ? 'success' : 'default'}
                             variant={selectedPrograms.has(program.id) ? 'filled' : 'outlined'}
-                            sx={{ 
-                              fontSize: '0.875rem',
+                            sx={{
                               cursor: 'pointer',
                               '&:hover': {
                                 backgroundColor: selectedPrograms.has(program.id) 
@@ -881,7 +880,7 @@ export default function CreateGradPlanDialog({
                             label="Auto-selected" 
                             size="small" 
                             color="success" 
-                            sx={{ ml: 1, fontSize: '0.75rem' }}
+                            sx={{ ml: 1 }}
                           />
                         )}
                       </Typography>
@@ -948,7 +947,7 @@ export default function CreateGradPlanDialog({
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         {programRequirements.map((req, idx) => (
                           <Box key={`prog-req-${req.requirementId}-${idx}`} sx={{ py: 2 }}>
-                            <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                            <Typography variant="subtitle1" className="font-header" sx={{ mb: 1 }}>
                               Requirement {req.requirementId}: {req.description}
                               {(() => {
                                 const dropdownCount = getProgramDropdownCount(req);
@@ -959,7 +958,7 @@ export default function CreateGradPlanDialog({
                                     label="Auto-selected" 
                                     size="small" 
                                     color="success" 
-                                    sx={{ ml: 1, fontSize: '0.75rem' }}
+                                    sx={{ ml: 1 }}
                                   />
                                 );
                               })()}
@@ -1048,7 +1047,7 @@ export default function CreateGradPlanDialog({
                               <Box sx={{ ml: 2 }}>
                                 {req.subRequirements.map((subReq, subIdx) => (
                                   <Box key={`subreq-${subReq.requirementId}-${subIdx}`} sx={{ mb: 2 }}>
-                                    <Typography variant="body1" sx={{ mb: 1, fontWeight: 'medium' }}>
+                                    <Typography variant="body1" className="font-body-medium" sx={{ mb: 1 }}>
                                       Sub-requirement {subReq.requirementId}: {subReq.description}
                                       {(() => {
                                         const dropdownCount = getProgramDropdownCount(subReq);
@@ -1059,7 +1058,7 @@ export default function CreateGradPlanDialog({
                                             label="Auto-selected" 
                                             size="small" 
                                             color="success" 
-                                            sx={{ ml: 1, fontSize: '0.75rem' }}
+                                            sx={{ ml: 1 }}
                                           />
                                         );
                                       })()}
@@ -1152,7 +1151,7 @@ export default function CreateGradPlanDialog({
                   <pre style={{ 
                     margin: 0, 
                     fontSize: '0.875rem', 
-                    fontFamily: 'monospace',
+                    fontFamily: '"Courier New", monospace',
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word'
                   }}>

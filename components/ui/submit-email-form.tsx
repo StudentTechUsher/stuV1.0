@@ -119,9 +119,9 @@ export function SubmitEmailForm() {
           <Button
             type="button"
             onClick={() => setShowSecondMajor(!showSecondMajor)}
+            className="font-body"
             sx={{
               color: "black",
-              fontSize: "11px",
               padding: 0,
             }}
           >

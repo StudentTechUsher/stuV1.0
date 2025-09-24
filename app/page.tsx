@@ -145,8 +145,7 @@ export default function LandingPage() {
         <div className="space-y-2 max-w-full">
         {/* Matching style from /students */}
         <h1
-        className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight"
-        style={{ fontFamily: 'Work Sans, sans-serif' }}
+        className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header"
         >
         <div className="whitespace-nowrap">
         Revolutionize Academic Planning
@@ -156,8 +155,7 @@ export default function LandingPage() {
         </div>
         </h1>
         <p
-        className="max-w-[600px] text-zinc-600 text-[clamp(1rem,1.5vw,2rem)] leading-snug"
-        style={{ fontFamily: 'Inter, sans-serif' }}
+        className="max-w-[600px] text-zinc-600 text-[clamp(1rem,1.5vw,2rem)] leading-snug font-body-medium"
         >
         Empower your students and advisors with an intelligent course scheduling and graduation mapping platform that ensures smoother degree progression and higher graduation rates.
         </p>

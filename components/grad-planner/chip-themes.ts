@@ -6,7 +6,7 @@ export const withAlpha = (hex6: string, aa: string) => `${asHex(hex6)}${aa}`;
 
 export const CHIP_THEMES: Record<'default'|'major'|'minor'|'ge'|'elective', ChipTheme> = {
   default : { base: '#E5E7EB', text: '#0A0A0A' },
-  major   : { base: '#12F987', text: '#0A0A0A' }, // Major
+  major   : { base: 'var(--primary)', text: '#0A0A0A' }, // Major
   minor   : { base: '#02174C', text: '#FFFFFF' }, // Minor (dark base -> white text)
   ge      : { base: '#FF3508', text: '#0A0A0A' }, // Gen Ed
   elective: { base: '#AC11FA', text: '#0A0A0A' }, // Elective

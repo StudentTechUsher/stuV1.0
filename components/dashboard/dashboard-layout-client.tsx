@@ -33,7 +33,7 @@ export default function DashboardLayoutClient({
         }}
       >
         <Box sx={{ 
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", 
+          fontFamily: '"Courier New", monospace', 
           fontSize: 12, 
           color: "text.secondary", 
           borderBottom: "1px dashed", 

@@ -200,10 +200,10 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
               variant="contained" 
               color="success"
               onClick={handleCreatePlan}
-              sx={{ 
-                backgroundColor: '#4caf50',
+              sx={{
+                backgroundColor: 'var(--primary)',
                 '&:hover': {
-                  backgroundColor: '#45a049'
+                  backgroundColor: 'var(--hover-green)'
                 }
               }}
             >
@@ -219,17 +219,17 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
                 color={isEditMode ? "warning" : "primary"}
                 onClick={handleEditPlan}
                 disabled={isSubmitting}
-                sx={{ 
+                sx={{
                   ...(isEditMode ? {
-                    backgroundColor: '#ff9800',
+                    backgroundColor: 'var(--action-edit)',
                     '&:hover': {
-                      backgroundColor: '#f57c00'
+                      backgroundColor: 'var(--action-edit-hover)'
                     }
                   } : {
-                    borderColor: '#1976d2',
-                    color: '#1976d2',
+                    borderColor: 'var(--action-info)',
+                    color: 'var(--action-info)',
                     '&:hover': {
-                      borderColor: '#1565c0',
+                      borderColor: 'var(--action-info-hover)',
                       backgroundColor: 'rgba(25, 118, 210, 0.04)'
                     }
                   })
@@ -244,11 +244,11 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
                   color="error"
                   onClick={handleCancelEdit}
                   disabled={!canCancelEdit}
-                  sx={{ 
-                    borderColor: canCancelEdit ? '#f44336' : 'action.disabled',
-                    color: canCancelEdit ? '#f44336' : 'action.disabled',
+                  sx={{
+                    borderColor: canCancelEdit ? 'var(--action-cancel)' : 'action.disabled',
+                    color: canCancelEdit ? 'var(--action-cancel)' : 'action.disabled',
                     '&:hover': canCancelEdit ? {
-                      borderColor: '#d32f2f',
+                      borderColor: 'var(--action-cancel-hover)',
                       backgroundColor: 'rgba(244, 67, 54, 0.04)'
                     } : {},
                     '&:disabled': {
@@ -285,11 +285,11 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
             borderColor: 'grey.300'
           }}
         >
-          <Typography variant="h5" gutterBottom sx={{ color: 'text.primary', fontWeight: 600 }}>
-            Welcome to Your Graduation Planner! 🎓
+          <Typography variant="h5" gutterBottom className="font-header" sx={{ color: 'text.primary' }}>
+            Welcome to Your Graduation Planner!
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-            You don&apos;t have a graduation plan yet. Let&apos;s create one! Our AI assistant can help you build 
+          <Typography variant="body1" className="font-body-medium" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+            You don&apos;t have a graduation plan yet. Let&apos;s create one! Our AI assistant can help you build
             a personalized graduation plan based on your major, interests, and graduation requirements.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -298,12 +298,12 @@ export default function GradPlanClient({ user, studentRecord, gradPlanRecord, pr
               color="success"
               size="large"
               onClick={handleCreatePlan}
-              sx={{ 
-                backgroundColor: '#22c55e',
+              sx={{
+                backgroundColor: 'var(--primary)',
                 px: 4,
                 py: 1.5,
                 '&:hover': {
-                  backgroundColor: '#16a34a'
+                  backgroundColor: 'var(--hover-green)'
                 }
               }}
             >

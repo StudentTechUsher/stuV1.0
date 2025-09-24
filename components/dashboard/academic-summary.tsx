@@ -43,7 +43,7 @@ function ProgressPill({
         position: "relative",
         height,
         borderRadius: 999,
-        bgcolor: "#ffffff",
+        bgcolor: "var(--card)",
         overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.25)",
       }}
@@ -58,13 +58,13 @@ function ProgressPill({
           position: "absolute",
           inset: 0,
           width: `${pct}%`,
-          bgcolor: "#12F987",
+          bgcolor: "var(--primary)",
           display: "flex",
           alignItems: "center",
           px: 2,
         }}
       >
-        <Typography variant="body2" sx={{ color: "#000", fontWeight: 700 }}>
+        <Typography variant="body2" className="font-body-bold" sx={{ color: "var(--foreground)" }}>
           {label}
         </Typography>
       </Box>
@@ -170,8 +170,8 @@ export default function AcademicSummary() {
       elevation={10}
       sx={{
         borderRadius: 3,
-        bgcolor: "#0A0A0A",
-        color: "#FFFFFF",
+        bgcolor: "var(--foreground)",
+        color: "var(--background)",
         boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
         border: "1px solid rgba(255,255,255,0.08)",
         height: "50%",
