@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/api/server-actions';
+import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/services/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -355,11 +355,28 @@ export default function EditGradPlanPage() {
 
       {/* Plan Details */}
       <Paper elevation={2} sx={{ p: 4, mb: 4, backgroundColor: '#fafafa' }}>
-        <GraduationPlanner 
-          plan={gradPlan.plan_details as Record<string, unknown>}
-          isEditMode={isEditMode}
-          onPlanUpdate={handlePlanUpdate}
-        />
+        {(() => {
+          // Normalize various possible stored shapes of plan_details
+          let raw: any = gradPlan.plan_details;
+          // If stored as raw JSON string (legacy), parse it
+            if (typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch {/* leave raw as-is */}
+          }
+          // Unwrap if root contains known keys
+          if (raw && typeof raw === 'object') {
+            if (Array.isArray(raw.plan)) raw = { plan: raw.plan }; // keep consistent shape for component
+            else if (Array.isArray(raw.semesters)) raw = { plan: raw.semesters };
+            else if (Array.isArray(raw.terms)) raw = { plan: raw.terms };
+            else if (Array.isArray(raw.plan_details?.plan)) raw = { plan: raw.plan_details.plan };
+          }
+          return (
+            <GraduationPlanner
+              plan={raw as Record<string, unknown>}
+              isEditMode={isEditMode}
+              onPlanUpdate={handlePlanUpdate}
+            />
+          );
+        })()}
       </Paper>
 
       {/* Info Alert for Students */}

@@ -1,6 +1,6 @@
 'use client';
 import type { ProgramRow } from '@/types/program';
-import { updateProgram, createProgram } from '@/lib/api/client-actions';
+import { updateProgram, createProgram } from '@/lib/services/programService';
 import { 
     Dialog, 
     DialogTitle, 
@@ -17,7 +17,9 @@ import {
     FormControl,
     InputLabel,
     Select,
-    MenuItem
+    MenuItem,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React from 'react';
@@ -42,7 +44,7 @@ interface FormData {
     requirements: string; // JSON as string for editing
 }
 
-export default function EditRequirementsDialog({ open, row, onClose, onSave, university_id }: EditRequirementsDialogProps) {
+export default function EditRequirementsDialog({ open, row, onClose, onSave, university_id }: Readonly<EditRequirementsDialogProps>) {
     const [formData, setFormData] = React.useState<FormData>({
         id: '',
         university_id: 0,
@@ -56,6 +58,9 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave, uni
 
     const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
     const [isJsonValid, setIsJsonValid] = React.useState(true);
+    const [snackbarOpen, setSnackbarOpen] = React.useState(false);
+    const [snackbarMessage, setSnackbarMessage] = React.useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error'>('success');
 
     // Update form data when row changes
     React.useEffect(() => {
@@ -198,19 +203,33 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave, uni
             
             // Call the parent's onSave callback with the result program
             await onSave(resultProgram);
-            
-            // Close the dialog
-            onClose();
+
+            // Success feedback
+            setSnackbarSeverity('success');
+            setSnackbarMessage(row ? 'Program updated successfully.' : 'Program created successfully.');
+            setSnackbarOpen(true);
+
+            // Close after a short delay to allow user to see success
+            setTimeout(() => {
+                onClose();
+            }, 400);
         } catch (error) {
             console.error('Failed to save program:', error);
-            // You might want to show an error message to the user here
-            // For now, we'll just log the error
+            setSnackbarSeverity('error');
+            setSnackbarMessage('Failed to save program. Please try again.');
+            setSnackbarOpen(true);
         }
+    };
+
+    const handleSnackbarClose = (_?: unknown, reason?: string) => {
+        if (reason === 'clickaway') return;
+        setSnackbarOpen(false);
     };
 
     const programTypes = ['major', 'minor', 'emphasis', 'general_education'];
 
     return (
+        <>
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>
                 <Typography variant="h5">{row ? 'Edit Program' : 'Add New Program'}</Typography>
@@ -270,7 +289,15 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave, uni
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         const numVal = parseFloat(val);
-                                        handleFieldChange('version', val === '' ? null : isNaN(numVal) ? val : numVal);
+                                        let versionValue: string | number | null;
+                                        if (val === '') {
+                                            versionValue = null;
+                                        } else if (isNaN(numVal)) {
+                                            versionValue = val;
+                                        } else {
+                                            versionValue = numVal;
+                                        }
+                                        handleFieldChange('version', versionValue);
                                     }}
                                     fullWidth
                                     helperText="Enter version number or text"
@@ -392,5 +419,21 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave, uni
                 </Button>
             </DialogActions>
         </Dialog>
+        <Snackbar 
+            open={snackbarOpen} 
+            autoHideDuration={3500} 
+            onClose={handleSnackbarClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+            <Alert 
+                onClose={handleSnackbarClose} 
+                severity={snackbarSeverity} 
+                variant="filled"
+                sx={{ width: '100%' }}
+            >
+                {snackbarMessage}
+            </Alert>
+        </Snackbar>
+        </>
     );
 }

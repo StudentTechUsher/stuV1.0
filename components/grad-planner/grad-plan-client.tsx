@@ -50,9 +50,14 @@ interface GradPlanClientProps {
   activeGradPlan: GradPlanRecord | null;
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
+  /**
+   * Prompt string retrieved from ai_prompts table used to guide AI plan generation.
+   * If retrieval fails upstream we pass an empty string so the dialog can still render.
+   */
+  prompt: string;
 }
 
-export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, programsData, genEdData }: Readonly<GradPlanClientProps>) {
+export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, programsData, genEdData, prompt }: Readonly<GradPlanClientProps>) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
@@ -243,8 +248,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
             Welcome to Your Graduation Planner! 🎓
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-            You don&apos;t have a graduation plan yet. Let&apos;s create one! Our AI assistant can help you build 
-            a personalized graduation plan based on your major, interests, and graduation requirements.
+            You don&apos;t have an active graduation plan yet. Submit one for approval to have it show here.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button 
@@ -277,6 +281,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         programsData={programsData}
         genEdData={genEdData}
         onPlanCreated={handlePlanCreated}
+        prompt={prompt}
       />
       
       <Snackbar

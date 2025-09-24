@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { getSessionUser } from '@/lib/api/auth';
-import { getUserUniversityId } from '@/lib/api/profile';
+import { getSessionUser } from '@/lib/services/auth';
+import { getUserUniversityId } from '@/lib/services/profileService';
 import type { ProgramRow } from '@/types/program';
 import EditRequirementsDialog from '@/components/maintain-programs/edit-requirements-dialog';
 import ProgramsTable from '@/components/maintain-programs/programs-table';
-import { fetchProgramsByUniversity, deleteProgram } from '@/lib/api/server-actions';
+import { fetchProgramsByUniversity, deleteProgram } from '@/lib/services/server-actions';
 
 export default function MaintainProgramsPage() {
   const [rows, setRows] = React.useState<ProgramRow[]>([]);

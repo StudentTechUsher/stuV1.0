@@ -1,6 +1,8 @@
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import GradPlanClient from "@/components/grad-planner/grad-plan-client";
-import GetProgramsForUniversity, { GetAllGradPlans, GetGenEdsForUniversity } from '@/lib/api/server-actions';
+import { GetAllGradPlans } from '@/lib/services/gradPlanService';
+import GetProgramsForUniversity, { GetGenEdsForUniversity } from '@/lib/services/programService';
+import { GetAiPrompt } from '@/lib/services/aiDbService';
 
 // Force dynamic rendering for this page because it uses cookies
 export const dynamic = 'force-dynamic';
@@ -31,9 +33,11 @@ export default async function GradPlanPage() {
   // Find the currently active plan from all plans
   const activeGradPlan = allGradPlans.find(plan => plan.is_active) || null;
 
-  // STEP 4: Get programs data and general education data for user's university
+  // STEP 4: Get programs data + general education data for user's university, also get the grad_plan prompt for AI
   const programsData = userProfile.university_id ? await GetProgramsForUniversity(userProfile.university_id) : [];
   const genEdData = userProfile.university_id ? await GetGenEdsForUniversity(userProfile.university_id) : [];
+  // Fetch the AI prompt (string) for organizing grad plan; ensure we await and coerce null to ''
+  const prompt = (await GetAiPrompt('organize_grad_plan')) ?? ''
 
   return (
     <GradPlanClient 
@@ -43,6 +47,7 @@ export default async function GradPlanPage() {
       activeGradPlan={activeGradPlan}
       programsData={programsData}
       genEdData={genEdData}
+      prompt={prompt}
     />
   );
 }
