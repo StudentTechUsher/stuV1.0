@@ -2,26 +2,56 @@
   "plan": [
     {
       "term": "1",
-      "notes": "Start with foundations and writing.",
+      "notes": "Get comfortable with Excel and study habits.",
       "courses": [
         {
           "code": "UNIV 101",
-          "title": "Foundations for Student Success",
+          "title": "BYU Foundations for Student Success",
           "credits": 2,
-          "fulfills": ["Foundations"]
+          "fulfills": ["Foundations for Student Success"]
         },
         {
           "code": "WRTG 150",
           "title": "Writing & Rhetoric",
           "credits": 3,
           "fulfills": ["First-Year Writing"]
+        },
+        {
+          "code": "A HTG 100",
+          "title": "American Heritage",
+          "credits": 3,
+          "fulfills": ["American Heritage"]
+        },
+        {
+          "code": "IS 110",
+          "title": "Spreadsheets & Bus Analysis",
+          "credits": 1,
+          "fulfills": ["Pre-Business"]
+        },
+        {
+          "code": "IS 201",
+          "title": "Intro to Information Systems",
+          "credits": 3,
+          "fulfills": ["Pre-Business Prereq"]
+        },
+        {
+          "code": "REL C 200",
+          "title": "The Eternal Family",
+          "credits": 2,
+          "fulfills": ["Religion cornerstone"]
+        },
+        {
+          "code": "REL A 275",
+          "title": "Teachings & Doctrine of the Book of Mormon",
+          "credits": 2,
+          "fulfills": ["Religion cornerstone/BoM option"]
         }
       ],
-      "credits_planned": 5
+      "credits_planned": 16
     },
     {
       "term": "2",
-      "notes": "Introduce pre-business and religion.",
+      "notes": "Target B+ or better in ACC 200.",
       "courses": [
         {
           "code": "ACC 200",
@@ -30,31 +60,319 @@
           "fulfills": ["Pre-Business Prereq"]
         },
         {
+          "code": "ECON 110",
+          "title": "Economic Principles & Problems",
+          "credits": 3,
+          "fulfills": ["Pre-Business"]
+        },
+        {
+          "code": "MKTG 201",
+          "title": "Marketing Management",
+          "credits": 3,
+          "fulfills": ["Pre-Business"]
+        },
+        {
+          "code": "ANTHR 101",
+          "title": "Social/Cultural Anthropology",
+          "credits": 3,
+          "fulfills": ["Global & Cultural Awareness (GCA)"]
+        },
+        {
           "code": "REL A 121",
           "title": "The Book of Mormon",
           "credits": 2,
-          "fulfills": ["Religion cornerstone"]
+          "fulfills": ["Religion cornerstone/BoM"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 1,
+          "fulfills": ["Elective/GE"]
         }
       ],
-      "credits_planned": 5
+      "credits_planned": 15
+    },
+    {
+      "term": "3",
+      "notes": "Advance writing/communication and round out religion; keep a balanced load.",
+      "courses": [
+        {
+          "code": "M COM 320",
+          "title": "Commun in Organiztnl Settings",
+          "credits": 3,
+          "fulfills": ["Pre-Business"]
+        },
+        {
+          "code": "ACC 310",
+          "title": "Intermediate Financial Accounting",
+          "credits": 3,
+          "fulfills": ["Pre-Business Prereq"]
+        },
+        {
+          "code": "REL A 250",
+          "title": "Christ & the Everlstng Gospel",
+          "credits": 2,
+          "fulfills": ["Religion cornerstone"]
+        },
+        {
+          "code": "REL C 225",
+          "title": "Foundations of the Restoration",
+          "credits": 2,
+          "fulfills": ["Religion cornerstone"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 5,
+          "fulfills": ["Elective/GE"]
+        }
+      ],
+      "credits_planned": 15
+    },
+    {
+      "term": "4",
+      "notes": "Finish lower-division religion; add electives judiciously before Junior Core.",
+      "courses": [
+        {
+          "code": "REL C 333",
+          "title": "The Living Prophets",
+          "credits": 2,
+          "fulfills": ["Religion elective"]
+        },
+        {
+          "code": "REL A 122",
+          "title": "The Book of Mormon (Part 2)",
+          "credits": 2,
+          "fulfills": ["Religion elective"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 10,
+          "fulfills": ["Elective/GE"]
+        }
+      ],
+      "credits_planned": 14
+    },
+    {
+      "term": "5",
+      "notes": "Junior Core begins.",
+      "courses": [
+        {
+          "code": "ACC 401",
+          "title": "Bus & Acc Info Systems",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 403",
+          "title": "Interm Financial Accounting 1",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 405",
+          "title": "Fundamentals of Taxation",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 408",
+          "title": "Critical Thinking",
+          "credits": 1.5,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 410",
+          "title": "Acct. Prof. Development I",
+          "credits": 1.5,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 2,
+          "fulfills": ["Elective/GE"]
+        }
+      ],
+      "credits_planned": 14
+    },
+    {
+      "term": "6",
+      "notes": "Complete Junior Core sequence.",
+      "courses": [
+        {
+          "code": "ACC 402",
+          "title": "Cost & Managerial Accounting",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 404",
+          "title": "Financial Accounting 2",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 406",
+          "title": "Financial Statement Auditing",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 407",
+          "title": "Data Analytics in Accounting",
+          "credits": 3,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 409",
+          "title": "Integrated Topics",
+          "credits": 1.5,
+          "fulfills": ["Junior Core"]
+        },
+        {
+          "code": "ACC 411",
+          "title": "Acct. Prof. Development II",
+          "credits": 1.5,
+          "fulfills": ["Junior Core"]
+        }
+      ],
+      "credits_planned": 15
+    },
+    {
+      "term": "7",
+      "notes": "Round out remaining Business Core; keep some elective credit this term.",
+      "courses": [
+        {
+          "code": "FIN 402",
+          "title": "Managerial Finance",
+          "credits": 3,
+          "fulfills": ["Business Core"]
+        },
+        {
+          "code": "HRM 391",
+          "title": "Organizational Effectiveness",
+          "credits": 3,
+          "fulfills": ["Business Core"]
+        },
+        {
+          "code": "STRAT 392",
+          "title": "Strategy and Economics",
+          "credits": 3,
+          "fulfills": ["Business Core"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 3,
+          "fulfills": ["Elective/GE"]
+        }
+      ],
+      "credits_planned": 12
+    },
+    {
+      "term": "8",
+      "notes": "Complete exit survey; verify all GE/Religion totals.",
+      "courses": [
+        {
+          "code": "MSB 571",
+          "title": "Ethics for Accounting",
+          "credits": 3,
+          "fulfills": ["Business Core"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 3,
+          "fulfills": ["Elective/GE"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 3,
+          "fulfills": ["Elective/GE"]
+        },
+        {
+          "code": "ELECTIVE",
+          "title": "Open elective/GE",
+          "credits": 3,
+          "fulfills": ["Elective/GE"]
+        }
+      ],
+      "credits_planned": 12
     }
   ],
   "program": "BS Accounting",
   "assumptions": [
     "Junior Core begins in Fall only.",
-    "Minimum B in ACC 200 before applying."
+    "Minimum B in ACC 200 and ACC 310 before applying to the Accounting program.",
+    "M COM 320 satisfies Advanced Writing / Communication.",
+    "Religion 'cornerstones' distributed across years; total Religion hours planned ≈ 14.",
+    "Electives are used flexibly (1–10 credits) to keep each term within 12–18 credits and to avoid back-loading."
   ],
   "checkpoints": [
     {
-      "term": "2",
+      "term": "4",
       "action": "Apply to Accounting Junior Core",
-      "conditions": ["ACC 200 completed with B+"]
+      "conditions": [
+        "ACC 200 (B+) and ACC 310 (B+) completed",
+        "Pre-business substantially complete",
+        "Plan Junior Core for Semester 5"
+      ]
+    },
+    {
+      "term": "8",
+      "notes": "Per Requirement 5.",
+      "action": "Complete exit survey"
     }
   ],
   "duration_years": 4,
   "requirement_buckets_covered": {
-    "pre_business": ["ACC 200"],
-    "religion_plan": ["REL A 121"],
-    "gen_ed_examples": ["UNIV 101", "WRTG 150"]
+    "junior_core": [
+      "ACC 401",
+      "ACC 402",
+      "ACC 403",
+      "ACC 404",
+      "ACC 405",
+      "ACC 406",
+      "ACC 407",
+      "ACC 408",
+      "ACC 409",
+      "ACC 410",
+      "ACC 411"
+    ],
+    "pre_business": [
+      "ECON 110",
+      "IS 110",
+      "IS 201",
+      "M COM 320",
+      "MKTG 201"
+    ],
+    "pre_business_prereqs": [
+      "ACC 200",
+      "ACC 310",
+      "IS 201"
+    ],
+    "business_core": [
+      "FIN 402",
+      "HRM 391",
+      "MSB 571",
+      "STRAT 392"
+    ],
+    "religion_plan": [
+      "REL C 200",
+      "REL A 275",
+      "REL A 121",
+      "REL A 250",
+      "REL C 225",
+      "REL C 333",
+      "REL A 122"
+    ],
+    "gen_ed_examples": [
+      "UNIV 101",
+      "A HTG 100",
+      "ANTHR 101"
+    ]
   }
 }

@@ -184,8 +184,6 @@ export default function LandingPage() {
         </div>
         </section>
 
-        {/* Features Section */}
-
           {/* Features Section */}
           <section id="features" className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center">
             <div className="container px-4 md:px-6">
@@ -389,7 +387,7 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
+                  <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
                     Privacy
                   </Link>
                 </li>

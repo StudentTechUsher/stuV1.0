@@ -67,9 +67,18 @@ export default function ChipsField({
               label={opt.name}
               onClick={() => toggle(opt.id)}
               clickable
-              color={selected ? "primary" : "default"}
+              color="default"
               variant={selected ? "filled" : "outlined"}
-              sx={{ mb: 1 }}
+              sx={{ 
+                mb: 1,
+                ...(selected && {
+                  backgroundColor: '#16a34a', // green-600
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#15803d', // green-700
+                  }
+                })
+              }}
               role="option"
               aria-selected={selected}
             />

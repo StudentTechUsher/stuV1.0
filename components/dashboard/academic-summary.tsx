@@ -133,8 +133,13 @@ function OptimizationBadge({ level }: Readonly<{ level: string }>) {
   );
 }
 
-export default function AcademicSummary() {
+export default function AcademicSummary({ 
+  yearInSchool 
+}: Readonly<{ 
+  yearInSchool?: string; 
+}>) {
   const [userData, setUserData] = useState(DEFAULT_DATA);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -149,10 +154,20 @@ export default function AcademicSummary() {
                               user.email?.split('@')[0] || 
                               "Student";
           
+          // Get avatar URL from various possible sources
+          const profilePicture = user.user_metadata?.avatar_url || 
+                                user.user_metadata?.picture || 
+                                user.user_metadata?.photo_url ||
+                                user.user_metadata?.image_url ||
+                                null;
+          
           setUserData(prev => ({
             ...prev,
-            name: displayName
+            name: displayName,
+            standing: yearInSchool || prev.standing // Use the prop or fallback to default
           }));
+          
+          setAvatarUrl(profilePicture);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -161,7 +176,7 @@ export default function AcademicSummary() {
     };
 
     getUserData();
-  }, []);
+  }, [yearInSchool]);
 
   const d = userData;
 
@@ -180,7 +195,16 @@ export default function AcademicSummary() {
       <CardContent sx={{ p: 3, pb: 3 }}>
         {/* Header row */}
         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-          <Avatar sx={{ width: 40, height: 40, bgcolor: "rgba(255,255,255,0.12)" }} />
+          <Avatar 
+            src={avatarUrl || undefined}
+            sx={{ 
+              width: 40, 
+              height: 40, 
+              bgcolor: avatarUrl ? "transparent" : "rgba(255,255,255,0.12)" 
+            }} 
+          >
+            {!avatarUrl && d.name.charAt(0).toUpperCase()}
+          </Avatar>
           <Stack sx={{ flex: 1 }} spacing={0.2}>
             <Stack direction="row" spacing={1.5} alignItems="baseline">
               <Typography

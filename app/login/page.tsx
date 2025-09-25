@@ -12,16 +12,13 @@ export const dynamic = 'force-dynamic';
 function LoginContent() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/dashboard';
-
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-
-  const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(next)}`;
-
   const [email, setEmail] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
+
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `/auth/callback?next=${encodeURIComponent(next)}`;
 
   return (
     <>

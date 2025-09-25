@@ -1,6 +1,6 @@
 'use client';
 import type { ProgramRow } from '@/types/program';
-import { updateProgram } from '@/lib/api/client-actions';
+import { updateProgram, createProgram } from '@/lib/api/client-actions';
 import { 
     Dialog, 
     DialogTitle, 
@@ -28,6 +28,7 @@ export type EditRequirementsDialogProps = {
     row: ProgramRow | null;
     onClose: () => void;
     onSave: (updatedProgram: ProgramRow) => Promise<void> | void;
+    university_id: number; // Add university_id for creating new programs
 };
 
 interface FormData {
@@ -41,7 +42,7 @@ interface FormData {
     requirements: string; // JSON as string for editing
 }
 
-export default function EditRequirementsDialog({ open, row, onClose, onSave }: EditRequirementsDialogProps) {
+export default function EditRequirementsDialog({ open, row, onClose, onSave, university_id }: EditRequirementsDialogProps) {
     const [formData, setFormData] = React.useState<FormData>({
         id: '',
         university_id: 0,
@@ -61,7 +62,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
         if (!row) { 
             setFormData({
                 id: '',
-                university_id: 0,
+                university_id: university_id, // Use passed university_id for new programs
                 name: '',
                 program_type: '',
                 version: null,
@@ -108,7 +109,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
         }
         setValidationErrors({});
         setIsJsonValid(true);
-    }, [row]);
+    }, [row, university_id]);
 
     // Handle field changes
     const handleFieldChange = (field: keyof FormData, value: string | number | null) => {
@@ -169,25 +170,39 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
                 // allow plain text
             }
 
-            // Prepare the updates (excluding id and created_at which shouldn't change)
-            const updates: Partial<Omit<ProgramRow, 'id' | 'created_at'>> = {
-                name: formData.name,
-                program_type: formData.program_type,
-                version: formData.version,
-                requirements: requirementsValue,
-                // modified_at will be set automatically by updateProgram
-            };
+            let resultProgram: ProgramRow;
 
-            // Call the API to update the program
-            const updatedProgram = await updateProgram(formData.id, updates);
+            if (!row) {
+                // Creating a new program
+                const newProgramData: Omit<ProgramRow, 'id' | 'created_at' | 'modified_at'> = {
+                    university_id: formData.university_id,
+                    name: formData.name,
+                    program_type: formData.program_type,
+                    version: formData.version,
+                    requirements: requirementsValue,
+                };
+
+                resultProgram = await createProgram(newProgramData);
+            } else {
+                // Updating an existing program
+                const updates: Partial<Omit<ProgramRow, 'id' | 'created_at'>> = {
+                    name: formData.name,
+                    program_type: formData.program_type,
+                    version: formData.version,
+                    requirements: requirementsValue,
+                    // modified_at will be set automatically by updateProgram
+                };
+
+                resultProgram = await updateProgram(formData.id, updates);
+            }
             
-            // Call the parent's onSave callback with the updated program
-            await onSave(updatedProgram);
+            // Call the parent's onSave callback with the result program
+            await onSave(resultProgram);
             
             // Close the dialog
             onClose();
         } catch (error) {
-            console.error('Failed to update program:', error);
+            console.error('Failed to save program:', error);
             // You might want to show an error message to the user here
             // For now, we'll just log the error
         }
@@ -198,10 +213,12 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>
-                <Typography variant="h5" className="font-header">Edit Program</Typography>
-                <Typography variant="subtitle2" className="font-body" color="text.secondary">
-                    {row?.name} ({row?.program_type})
-                </Typography>
+              <Typography variant="h5" className="font-header">
+                {row ? 'Edit Program' : 'Add New Program'}
+              </Typography>
+              <Typography variant="subtitle2" className="font-body" color="text.secondary">
+                {row ? `${row.name} (${row.program_type})` : 'Create a new program for your university'}
+              </Typography>
             </DialogTitle>
             
             <DialogContent dividers>
@@ -345,13 +362,35 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave }: E
             </DialogContent>
             
             <DialogActions sx={{ gap: 1, p: 2 }}>
-                <Button onClick={onClose}>Cancel</Button>
+                <Button 
+                    onClick={onClose}
+                    sx={{ 
+                        color: 'text.secondary',
+                        '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                        }
+                    }}
+                >
+                    Cancel
+                </Button>
                 <Button 
                     variant="contained" 
                     onClick={handleSave}
-                    disabled={!isJsonValid || Object.keys(validationErrors).length > 0}
+                    disabled={Object.keys(validationErrors).length > 0}
+                    sx={{
+                        backgroundColor: '#12F987',
+                        color: '#0A0A0A',
+                        fontWeight: 600,
+                        '&:hover': {
+                            backgroundColor: '#0ed676'
+                        },
+                        '&:disabled': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.12)',
+                            color: 'rgba(0, 0, 0, 0.26)'
+                        }
+                    }}
                 >
-                    Save Changes
+                    {row ? 'Save Changes' : 'Create Program'}
                 </Button>
             </DialogActions>
         </Dialog>
