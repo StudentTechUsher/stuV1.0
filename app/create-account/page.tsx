@@ -98,10 +98,7 @@ export default async function CreateAccountPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: "3rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "2rem", marginBottom: 12 }}>Create your account</h1>
-      <p style={{ marginBottom: "2rem", color: "#666" }}>
-        Please complete your profile information below to get started.
-      </p>
+      <h1 className="text-3xl mb-3 font-header">Create your account</h1>
 
       <CreateAccountClient
         nextHref="/dashboard"

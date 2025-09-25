@@ -17,16 +17,14 @@ export default function DemoThanksPage() {
           />
         </div>
         <h1
-          className="text-[clamp(2rem,4vw,3rem)] font-bold text-black leading-tight tracking-tight"
-          style={{ fontFamily: "Work Sans, sans-serif", fontWeight: 700 }}
+          className="text-[clamp(2rem,4vw,3rem)] font-bold text-black leading-tight tracking-tight font-header"
         >
           Thanks for reaching out!
         </h1>
         <p
-          className="text-zinc-600 text-lg sm:text-xl leading-snug"
-          style={{ fontFamily: "Inter, sans-serif" }}
+          className="text-zinc-600 text-lg sm:text-xl leading-snug font-body-medium"
         >
-          Your demo request has been submitted successfully. We’ll be in touch shortly to schedule a time.
+          Your demo request has been submitted successfully. We'll be in touch shortly to schedule a time.
         </p>
       </div>
     </main>

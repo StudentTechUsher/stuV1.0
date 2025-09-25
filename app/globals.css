@@ -70,6 +70,28 @@
   --input: #e4e4e7;
   --ring: #12F987;
   --radius: 0.5rem;
+
+  /* 🔹 Hover / accent extras */
+  --hover-green: #06C96C;
+  --hover-gray: #3f3f46; /* Tailwind bg-zinc-700 */
+
+  /* 🔹 NEW transparent variants */
+  --primary-15: rgba(18, 249, 135, 0.15);
+  --primary-22: rgba(18, 249, 135, 0.22);
+
+  /* 🔹 Semantic action colors */
+  --action-edit: #FDCC4A;
+  --action-edit-hover: #987A2D; /* 60% of FDCC4A */
+  --action-info: #1976d2;
+  --action-info-hover: #1565c0;
+  --action-cancel: #f44336;
+  --action-cancel-hover: #d32f2f;
+
+  /* 🔹 UI colors */
+  --border-light: #ddd;
+  --warning-background: #fff3e0;
+  --nav-foreground: #fff;
+  --primary-dark: #003228;
 }
 
 .dark {
@@ -92,6 +114,21 @@
   --border: #27272a;
   --input: #27272a;
   --ring: #12F987;
+
+  /* 🔹 Dark mode transparent variants */
+  --primary-15: rgba(18, 249, 135, 0.15);
+  --primary-22: rgba(18, 249, 135, 0.22);
+
+  --hover-green: #06C96C;
+  --hover-gray: #3f3f46;
+
+  /* 🔹 Dark mode semantic action colors */
+  --action-edit: #FDCC4A;
+  --action-edit-hover: #987A2D; /* 60% of FDCC4A */
+  --action-info: #1976d2;
+  --action-info-hover: #1565c0;
+  --action-cancel: #f44336;
+  --action-cancel-hover: #d32f2f;
 }
 
 @layer base {
@@ -116,5 +153,46 @@
 
   .primary-glow {
     @apply bg-gradient-to-b from-primary/10 to-primary/5;
+  }
+
+  /* Font utility classes for consistent font usage */
+  .font-brand {
+    font-family: 'Red Hat Display', sans-serif;
+    font-weight: 700;
+  }
+
+  .font-brand-bold {
+    font-family: 'Red Hat Display', sans-serif;
+    font-weight: 800;
+  }
+
+  .font-header {
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 700;
+  }
+
+  .font-header-bold {
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 800;
+  }
+
+  .font-body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+
+  .font-body-medium {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+
+  .font-body-semi {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+  }
+
+  .font-mono {
+    font-family: 'Courier New', monospace;
+    font-weight: 400;
   }
 }

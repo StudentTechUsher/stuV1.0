@@ -167,10 +167,10 @@ export default function ChatbotDrawer({
         {/* Header with close button */}
         <Box sx={{ mb: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Typography variant="h6" className="font-header font-semibold">
               AI Assistant
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" className="font-body" color="text.secondary">
               Role: {(role || getEnvRole()).charAt(0).toUpperCase() + (role || getEnvRole()).slice(1)}
             </Typography>
           </Box>

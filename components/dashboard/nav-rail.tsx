@@ -27,7 +27,7 @@ import MapRounded from "@mui/icons-material/MapRounded";
 import type { NavItem } from "@/app/dashboard/layout";
 import { JSX } from "react";
 
-const MINT = "#38E3C2";
+// We can now use CSS variables directly in Material-UI sx props
 
 type Props = {
   items: NavItem[];
@@ -73,8 +73,8 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
         inset: 0,
         right: "auto",
         width: railWidth,
-        bgcolor: "#404040",
-        color: "#fff",
+        bgcolor: "var(--hover-gray)",
+        color: "var(--nav-foreground, #fff)",
         borderRight: "1px solid rgba(255,255,255,0.12)",
         display: "flex",
         flexDirection: "column",
@@ -118,18 +118,18 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
                     height: 28,
                     width: 3,
                     borderRadius: 2,
-                    bgcolor: active ? MINT : "transparent",
+                    bgcolor: active ? "var(--primary)" : "transparent",
                   },
                 }}
               >
                 <IconButton
                   size="large"
                   sx={{
-                    color: active ? MINT : "#fff",
-                    bgcolor: active ? "rgba(56,227,194,0.15)" : "transparent",
+                    color: active ? "var(--primary)" : "#fff",
+                    bgcolor: active ? "var(--primary-15)" : "transparent",
                     "&:hover": {
                       bgcolor: active
-                        ? "rgba(56,227,194,0.22)"
+                        ? "var(--primary-22)"
                         : "rgba(255,255,255,0.08)",
                     },
                   }}
@@ -151,10 +151,10 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
             <IconButton
               size="large"
               onClick={handleSignOut}
-              sx={{ 
-                color: "#fff", 
+              sx={{
+                color: "var(--nav-foreground, #fff)",
                 mb: 1,
-                "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } 
+                "&:hover": { bgcolor: "rgba(255,255,255,0.08)" }
               }}
             >
               <LogoutRounded />
@@ -166,7 +166,7 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
             <Box component={Link} href="/settings">
               <IconButton
                 size="large"
-                sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}
+                sx={{ color: "var(--nav-foreground, #fff)", "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}
               >
                 <SettingsRounded />
               </IconButton>

@@ -22,12 +22,12 @@ function LoginContent() {
 
   return (
     <>
+
       <main className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           <a
             href="/students"
-            className="absolute top-6 left-6 text-black text-4xl"
-            style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700 }}
+            className="absolute top-6 left-6 text-black text-4xl font-brand"
           >
             stu.
           </a>
@@ -37,8 +37,7 @@ function LoginContent() {
           </div>
 
           <h2
-            className="text-center text-xl text-black mb-8"
-            style={{ fontFamily: 'Work+Sans, sans-serif', fontWeight: 800 }}
+            className="text-center text-xl text-black mb-8 font-header"
           >
             welcome to stu.
           </h2>
@@ -52,26 +51,23 @@ function LoginContent() {
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               className={`w-full px-4 pt-6 pb-2 text-black bg-transparent border-2 rounded-md
-                ${emailFocused || email ? 'border-[#06C96C]' : 'border-[#12F987]'}
-                focus:outline-none focus:border-[#06C96C] transition-all`}
-              style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300 }}
+                ${emailFocused || email ? 'border-[var(--hover-green)]' : 'border-[var(--primary)]'}
+                focus:outline-none focus:border-[var(--hover-green)] transition-all font-body`}
             />
             <label
-              className={`absolute left-4 transition-all duration-200 pointer-events-none bg-white px-1
+              className={`absolute left-4 transition-all duration-200 pointer-events-none bg-white px-1 font-body
                 ${
                   emailFocused || email
-                    ? '-top-2 text-xs text-[#06C96C]'
+                    ? '-top-2 text-xs text-[var(--hover-green)]'
                     : 'top-1/2 -translate-y-1/2 text-base text-zinc-700'
                 }`}
-              style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300 }}
             >
               Email address
             </label>
           </div>
 
           <button
-            className="w-full bg-[#12F987] hover:bg-[#06C96C] text-zinc-700 hover:text-white py-3 px-4 rounded-lg font-medium transition-colors mb-4"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="w-full bg-[var(--primary)] hover:bg-[var(--hover-green)] text-zinc-700 hover:text-white py-3 px-4 rounded-lg font-medium transition-colors mb-4 font-body-medium"
           >
             Continue
           </button>
@@ -79,8 +75,7 @@ function LoginContent() {
           <div className="relative mb-6">
             <hr className="border-gray-300" />
             <span
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-gray-500 text-sm"
-              style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300 }}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-gray-500 text-sm font-body"
             >
               OR
             </span>
@@ -91,7 +86,7 @@ function LoginContent() {
             {/* SSO Button (non-functional for now) */}
             <button className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
               <img src="/stu_icon_black.png" alt="Stu logo" className="w-5 h-5 object-contain" />
-              <span className="text-black" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
+              <span className="text-black font-body-medium">
                 Sign in with School SSO
               </span>
             </button>
@@ -124,7 +119,7 @@ function LoginContent() {
                   fill="#EA4335"
                 />
               </svg>
-              <span className="text-black" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
+              <span className="text-black font-body-medium">
                 Sign in with Google
               </span>
             </button>
@@ -137,7 +132,7 @@ function LoginContent() {
                   fill="#000000"
                 />
               </svg>
-              <span className="text-black" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
+              <span className="text-black font-body-medium">
                 Sign in with Apple
               </span>
             </button>

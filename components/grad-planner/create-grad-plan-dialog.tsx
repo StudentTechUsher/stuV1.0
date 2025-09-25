@@ -880,10 +880,10 @@ export default function CreateGradPlanDialog({
 
                   return orderedTypes.map((programType) => (
                     <Box key={programType} sx={{ mb: 3 }}>
-                      <Typography 
-                        variant="subtitle1" 
-                        sx={{ 
-                          fontWeight: 600, 
+                      <Typography
+                        variant="subtitle1"
+                        className="font-header"
+                        sx={{
                           mb: 1,
                           textTransform: 'capitalize',
                           color: 'success.main'
@@ -899,8 +899,7 @@ export default function CreateGradPlanDialog({
                             onClick={() => handleProgramToggle(program.id)}
                             color={selectedPrograms.has(program.id) ? 'success' : 'default'}
                             variant={selectedPrograms.has(program.id) ? 'filled' : 'outlined'}
-                            sx={{ 
-                              fontSize: '0.875rem',
+                            sx={{
                               cursor: 'pointer',
                               '&:hover': {
                                 backgroundColor: selectedPrograms.has(program.id) 
@@ -940,7 +939,7 @@ export default function CreateGradPlanDialog({
                             label="Auto-selected" 
                             size="small" 
                             color="success" 
-                            sx={{ ml: 1, fontSize: '0.75rem' }}
+                            sx={{ ml: 1 }}
                           />
                         )}
                       </Typography>
@@ -1029,7 +1028,7 @@ export default function CreateGradPlanDialog({
                                     label="Auto-selected" 
                                     size="small" 
                                     color="success" 
-                                    sx={{ ml: 1, fontSize: '0.75rem' }}
+                                    sx={{ ml: 1 }}
                                   />
                                 )}
                               </Typography>
@@ -1102,7 +1101,79 @@ export default function CreateGradPlanDialog({
                                           ))}
                                         </Select>
                                       </FormControl>
-                                    ))}
+                                    );
+                                  })}
+                                </Box>
+                              </Box>
+                            )}
+
+                            {/* Sub-requirements */}
+                            {req.subRequirements && Array.isArray(req.subRequirements) && req.subRequirements.length > 0 && (
+                              <Box sx={{ ml: 2 }}>
+                                {req.subRequirements.map((subReq, subIdx) => (
+                                  <Box key={`subreq-${subReq.requirementId}-${subIdx}`} sx={{ mb: 2 }}>
+                                    <Typography variant="body1" className="font-body-medium" sx={{ mb: 1 }}>
+                                      Sub-requirement {subReq.requirementId}: {subReq.description}
+                                      {(() => {
+                                        const dropdownCount = getProgramDropdownCount(subReq);
+                                        const courses = subReq.courses || [];
+                                        const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
+                                        return isAutoSelected && (
+                                          <Chip 
+                                            label="Auto-selected" 
+                                            size="small" 
+                                            color="success" 
+                                            sx={{ ml: 1 }}
+                                          />
+                                        );
+                                      })()}
+                                    </Typography>
+                                    
+                                    {(() => {
+                                      const dropdownCount = getProgramDropdownCount(subReq);
+                                      const courses = subReq.courses || [];
+                                      const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
+                                      return isAutoSelected && (
+                                        <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
+                                          Courses for this sub-requirement have been automatically selected ({Math.min(dropdownCount, courses.length)} of {courses.length} course{courses.length === 1 ? '' : 's'}).
+                                        </Typography>
+                                      );
+                                    })()}
+                                    
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                      {Array.from({ length: getProgramDropdownCount(subReq) }).map((_, slot) => {
+                                        const dropdownCount = getProgramDropdownCount(subReq);
+                                        const courses = subReq.courses || [];
+                                        const isAutoSelected = courses.length > 0 && courses.length >= dropdownCount;
+                                        
+                                        return (
+                                          <FormControl key={`subreq-${subReq.requirementId}-slot-${slot}-${programId}`} fullWidth>
+                                            <InputLabel>
+                                              {getProgramDropdownCount(subReq) > 1
+                                                ? `Sub-req ${subReq.requirementId} — Course #${slot + 1}`
+                                                : `Sub-req ${subReq.requirementId}`}
+                                            </InputLabel>
+                                            <Select
+                                              value={(selectedProgramCourses[`${programId}-subreq-${subReq.requirementId}`]?.[slot] ?? '')}
+                                              label={
+                                                getProgramDropdownCount(subReq) > 1
+                                                  ? `Sub-req ${subReq.requirementId} — Course #${slot + 1}`
+                                                  : `Sub-req ${subReq.requirementId}`
+                                              }
+                                              disabled={isAutoSelected}
+                                              onChange={(e) => handleProgramCourseSelection(`${programId}-subreq-${subReq.requirementId}`, slot, e.target.value)}
+                                            >
+                                              <MenuItem value=""><em>Select a course</em></MenuItem>
+                                              {subReq.courses && Array.isArray(subReq.courses) ? subReq.courses.map((course) => (
+                                                <MenuItem key={`${programId}-subreq-${subReq.requirementId}-slot-${slot}-${course.code}`} value={course.code}>
+                                                  {course.code} — {course.title} ({course.credits} credits)
+                                                </MenuItem>
+                                              )) : null}
+                                            </Select>
+                                          </FormControl>
+                                        );
+                                      })}
+                                    </Box>
                                   </Box>
                                 </Box>
                               )}
@@ -1125,7 +1196,35 @@ export default function CreateGradPlanDialog({
 
         {/* JSON Preview Section
         {areAllDropdownsFilled && generateSelectedClassesJson && (
-          <Box sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6" color="success.main">
+                  ✅ All Requirements Complete - Selected Classes JSON Preview
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ 
+                  bgcolor: 'background.paper', 
+                  p: 2, 
+                  borderRadius: 1, 
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  maxHeight: '400px',
+                  overflow: 'auto'
+                }}>
+                  <pre style={{ 
+                    margin: 0, 
+                    fontSize: '0.875rem', 
+                    fontFamily: '"Courier New", monospace',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word'
+                  }}>
+                    {JSON.stringify(generateSelectedClassesJson, null, 2)}
+                  </pre>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         )} */}
       </DialogContent>
