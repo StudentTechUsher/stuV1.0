@@ -49,9 +49,9 @@ export function SemesterCard({
     <Card
       ref={setNodeRef}
       className={cn(
-        "flex flex-col p-5 bg-[#E6FFF2]/50 backdrop-blur-sm w-full transition-all duration-200",
-        "rounded-xl border border-green-500/100 shadow-sm",
-        isOver && "bg-[#D1FFE6]/60 ring-2 ring-green-400/30 ring-inset shadow-md scale-[1.01]",
+        "flex flex-col p-5 bg-[var(--primary-15)] backdrop-blur-sm w-full transition-all duration-200",
+        "rounded-xl border border-[var(--primary)] shadow-sm",
+        isOver && "bg-[var(--primary-22)] ring-2 ring-[var(--primary)]/30 ring-inset shadow-md scale-[1.01]",
         className
       )}
       {...props}

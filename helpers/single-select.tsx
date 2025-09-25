@@ -22,11 +22,11 @@ export default function SingleSelect({
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <label htmlFor={id} style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
+      <label htmlFor={id} className="font-header font-semibold block mb-1.5">
         {label}
       </label>
       {helper && (
-        <div id={helperId} style={{ color: "#666", marginBottom: 8 }}>
+        <div id={helperId} className="text-muted-foreground mb-2">
           {helper}
         </div>
       )}

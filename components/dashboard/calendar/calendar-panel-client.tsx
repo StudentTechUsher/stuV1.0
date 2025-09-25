@@ -24,7 +24,12 @@ type Props = {
   semester?: string;     // e.g. "Winter 2025 Schedule"
 };
 
-const MINT = "#12F987";
+const getPrimaryColor = () => {
+  if (typeof window !== 'undefined') {
+    return getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#12F987';
+  }
+  return '#12F987'; // fallback for SSR
+};
 
 export default function CalendarPanelClient({
   events,
@@ -39,13 +44,13 @@ export default function CalendarPanelClient({
       <CardContent
         sx={{
           p: 2,
-          bgcolor: MINT,
+          bgcolor: getPrimaryColor(),
           border: "1px solid rgba(0,0,0,0.15)",
           boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
         }}
       >
         {/* Title / Semester block */}
-        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, color: "#003228" }}>
+        <Typography variant="h5" className="font-header font-black" sx={{ mb: 1, color: "var(--primary-dark, #003228)" }}>
           {semester}
         </Typography>
 
@@ -60,7 +65,7 @@ export default function CalendarPanelClient({
 
             // FullCalendar theme overrides
             "--fc-border-color": "rgba(0,0,0,0.55)",
-            "& .fc": { background: MINT },
+            "& .fc": { background: getPrimaryColor() },
 
             // Make grid lines thicker / clearer
             "& .fc-theme-standard td, & .fc-theme-standard th": {

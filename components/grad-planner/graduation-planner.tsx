@@ -96,14 +96,13 @@ function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex
             fontWeight: 'bold'
           },
           '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#1976d2',
-            borderWidth: '2px'
+            borderColor: 'var(--action-edit)'
           },
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#1565c0'
+            borderColor: 'var(--action-edit-hover)'
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#1976d2'
+            borderColor: 'var(--action-edit-hover)'
           }
         }}
       >
@@ -225,19 +224,13 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   if (!planData || planData.length === 0) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6" color="error">
+        <Typography variant="h6" className="font-header" color="error">
           Invalid plan structure - no terms found
         </Typography>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
+        <Typography variant="body2" className="font-body" color="text.secondary" gutterBottom>
           Expected to find an array of terms, but got:
         </Typography>
-        <pre style={{ 
-          background: '#f5f5f5', 
-          padding: '16px', 
-          borderRadius: '4px', 
-          overflow: 'auto',
-          fontSize: '12px'
-        }}>
+        <pre className="bg-muted p-4 rounded text-xs overflow-auto">
           {JSON.stringify(plan, null, 2)}
         </pre>
       </Box>
@@ -262,44 +255,44 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       {isEditMode && (
         <Box sx={{ 
           mb: 3, 
-          p: 3, 
-          backgroundColor: '#e8f5e8', 
-          borderRadius: 2, 
-          border: '2px solid #4caf50',
+          p: 2, 
+          backgroundColor: 'var(--warning-background, #fff3e0)',
+          borderRadius: 1,
+          border: '2px solid var(--action-edit)',
           display: 'flex',
           alignItems: 'center',
           gap: 2,
           boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)'
         }}>
-          <Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-            ✏️ Edit Mode Active
+          <Typography variant="h6" className="font-header" sx={{ color: 'var(--action-edit-hover)' }}>
+            Edit Mode Active
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
-            Click and drag courses to move them between terms using the dropdown menu. Changes will be saved when you submit for approval.
+          <Typography variant="body2" className="font-body" color="text.secondary">
+            Make changes to your graduation plan. Click &quot;Submit for Approval&quot; when finished.
           </Typography>
         </Box>
       )}
       
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" className="font-header" gutterBottom>
         Graduation Plan
         {programName && (
-          <Typography variant="subtitle1" color="text.secondary" component="span" sx={{ ml: 1 }}>
+          <Typography variant="subtitle1" className="font-body" color="text.secondary" component="span" sx={{ ml: 1 }}>
             - {programName}
           </Typography>
         )}
       </Typography>
       
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        <Typography variant="body1">
-          📚 {currentPlanData.length} terms planned
+        <Typography variant="body1" className="font-body">
+          {currentPlanData.length} terms planned
         </Typography>
         {Boolean(durationYears) && (
-          <Typography variant="body1">
-            ⏱️ {durationYears} years
+          <Typography variant="body1" className="font-body">
+            {durationYears} years
           </Typography>
         )}
-        <Typography variant="body1">
-          📊 Total Credits: {currentPlanData.reduce((total, term) => {
+        <Typography variant="body1" className="font-body">
+          Total Credits: {currentPlanData.reduce((total, term) => {
             const termCredits = term.credits_planned || 
                                (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
             return total + termCredits;
@@ -308,13 +301,13 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       </Box>
 
       {assumptions && assumptions.length > 0 && (
-        <Box sx={{ mb: 3, p: 2, backgroundColor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
-          <Typography variant="h6" gutterBottom>
-            📋 Plan Assumptions:
+        <Box sx={{ mb: 3, p: 2, backgroundColor: '#fff3e0', borderRadius: 1, border: '1px solid var(--action-edit)' }}>
+          <Typography variant="h6" className="font-header" gutterBottom>
+            Plan Assumptions:
           </Typography>
           <Box component="ul" sx={{ m: 0, pl: 2 }}>
             {assumptions.map((assumption) => (
-              <Typography key={assumption} component="li" variant="body2">
+              <Typography key={assumption} component="li" variant="body2" className="font-body">
                 {assumption}
               </Typography>
             ))}
@@ -323,8 +316,8 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       )}
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Typography variant="h6" sx={{ color: '#666', mb: 2 }}>
-          📅 Academic Schedule ({currentPlanData.length} terms)
+        <Typography variant="h6" className="font-header" sx={{ color: 'text.secondary', mb: 2 }}>
+          Academic Schedule ({currentPlanData.length} terms)
         </Typography>
         
         {/* Display terms in a 2-column grid layout */}
@@ -346,34 +339,34 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                 key={term.term || `term-${index}`} 
                 sx={{ 
                   p: 3, 
-                  border: '2px solid #e0e0e0', 
+                  border: '2px solid var(--border)',
                   borderRadius: 2,
-                  backgroundColor: '#fafafa',
+                  backgroundColor: 'var(--muted)',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                   minHeight: '200px' // Ensure consistent height
                 }}
               >
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+                  <Typography variant="h6" className="font-header" sx={{ color: 'var(--action-info)', fontWeight: 'bold' }}>
                     Term {term.term || index + 1}
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                  <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', color: 'var(--action-info)' }}>
                     {termCredits} Credits
                   </Typography>
                 </Box>
                 
                 {term.notes && (
                   <Box sx={{ mb: 2, p: 1, backgroundColor: '#fff3cd', borderRadius: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      📝 {term.notes}
+                    <Typography variant="body2" className="font-body" color="text.secondary">
+                      {term.notes}
                     </Typography>
                   </Box>
                 )}
 
                 {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
                   <Box>
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                      📚 Courses ({term.courses.length}):
+                    <Typography variant="subtitle1" className="font-header" gutterBottom sx={{ fontWeight: 'bold' }}>
+                      Courses ({term.courses.length}):
                     </Typography>
                     {/* Single column of course cards within each term */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -391,15 +384,15 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                             p: 2, 
                             backgroundColor: isEditMode ? '#fff8e1' : 'white', 
                             borderRadius: 1, 
-                            border: isEditMode ? '2px solid #ffb74d' : '1px solid #ddd',
+                            border: isEditMode ? '2px solid var(--action-edit)' : '1px solid var(--border-light)',
                             minHeight: '80px',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
                             cursor: isEditMode ? 'pointer' : 'default',
                             '&:hover': isEditMode ? {
-                              backgroundColor: '#fff3e0',
-                              borderColor: '#ff9800',
+                              backgroundColor: 'var(--warning-background, #fff3e0)',
+                              borderColor: 'var(--action-edit)',
                               transform: 'translateY(-2px)',
                               boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
                             } : {},
@@ -407,7 +400,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                           }}
                         >
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold', flex: 1 }}>
+                            <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
                               {course.code}: {course.title}
                             </Typography>
                             {isEditMode && (
@@ -416,7 +409,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                                 sx={{ 
                                   ml: 1, 
                                   p: 0.5,
-                                  color: '#ff9800',
+                                  color: 'var(--action-edit)',
                                   '&:hover': { backgroundColor: 'rgba(255, 152, 0, 0.1)' }
                                 }}
                                 onClick={(e) => {
@@ -429,29 +422,18 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                             )}
                           </Box>
                           <Box>
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              📖 {course.credits} credits
+                            <Typography variant="caption" className="font-body" color="text.secondary" display="block">
+                              {course.credits} credits
                             </Typography>
                             {course.fulfills && Array.isArray(course.fulfills) && course.fulfills.length > 0 && (
-                              <Typography variant="caption" color="primary" display="block">
-                                ✅ {course.fulfills.join(', ')}
+                              <Typography variant="caption" className="font-body" color="primary" display="block">
+                                {course.fulfills.join(', ')}
                               </Typography>
                             )}
                             {isEditMode && (
-                              <Box sx={{ 
-                                mt: 2, 
-                                pt: 1, 
-                                borderTop: '1px solid #ddd', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: 1,
-                                backgroundColor: '#fff',
-                                borderRadius: 1,
-                                p: 1,
-                                border: '1px solid #e0e0e0'
-                              }}>
-                                <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                                  📋 Move to:
+                              <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="caption" className="font-body" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                                  Move:
                                 </Typography>
                                 <CourseMoveField
                                   currentTerm={index + 1}
@@ -470,7 +452,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                     </Box>
                   </Box>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" className="font-body" color="text.secondary">
                     No courses defined for this term
                   </Typography>
                 )}

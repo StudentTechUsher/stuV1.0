@@ -651,10 +651,10 @@ export default function CreateGradPlanDialog({
 
                   return orderedTypes.map((programType) => (
                     <Box key={programType} sx={{ mb: 3 }}>
-                      <Typography 
-                        variant="subtitle1" 
-                        sx={{ 
-                          fontWeight: 600, 
+                      <Typography
+                        variant="subtitle1"
+                        className="font-header"
+                        sx={{
                           mb: 1,
                           textTransform: 'capitalize',
                           color: 'success.main'
@@ -670,8 +670,7 @@ export default function CreateGradPlanDialog({
                             onClick={() => handleProgramToggle(program.id)}
                             color={selectedPrograms.has(program.id) ? 'success' : 'default'}
                             variant={selectedPrograms.has(program.id) ? 'filled' : 'outlined'}
-                            sx={{ 
-                              fontSize: '0.875rem',
+                            sx={{
                               cursor: 'pointer',
                               '&:hover': {
                                 backgroundColor: selectedPrograms.has(program.id) 
@@ -711,7 +710,7 @@ export default function CreateGradPlanDialog({
                             label="Auto-selected" 
                             size="small" 
                             color="success" 
-                            sx={{ ml: 1, fontSize: '0.75rem' }}
+                            sx={{ ml: 1 }}
                           />
                         )}
                       </Typography>
@@ -800,7 +799,7 @@ export default function CreateGradPlanDialog({
                                     label="Auto-selected" 
                                     size="small" 
                                     color="success" 
-                                    sx={{ ml: 1, fontSize: '0.75rem' }}
+                                    sx={{ ml: 1 }}
                                   />
                                 )}
                               </Typography>
@@ -873,10 +872,10 @@ export default function CreateGradPlanDialog({
                                           ))}
                                         </Select>
                                       </FormControl>
-                                    ))}
-                                  </Box>
-                                </Box>
-                              )}
+                                        ))}
+                                      </Box>
+                                    </Box>
+                                  )}
 
                               {/* Divider between requirements */}
                               {idx < getFlattenedRequirements(programRequirements, programId, getRequirementKey).length - 1 && <Divider sx={{ mt: 2 }} />}
@@ -896,7 +895,35 @@ export default function CreateGradPlanDialog({
 
         {/* JSON Preview Section
         {areAllDropdownsFilled && generateSelectedClassesJson && (
-          <Box sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6" color="success.main">
+                  ✅ All Requirements Complete - Selected Classes JSON Preview
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ 
+                  bgcolor: 'background.paper', 
+                  p: 2, 
+                  borderRadius: 1, 
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  maxHeight: '400px',
+                  overflow: 'auto'
+                }}>
+                  <pre style={{ 
+                    margin: 0, 
+                    fontSize: '0.875rem', 
+                    fontFamily: '"Courier New", monospace',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word'
+                  }}>
+                    {JSON.stringify(generateSelectedClassesJson, null, 2)}
+                  </pre>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         )} */}
       </DialogContent>

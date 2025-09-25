@@ -97,7 +97,7 @@ export default function StudentPage() {
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+              <Button className="bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
                 Get Started
               </Button>
             </Link>
@@ -149,7 +149,7 @@ export default function StudentPage() {
                     </Button>
                   </Link>
                   <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-primary hover:bg-[#06C96C] text-zinc-900 hover:text-white border-none font-medium transition-all">
+                    <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium transition-all">
                       Sign Up
                     </Button>
                   </Link>
@@ -169,7 +169,7 @@ export default function StudentPage() {
                 <div className="flex flex-col justify-center space-y-5 max-w-full">
                   <div className="space-y-2 max-w-full">
                     {/* First heading */}
-                    <h1 className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight" style={{ fontFamily: 'Work Sans, sans-serif' }}>
+                    <h1 className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
                       <div className="whitespace-nowrap">Your Degree, Your Schedule</div>
                       <div className="flex items-center gap-2 whitespace-nowrap">
                         Seamless with
@@ -187,10 +187,10 @@ export default function StudentPage() {
                     </h1>
                     <br />
                     {/* Description */}
-                    <p className="max-w-[600px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="max-w-[600px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug font-body-medium">
                       Never stress about course planning again.
                     </p>
-                    <p className="max-w-[1400px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="max-w-[1400px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug font-body-medium">
                       stu helps you create the class schedule and graduation roadmap that fits your degree requirements and life commitments.
                     </p>
                   </div>

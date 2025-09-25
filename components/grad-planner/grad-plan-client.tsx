@@ -193,10 +193,10 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               variant="contained" 
               color="success"
               onClick={handleCreatePlan}
-              sx={{ 
-                backgroundColor: '#4caf50',
+              sx={{
+                backgroundColor: 'var(--primary)',
                 '&:hover': {
-                  backgroundColor: '#45a049'
+                  backgroundColor: 'var(--hover-green)'
                 }
               }}
             >
@@ -204,24 +204,29 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               Create New Grad Plan
             </Button>
           )}
-          
           {selectedGradPlan && (
-            <Button 
-              variant="outlined"
-              color="primary"
-              onClick={handleEditPlan}
-              sx={{ 
-                borderColor: '#1976d2',
-                color: '#1976d2',
-                '&:hover': {
-                  borderColor: '#1565c0',
-                  backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                }
-              }}
-            >
-              Edit Graduation Plan
-            </Button>
-          )}
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleEditPlan}
+                sx={{
+                  // Styling borrowed from the "outlined" path of the second branch
+                  borderColor: 'var(--action-info)',
+                  color: 'var(--action-info)',
+                  '&:hover': {
+                    borderColor: 'var(--action-info-hover)',
+                    backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                  },
+                  // Optional: keep disabled styles consistent if you ever pass `disabled`
+                  '&:disabled': {
+                    borderColor: 'action.disabled',
+                    color: 'action.disabled',
+                  },
+                }}
+              >
+                Edit Graduation Plan
+              </Button>
+            )}
         </Box>
       </Box>
       
@@ -244,8 +249,8 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
             borderColor: 'grey.300'
           }}
         >
-          <Typography variant="h5" gutterBottom sx={{ color: 'text.primary', fontWeight: 600 }}>
-            Welcome to Your Graduation Planner! 🎓
+          <Typography variant="h5" gutterBottom className="font-header" sx={{ color: 'text.primary' }}>
+            Welcome to Your Graduation Planner!
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
             You don&apos;t have an active graduation plan yet. Submit one for approval to have it show here.
@@ -256,12 +261,12 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               color="success"
               size="large"
               onClick={handleCreatePlan}
-              sx={{ 
-                backgroundColor: '#22c55e',
+              sx={{
+                backgroundColor: 'var(--primary)',
                 px: 4,
                 py: 1.5,
                 '&:hover': {
-                  backgroundColor: '#16a34a'
+                  backgroundColor: 'var(--hover-green)'
                 }
               }}
             >
