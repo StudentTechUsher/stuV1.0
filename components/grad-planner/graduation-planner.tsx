@@ -392,7 +392,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                             cursor: isEditMode ? 'pointer' : 'default',
                             '&:hover': isEditMode ? {
                               backgroundColor: 'var(--warning-background, #fff3e0)',
-                              borderColor: 'var(--action-edit)'
+                              borderColor: 'var(--action-edit)',
                               transform: 'translateY(-2px)',
                               boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
                             } : {},

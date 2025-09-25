@@ -199,8 +199,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               Create New Grad Plan
             </Button>
           )}
-          
-            {selectedGradPlan && (
+          {selectedGradPlan && (
               <Button
                 variant="outlined"
                 color="primary"
@@ -223,7 +222,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                 Edit Graduation Plan
               </Button>
             )}
-          )}
         </Box>
       </Box>
       
