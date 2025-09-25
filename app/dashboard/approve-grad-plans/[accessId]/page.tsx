@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanById, updateGradPlanWithAdvisorNotes, approveGradPlan, decodeAccessIdServerAction } from '@/lib/api/server-actions';
+import { fetchGradPlanById, updateGradPlanWithAdvisorNotes, approveGradPlan, decodeAccessIdServerAction } from '@/lib/services/server-actions';
 import GradPlanViewer from '@/components/approve-grad-plans/grad-plan-viewer';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 

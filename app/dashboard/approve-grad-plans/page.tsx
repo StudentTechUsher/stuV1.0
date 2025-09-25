@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approve-table';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
-import { fetchPendingGradPlans } from '@/lib/api/server-actions';
+import { fetchPendingGradPlans } from '@/lib/services/server-actions';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 

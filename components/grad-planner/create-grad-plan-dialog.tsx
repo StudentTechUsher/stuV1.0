@@ -16,14 +16,25 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloseIcon from '@mui/icons-material/Close';
 import type { ProgramRow } from '@/types/program';
-import { OrganizeCoursesIntoSemesters } from '@/lib/api/client-actions';
+import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
+import {
+  parseRequirementsFromGenEd,
+  parseProgramRequirements,
+  getProgramDropdownCount,
+  collectCourses,
+  creditText,
+  getRequirementKey,
+  shouldAutoSelect,
+  getValidCourses,
+  getDropdownCount,
+  getFlattenedRequirements,
+  type CourseBlock,
+  type Credits
+} from './helpers/grad-plan-helpers';
 
 interface Term {
   term: string;
@@ -44,62 +55,7 @@ interface Course {
   prerequisite?: string;
 }
 
-// === Types that match the normalized requirements we built earlier ===
-type Credits =
-  | { fixed: number }
-  | { variable: true; min?: number; max?: number }
-  | null;
-
-interface CourseBlock {
-  type: 'course';
-  code: string;
-  title: string;
-  credits: Credits;
-  prerequisite?: string;
-  status?: 'active' | 'retired';
-}
-
-interface ContainerBlock {
-  type: 'option' | 'requirement';
-  label?: string;
-  title?: string;
-  rule?: { type: string; min_count?: number; of_count?: number; unit?: string };
-  blocks?: Block[];
-}
-
-type Block = CourseBlock | ContainerBlock;
-
-interface RichRequirement {
-  subtitle: string;
-  requirement?: {
-    index?: number;
-    rule?: { type: string; min_count?: number; of_count?: number; unit?: string };
-  };
-  blocks?: Block[];
-}
-
-// === Types for Program Requirements ===
-interface ProgramCourse {
-  code: string;
-  title: string;
-  credits: number;
-}
-
-interface SubRequirement {
-  courses: ProgramCourse[];
-  description: string;
-  requirementId: string | number; // Allow both types for consistency
-}
-
-interface ProgramRequirement {
-  notes?: string;
-  description: string;
-  requirementId: number;
-  subRequirements?: SubRequirement[];
-  courses?: ProgramCourse[];
-  otherRequirement?: string;
-  steps?: string[];
-}
+// Types for program & requirement logic moved to helpers (imported above)
 
 // === Props ===
 interface CreateGradPlanDialogProps {
@@ -108,6 +64,7 @@ interface CreateGradPlanDialogProps {
   programsData: ProgramRow[];
   genEdData: ProgramRow[];
   onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string) => void;
+  prompt: string;
 }
 
 export default function CreateGradPlanDialog({
@@ -115,7 +72,8 @@ export default function CreateGradPlanDialog({
   onClose,
   programsData,
   genEdData,
-  onPlanCreated
+  onPlanCreated,
+  prompt
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: selected courses per requirement (array because we may need multiple dropdowns)
@@ -127,214 +85,22 @@ export default function CreateGradPlanDialog({
   // State: plan creation
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
+  // Snackbar for success/error feedback
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>(
+    { open: false, message: '', severity: 'info' }
+  );
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') =>
+    setSnackbar({ open: true, message, severity });
+  const handleCloseSnackbar = () => setSnackbar(s => ({ ...s, open: false }));
   // State: dynamic loading message
   const [loadingMessage, setLoadingMessage] = useState({
     title: 'Creating Your Graduation Plan',
     subtitle: 'AI is organizing your courses into semesters...'
   });
 
-  // ---- Helpers ----
-
-  const parseRequirementsFromGenEd = useCallback((): RichRequirement[] => {
-    if (!genEdData || !Array.isArray(genEdData) || genEdData.length === 0) {
-      return [];
-    }
-    const all: RichRequirement[] = [];
-
-    genEdData.forEach((program, index) => {
-      if (!program || !program.requirements) {
-        return;
-      }
-      try {
-        const req = typeof program.requirements === 'string'
-          ? JSON.parse(program.requirements)
-          : program.requirements;
-
-        if (Array.isArray(req)) {
-          // We only keep objects that look like our RichRequirement
-          const filtered = req.filter((r: unknown): r is RichRequirement => {
-            return (
-              typeof r === 'object' &&
-              r !== null &&
-              'subtitle' in r &&
-              typeof (r as { subtitle?: unknown }).subtitle === 'string'
-            );
-          });
-          all.push(...filtered);
-        }
-      } catch (e) {
-        console.error('Error parsing requirements for program', index, ':', e);
-      }
-    });
-
-    return all;
-  }, [genEdData]);
-
-  // Parse program requirements from programsData for selected programs only
-  const parseProgramRequirements = useCallback((selectedProgramIds: Set<string>): ProgramRequirement[] => {
-    if (!programsData || !Array.isArray(programsData) || programsData.length === 0 || selectedProgramIds.size === 0) {
-      return [];
-    }
-    const all: ProgramRequirement[] = [];
-
-    // Only process programs that are actually selected
-    programsData.forEach((program) => {
-      if (!program || !selectedProgramIds.has(program.id)) {
-        return; // Skip programs that aren't selected
-      }
-      
-      if (!program.requirements) {
-        return;
-      }
-      try {
-        const req = typeof program.requirements === 'string'
-          ? JSON.parse(program.requirements)
-          : program.requirements;
-
-        // Look for programRequirements array
-        if (Array.isArray(req?.programRequirements)) {
-          all.push(...req.programRequirements);
-        }
-      } catch (e) {
-        console.error(`❌ Error parsing program requirements for ${program.name}:`, e);
-      }
-    });
-
-    return all;
-  }, [programsData]);
-
-  // Get dropdown count for program requirements
-  const getProgramDropdownCount = useCallback((req: ProgramRequirement | SubRequirement): number => {
-    const description = req.description || '';
-    
-    // Handle credit-based requirements like "Complete 33 credits"
-    const creditMatch = /Complete (\d+) credits?/i.exec(description);
-    if (creditMatch) {
-      const totalCredits = parseInt(creditMatch[1], 10);
-      
-      // Calculate average credits per course from available courses
-      const courses = 'courses' in req ? (req.courses || []) : [];
-      if (courses.length > 0) {
-        const avgCredits = courses.reduce((sum, course) => sum + (course.credits || 3), 0) / courses.length;
-        const calculatedCount = Math.ceil(totalCredits / avgCredits);
-        return calculatedCount;
-      } else {
-        // Fallback: assume 3 credits per course if no courses available
-        const calculatedCount = Math.ceil(totalCredits / 3);
-        return calculatedCount;
-      }
-    }
-    
-    // Handle course-based requirements like "Complete 2 Courses" or "Complete 1 of 3 Courses"
-    const courseMatch = /Complete (\d+)(?:\s+(?:of\s+\d+\s+)?(?:courses?|classes?))?/i.exec(description);
-    if (courseMatch) {
-      const courseCount = parseInt(courseMatch[1], 10);
-      return courseCount;
-    }
-    
-    // Default fallback
-    return 1;
-  }, []);
-
-  // Recursively collect course blocks from any nested structure
-  const collectCourses = useCallback((blocks?: Block[]): CourseBlock[] => {
-    if (!blocks) return [];
-    const out: CourseBlock[] = [];
-
-    for (const b of blocks) {
-      if (!b) continue;
-      if (b.type === 'course') {
-        out.push(b);
-      } else if ((b.type === 'option' || b.type === 'requirement') && (b).blocks) {
-        out.push(...collectCourses((b).blocks));
-      }
-    }
-
-    return out;
-  }, []);
-
-  // Credits formatter
-  const creditText = (credits: Credits): string => {
-    if (!credits) return 'credits n/a';
-    if ('fixed' in credits) return `${credits.fixed} credits`;
-    if ('variable' in credits) {
-      const min = credits.min ?? '';
-      const max = credits.max ?? '';
-      if (min && max && min === max) return `${min} credits`;
-      if (min && max) return `${min}-${max} credits`;
-      if (min) return `${min}+ credits`;
-      if (max) return `≤${max} credits`;
-      return 'variable credits';
-    }
-    return 'credits n/a';
-  };
-
-  // Helper to handle both main requirements and sub-requirements uniformly
-  const getRequirementKey = useCallback((programId: string, req: ProgramRequirement | SubRequirement, isSubReq = false) => {
-    const prefix = isSubReq ? 'subreq' : 'req';
-    return `${programId}-${prefix}-${req.requirementId}`;
-  }, []);
-
-  const shouldAutoSelect = useCallback((requirement: ProgramRequirement | SubRequirement, isSubRequirement = false) => {
-    // Never auto-select sub-requirements - let users make those decisions
-    if (isSubRequirement) return false;
-    
-    if (!requirement.courses || requirement.courses.length === 0) return false;
-    const dropdownCount = getProgramDropdownCount(requirement);
-    const validCourses = requirement.courses.filter(course => course.credits != null);
-    return validCourses.length > 0 && validCourses.length === dropdownCount;
-  }, [getProgramDropdownCount]);
-
-  const getValidCourses = useCallback((requirement: ProgramRequirement | SubRequirement) => {
-    return (requirement.courses || []).filter(course => course.credits != null);
-  }, []);
-
-  // Count how many dropdowns are needed for a requirement (based on rule.min_count, default 1)
-  const getDropdownCount = useCallback((req: RichRequirement): number => {
-    const min =
-      req?.requirement?.rule?.min_count &&
-      Number.isFinite(req.requirement.rule.min_count)
-        ? (req.requirement.rule.min_count)
-        : 1;
-    return Math.max(1, min);
-  }, []);
-
-  // memoize parsed requirements for performance
-  const requirements = useMemo(() => parseRequirementsFromGenEd(), [parseRequirementsFromGenEd]);
-  const programRequirements = useMemo(() => parseProgramRequirements(selectedPrograms), [parseProgramRequirements, selectedPrograms]);
-
-  // Helper to flatten all requirements (main + sub) into a single array for unified rendering
-  const getFlattenedRequirements = useCallback((programId: string) => {
-    const flattened: Array<{
-      requirement: ProgramRequirement | SubRequirement;
-      isSubRequirement: boolean;
-      key: string;
-      parentRequirementId?: string | number;
-    }> = [];
-
-    programRequirements.forEach(req => {
-      // Add main requirement
-      flattened.push({
-        requirement: req,
-        isSubRequirement: false,
-        key: getRequirementKey(programId, req)
-      });
-
-      // Add sub-requirements
-      if (req.subRequirements && Array.isArray(req.subRequirements)) {
-        req.subRequirements.forEach(subReq => {
-          flattened.push({
-            requirement: subReq,
-            isSubRequirement: true,
-            key: getRequirementKey(programId, subReq, true),
-            parentRequirementId: req.requirementId
-          });
-        });
-      }
-    });
-
-    return flattened;
-  }, [programRequirements, getRequirementKey]);
+  // memoized parsed data using extracted helpers
+  const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
+  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms]);
 
   // course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
@@ -395,7 +161,7 @@ export default function CreateGradPlanDialog({
         }
       });
     });
-  }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, getProgramDropdownCount, getDropdownCount, selectedPrograms, getRequirementKey]);
+  }, [requirements, ensureSlots, programRequirements, ensureProgramSlots, selectedPrograms]);
 
   // Auto-population effect for general requirements (runs once when dialog opens)
   useEffect(() => {
@@ -468,7 +234,7 @@ export default function CreateGradPlanDialog({
     }, 300); // 300ms delay for program selection changes
 
     return () => clearTimeout(timer);
-  }, [open, selectedPrograms, programRequirements, getProgramDropdownCount, shouldAutoSelect, getValidCourses, getRequirementKey]);
+  }, [open, selectedPrograms, programRequirements]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -566,7 +332,7 @@ export default function CreateGradPlanDialog({
     });
 
     return genEdFilled && programsFilled;
-  }, [selectedCourses, selectedProgramCourses, selectedPrograms, requirements, programRequirements, getDropdownCount, getProgramDropdownCount, getRequirementKey]);
+  }, [selectedCourses, selectedProgramCourses, selectedPrograms, requirements, programRequirements]);
 
   // Generate selected classes JSON
   const generateSelectedClassesJson = useMemo(() => {
@@ -684,6 +450,7 @@ export default function CreateGradPlanDialog({
   const handleCreatePlan = async () => {
     if (!generateSelectedClassesJson) {
       setPlanCreationError('Please select all required courses before creating a plan.');
+      showSnackbar('Please complete all required selections first.', 'warning');
       return;
     }
 
@@ -693,10 +460,11 @@ export default function CreateGradPlanDialog({
     try {
       
       // Step 1: Send the course data to AI for semester organization
-      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson);
+      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson, prompt);
       
       if (!aiResult.success) {
         setPlanCreationError(`AI Planning Error: ${aiResult.message}`);
+        showSnackbar(`AI Planning Error: ${aiResult.message}`, 'error');
         return;
       }
       
@@ -708,15 +476,18 @@ export default function CreateGradPlanDialog({
           // Use the accessId from the AI result
           onPlanCreated(aiResult.semesterPlan as Term[], programIds, aiResult.accessId);
         }
+        showSnackbar('Semester plan generated successfully!', 'success');
         
         // Close dialog on success
         onClose();
       } else {
         setPlanCreationError('Plan created but failed to generate access ID. Please try again.');
+        showSnackbar('Plan created but missing access ID. Please retry.', 'warning');
       }
     } catch (error) {
       console.error('Error creating graduation plan:', error);
       setPlanCreationError('An unexpected error occurred. Please try again.');
+      showSnackbar('Unexpected error while generating plan.', 'error');
     } finally {
       setIsCreatingPlan(false);
     }
@@ -1006,7 +777,7 @@ export default function CreateGradPlanDialog({
                     
                     {programRequirements && programRequirements.length ? (
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        {getFlattenedRequirements(programId).map((item, idx) => {
+                        {getFlattenedRequirements(programRequirements, programId, getRequirementKey).map((item, idx) => {
                           const { requirement, isSubRequirement, key } = item;
                           const dropdownCount = getProgramDropdownCount(requirement);
                           const validCourses = getValidCourses(requirement);
@@ -1106,11 +877,11 @@ export default function CreateGradPlanDialog({
                                     </Box>
                                   )}
 
-                                  {/* Divider between requirements */}
-                                  {idx < getFlattenedRequirements(programId).length - 1 && <Divider sx={{ mt: 2 }} />}
-                                </Box>
-                              );
-                            })}
+                              {/* Divider between requirements */}
+                              {idx < getFlattenedRequirements(programRequirements, programId, getRequirementKey).length - 1 && <Divider sx={{ mt: 2 }} />}
+                            </Box>
+                          );
+                        })}
                       </Box>
                     ) : (
                       <Typography>No program requirements found for {program.name}</Typography>
@@ -1200,6 +971,21 @@ export default function CreateGradPlanDialog({
           {isCreatingPlan ? 'AI Organizing Courses...' : 'Create AI-Organized Plan'}
         </Button>
       </DialogActions>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 }

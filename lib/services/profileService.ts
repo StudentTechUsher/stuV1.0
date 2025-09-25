@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
 
-
 export async function getUserUniversityId(userId: string): Promise<number> {
     const { data, error } = await supabase
         .from('profiles')
