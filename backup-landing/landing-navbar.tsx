@@ -5,9 +5,11 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Menu, X, ArrowRight } from "lucide-react"
+import { useUniversityTheme } from "@/contexts/university-theme-context"
 
 export default function LandingNavbar() {
   const [open, setOpen] = useState(false)
+  const { university } = useUniversityTheme()
 
   return (
     <header className="sticky top-0 z-40 glass-effect border-b border-zinc-200">
@@ -16,6 +18,21 @@ export default function LandingNavbar() {
         {/* Logo first (left) */}
         <div className="flex items-center ml-1">
           <Link href="/" className="flex items-center gap-2">
+            {/* University Logo */}
+            {university?.logo_url && (
+              <>
+                <Image
+                  src={university.logo_url}
+                  alt={`${university.name} Logo`}
+                  width={28}
+                  height={28}
+                  className="rounded"
+                />
+                <span className="text-xl text-muted-foreground mx-1">×</span>
+              </>
+            )}
+
+            {/* STU Logo */}
             <Image
               src="/favicon.ico"
               alt="stu. logo"

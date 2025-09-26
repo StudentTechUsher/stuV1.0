@@ -10,6 +10,7 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Divider from "@mui/material/Divider";
 import { supabase } from "@/lib/supabaseClient";
+import { useUniversityTheme } from "@/contexts/university-theme-context";
 
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
@@ -54,6 +55,7 @@ const iconMap: Record<NavItem["icon"], JSX.Element> = {
 export default function NavRail({ items, railWidth = 88, showSettings = true }: Props) {
   const seg = useSelectedLayoutSegment();
   const router = useRouter();
+  const { university } = useUniversityTheme();
 
   const handleSignOut = async () => {
     try {
@@ -84,10 +86,25 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
       }}
     >
       {/* Logo */}
-      <Link href="/home" aria-label="Home">
+      <Link href="/home" aria-label="Home" className="flex items-center gap-2">
+        {/* University Logo */}
+        {university?.logo_url && (
+          <>
+            <Image
+              src={university.logo_url}
+              alt={`${university.name} Logo`}
+              width={32}
+              height={32}
+              className="rounded"
+            />
+            <Box sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', mx: 0.5 }}>×</Box>
+          </>
+        )}
+
+        {/* STU Logo */}
         <Image
           src="/stu_icon_black.png"
-          alt="Logo"
+          alt="STU Logo"
           width={44}
           height={44}
           style={{ filter: "invert(1)" }}

@@ -171,9 +171,7 @@ export function SubmitEmailForm() {
         {/* Submit Button */}
         <Button
           type="submit"
-          color="primary"
-          variant="contained"
-          className="w-full"
+          className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium transition-all"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Submitting..." : "Join the Waitlist"}

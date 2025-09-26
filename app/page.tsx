@@ -4,19 +4,12 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, CheckCircle, Menu, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useUniversityTheme } from "@/contexts/university-theme-context"
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [schoolLogo, setSchoolLogo] = useState<string | null>(null)
-
-  useEffect(() => {
-    // Load school logo from localStorage
-    const savedLogo = localStorage.getItem('schoolLogo')
-    if (savedLogo) {
-      setSchoolLogo(savedLogo)
-    }
-  }, [])
+  const { university } = useUniversityTheme()
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -24,11 +17,11 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-3">
-              {schoolLogo && (
+              {university?.logo_url && (
                 <div className="flex items-center gap-2">
                   <Image
-                    src={schoolLogo}
-                    alt="School logo"
+                    src={university.logo_url}
+                    alt={`${university.name} logo`}
                     width={32}
                     height={32}
                     className="rounded object-contain"

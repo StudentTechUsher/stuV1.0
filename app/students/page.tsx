@@ -7,12 +7,13 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { SubmitEmailForm } from '@/components/ui/submit-email-form'  // Changed to named import
 import type { ProgramRow } from '@/types/program'
+import { useUniversityTheme } from "@/contexts/university-theme-context"
 
 export default function StudentPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   // List of minor programs (filtered from program table)
   const [minors, setMinors] = useState<ProgramRow[]>([])
-  const [schoolLogo, setSchoolLogo] = useState<string | null>(null)
+  const { university } = useUniversityTheme()
 
   useEffect(() => {
     const fetchMinors = async () => {
@@ -31,12 +32,6 @@ export default function StudentPage() {
       }
     }
     fetchMinors()
-
-    // Load school logo from localStorage
-    const savedLogo = localStorage.getItem('schoolLogo')
-    if (savedLogo) {
-      setSchoolLogo(savedLogo)
-    }
   }, [])
 
   return (
@@ -45,11 +40,11 @@ export default function StudentPage() {
         <div className="container mx-auto px-6 flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-3">
-              {schoolLogo && (
+              {university?.logo_url && (
                 <div className="flex items-center gap-2">
                   <Image
-                    src={schoolLogo}
-                    alt="School logo"
+                    src={university.logo_url}
+                    alt={`${university.name} logo`}
                     width={32}
                     height={32}
                     className="rounded object-contain"
