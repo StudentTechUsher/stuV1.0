@@ -151,3 +151,41 @@ export function decodeAccessIdClient(accessId: string): string | null {
     return null;
   }
 }
+
+/**
+ * Unified decoder that accepts either the secure server format (payload.hash)
+ * or the legacy client single-base64 format gradPlanId:timestamp:checksum.
+ * Optionally enforces a max age (ms) if provided.
+ */
+export function decodeAnyAccessId(accessId: string, opts?: { maxAgeMs?: number }): string | null {
+  // Server/HMAC format has a dot
+  const now = Date.now();
+  if (accessId.includes('.')) {
+    const id = decodeAccessId(accessId);
+    // We don't carry timestamp back from decodeAccessId; if expiry is desired for server format
+    // we would need a variant that returns timestamp. For now just return id.
+    return id;
+  }
+  // Attempt legacy client decode (gradPlanId:timestamp:checksum base64)
+  try {
+    let base64 = accessId.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    const decoded = Buffer.from(base64, 'base64').toString();
+    const parts = decoded.split(':');
+    if (parts.length !== 3) return null;
+    const [gradPlanId, timestampStr, checksumStr] = parts;
+    const payload = `${gradPlanId}:${timestampStr}`;
+    // recompute checksum
+    let checksum = 0;
+    for (let i = 0; i < payload.length; i++) checksum = (checksum + payload.charCodeAt(i)) % 65536;
+    if (checksum !== Number.parseInt(checksumStr)) return null;
+    const ts = Number(timestampStr);
+    if (Number.isFinite(ts) && opts?.maxAgeMs) {
+      if (now - ts > opts.maxAgeMs) return null; // expired
+    }
+    return gradPlanId;
+  } catch (e) {
+    console.error('[decodeAnyAccessId] legacy decode failed', e);
+    return null;
+  }
+}

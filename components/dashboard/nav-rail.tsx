@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useSelectedLayoutSegment } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useSelectedLayoutSegment, useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
@@ -25,6 +24,7 @@ import PeopleAltRounded from "@mui/icons-material/PeopleAlt";
 import AccountTreeRounded from "@mui/icons-material/AccountTree";
 import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettings";
 import MapRounded from "@mui/icons-material/MapRounded";
+import { MdHistory } from "react-icons/md";
 import type { NavItem } from "@/app/dashboard/layout";
 import { JSX } from "react";
 
@@ -41,6 +41,7 @@ const iconMap: Record<NavItem["icon"], JSX.Element> = {
   planner: <SchoolRounded />,
   map: <MapRounded />,
   semester: <ChecklistRounded />,
+  history: <MdHistory />,
   meet: <EventAvailableRounded />,
   profile: <PersonRounded />,
   advisees: <GroupsRounded />,
@@ -52,7 +53,7 @@ const iconMap: Record<NavItem["icon"], JSX.Element> = {
   system: <AdminPanelSettingsRounded />,
 };
 
-export default function NavRail({ items, railWidth = 88, showSettings = true }: Props) {
+export default function NavRail({ items, railWidth = 88, showSettings = true }: Readonly<Props>) {
   const seg = useSelectedLayoutSegment();
   const router = useRouter();
   const { university } = useUniversityTheme();
@@ -152,6 +153,32 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
                   }}
                 >
                   {iconMap[item.icon]}
+                  {item.badgeCount && item.badgeCount > 0 && (
+                    <Box
+                      component="span"
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        // Use a semantic pending color (accessible contrast with white text)
+                        background: 'var(--pending-badge-bg, #c2410c)', // orange-700 fallback
+                        color: 'var(--pending-badge-fg, #fff)',
+                        borderRadius: '999px',
+                        minWidth: 18,
+                        height: 18,
+                        px: 0.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        lineHeight: 1,
+                        boxShadow: '0 0 0 2px rgba(0,0,0,0.35)'
+                      }}
+                    >
+                      {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                    </Box>
+                  )}
                 </IconButton>
               </Box>
             </Tooltip>

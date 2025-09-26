@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+// Removed direct client-side upsert; persistence handled by server action now.
+import { saveProfileAndPreferences } from "./save-profile-action";
 import { Option } from "@/types/option";
 import ChipsField from "@/helpers/chips-field";
 import SingleSelect from "@/helpers/single-select";
@@ -123,61 +124,22 @@ export default function CreateAccountForm({
     setError(null);
 
     try {
-      const fname = firstName.trim();
-      const lname = lastName.trim();
-      if (!fname || !lname) throw new Error("Please enter your first and last name.");
-      if (universityId == null) throw new Error("Please select your university.");
-
-      const uniq = (xs: number[]) => Array.from(new Set(xs.filter(n => Number.isFinite(n))));
-
-      // 1) Ensure profile exists (now including fname/lname + university_id)
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert(
-          { id: userId, fname, lname, university_id: universityId },
-          { onConflict: "id" }
-        )
-        .select("id")
-        .single();
-
-      if (profileError) {
-        console.error("[CreateAccount] Profile upsert error:", profileError);
-        setError(profileError.message || "Could not save your profile.");
+      const result = await saveProfileAndPreferences({
+        userId,
+        fname: firstName,
+        lname: lastName,
+        universityId: universityId!,
+        majors,
+        minors,
+        interests,
+        careerSelections,
+        classPreferences,
+      });
+      if (!result.ok) {
+        setError(result.error || "Could not save your profile.");
         setSaving(false);
         return;
       }
-
-      // 2) Upsert student preferences referencing that profile
-      // Store just the program IDs in selected_programs
-      const selectedProgramIds = [...uniq(majors), ...uniq(minors)];
-
-      console.log("[CreateAccount] Selected program IDs:", selectedProgramIds);
-      console.log("[CreateAccount] Selected interests:", uniq(interests));
-
-      const studentRow = {
-        profile_id: userId,                       // FK to profiles.id (UUID)
-        selected_programs: selectedProgramIds.length > 0 ? selectedProgramIds : null,
-        selected_interests: uniq(interests).length > 0 ? uniq(interests) : null,
-        career_options: uniq(careerSelections).length > 0 ? uniq(careerSelections) : null,
-        class_preferences: uniq(classPreferences).length > 0 ? uniq(classPreferences) : null,
-      };
-
-      console.log("[CreateAccount] Upserting student row →", studentRow);
-
-      const { data, error } = await supabase
-        .from("student")
-        .upsert(studentRow, { onConflict: "profile_id" })
-        .select("profile_id, selected_programs, selected_interests, career_options, class_preferences")
-        .single();
-
-      if (error) {
-        console.error("[CreateAccount] Student upsert error:", error);
-        setError(error.message || "Could not save your preferences.");
-        setSaving(false);
-        return;
-      }
-
-      console.log("[CreateAccount] Upsert OK:", data);
       router.push(nextHref);
     } catch (err) {
       console.error("[CreateAccount] Submit exception:", err);
@@ -212,7 +174,6 @@ export default function CreateAccountForm({
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           required
-          inputProps={{ maxLength: 100 }}
         />
         <TextField
           id="lname"
@@ -220,7 +181,6 @@ export default function CreateAccountForm({
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           required
-          inputProps={{ maxLength: 100 }}
         />
       </div>
 
@@ -285,7 +245,12 @@ export default function CreateAccountForm({
       />
 
       <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-        <button
+        {(() => {
+          let buttonLabel = "Continue";
+          if (isEditMode) buttonLabel = "Update Profile";
+          if (saving) buttonLabel = "Saving…";
+          return (
+            <button
           type="submit"
           disabled={!canSubmit || saving}
           aria-disabled={!canSubmit || saving}
@@ -298,8 +263,10 @@ export default function CreateAccountForm({
             color: "white",
           }}
         >
-          {saving ? "Saving…" : (isEditMode ? "Update Profile" : "Continue")}
+          {buttonLabel}
         </button>
+          );
+        })()}
       </div>
     </form>
   );
