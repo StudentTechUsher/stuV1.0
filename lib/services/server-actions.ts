@@ -2,7 +2,7 @@
 
 // Centralized async server action wrappers. Each export must be an async function (Next.js requirement).
 
-import { decodeAccessId } from '@/lib/utils/access-id';
+import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
 import {
     fetchGradPlanForEditing as _fetchGradPlanForEditing,
@@ -25,7 +25,8 @@ export async function organizeCoursesIntoSemestersAction(coursesData: unknown, p
 // Decode access ID
 export async function decodeAccessIdServerAction(accessId: string): Promise<{ success: boolean; gradPlanId?: string; error?: string }> {
     try {
-        const gradPlanId = decodeAccessId(accessId);
+        // Accept both server (HMAC) and legacy client formats. Enforce 30-day max age for legacy tokens.
+        const gradPlanId = decodeAnyAccessId(accessId, { maxAgeMs: 1000 * 60 * 60 * 24 * 30 });
         if (!gradPlanId) return { success: false, error: 'Invalid or expired access link' };
         return { success: true, gradPlanId };
     } catch (error) {
@@ -66,4 +67,9 @@ export async function fetchProgramsByUniversity(universityId: number) {
 
 export async function deleteProgram(programId: string) {
     return await _deleteProgram(programId);
+}
+
+// Issue a server-format access ID (HMAC) for a grad plan id
+export async function issueGradPlanAccessId(gradPlanId: string): Promise<string> {
+    return encodeAccessId(gradPlanId);
 }

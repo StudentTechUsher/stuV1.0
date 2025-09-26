@@ -1,6 +1,7 @@
 // app/dashboard/layout.tsx
 import type { ReactNode } from "react";
 import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-client";
+import { getPendingGradPlansCount } from '@/lib/services/notifService';
 
 // 👇 NEW: read Supabase session in a server component
 import { cookies } from "next/headers";
@@ -23,6 +24,7 @@ type IconKey =
   | "planner"
   | "map"
   | "semester"
+  | "history"
   | "meet"
   | "profile"
   | "advisees"
@@ -38,6 +40,7 @@ export type NavItem = {
   segment: string | null;
   label: string;
   icon: IconKey;
+  badgeCount?: number; // optional numeric badge (e.g., pending approvals)
 };
 
 export default async function DashboardLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -74,7 +77,10 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   const role: Role =
     ROLE_MAP[roleId ?? "3"]; // sensible default to "student" if roleId is null or undefined
 
-  const items = getNavItems(role);
+  // If advisor, fetch pending approvals count (for badge)
+  const pendingCount = role === 'advisor' ? await getPendingGradPlansCount() : 0;
+
+  const items = getNavItems(role, pendingCount);
 
   return (
     <DashboardLayoutClient
@@ -86,12 +92,13 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   );
 }
 
-function getNavItems(role: Role): NavItem[] {
+function getNavItems(role: Role, pendingCount = 0): NavItem[] {
   switch (role) {
     case "student":
       return [
         { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
         { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
+        { href: "/dashboard/academic-history",   segment: "academic-history",    label: "Academic History",     icon: "history" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
         { href: "/dashboard/pathfinder",         segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
         { href: "/dashboard/meet-with-advisor",  segment: "calendar",           label: "Meet with Advisor",    icon: "meet" },
@@ -101,7 +108,7 @@ function getNavItems(role: Role): NavItem[] {
     case "advisor":
       return [
         { href: "/dashboard",                    segment: null,                 label: "Overview",       icon: "dashboard" },
-        { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map" },
+        { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
         { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
         { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports" },

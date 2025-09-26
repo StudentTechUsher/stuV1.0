@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approve-table';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
-import { fetchPendingGradPlans } from '@/lib/services/server-actions';
-import { encodeAccessIdClient } from '@/lib/utils/access-id';
+import { fetchPendingGradPlans, issueGradPlanAccessId } from '@/lib/services/server-actions';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type Role = "student" | "advisor" | "admin";
@@ -104,12 +103,9 @@ export default function SelectGradPlansPage() {
     };
   }, [isCheckingRole]);
 
-  const handleRowClick = (plan: PendingGradPlan) => {
+  const handleRowClick = async (plan: PendingGradPlan) => {
     try {
-      // Encode the grad plan ID to create a secure access ID
-      const accessId = encodeAccessIdClient(plan.id);
-      
-      // Navigate to the dynamic route with the encoded access ID
+      const accessId = await issueGradPlanAccessId(plan.id);
       router.push(`/dashboard/approve-grad-plans/${accessId}`);
     } catch (error) {
       console.error('Error navigating to grad plan:', error);
