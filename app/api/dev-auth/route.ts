@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // SECURITY: This route hard-refuses to operate unless NEXT_PUBLIC_ENV=dev.
 
 function isDevEnv() {
-  return (process.env.NEXT_PUBLIC_ENV || (process.env.NODE_ENV === 'production' ? 'prod' : 'dev')) === 'dev'
+  return (process.env.NEXT_PUBLIC_ENV || (process.env.NODE_ENV === 'production' ? 'production' : 'development')) === 'development'
 }
 
 export async function POST(req: NextRequest) {

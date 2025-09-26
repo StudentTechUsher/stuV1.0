@@ -42,7 +42,7 @@ export default function DevAuthToggle() {
   }
 
   return (
-    <div style={{ position: 'fixed', bottom: 12, right: 12, zIndex: 1000 }}>
+    <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000, textAlign: 'right' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
@@ -55,7 +55,7 @@ export default function DevAuthToggle() {
         }}
       >{open ? 'Close Dev Auth' : 'Dev Auth'}</button>
       {open && (
-        <div style={{ marginTop: 8, width: 300, background: '#1f2937', color: 'white', padding: 12, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+        <div style={{ marginTop: 8, width: 320, background: '#1f2937', color: 'white', padding: 12, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
           <p style={{ fontWeight: 600, marginBottom: 6 }}>Dev Auth Bypass</p>
           <textarea
             placeholder="Paste access JWT here"
