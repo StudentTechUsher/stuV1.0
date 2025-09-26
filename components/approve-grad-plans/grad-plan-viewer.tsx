@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Box, Typography, Button, TextField, IconButton } from '@mui/material';
+import { Box, Typography, Button, TextField, IconButton, FormControl, Select, MenuItem, InputLabel } from '@mui/material';
 import { Add, Remove } from '@mui/icons-material';
 
 interface Course {
@@ -23,9 +23,13 @@ interface GradPlanViewerProps {
   studentName: string;
   programs?: Array<{ id: number; name: string }>;
   onSuggestionsChange?: (hasSuggestions: boolean, suggestions: Record<string, string>) => void;
+  editable?: boolean; // enable course movement UI
+  enableTermMove?: boolean; // show dropdown to move courses
+  planOverride?: Term[]; // externally controlled plan (used when editing)
+  onPlanChange?: (updatedTerms: Term[]) => void; // notify parent of plan changes
 }
 
-export default function GradPlanViewer({ planDetails, studentName, programs, onSuggestionsChange }: GradPlanViewerProps) {
+export default function GradPlanViewer({ planDetails, studentName, programs, onSuggestionsChange, editable = false, enableTermMove = false, planOverride, onPlanChange }: Readonly<GradPlanViewerProps>) {
   // State for managing suggestion text fields
   const [activeSuggestions, setActiveSuggestions] = React.useState<Record<string, string>>({});
   
@@ -118,14 +122,45 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
     return [];
   };
 
-  const planData = parsePlanData();
+  const parsed = React.useMemo(() => parsePlanData(), [planDetails]);
+  const planData = planOverride ?? parsed;
+
+  const handleMoveCourse = (fromTermIdx: number, courseIdx: number, toTermIdx: number) => {
+    if (!editable || !enableTermMove) return;
+    if (toTermIdx === fromTermIdx || toTermIdx < 0 || toTermIdx >= planData.length) return;
+    const copy = planData.map(t => ({ ...t, courses: t.courses ? [...t.courses] : [] }));
+    const course = copy[fromTermIdx].courses?.[courseIdx];
+    if (!course) return;
+    // Remove from original term
+    copy[fromTermIdx].courses.splice(courseIdx, 1);
+    // Add to destination term
+    copy[toTermIdx].courses = copy[toTermIdx].courses || [];
+    copy[toTermIdx].courses.push(course);
+    // Recalculate credits_planned for affected terms so legacy field stays in sync
+    const recalc = (idx: number) => {
+      const term = copy[idx];
+      if (term) {
+        term.credits_planned = term.courses ? term.courses.reduce((s, c) => s + (c.credits || 0), 0) : 0;
+      }
+    };
+    recalc(fromTermIdx);
+    recalc(toTermIdx);
+    onPlanChange?.(copy);
+  };
   
-  // Calculate total credits
-  const totalCredits = planData.reduce((total, term) => {
-    const termCredits = term.credits_planned || 
-                       (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-    return total + termCredits;
-  }, 0);
+  const calculateTermCredits = (term: Term): number => {
+    // In editable move mode always derive from courses to reflect live changes
+    if (editable && enableTermMove) {
+      return term.courses ? term.courses.reduce((sum, c) => sum + (c.credits || 0), 0) : 0;
+    }
+    if (typeof term.credits_planned === 'number') {
+      return term.credits_planned;
+    }
+    const courseCredits = term.courses ? term.courses.reduce((sum, c) => sum + (c.credits || 0), 0) : 0;
+    return courseCredits;
+  };
+
+  const totalCredits = planData.reduce((total, term) => total + calculateTermCredits(term), 0);
 
   if (!planData || planData.length === 0) {
     return (
@@ -153,11 +188,7 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
   }
 
   return (
-    <Box>
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-        Graduation Plan for {studentName}
-      </Typography>
-      
+    <Box>  
       {/* Programs List */}
       {programs && programs.length > 0 && (
         <Box sx={{ mb: 3 }}>
@@ -236,8 +267,7 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
         }
       }}>
         {planData.map((term, index) => {            
-          const termCredits = term.credits_planned || 
-                             (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+          const termCredits = calculateTermCredits(term);
           
           const termKey = term.term || `term-${index}`;
           const hasSuggestion = activeSuggestions.hasOwnProperty(termKey);
@@ -288,53 +318,68 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
                     📚 Courses ({term.courses.length}):
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {term.courses.map((course: Course, courseIndex: number) => (
-                      <Box 
-                        key={`${course.code}-${courseIndex}`} 
-                        sx={{ 
-                          p: 2, 
-                          backgroundColor: 'white', 
-                          borderRadius: 1, 
-                          border: '1px solid #ddd',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                          transition: 'box-shadow 0.2s ease',
-                          '&:hover': {
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-                          }
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>
-                          {course.code}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 1, color: '#555' }}>
-                          {course.title}
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ 
-                            color: '#666',
-                            px: 1,
-                            py: 0.5,
-                            backgroundColor: '#f5f5f5',
-                            borderRadius: 0.5,
-                            fontWeight: 500
-                          }}>
-                            📖 {course.credits} credit{course.credits !== 1 ? 's' : ''}
+                    {term.courses.map((course: Course, courseIndex: number) => {
+                      const keyBase = course.code || course.title || `course-${courseIndex}`;
+                      return (
+                        <Box 
+                          key={keyBase}
+                          sx={{ 
+                            p: 2, 
+                            backgroundColor: 'white', 
+                            borderRadius: 1, 
+                            border: '1px solid #ddd',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                            transition: 'box-shadow 0.2s ease',
+                            '&:hover': { boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5, color: '#333' }}>
+                            {course.code}
                           </Typography>
-                          {course.fulfills && Array.isArray(course.fulfills) && course.fulfills.length > 0 && (
+                          <Typography variant="body2" sx={{ mb: 1, color: '#555' }}>
+                            {course.title}
+                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <Typography variant="caption" sx={{ 
-                              color: '#2e7d32',
+                              color: '#666',
                               px: 1,
                               py: 0.5,
-                              backgroundColor: '#e8f5e8',
+                              backgroundColor: '#f5f5f5',
                               borderRadius: 0.5,
                               fontWeight: 500
                             }}>
-                              ✅ {course.fulfills.join(', ')}
+                              📖 {course.credits} credit{course.credits !== 1 ? 's' : ''}
                             </Typography>
-                          )}
+                            {course.fulfills && Array.isArray(course.fulfills) && course.fulfills.length > 0 && (
+                              <Typography variant="caption" sx={{ 
+                                color: '#2e7d32',
+                                px: 1,
+                                py: 0.5,
+                                backgroundColor: '#e8f5e8',
+                                borderRadius: 0.5,
+                                fontWeight: 500
+                              }}>
+                                ✅ {course.fulfills.join(', ')}
+                              </Typography>
+                            )}
+                            {editable && enableTermMove && (
+                              <FormControl size="small" sx={{ minWidth: 110 }}>
+                                <InputLabel>Term</InputLabel>
+                                <Select
+                                  label="Term"
+                                  value={index + 1}
+                                  onChange={(e) => handleMoveCourse(index, courseIndex, Number(e.target.value) - 1)}
+                                >
+                                  {planData.map((_, tIdx) => (
+                                    <MenuItem key={`move-term-${tIdx}`} value={tIdx + 1}>Term {tIdx + 1}</MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            )}
+                          </Box>
                         </Box>
-                      </Box>
-                    ))}
+                      );
+                    })}
                   </Box>
                 </Box>
               ) : (

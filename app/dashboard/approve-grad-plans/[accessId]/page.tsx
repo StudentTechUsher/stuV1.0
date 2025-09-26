@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
-import { CheckCircle, Cancel } from '@mui/icons-material';
+import { CheckCircle, Save } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanById, updateGradPlanWithAdvisorNotes, approveGradPlan, decodeAccessIdServerAction } from '@/lib/services/server-actions';
+import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction } from '@/lib/services/server-actions';
 import GradPlanViewer from '@/components/approve-grad-plans/grad-plan-viewer';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -36,6 +36,9 @@ export default function ApproveGradPlanPage() {
   const [hasSuggestions, setHasSuggestions] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [editablePlan, setEditablePlan] = React.useState<any[] | null>(null); // normalized array of terms
+  const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
@@ -151,7 +154,15 @@ export default function ApproveGradPlanPage() {
           throw new Error('Graduation plan not found or no longer pending approval');
         }
         
-        setGradPlan(planData);
+  setGradPlan(planData);
+  // Normalize plan_details into array of terms (looking for plan/semesters/terms) and store editable copy
+  const raw = planData.plan_details as any;
+  let terms: any[] = [];
+  if (Array.isArray(raw)) terms = raw;
+  else if (raw?.plan && Array.isArray(raw.plan)) terms = raw.plan;
+  else if (raw?.semesters && Array.isArray(raw.semesters)) terms = raw.semesters;
+  else if (raw?.terms && Array.isArray(raw.terms)) terms = raw.terms;
+  setEditablePlan(JSON.parse(JSON.stringify(terms)));
 
       } catch (e: unknown) {
         if (!active) return;
@@ -174,14 +185,65 @@ export default function ApproveGradPlanPage() {
     router.push('/dashboard/approve-grad-plans');
   };
 
+  const moveCourse = (fromTermIdx: number, courseIdx: number, toTermNumber: number) => {
+    if (!editablePlan) return;
+    const toIdx = toTermNumber - 1;
+    if (toIdx === fromTermIdx || toIdx < 0 || toIdx >= editablePlan.length) return;
+    setEditablePlan(prev => {
+      if (!prev) return prev;
+      const copy = prev.map(t => ({ ...t, courses: t.courses ? [...t.courses] : [] }));
+      const course = copy[fromTermIdx].courses?.[courseIdx];
+      if (!course) return prev;
+      copy[fromTermIdx].courses!.splice(courseIdx, 1);
+      copy[toIdx].courses = copy[toIdx].courses || [];
+      copy[toIdx].courses!.push(course);
+      setUnsavedChanges(true);
+      return copy;
+    });
+  };
+
+  const handleSave = async () => {
+    if (!gradPlan || !editablePlan) return;
+    setIsSaving(true);
+    try {
+      const original = gradPlan.plan_details as any;
+      let payload: any;
+      if (Array.isArray(original)) payload = editablePlan;
+      else if (original?.plan) payload = { ...original, plan: editablePlan };
+      else if (original?.semesters) payload = { ...original, semesters: editablePlan };
+      else if (original?.terms) payload = { ...original, terms: editablePlan };
+      else payload = { plan: editablePlan };
+      const advisorNotes = formatSuggestionsForAdvisorNotes(suggestions);
+      const result = await updateGradPlanDetailsAndAdvisorNotesAction(gradPlan.id, payload, advisorNotes);
+      if (result.success) {
+        showSnackbar('Changes & suggestions saved. Redirecting...', 'success');
+        setUnsavedChanges(false);
+        if (hasSuggestions) {
+          setHasSuggestions(false);
+        }
+        // Redirect to approval list after short delay so user sees snackbar
+        setTimeout(() => router.push('/dashboard/approve-grad-plans'), 1100);
+      } else {
+        showSnackbar(result.error || 'Failed to save changes', 'error');
+      }
+    } catch (e) {
+      console.error('Save error', e);
+      showSnackbar('Unexpected error while saving plan.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
   const handleApprove = async () => {
     if (!gradPlan) return;
-    
+    if (unsavedChanges) {
+      showSnackbar('Please save changes before approving.', 'warning');
+      return;
+    }
     setIsProcessing(true);
-    
     try {
       const result = await approveGradPlan(gradPlan.id);
-      
       if (result.success) {
         showSnackbar('Graduation plan approved successfully! The student can now view their active plan.', 'success');
         setTimeout(() => router.push('/dashboard/approve-grad-plans'), 2000);
@@ -196,40 +258,9 @@ export default function ApproveGradPlanPage() {
     }
   };
 
-  const handleReject = async () => {
-    if (!gradPlan) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      // Format suggestions into advisor notes
-      const advisorNotes = formatSuggestionsForAdvisorNotes(suggestions);
-      
-      if (!hasSuggestions || advisorNotes.trim() === '') {
-        showSnackbar('Please add suggestions using the "+ Suggest Edit" buttons before submitting.', 'warning');
-        return;
-      }
-      
-      // Update the graduation plan with advisor notes
-      const result = await updateGradPlanWithAdvisorNotes(gradPlan.id, advisorNotes);
-      
-      if (result.success) {
-        showSnackbar('Suggested edits submitted successfully. Feedback has been sent to the student.', 'success');
-        setTimeout(() => router.push('/dashboard/approve-grad-plans'), 2000);
-      } else {
-        showSnackbar(`Failed to submit suggested edits: ${result.error || 'Unknown error'}`, 'error');
-      }
-    } catch (error) {
-      console.error('Error submitting suggested edits:', error);
-      showSnackbar('Failed to submit suggested edits. Please try again.', 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const getApproveButtonText = () => {
     if (isProcessing) return 'Processing...';
-    if (hasSuggestions) return 'Cannot Approve (Has Suggestions)';
+    if (hasSuggestions) return 'Cannot Approve (Unsaved Suggestions)';
     return 'Approve Plan';
   };
 
@@ -282,11 +313,6 @@ export default function ApproveGradPlanPage() {
 
   const studentName = `${gradPlan.student_first_name} ${gradPlan.student_last_name}`;
   
-  const getRejectButtonText = () => {
-    if (isProcessing) return 'Submitting...';
-    if (hasSuggestions) return 'Submit Suggested Edits';
-    return 'Submit Suggested Edits';
-  };
 
   return (
     <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
@@ -315,24 +341,48 @@ export default function ApproveGradPlanPage() {
         </Typography>
       </Box>
 
-      {/* Plan Details */}
+      {/* Unified Editable + Suggestions Viewer */}
       <Paper elevation={2} sx={{ p: 4, mb: 4, backgroundColor: '#fafafa' }}>
-        <GradPlanViewer 
-          planDetails={gradPlan.plan_details} 
-          studentName={studentName} 
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Pending Plan for {studentName}
+          </Typography>
+          <Box sx={{ display:'flex', gap:1 }}>
+            <Button
+              variant="contained"
+              startIcon={<Save />}
+              onClick={handleSave}
+              disabled={!unsavedChanges || isSaving}
+            >
+              {(() => {
+                if (isSaving) return 'Saving...';
+                if (unsavedChanges) return 'Save Changes and Notify Student';
+                return 'Saved';
+              })()}
+            </Button>
+          </Box>
+        </Box>
+        <GradPlanViewer
+          planDetails={gradPlan.plan_details}
+          studentName={studentName}
           programs={gradPlan.programs}
           onSuggestionsChange={handleSuggestionsChange}
+          editable
+          enableTermMove
+          planOverride={editablePlan || []}
+          onPlanChange={(updated) => { setEditablePlan(updated as any[]); setUnsavedChanges(true); }}
         />
+        <Box sx={{ mt:3 }}>
+          <Alert severity={unsavedChanges ? 'warning':'info'}>
+            {unsavedChanges ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.' : 'You can move courses between terms or add term suggestions below. Saving does not approve the plan.'}
+          </Alert>
+        </Box>
       </Paper>
 
       {/* Action Buttons */}
-      {hasSuggestions ? (
+      {hasSuggestions && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          You have suggestions for this plan. Click &quot;Submit Suggested Edits&quot; to send feedback to the student.
-        </Alert>
-      ) : (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          To provide feedback, click &quot;+ Suggest Edit&quot; on any term where you have suggestions, then submit your edits.
+          You have unsaved suggestions. Click Save to send them and remove this plan from the approval queue.
         </Alert>
       )}
       
@@ -343,7 +393,7 @@ export default function ApproveGradPlanPage() {
           size="large"
           startIcon={<CheckCircle />}
           onClick={handleApprove}
-          disabled={hasSuggestions || isProcessing}
+          disabled={hasSuggestions || isProcessing || unsavedChanges}
           sx={{ 
             px: 4, 
             py: 1.5,
@@ -361,35 +411,6 @@ export default function ApproveGradPlanPage() {
           }}
         >
           {getApproveButtonText()}
-        </Button>
-        <Button
-          variant="contained"
-          size="large"
-          startIcon={<Cancel />}
-          onClick={handleReject}
-          disabled={isProcessing || !hasSuggestions}
-          sx={{ 
-            px: 4, 
-            py: 1.5,
-            fontSize: '1.1rem',
-            fontWeight: 'bold',
-            backgroundColor: hasSuggestions && !isProcessing ? '#ffc107' : '#fff3cd',
-            color: hasSuggestions && !isProcessing ? '#000' : '#6c757d',
-            border: hasSuggestions && !isProcessing ? '1px solid #ffc107' : '1px solid #e0e0e0',
-            boxShadow: hasSuggestions && !isProcessing ? '0 4px 12px rgba(255, 193, 7, 0.3)' : 'none',
-            opacity: (!hasSuggestions || isProcessing) ? 0.6 : 1,
-            '&:hover': {
-              backgroundColor: hasSuggestions && !isProcessing ? '#ffb300' : '#fff3cd',
-              boxShadow: hasSuggestions && !isProcessing ? '0 6px 16px rgba(255, 193, 7, 0.4)' : 'none'
-            },
-            '&:disabled': {
-              backgroundColor: '#fff3cd',
-              color: '#6c757d',
-              border: '1px solid #e0e0e0'
-            }
-          }}
-        >
-          {getRejectButtonText()}
         </Button>
       </Box>
 

@@ -19,6 +19,9 @@ import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
+import TextField from '@mui/material/TextField';
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import AddIcon from '@mui/icons-material/Add';
 import type { ProgramRow } from '@/types/program';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
 import {
@@ -97,6 +100,48 @@ export default function CreateGradPlanDialog({
     title: 'Creating Your Graduation Plan',
     subtitle: 'AI is organizing your courses into semesters...'
   });
+
+  // User-added elective courses (manually specified by user to fulfill elective requirements)
+  interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
+  const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
+  const [showElectiveForm, setShowElectiveForm] = useState(false);
+  const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
+  const [electiveError, setElectiveError] = useState<string | null>(null);
+
+  const resetElectiveDraft = () => {
+    setElectiveDraft({ code: '', title: '', credits: '' });
+    setElectiveError(null);
+  };
+
+  const handleAddElective = () => {
+    const code = electiveDraft.code.trim().toUpperCase();
+    const title = electiveDraft.title.trim();
+    const creditsNum = parseFloat(electiveDraft.credits);
+
+    if (!code || !title) {
+      setElectiveError('Code and title are required.');
+      return;
+    }
+    if (isNaN(creditsNum) || creditsNum <= 0) {
+      setElectiveError('Credits must be a positive number.');
+      return;
+    }
+    // Optional: restrict to quarter or half credit increments (commented out)
+    // if ((creditsNum * 2) % 1 !== 0) { setElectiveError('Use increments of 0.5 credits.'); return; }
+    if (userElectives.some(e => e.code === code)) {
+      setElectiveError('This course code has already been added.');
+      return;
+    }
+    const normalizedCredits = parseFloat(creditsNum.toFixed(2));
+    const newCourse: UserElectiveCourse = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, code, title, credits: normalizedCredits };
+    setUserElectives(prev => [...prev, newCourse]);
+    resetElectiveDraft();
+    setShowElectiveForm(false);
+  };
+
+  const handleRemoveElective = (id: string) => {
+    setUserElectives(prev => prev.filter(c => c.id !== id));
+  };
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
@@ -380,6 +425,7 @@ export default function CreateGradPlanDialog({
         }>;
       }>,
       generalEducation: {} as Record<string, Array<{code: string, title: string, credits: string | number, prerequisite?: string}>>,
+      userAddedElectives: [] as Array<{code: string; title: string; credits: number}>
     };
 
     // Add GenEd courses with details
@@ -443,6 +489,13 @@ export default function CreateGradPlanDialog({
       });
     });
     
+    // Append user-added electives (treated as fulfilling generic elective requirements)
+    if (userElectives.length > 0) {
+      selectedClasses.userAddedElectives = userElectives.map(e => ({ code: e.code, title: e.title, credits: e.credits }));
+      // Also expose inside generalEducation for backward compatibility under a stable key
+      selectedClasses.generalEducation['User Added Electives'] = userElectives.map(e => ({ code: e.code, title: e.title, credits: e.credits }));
+    }
+
     return selectedClasses;
   }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap]);
 
@@ -891,6 +944,92 @@ export default function CreateGradPlanDialog({
               })}
             </>
           )}
+
+          {/* User Added Elective Courses Section */}
+          <Box sx={{ mt: 4 }}>
+            <Divider sx={{ mb: 3 }} />
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Additional Elective Courses
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              If you want to include extra elective courses not covered above, add them here. These will be included in the AI planning step.
+            </Typography>
+            {userElectives.length > 0 && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {userElectives.map(course => (
+                  <Chip
+                    key={course.id}
+                    label={`${course.code} – ${course.title} (${course.credits})`}
+                    onDelete={() => handleRemoveElective(course.id)}
+                    color="info"
+                    variant="outlined"
+                    sx={{
+                      '& .MuiChip-label': { fontSize: '0.7rem' }
+                    }}
+                  />
+                ))}
+              </Box>
+            )}
+            {showElectiveForm ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField
+                    label="Course Code"
+                    value={electiveDraft.code}
+                    onChange={(e) => setElectiveDraft(d => ({ ...d, code: e.target.value }))}
+                    size="small"
+                    sx={{ flex: '1 1 140px', minWidth: '120px' }}
+                  />
+                  <TextField
+                    label="Course Title"
+                    value={electiveDraft.title}
+                    onChange={(e) => setElectiveDraft(d => ({ ...d, title: e.target.value }))}
+                    size="small"
+                    sx={{ flex: '2 1 240px', minWidth: '200px' }}
+                  />
+                  <TextField
+                    label="Credits"
+                    value={electiveDraft.credits}
+                    onChange={(e) => setElectiveDraft(d => ({ ...d, credits: e.target.value }))}
+                    size="small"
+                    sx={{ flex: '0 1 110px', minWidth: '110px' }}
+                    placeholder="e.g. 3.0"
+                    inputProps={{ inputMode: 'decimal', pattern: '^[0-9]+(\\.[0-9]+)?$' }}
+                  />
+                </Box>
+                {electiveError && (
+                  <Alert severity="warning" onClose={() => setElectiveError(null)}>{electiveError}</Alert>
+                )}
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleAddElective}
+                    startIcon={<AddIcon />}
+                    sx={{ fontWeight: 'bold' }}
+                  >
+                    Add Elective
+                  </Button>
+                  <Button
+                    variant="text"
+                    color="inherit"
+                    onClick={() => { resetElectiveDraft(); setShowElectiveForm(false); }}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setShowElectiveForm(true)}
+                sx={{ fontWeight: 'bold' }}
+              >
+                Add Elective Course
+              </Button>
+            )}
+          </Box>
         </Box>
 
         {/* JSON Preview Section

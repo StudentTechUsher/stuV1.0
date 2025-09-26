@@ -258,7 +258,7 @@ export default function EditGradPlanPage() {
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333' }}>
-            {isStudent ? 'Graduation Plan' : `Graduation Plan for ${studentName}`}
+            {isStudent ? 'Edit Graduation Plan' : `Graduation Plan for ${studentName}`}
           </Typography>
           
           {isStudent && (
