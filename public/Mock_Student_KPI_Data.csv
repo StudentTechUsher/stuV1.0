@@ -1,0 +1,201 @@
+student_id,has_active_plan,requested_plan_approval,on_track_to_graduate,account_hold,grad_plan_deviation_percent,credits_planned,is_transfer,is_international,has_approved_plan,submitted_graduation,requested_advising,college,advisor_meeting_recent
+S0001,True,False,True,True,0.0,11,False,False,True,True,False,Engineering,True
+S0002,False,True,False,False,9.714683571359958,19,False,False,False,True,False,Arts & Humanities,True
+S0003,False,True,True,True,23.820244964750337,15,True,False,False,False,False,Arts & Humanities,True
+S0004,True,False,False,True,18.454200461549775,22,False,False,True,True,True,Business,False
+S0005,True,False,True,True,20.93186626639397,12,True,False,True,False,False,Business,True
+S0006,True,True,False,False,0.0,21,False,False,False,True,False,Arts & Humanities,False
+S0007,True,True,True,False,0.0,22,False,False,True,True,True,Engineering,True
+S0008,False,False,True,False,3.7421307990035184,9,False,False,False,True,False,Arts & Humanities,True
+S0009,True,True,False,False,5.557249122886946,21,False,False,True,True,False,Sciences,True
+S0010,False,True,True,False,15.941915184709485,22,False,False,False,False,True,Sciences,True
+S0011,True,False,True,True,0.0,13,False,False,True,True,True,Business,True
+S0012,False,False,False,False,20.295503194606137,20,True,False,True,True,True,Engineering,True
+S0013,False,False,False,False,3.4199210142101055,17,False,False,True,True,True,Engineering,True
+S0014,True,True,True,True,0.7311893005257994,16,False,False,True,True,True,Sciences,True
+S0015,True,False,False,False,0.0,20,False,False,True,False,False,Arts & Humanities,True
+S0016,True,True,True,False,0.0,23,False,False,False,False,True,Business,True
+S0017,True,False,True,True,13.231705839619146,17,False,False,False,False,False,Arts & Humanities,True
+S0018,True,False,True,False,5.733179671884039,18,False,False,True,False,True,Arts & Humanities,False
+S0019,True,False,False,False,0.0,22,False,False,True,True,False,Arts & Humanities,True
+S0020,True,False,False,False,0.0,17,False,False,True,False,True,Engineering,True
+S0021,True,False,False,True,1.6421530070987176,23,True,False,True,True,False,Sciences,True
+S0022,True,False,False,False,21.69021525289393,15,False,False,True,True,False,Engineering,True
+S0023,True,True,True,False,2.404086486363952,12,False,False,True,False,False,Sciences,True
+S0024,True,False,True,False,0.0,13,False,False,True,True,True,Business,True
+S0025,True,True,True,False,2.5425693591405567,9,False,False,True,False,False,Business,True
+S0026,False,True,True,False,2.2727643025232953,22,False,False,True,True,False,Arts & Humanities,True
+S0027,True,False,True,False,0.0,9,False,False,True,False,False,Sciences,True
+S0028,True,False,False,False,4.457051334821878,11,True,False,False,False,True,Sciences,True
+S0029,True,False,True,True,2.6906546979132204,21,False,False,True,False,True,Sciences,True
+S0030,True,False,True,False,11.962063648134183,22,False,False,False,False,False,Arts & Humanities,False
+S0031,True,False,True,False,23.489560949453452,16,True,False,True,False,False,Arts & Humanities,True
+S0032,True,False,False,False,16.265650295477574,22,False,False,True,True,False,Business,True
+S0033,True,False,False,False,2.311113094451694,10,False,False,False,False,False,Engineering,True
+S0034,False,False,True,False,0.0,12,True,False,False,True,False,Sciences,True
+S0035,False,True,True,True,30.733598032498605,10,False,True,False,False,True,Sciences,True
+S0036,False,False,False,False,5.5921843401448825,22,False,False,True,False,False,Engineering,True
+S0037,True,True,True,False,5.139292919129462,13,False,False,True,False,True,Sciences,True
+S0038,True,True,False,False,4.758749128899967,17,True,False,False,True,False,Arts & Humanities,True
+S0039,True,False,False,False,6.98084760767855,9,False,False,True,True,False,Arts & Humanities,True
+S0040,True,True,True,False,3.5563958807605753,13,False,False,True,False,False,Sciences,True
+S0041,True,False,True,True,0.0,22,False,False,True,True,True,Arts & Humanities,True
+S0042,True,False,False,False,0.0,23,False,False,True,True,True,Arts & Humanities,True
+S0043,True,False,True,False,4.672467297840016,17,True,False,False,True,True,Sciences,True
+S0044,False,False,True,False,0.0,23,False,False,True,False,True,Business,False
+S0045,True,True,False,True,0.0,9,True,False,True,False,True,Engineering,True
+S0046,True,False,False,False,6.064302276918968,17,True,True,True,True,False,Arts & Humanities,True
+S0047,True,False,False,False,2.450227825791447,16,False,False,True,True,True,Business,True
+S0048,True,False,False,False,20.039929885826886,12,False,False,True,True,True,Arts & Humanities,False
+S0049,True,False,True,False,0.0,20,False,False,True,False,False,Arts & Humanities,True
+S0050,True,False,True,False,15.915068519224619,19,False,False,True,False,False,Engineering,True
+S0051,False,True,False,True,17.46085192497629,18,False,False,False,True,False,Arts & Humanities,True
+S0052,False,False,True,False,0.0,13,False,False,True,True,True,Engineering,True
+S0053,False,False,True,False,1.5731240591965125,21,False,False,True,True,False,Engineering,True
+S0054,False,False,False,False,1.2855913400420853,13,False,False,False,False,True,Engineering,True
+S0055,True,True,True,False,0.0,19,False,False,False,False,True,Business,False
+S0056,False,False,True,True,0.0,20,False,False,True,True,False,Sciences,True
+S0057,True,False,True,False,0.0,14,False,True,True,True,True,Business,True
+S0058,True,False,True,False,22.52270443423623,15,False,False,True,True,False,Sciences,False
+S0059,True,False,True,False,14.356783931474611,16,False,False,False,False,False,Sciences,True
+S0060,True,True,True,False,17.715550949941587,23,True,True,False,True,True,Engineering,True
+S0061,True,False,True,False,12.216720640432351,22,False,False,False,False,False,Arts & Humanities,True
+S0062,True,False,False,False,0.0,16,False,False,True,False,True,Engineering,True
+S0063,False,True,False,False,0.0,19,False,False,False,True,False,Arts & Humanities,True
+S0064,True,False,True,False,9.89374561227918,22,False,False,True,True,False,Sciences,False
+S0065,True,False,False,True,0.0,21,False,False,True,True,False,Engineering,True
+S0066,True,False,True,True,12.12998430172388,10,False,True,True,False,False,Arts & Humanities,True
+S0067,True,False,True,False,2.5967460184186497,17,False,False,False,False,True,Business,True
+S0068,False,False,False,True,1.2517919245040248,15,False,False,True,False,False,Arts & Humanities,False
+S0069,True,False,True,True,12.109599682034915,12,False,False,False,False,True,Engineering,False
+S0070,False,True,False,False,9.442633114860397,12,False,True,True,True,False,Business,False
+S0071,False,False,True,True,1.3903383418092008,19,False,False,True,False,False,Arts & Humanities,True
+S0072,True,False,False,False,16.59329803364248,16,False,False,True,False,True,Arts & Humanities,True
+S0073,True,False,True,True,0.0,12,False,False,True,True,False,Arts & Humanities,True
+S0074,False,False,False,False,11.159356069442637,21,False,False,False,False,True,Arts & Humanities,True
+S0075,False,False,True,False,10.931012579683838,23,False,False,True,False,False,Arts & Humanities,True
+S0076,False,False,False,False,1.9045356068600974,14,False,False,False,False,False,Business,True
+S0077,False,False,True,True,8.26133022242118,13,True,False,False,False,False,Sciences,True
+S0078,True,False,True,False,0.0,11,False,False,False,False,False,Business,True
+S0079,True,False,False,False,14.24027019206901,21,False,True,True,False,True,Business,True
+S0080,True,False,True,False,3.1509786355701097,22,False,False,True,True,True,Business,True
+S0081,False,False,False,False,0.0,18,False,False,True,True,True,Sciences,True
+S0082,True,False,False,False,15.490092258368893,19,False,False,False,False,True,Engineering,True
+S0083,True,False,True,True,0.0,10,False,False,False,True,True,Sciences,True
+S0084,True,True,False,False,0.0,17,False,False,True,True,False,Business,False
+S0085,True,False,True,False,0.0,18,False,True,False,True,False,Arts & Humanities,True
+S0086,True,True,False,False,11.060099513456397,17,False,False,True,True,False,Arts & Humanities,True
+S0087,False,False,True,False,0.0,9,False,False,True,False,True,Business,True
+S0088,True,False,True,False,22.547941819843647,18,False,False,True,False,False,Arts & Humanities,False
+S0089,False,True,False,False,0.0,11,False,False,False,True,False,Business,True
+S0090,True,False,False,True,21.964563682900383,16,True,False,True,True,True,Arts & Humanities,True
+S0091,True,True,True,False,7.110174672026185,14,True,False,False,True,False,Sciences,True
+S0092,False,True,False,False,4.032868881296076,13,False,False,False,False,False,Engineering,True
+S0093,False,False,True,False,0.0,13,False,False,False,False,True,Engineering,True
+S0094,True,False,True,False,8.99136114352071,14,False,False,True,True,False,Sciences,True
+S0095,False,True,True,True,4.623652975751517,23,False,False,True,False,False,Sciences,False
+S0096,True,False,True,False,16.033018820165214,15,True,False,True,False,True,Business,True
+S0097,True,False,True,False,6.142276486620396,9,True,False,True,False,False,Business,False
+S0098,True,True,True,False,6.503017614618776,17,False,True,True,False,False,Business,True
+S0099,True,False,False,True,1.3638778778614413,11,False,False,False,True,False,Arts & Humanities,True
+S0100,True,True,False,False,4.430543762789325,12,False,False,True,False,False,Business,False
+S0101,True,True,False,False,8.078017688920593,18,False,False,True,True,False,Sciences,True
+S0102,True,False,True,True,0.0,9,True,False,True,False,False,Engineering,True
+S0103,True,False,True,False,0.0,21,False,False,True,False,False,Arts & Humanities,True
+S0104,True,False,False,True,12.432640940227149,19,False,False,True,False,True,Business,True
+S0105,False,False,False,True,6.708654381279419,18,False,False,True,False,False,Arts & Humanities,True
+S0106,True,False,True,False,3.1601666364732086,11,False,False,False,True,False,Arts & Humanities,True
+S0107,True,False,False,False,5.184339330653931,10,False,False,True,False,False,Business,True
+S0108,False,False,False,False,8.47581705361671,10,True,False,False,False,True,Arts & Humanities,True
+S0109,True,False,False,False,0.0,22,True,True,False,False,False,Engineering,True
+S0110,True,True,False,False,0.0,9,False,False,True,True,True,Sciences,True
+S0111,True,False,False,False,6.958452550976816,16,False,False,False,True,True,Sciences,True
+S0112,True,True,True,False,0.0,11,False,False,True,True,True,Engineering,True
+S0113,False,True,False,False,9.082527557144719,11,False,False,False,False,True,Arts & Humanities,True
+S0114,False,False,False,False,0.0,14,False,False,True,False,False,Business,True
+S0115,True,False,True,False,15.291556373256437,21,False,False,False,True,False,Arts & Humanities,False
+S0116,False,False,True,False,9.72597482413043,16,False,False,False,False,True,Engineering,True
+S0117,False,False,True,False,7.560297343138757,21,True,False,False,False,False,Arts & Humanities,True
+S0118,True,True,False,False,14.826909839455139,23,False,False,False,False,False,Sciences,True
+S0119,False,True,False,True,21.654744444625766,17,True,False,True,False,False,Arts & Humanities,True
+S0120,True,True,True,False,15.143700650181305,17,False,False,True,False,True,Engineering,True
+S0121,False,False,True,False,0.0,12,False,False,True,False,False,Sciences,False
+S0122,False,False,True,True,0.0,22,True,False,True,True,False,Arts & Humanities,True
+S0123,True,False,False,True,0.0,13,False,False,False,False,False,Arts & Humanities,False
+S0124,True,True,False,False,5.260910502108338,10,False,False,True,False,True,Sciences,False
+S0125,True,False,False,False,10.17659020469123,19,False,False,False,False,True,Business,False
+S0126,True,False,True,False,0.0,17,False,False,True,False,False,Sciences,False
+S0127,False,False,True,True,6.867667644770783,16,True,True,False,False,False,Business,True
+S0128,False,False,True,False,0.0,11,False,False,True,True,False,Engineering,True
+S0129,True,False,True,False,0.0,19,False,False,False,True,False,Engineering,True
+S0130,True,True,False,True,0.0,20,True,False,False,True,True,Sciences,True
+S0131,True,False,False,True,0.0,21,False,False,True,True,False,Sciences,True
+S0132,True,False,False,False,0.0,17,True,False,True,False,False,Engineering,True
+S0133,True,True,False,False,0.0,11,True,False,False,False,True,Business,True
+S0134,True,True,True,False,15.536417966078396,17,False,False,True,True,False,Engineering,True
+S0135,False,True,False,False,0.0,10,True,False,True,True,False,Sciences,True
+S0136,True,True,False,False,31.323820648373907,20,False,False,True,False,True,Engineering,True
+S0137,True,False,False,False,9.933179008808892,18,False,True,True,True,False,Sciences,True
+S0138,False,False,True,False,6.8483612369487386,17,False,False,True,False,True,Sciences,False
+S0139,True,False,True,False,0.0,23,False,False,True,False,False,Engineering,True
+S0140,False,True,True,False,12.003098794089913,16,False,False,True,False,False,Business,True
+S0141,False,False,False,False,0.0,17,True,False,True,True,False,Arts & Humanities,True
+S0142,True,False,False,False,6.220098146453615,13,False,False,False,True,False,Engineering,True
+S0143,True,True,True,False,30.600845382687947,19,False,False,True,False,True,Arts & Humanities,True
+S0144,True,False,False,False,4.039401002753501,19,True,False,False,False,False,Engineering,True
+S0145,True,False,False,False,16.49273326285676,10,False,False,True,True,False,Arts & Humanities,True
+S0146,True,False,True,False,0.0,16,True,True,True,False,True,Business,True
+S0147,True,False,True,False,4.650115095030383,20,False,False,True,True,False,Business,True
+S0148,True,True,False,False,22.7080063563551,23,False,False,True,False,False,Engineering,True
+S0149,True,False,True,False,0.0,14,False,False,True,True,True,Sciences,True
+S0150,True,False,False,False,23.12448557996929,16,False,False,True,False,False,Arts & Humanities,True
+S0151,False,False,True,True,12.077519354554754,19,False,False,True,True,False,Sciences,True
+S0152,True,False,False,False,0.0,13,False,False,True,True,True,Sciences,False
+S0153,True,False,True,False,11.32407739055521,18,False,False,False,True,False,Sciences,True
+S0154,True,True,True,False,14.725544496267299,10,True,False,True,True,True,Business,True
+S0155,False,True,False,True,11.218099622171964,14,False,False,True,False,True,Engineering,True
+S0156,True,False,True,False,0.0,13,False,False,False,False,True,Engineering,True
+S0157,True,True,True,False,0.0,20,False,True,True,True,False,Business,True
+S0158,False,False,True,False,2.5248136444849525,21,False,False,True,True,False,Business,True
+S0159,True,False,False,False,4.255665708999537,20,False,True,False,False,True,Engineering,False
+S0160,False,False,False,False,11.20672097550678,13,False,False,True,False,False,Sciences,True
+S0161,True,False,False,True,6.777010009332538,21,False,False,False,False,False,Arts & Humanities,True
+S0162,True,False,True,False,0.0,9,True,False,False,True,True,Arts & Humanities,True
+S0163,True,False,True,False,8.801978510059632,10,True,False,True,True,False,Arts & Humanities,True
+S0164,True,False,True,False,11.105857452838231,16,False,True,True,False,False,Sciences,True
+S0165,True,False,True,True,10.597904479310397,21,False,False,True,True,False,Engineering,True
+S0166,False,False,True,False,15.807807255546217,22,False,False,True,False,False,Business,False
+S0167,True,False,True,False,13.33922154548904,21,False,False,True,True,False,Engineering,True
+S0168,True,False,True,False,9.591800792284367,11,False,False,False,False,False,Sciences,True
+S0169,True,True,False,False,4.29834288541353,18,False,False,True,True,False,Business,False
+S0170,True,True,True,False,0.0,11,False,False,True,False,False,Sciences,True
+S0171,True,True,True,True,9.296182191325858,16,False,False,False,True,True,Arts & Humanities,False
+S0172,True,True,False,False,7.076876871631112,16,False,False,False,False,False,Arts & Humanities,True
+S0173,True,True,True,True,7.715788371953734,10,False,False,True,True,False,Sciences,False
+S0174,True,False,False,False,0.0,16,False,False,True,False,True,Business,True
+S0175,True,True,False,False,0.0,19,False,False,True,False,True,Business,False
+S0176,True,False,False,True,15.531528533329036,21,False,False,True,False,False,Engineering,False
+S0177,True,False,True,False,4.604448461433449,21,False,False,True,False,False,Arts & Humanities,True
+S0178,True,True,False,False,11.815006973726245,9,False,False,True,False,False,Engineering,False
+S0179,False,False,True,False,5.2831837613046115,14,False,False,False,False,False,Engineering,True
+S0180,True,True,True,False,5.297561394957452,16,False,False,True,True,True,Sciences,True
+S0181,True,True,True,False,14.382838059759976,11,False,False,True,False,False,Sciences,True
+S0182,True,False,False,False,0.0,16,True,False,True,True,True,Engineering,True
+S0183,False,False,True,False,5.9612077694098335,20,True,False,True,True,False,Arts & Humanities,True
+S0184,False,False,True,False,0.3772471129495756,9,False,False,False,True,False,Sciences,True
+S0185,True,False,False,True,0.655037725676844,19,False,False,False,True,False,Engineering,True
+S0186,True,False,True,False,1.9082787653136064,19,False,False,False,False,False,Engineering,False
+S0187,False,True,True,False,7.221337716337128,17,False,False,True,False,True,Engineering,False
+S0188,True,True,True,False,0.21251378336522642,21,False,False,True,False,False,Engineering,True
+S0189,True,False,True,False,17.55756125573521,19,False,False,True,False,False,Engineering,True
+S0190,True,False,True,False,0.0,21,False,False,True,True,False,Engineering,True
+S0191,True,False,True,True,3.13128355838641,17,False,False,True,True,True,Sciences,True
+S0192,False,False,False,False,0.6026894172582509,13,False,True,False,True,False,Arts & Humanities,True
+S0193,False,False,True,False,19.469778843537327,18,True,False,True,True,False,Engineering,True
+S0194,True,False,True,False,6.965547765115746,12,False,False,True,True,True,Business,True
+S0195,True,False,False,True,15.318445394686348,23,False,False,True,True,True,Sciences,False
+S0196,True,False,True,False,0.0,19,False,False,True,False,False,Sciences,True
+S0197,False,False,False,False,7.670502658692588,14,False,False,True,False,False,Engineering,True
+S0198,False,False,True,False,13.89630795623437,20,False,False,False,False,True,Sciences,True
+S0199,False,False,True,False,5.822839892754242,15,False,False,False,False,True,Engineering,True
+S0200,False,False,True,False,15.654803750653512,13,False,False,False,False,True,Arts & Humanities,True

@@ -32,16 +32,6 @@ export default function DashboardLayoutClient({
           position: "relative",
         }}
       >
-        <Box sx={{ 
-          fontFamily: '"Courier New", monospace', 
-          fontSize: 12, 
-          color: "text.secondary", 
-          borderBottom: "1px dashed", 
-          borderColor: "divider", 
-          px: 1, 
-          py: 0.5 
-        }}>
-        </Box>
 
         {children}
         <DashboardChatFab 
