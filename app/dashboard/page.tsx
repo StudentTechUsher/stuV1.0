@@ -4,6 +4,7 @@ import AcademicSummarySkeleton from "@/components/dashboard/skeletons/academic-s
 import CalendarSkeleton from "@/components/dashboard/skeletons/calendar-skeleton";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
 import AcademicSummary from "@/components/dashboard/academic-summary";
+import SchedulerQuickAccess from "@/components/dashboard/scheduler-quick-access";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { AdvisorDashboard } from "@/components/dashboard/advisor-dashboard";
 
@@ -108,21 +109,27 @@ function RoleView({
   }
 }
 
-function StudentDashboard({ 
-  userId, 
-  studentData 
-}: Readonly<{ 
-  userId: string; 
-  studentData: { year_in_school: string } | null; 
+function StudentDashboard({
+  userId,
+  studentData
+}: Readonly<{
+  userId: string;
+  studentData: { year_in_school: string } | null;
 }>) {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
+      {/* Top Row */}
       <Suspense fallback={<AcademicSummarySkeleton />}>
         <AcademicSummary yearInSchool={studentData?.year_in_school} />
       </Suspense>
-      <Suspense fallback={<CalendarSkeleton />}>
-        <CalendarPanel userId={userId} />
-      </Suspense>
+      <SchedulerQuickAccess />
+
+      {/* Bottom Row - Full Width Calendar */}
+      <Box sx={{ gridColumn: { md: "1 / -1" } }}>
+        <Suspense fallback={<CalendarSkeleton />}>
+          <CalendarPanel userId={userId} />
+        </Suspense>
+      </Box>
     </Box>
   );
 }
