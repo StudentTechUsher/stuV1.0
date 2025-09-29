@@ -2,7 +2,7 @@
 
 // Centralized async server action wrappers. Each export must be an async function (Next.js requirement).
 
-import { decodeAccessId } from '@/lib/utils/access-id';
+import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
 import {
     fetchGradPlanForEditing as _fetchGradPlanForEditing,
@@ -74,4 +74,9 @@ export async function fetchProgramsByUniversity(universityId: number) {
 
 export async function deleteProgram(programId: string) {
     return await _deleteProgram(programId);
+}
+
+// Issue a server-format access ID (HMAC) for a grad plan id
+export async function issueGradPlanAccessId(gradPlanId: string): Promise<string> {
+    return encodeAccessId(gradPlanId);
 }

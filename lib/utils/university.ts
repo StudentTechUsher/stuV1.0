@@ -36,21 +36,23 @@ export async function getUserUniversity(userId: string): Promise<University | nu
   }
 }
 
-export function getUniversityByDomain(domain: string): Promise<University | null> {
+export async function getUniversityByDomain(domain: string): Promise<University | null> {
   const supabase = createSupabaseBrowserClient();
-
-  return supabase
-    .from('university')
-    .select('*')
-    .eq('domain', domain)
-    .single()
-    .then(({ data, error }) => {
-      if (error) {
-        console.error('Error getting university by domain:', error);
-        return null;
-      }
-      return data as University;
-    });
+  try {
+    const { data, error } = await supabase
+      .from('university')
+      .select('*')
+      .eq('domain', domain)
+      .single();
+    if (error) {
+      console.error('Error getting university by domain:', error);
+      return null;
+    }
+    return data as University;
+  } catch (e) {
+    console.error('Error in getUniversityByDomain:', e);
+    return null;
+  }
 }
 
 export function extractDomainFromEmail(email: string): string {
