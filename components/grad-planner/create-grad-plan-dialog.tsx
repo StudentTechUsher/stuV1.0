@@ -22,6 +22,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
+import Fab from '@mui/material/Fab';
+import Tooltip from '@mui/material/Tooltip';
+import SchoolIcon from '@mui/icons-material/School';
+import BalanceIcon from '@mui/icons-material/Scale';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { ProgramRow } from '@/types/program';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
 import {
@@ -107,6 +113,13 @@ export default function CreateGradPlanDialog({
   const [showElectiveForm, setShowElectiveForm] = useState(false);
   const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
   const [electiveError, setElectiveError] = useState<string | null>(null);
+
+  // GenEd sequencing strategy: 'early' or 'balanced'
+  type GenEdStrategy = 'early' | 'balanced';
+  const [genEdStrategy, setGenEdStrategy] = useState<GenEdStrategy>('balanced');
+  const handleChangeGenEdStrategy = (_: unknown, value: GenEdStrategy | null) => {
+    if (value) setGenEdStrategy(value);
+  };
 
   const resetElectiveDraft = () => {
     setElectiveDraft({ code: '', title: '', credits: '' });
@@ -414,6 +427,11 @@ export default function CreateGradPlanDialog({
     const selectedClasses = {
       timestamp: new Date().toISOString(),
       selectedPrograms: Array.from(selectedPrograms),
+      assumptions: {
+        genEdStrategy: genEdStrategy === 'early'
+          ? 'Student prefers to complete the majority of general education requirements in the earliest possible terms to free later terms for major-focused courses.'
+          : 'Student prefers to distribute general education requirements evenly across terms for a balanced workload.'
+      },
       programs: {} as Record<string, {
         programId: string;
         programName: string;
@@ -513,7 +531,12 @@ export default function CreateGradPlanDialog({
     try {
       
       // Step 1: Send the course data to AI for semester organization
-      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson, prompt);
+      // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
+      const strategyText = genEdStrategy === 'early'
+        ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
+        : 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.';
+      const augmentedPrompt = `${prompt}\n\nGenEd Sequencing Preference:\n${strategyText}`;
+      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson, augmentedPrompt);
       
       if (!aiResult.success) {
         setPlanCreationError(`AI Planning Error: ${aiResult.message}`);
@@ -652,6 +675,37 @@ export default function CreateGradPlanDialog({
       </DialogTitle>
 
       <DialogContent>
+        {/* GenEd Strategy Selection */}
+        <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+            General Education Sequencing Preference
+          </Typography>
+          <ToggleButtonGroup
+            value={genEdStrategy}
+            exclusive
+            size="small"
+            onChange={handleChangeGenEdStrategy}
+            aria-label="General Education Strategy"
+            sx={{
+              alignSelf: 'flex-start',
+              backgroundColor: 'background.paper',
+              borderRadius: 2,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+          >
+            <ToggleButton value="early" aria-label="Prioritize GenEds Early" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
+              <SchoolIcon fontSize="inherit" style={{ marginRight: 4 }} /> Early Focus
+            </ToggleButton>
+            <ToggleButton value="balanced" aria-label="Balance GenEds" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
+              <BalanceIcon fontSize="inherit" style={{ marginRight: 4 }} /> Balanced
+            </ToggleButton>
+          </ToggleButtonGroup>
+          <Typography variant="caption" color="text.secondary">
+            {genEdStrategy === 'early'
+              ? 'GenEd requirements will be scheduled as early as feasible.'
+              : 'GenEd requirements will be distributed across terms.'}
+          </Typography>
+        </Box>
         
         {/* Loading overlay during AI processing */}
         {isCreatingPlan && (
