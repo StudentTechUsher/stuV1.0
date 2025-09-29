@@ -251,14 +251,27 @@ export default function EditGradPlanPage() {
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={handleBack}
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 2,
+            fontFamily: '"Inter", sans-serif',
+            fontWeight: 600,
+            color: 'var(--primary)',
+            '&:hover': {
+              backgroundColor: 'var(--primary-15)'
+            }
+          }}
         >
           Back to {isStudent ? 'My Plans' : 'Approval List'}
         </Button>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333' }}>
-            {isStudent ? 'Graduation Plan' : `Graduation Plan for ${studentName}`}
+          <Typography variant="h4" sx={{
+            fontFamily: '"Red Hat Display", sans-serif',
+            fontWeight: 800,
+            color: 'black',
+            fontSize: '2rem'
+          }}>
+            {isStudent ? 'Graduation Plan' : `${studentName}'s Graduation Plan`}
           </Typography>
           
           {isStudent && (
@@ -268,19 +281,20 @@ export default function EditGradPlanPage() {
                 startIcon={<Save />}
                 onClick={handleSaveChanges}
                 disabled={isSubmitting || !currentPlanData}
-                sx={{ 
+                sx={{
                   px: 3,
-                  backgroundColor: '#4caf50',
+                  backgroundColor: 'var(--primary)',
                   color: 'white',
-                  fontWeight: 'bold',
+                  fontWeight: 600,
+                  fontFamily: '"Inter", sans-serif',
                   '&:hover': {
-                    backgroundColor: '#45a049',
+                    backgroundColor: 'var(--hover-green)',
                     transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 8px rgba(76, 175, 80, 0.3)'
+                    boxShadow: '0 4px 8px rgba(18, 249, 135, 0.3)'
                   },
                   '&:disabled': {
-                    backgroundColor: '#a5d6a7',
-                    color: 'rgba(255, 255, 255, 0.7)'
+                    backgroundColor: 'var(--muted)',
+                    color: 'var(--muted-foreground)'
                   },
                   transition: 'all 0.2s ease-in-out'
                 }}
@@ -292,20 +306,21 @@ export default function EditGradPlanPage() {
                 startIcon={<Cancel />}
                 onClick={handleBack}
                 disabled={isSubmitting}
-                sx={{ 
+                sx={{
                   px: 3,
-                  borderColor: '#e57373',
-                  color: '#d32f2f',
-                  fontWeight: 'bold',
+                  borderColor: 'var(--action-cancel)',
+                  color: 'var(--action-cancel)',
+                  fontWeight: 600,
+                  fontFamily: '"Inter", sans-serif',
                   '&:hover': {
-                    borderColor: '#f44336',
+                    borderColor: 'var(--action-cancel-hover)',
                     backgroundColor: 'rgba(244, 67, 54, 0.08)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 2px 4px rgba(244, 67, 54, 0.2)'
                   },
                   '&:disabled': {
-                    borderColor: '#ffcdd2',
-                    color: '#ef9a9a'
+                    borderColor: 'var(--muted)',
+                    color: 'var(--muted-foreground)'
                   },
                   transition: 'all 0.2s ease-in-out'
                 }}
@@ -338,12 +353,12 @@ export default function EditGradPlanPage() {
                   sx={{
                     px: 2,
                     py: 0.5,
-                    backgroundColor: '#e3f2fd',
-                    borderRadius: 1,
-                    border: '1px solid #bbdefb'
+                    backgroundColor: 'var(--primary-15)',
+                    borderRadius: 2,
+                    border: '1px solid var(--primary)'
                   }}
                 >
-                  <Typography variant="caption" color="primary">
+                  <Typography variant="caption" sx={{ color: 'var(--primary)', fontFamily: '"Inter", sans-serif', fontWeight: 600 }}>
                     {program.name}
                   </Typography>
                 </Box>
@@ -354,7 +369,7 @@ export default function EditGradPlanPage() {
       </Box>
 
       {/* Plan Details */}
-      <Paper elevation={2} sx={{ p: 4, mb: 4, backgroundColor: '#fafafa' }}>
+      <Paper elevation={0} sx={{ p: 4, mb: 4, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
         {(() => {
           // Normalize various possible stored shapes of plan_details
           let raw: any = gradPlan.plan_details;

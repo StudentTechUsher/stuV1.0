@@ -15,10 +15,12 @@ export default async function CalendarPanel({
   userId,
   slotMinTime = "07:00:00",
   slotMaxTime = "20:00:00",
+  showSchedulerButton = false,
 }: Readonly<{
   userId: string;
   slotMinTime?: string;
   slotMaxTime?: string;
+  showSchedulerButton?: boolean;
 }>) {
   const events = await getUserWeekEventsFake(userId);
   return (
@@ -28,6 +30,7 @@ export default async function CalendarPanel({
       slotMaxTime={slotMaxTime}
       firstDay={0}
       hiddenDays={[0]} // Mon–Sat like your mock
+      showSchedulerButton={showSchedulerButton}
     />
   );
 }

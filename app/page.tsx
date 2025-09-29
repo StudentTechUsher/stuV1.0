@@ -182,14 +182,14 @@ export default function LandingPage() {
             <div className="container px-4 md:px-6">
               <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
+                  <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
                     Comprehensive Academic Planning Solutions
                   </h2>
-                  <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
+                  <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
                     Help your students navigate their academic journey while providing valuable insights for your registrar&apos;s office.
                   </p>
                 </div>
-                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {[
                     {
                       title: "Smart Degree Planning",
@@ -224,13 +224,13 @@ export default function LandingPage() {
                     {
                       title: "Customizable Policies",
                       description:
-                        "Tailor degree requirements, course rules, and exceptions to reflect your institution’s unique policies.",
+                        "Tailor degree requirements, course rules, and exceptions to reflect your institution's unique policies.",
                       icon: "/icons/icons8-policies-48.png",
                     },
                   ].map((feature, i) => (
                     <div
                       key={i}
-                      className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                      className="group flex flex-col items-center gap-4 rounded-lg border border-border bg-white p-8 text-center transition-all hover:shadow-lg hover:bg-white/80"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                         <Image
@@ -241,8 +241,8 @@ export default function LandingPage() {
                           className="object-contain"
                         />
                       </div>
-                      <h3 className="text-xl font-bold">{feature.title}</h3>
-                      <p className="text-zinc-600">{feature.description}</p>
+                      <h3 className="text-xl font-header text-card-foreground">{feature.title}</h3>
+                      <p className="text-muted-foreground font-body-medium">{feature.description}</p>
                     </div>
                   ))}
                 </div>
@@ -256,8 +256,8 @@ export default function LandingPage() {
           className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center"
         >
           <br /> <br />
-          <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Student Reviews</h2>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
               { name: "Tyler S", state: "CA", text: '"The easiest way to schedule classes that would actually help with the major I\'m taking"' },
               { name: "Isaac B", state: "WA", text: '"I love it!"' },
@@ -265,12 +265,12 @@ export default function LandingPage() {
             ].map((review, i) => (
               <div
                 key={i}
-                className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                className="group flex flex-col items-center gap-4 rounded-lg border border-border bg-white p-8 text-center transition-all hover:shadow-lg hover:bg-white/80"
               >
-                <h3 className="text-xl font-bold">
+                <h3 className="text-xl font-header text-card-foreground">
                   {review.name}, {review.state}
                 </h3>
-                <p className="text-zinc-600">{review.text}</p>
+                <p className="text-muted-foreground font-body-medium">{review.text}</p>
               </div>
             ))}
           </div>
@@ -282,10 +282,10 @@ export default function LandingPage() {
           <div className="container px-4 md:px-6 relative">
             <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
+                <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
                   Ready to Transform Academic Planning?
                 </h2>
-                <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
+                <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
                   Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu&apos;s planning platform.
                 </p>
               </div>
