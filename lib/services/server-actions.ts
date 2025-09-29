@@ -25,15 +25,7 @@ export async function organizeCoursesIntoSemestersAction(coursesData: unknown, p
 // Decode access ID
 export async function decodeAccessIdServerAction(accessId: string): Promise<{ success: boolean; gradPlanId?: string; error?: string }> {
     try {
-        // Try server-side decoding first (HMAC format)
-        let gradPlanId = decodeAccessId(accessId);
-
-        // If that fails, try client-side decoding format
-        if (!gradPlanId) {
-            const { decodeAccessIdClient } = await import('@/lib/utils/access-id');
-            gradPlanId = decodeAccessIdClient(accessId);
-        }
-
+        const gradPlanId = decodeAnyAccessId(accessId);
         if (!gradPlanId) return { success: false, error: 'Invalid or expired access link' };
         return { success: true, gradPlanId };
     } catch (error) {

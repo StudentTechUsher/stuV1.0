@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getUserUniversity, updateUniversityColors, DEFAULT_THEME_COLORS } from '@/lib/utils/university';
-import { University } from '@/types';
+// Import University interface from its actual location
+import { University } from '@/lib/types/university';
 
 interface ThemeContextType {
   themeColor: string;
@@ -16,7 +17,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const DEFAULT_COLOR = '#12F987';
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [themeColor, setThemeColor] = useState(DEFAULT_COLOR);
   const [university, setUniversity] = useState<University | null>(null);
   const supabase = createSupabaseBrowserClient();
@@ -112,12 +113,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('theme-color');
   };
 
-  const value: ThemeContextType = {
+  const value = useMemo<ThemeContextType>(() => ({
     themeColor,
     university,
     updateThemeColor,
     resetTheme,
-  };
+  }), [themeColor, university]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
