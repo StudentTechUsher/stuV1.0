@@ -142,7 +142,14 @@ export default function SelectGradPlansPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+      <Typography variant="h4" sx={{
+        fontFamily: '"Red Hat Display", sans-serif',
+        fontWeight: 800,
+        color: 'black',
+        fontSize: '2rem',
+        margin: 0,
+        marginBottom: '24px'
+      }}>
         Approve Graduation Plans
       </Typography>
       

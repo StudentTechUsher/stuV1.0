@@ -122,7 +122,14 @@ export function AdvisorDashboard() {
     <div className="space-y-6">
       {/* Header - No dropdown for advisors */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Advisor Dashboard</h1>
+        <h1 style={{
+          fontFamily: '"Red Hat Display", sans-serif',
+          fontWeight: 800,
+          color: 'black',
+          fontSize: '2rem',
+          margin: 0,
+          marginBottom: '24px'
+        }}>Advisor Dashboard</h1>
         <div className="text-sm text-muted-foreground">
           Business School
         </div>

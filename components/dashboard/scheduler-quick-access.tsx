@@ -4,8 +4,8 @@ import Link from "next/link";
 
 export default function SchedulerQuickAccess() {
   return (
-    <Card elevation={0} sx={{ borderRadius: 3, height: "100%" }}>
-      <CardContent sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
+    <Card elevation={0} sx={{ borderRadius: 3 }}>
+      <CardContent sx={{ p: 3, display: "flex", flexDirection: "column" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Calendar size={24} style={{ color: "var(--primary)" }} />
           <Typography variant="h6" className="font-header">

@@ -57,7 +57,14 @@ export default async function ProfilePage() {
 
   return (
     <main style={{ maxWidth: 720, margin: "3rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "2rem", marginBottom: 12 }}>Edit your profile</h1>
+      <h1 style={{
+        fontFamily: '"Red Hat Display", sans-serif',
+        fontWeight: 800,
+        color: 'black',
+        fontSize: '2rem',
+        margin: 0,
+        marginBottom: '24px'
+      }}>Edit your profile</h1>
       <p style={{ marginBottom: "2rem", color: "#666" }}>
         Update your account information and preferences below. Note: Your university cannot be changed after account creation.
       </p>

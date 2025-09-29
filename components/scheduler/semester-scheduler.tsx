@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Box, Button, Typography, Alert, Paper } from "@mui/material";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, Clock } from "lucide-react";
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
@@ -276,7 +276,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   if (isLoading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" className="font-header" sx={{ mb: 3 }}>
+        <Typography variant="h4" className="font-header-bold" sx={{ mb: 3 }}>
           Semester Scheduler
         </Typography>
         <Typography className="font-body">Loading course data...</Typography>
@@ -298,12 +298,37 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   return (
     <Box sx={{ p: 2, display: "flex", flexDirection: "column" }}>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" className="font-header-bold" sx={{ mb: 1 }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontFamily: '"Red Hat Display", sans-serif',
+            fontWeight: 800,
+            color: 'black',
+            mb: 1,
+            fontSize: '2rem'
+          }}
+        >
           Semester Scheduler
         </Typography>
-        <Typography variant="body1" className="font-body" color="text.secondary">
-          Generate your optimal class schedule based on your graduation plan and personal commitments
+        <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
+          Plan your optimal class schedule based on your graduation plan and personal commitments.
         </Typography>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <BookOpen size={16} style={{ color: "var(--muted-foreground)" }} />
+            <Typography variant="body2" className="font-body" color="text.secondary">
+              Auto-generate from course catalog
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Clock size={16} style={{ color: "var(--muted-foreground)" }} />
+            <Typography variant="body2" className="font-body" color="text.secondary">
+              Avoid time conflicts
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" }, gap: 2 }}>

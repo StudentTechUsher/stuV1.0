@@ -583,7 +583,7 @@ export default function CreateGradPlanDialog({
       fullWidth
       disableEscapeKeyDown={isCreatingPlan}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <DialogTitle className="font-header-bold" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         Create New Grad Plan
         <IconButton 
           onClick={handleManualClose} 
@@ -617,13 +617,13 @@ export default function CreateGradPlanDialog({
             gap: 2
           }}>
             <CircularProgress size={60} />
-            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+            <Typography variant="h6" className="font-header-bold" sx={{ textAlign: 'center' }}>
               {loadingMessage.title}
             </Typography>
-            <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary' }}>
+            <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary' }}>
               {loadingMessage.subtitle}
               <br />
-              This may take a moment. Please don&apos;t close this window.
+              This may take a moment. Please don't close this window.
             </Typography>
           </Box>
         )}
@@ -631,7 +631,7 @@ export default function CreateGradPlanDialog({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Available Programs */}
           <Box>
-            <Typography variant="h6" sx={{ mb: 2 }}>Available Programs:</Typography>
+            <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>Available Programs:</Typography>
             {programsData?.length ? (
               <Box>
                 {/* Group programs by type */}
@@ -653,11 +653,11 @@ export default function CreateGradPlanDialog({
                     <Box key={programType} sx={{ mb: 3 }}>
                       <Typography
                         variant="subtitle1"
-                        className="font-header"
+                        className="font-header-bold"
                         sx={{
                           mb: 1,
                           textTransform: 'capitalize',
-                          color: 'success.main'
+                          color: 'var(--primary)'
                         }}
                       >
                         {programType}s ({groupedPrograms[programType].length})
@@ -668,16 +668,18 @@ export default function CreateGradPlanDialog({
                             key={program.id}
                             label={`${program.name}${program.version ? ` (${program.version})` : ''}`}
                             onClick={() => handleProgramToggle(program.id)}
-                            color={selectedPrograms.has(program.id) ? 'success' : 'default'}
-                            variant={selectedPrograms.has(program.id) ? 'filled' : 'outlined'}
                             sx={{
                               cursor: 'pointer',
+                              backgroundColor: selectedPrograms.has(program.id) ? 'var(--primary)' : 'transparent',
+                              color: selectedPrograms.has(program.id) ? 'white' : 'text.primary',
+                              border: selectedPrograms.has(program.id) ? '1px solid var(--primary)' : '1px solid var(--border)',
                               '&:hover': {
-                                backgroundColor: selectedPrograms.has(program.id) 
-                                  ? 'success.dark' 
-                                  : 'action.hover'
+                                backgroundColor: selectedPrograms.has(program.id)
+                                  ? 'var(--hover-green)'
+                                  : 'var(--muted)'
                               }
                             }}
+                            className="font-body"
                           />
                         ))}
                       </Box>
@@ -686,13 +688,13 @@ export default function CreateGradPlanDialog({
                 })()}
               </Box>
             ) : (
-              <Typography>No programs available</Typography>
+              <Typography className="font-body">No programs available</Typography>
             )}
           </Box>
 
           {/* General Education Requirements */}
           <Box>
-            <Typography variant="h6" sx={{ mb: 2 }}>General Education Requirements:</Typography>
+            <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
 
             {requirements && requirements.length ? (
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -703,19 +705,23 @@ export default function CreateGradPlanDialog({
 
                   return (
                     <Box key={`${req.subtitle}-${idx}`} sx={{ py: 2 }}>
-                      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      <Typography variant="subtitle1" className="font-header" sx={{ mb: 1 }}>
                         {req.subtitle}
                         {isAutoSelected && (
-                          <Chip 
-                            label="Auto-selected" 
-                            size="small" 
-                            color="success" 
-                            sx={{ ml: 1 }}
+                          <Chip
+                            label="Auto-selected"
+                            size="small"
+                            className="font-body"
+                            sx={{
+                              ml: 1,
+                              backgroundColor: 'var(--primary)',
+                              color: 'white'
+                            }}
                           />
                         )}
                       </Typography>
                       {isAutoSelected && (
-                        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                        <Typography variant="body2" className="font-body" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
                           All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
                         </Typography>
                       )}
@@ -723,7 +729,7 @@ export default function CreateGradPlanDialog({
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {Array.from({ length: dropdownCount }).map((_, slot) => (
                           <FormControl key={`${req.subtitle}-slot-${slot}`} fullWidth>
-                            <InputLabel>
+                            <InputLabel className="font-body">
                               {dropdownCount > 1
                                 ? `${req.subtitle} — Select course #${slot + 1}`
                                 : req.subtitle}
@@ -738,11 +744,11 @@ export default function CreateGradPlanDialog({
                               disabled={isAutoSelected}
                               onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
                             >
-                              <MenuItem value=""><em>Select a course</em></MenuItem>
+                              <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
                               {courses && Array.isArray(courses) ? courses
                                 .filter(c => c.status !== 'retired' && c.credits != null)
                                 .map((c) => (
-                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code}>
+                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code} className="font-body">
                                   {c.code} — {c.title} ({creditText(c.credits)})
                                 </MenuItem>
                               )) : null}
@@ -758,7 +764,7 @@ export default function CreateGradPlanDialog({
                 })}
               </Box>
             ) : (
-              <Typography>No general education requirements found</Typography>
+              <Typography className="font-body">No general education requirements found</Typography>
             )}
           </Box>
 
@@ -864,7 +870,7 @@ export default function CreateGradPlanDialog({
                                           disabled={isAutoSelected}
                                           onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
                                         >
-                                          <MenuItem value=""><em>Select a course</em></MenuItem>
+                                          <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
                                           {validCourses.map((course) => (
                                             <MenuItem key={`${key}-slot-${slot}-${course.code}`} value={course.code}>
                                               {course.code} — {course.title} ({course.credits} credits)
@@ -936,19 +942,20 @@ export default function CreateGradPlanDialog({
       )}
 
       <DialogActions sx={{ gap: 1 }}>
-        <Button 
-          onClick={onClose} 
+        <Button
+          onClick={onClose}
           disabled={isCreatingPlan}
-          sx={{ 
-            color: 'error.main',
-            borderColor: 'error.main',
+          variant="outlined"
+          className="font-body-semi"
+          sx={{
+            color: 'var(--action-cancel)',
+            borderColor: 'var(--action-cancel)',
             '&:hover': {
-              borderColor: 'error.dark',
-              backgroundColor: 'error.main',
+              borderColor: 'var(--action-cancel-hover)',
+              backgroundColor: 'var(--action-cancel)',
               color: 'white'
             }
           }}
-          variant="outlined"
         >
           Cancel
         </Button>
@@ -957,14 +964,16 @@ export default function CreateGradPlanDialog({
           onClick={handleCreatePlan}
           disabled={!areAllDropdownsFilled || isCreatingPlan}
           startIcon={isCreatingPlan ? <CircularProgress size={20} /> : undefined}
+          className="font-body-semi"
           sx={{
-            backgroundColor: 'success.main',
+            backgroundColor: 'var(--primary)',
+            color: 'white',
             '&:hover': {
-              backgroundColor: 'success.dark'
+              backgroundColor: 'var(--hover-green)'
             },
             '&:disabled': {
-              backgroundColor: 'action.disabledBackground',
-              color: 'action.disabled'
+              backgroundColor: 'var(--muted)',
+              color: 'var(--muted-foreground)'
             }
           }}
         >

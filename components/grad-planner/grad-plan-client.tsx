@@ -137,13 +137,21 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   if (!studentRecord) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" className="font-header-bold" gutterBottom>
           Graduation Plan
         </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
+        <Typography variant="body1" className="font-body" color="text.secondary" gutterBottom>
           Student record not found. User ID: {user.id}
         </Typography>
-        <Button variant="contained" color="primary" sx={{ mt: 2 }}>
+        <Button
+          variant="contained"
+          className="font-body-semi"
+          sx={{
+            mt: 2,
+            backgroundColor: 'var(--primary)',
+            '&:hover': { backgroundColor: 'var(--hover-green)' }
+          }}
+        >
           Create Student Profile
         </Button>
       </Box>
@@ -152,16 +160,51 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
   return (
     <Box sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      {/* Title */}
+      <Typography
+        variant="h4"
+        sx={{
+          fontFamily: '"Red Hat Display", sans-serif',
+          fontWeight: 800,
+          color: 'black',
+          mb: 3,
+          fontSize: '2rem'
+        }}
+      >
+        Graduation Plan
+      </Typography>
+      {/* Controls */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 3, gap: 2 }}>
           {allGradPlans.length > 1 && (
             <FormControl sx={{ minWidth: 300 }}>
-              <InputLabel id="grad-plan-select-label">Select Graduation Plan</InputLabel>
+              <InputLabel
+                id="grad-plan-select-label"
+                className="font-body"
+                sx={{
+                  '&.Mui-focused': {
+                    color: 'var(--primary-dark)',
+                  },
+                }}
+              >
+                Select Graduation Plan
+              </InputLabel>
               <Select
                 labelId="grad-plan-select-label"
                 value={selectedGradPlan?.id || ''}
                 label="Select Graduation Plan"
                 onChange={handleGradPlanSelection}
+                className="font-body"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--border)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                  },
+                }}
               >
                 {allGradPlans.map((plan) => {
                   try {
@@ -169,15 +212,15 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                       ? new Date(plan.created_at as string).toLocaleString()
                       : 'Unknown Date';
                     return (
-                      <MenuItem key={plan.id} value={plan.id}>
+                      <MenuItem key={plan.id} value={plan.id} className="font-body">
                         Plan made on {createdAt}
                       </MenuItem>
                     );
                   } catch (error) {
                     console.error('Error accessing plan data:', error);
                     return (
-                      <MenuItem key={plan.id} value={plan.id}>
-                        Plan {plan.id.slice(0, 8)} - {plan.created_at 
+                      <MenuItem key={plan.id} value={plan.id} className="font-body">
+                        Plan {plan.id.slice(0, 8)} - {plan.created_at
                           ? new Date(plan.created_at as string).toLocaleString()
                           : 'Unknown Date'}
                       </MenuItem>
@@ -189,12 +232,13 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           )}
           
           {selectedGradPlan && (
-            <Button 
-              variant="contained" 
-              color="success"
+            <Button
+              variant="contained"
               onClick={handleCreatePlan}
+              className="font-body-semi"
               sx={{
                 backgroundColor: 'var(--primary)',
+                color: 'white',
                 '&:hover': {
                   backgroundColor: 'var(--hover-green)'
                 }
@@ -207,27 +251,24 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           {selectedGradPlan && (
               <Button
                 variant="outlined"
-                color="primary"
                 onClick={handleEditPlan}
+                className="font-body-semi"
                 sx={{
-                  // Styling borrowed from the "outlined" path of the second branch
-                  borderColor: 'var(--action-info)',
-                  color: 'var(--action-info)',
+                  borderColor: 'var(--primary)',
+                  color: 'var(--primary)',
                   '&:hover': {
-                    borderColor: 'var(--action-info-hover)',
-                    backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                    borderColor: 'var(--hover-green)',
+                    backgroundColor: 'var(--primary-15)',
                   },
-                  // Optional: keep disabled styles consistent if you ever pass `disabled`
                   '&:disabled': {
-                    borderColor: 'action.disabled',
-                    color: 'action.disabled',
+                    borderColor: 'var(--muted-foreground)',
+                    color: 'var(--muted-foreground)',
                   },
                 }}
               >
                 Edit Graduation Plan
               </Button>
             )}
-        </Box>
       </Box>
       
       {selectedGradPlan ? (
@@ -239,30 +280,31 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         </Box>
       ) : (
         <Box 
-          sx={{ 
-            textAlign: 'center', 
+          sx={{
+            textAlign: 'center',
             py: 6,
             px: 4,
-            backgroundColor: 'grey.50',
-            borderRadius: 2,
+            backgroundColor: 'var(--muted)',
+            borderRadius: 3,
             border: '2px dashed',
-            borderColor: 'grey.300'
+            borderColor: 'var(--border)'
           }}
         >
-          <Typography variant="h5" gutterBottom className="font-header" sx={{ color: 'text.primary' }}>
+          <Typography variant="h5" gutterBottom className="font-header-bold" sx={{ color: 'text.primary' }}>
             Welcome to Your Graduation Planner!
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+          <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
             You don&apos;t have an active graduation plan yet. Submit one for approval to have it show here.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button 
-              variant="contained" 
-              color="success"
+            <Button
+              variant="contained"
               size="large"
               onClick={handleCreatePlan}
+              className="font-body-semi"
               sx={{
                 backgroundColor: 'var(--primary)',
+                color: 'white',
                 px: 4,
                 py: 1.5,
                 '&:hover': {
@@ -274,7 +316,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               Create My Graduation Plan
             </Button>
           </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+          <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
             Don&apos;t worry - you can always edit and customize your plan later!
           </Typography>
         </Box>

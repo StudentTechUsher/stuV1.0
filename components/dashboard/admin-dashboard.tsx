@@ -102,7 +102,14 @@ export function AdminDashboard() {
     <div className="space-y-6">
       {/* Institution/College Selector */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <h1 style={{
+          fontFamily: '"Red Hat Display", sans-serif',
+          fontWeight: 800,
+          color: 'black',
+          fontSize: '2rem',
+          margin: 0,
+          marginBottom: '24px'
+        }}>Admin Dashboard</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">View:</span>
           <Select value={selectedCollege} onValueChange={setSelectedCollege}>

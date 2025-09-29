@@ -4,7 +4,7 @@ import AcademicSummarySkeleton from "@/components/dashboard/skeletons/academic-s
 import CalendarSkeleton from "@/components/dashboard/skeletons/calendar-skeleton";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
 import AcademicSummary from "@/components/dashboard/academic-summary";
-import SchedulerQuickAccess from "@/components/dashboard/scheduler-quick-access";
+import AcademicProgressCard from "@/components/dashboard/academic-progress-card";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { AdvisorDashboard } from "@/components/dashboard/advisor-dashboard";
 
@@ -118,18 +118,18 @@ function StudentDashboard({
 }>) {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
-      {/* Top Row */}
-      <Suspense fallback={<AcademicSummarySkeleton />}>
-        <AcademicSummary yearInSchool={studentData?.year_in_school} />
-      </Suspense>
-      <SchedulerQuickAccess />
-
-      {/* Bottom Row - Full Width Calendar */}
-      <Box sx={{ gridColumn: { md: "1 / -1" } }}>
-        <Suspense fallback={<CalendarSkeleton />}>
-          <CalendarPanel userId={userId} />
+      {/* Left Column - Academic Summary and Progress Card */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Suspense fallback={<AcademicSummarySkeleton />}>
+          <AcademicSummary yearInSchool={studentData?.year_in_school} />
         </Suspense>
+        <AcademicProgressCard />
       </Box>
+
+      {/* Right Column - Calendar */}
+      <Suspense fallback={<CalendarSkeleton />}>
+        <CalendarPanel userId={userId} showSchedulerButton={true} />
+      </Suspense>
     </Box>
   );
 }
