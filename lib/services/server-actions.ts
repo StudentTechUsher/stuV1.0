@@ -27,8 +27,7 @@ export async function organizeCoursesIntoSemestersAction(coursesData: unknown, p
 // Decode access ID
 export async function decodeAccessIdServerAction(accessId: string): Promise<{ success: boolean; gradPlanId?: string; error?: string }> {
     try {
-        // Accept both server (HMAC) and legacy client formats. Enforce 30-day max age for legacy tokens.
-        const gradPlanId = decodeAnyAccessId(accessId, { maxAgeMs: 1000 * 60 * 60 * 24 * 30 });
+        const gradPlanId = decodeAnyAccessId(accessId);
         if (!gradPlanId) return { success: false, error: 'Invalid or expired access link' };
         return { success: true, gradPlanId };
     } catch (error) {

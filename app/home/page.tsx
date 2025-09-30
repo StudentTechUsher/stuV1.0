@@ -50,13 +50,14 @@ export default async function HomePage() {
   return (
     <>
 
-      <div className="min-h-screen bg-white px-6 py-8 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-background px-6 py-8 flex flex-col items-center justify-start pt-42">
 
         {/* Top Left Links */}
         <>
           <a
             href="/students"
-            className="absolute top-6 left-6 text-black text-4xl font-brand"
+            className="absolute top-6 left-6 text-foreground text-4xl"
+            style={{fontFamily: "var(--font-geist-sans)", fontWeight: 700}}
           >
             stu.
           </a>
@@ -79,24 +80,25 @@ export default async function HomePage() {
             className="mb-2"
           />
           <h2
-            className="text-center text-xl text-black mb-0 font-header"
+            className="text-center text-xl text-foreground mb-0"
+            style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}
           >
             welcome to stu.
           </h2>
-          <p className="text-zinc-700 text-xs font-body-medium">
+          <p className="text-muted-foreground text-xs" style={{fontFamily: "var(--font-geist-sans)"}}>
             how can I help you today?
           </p>
         </div>
 
         {/* Action Cards */}
-        <div className="max-w-4xl w-full mx-auto space-y-6 font-['Work_Sans']">
+        <div className="max-w-4xl w-full mx-auto">
           {/* Dashboard Card - Always visible */}
-          <Link href="/dashboard">
-            <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                📊 View my {role} dashboard
+          <Link href="/dashboard" className="block mb-3">
+            <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                View my {role} dashboard
               </h3>
-              <p className="text-gray-600 text-sm">
+              <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                 Access your complete academic overview and tools
               </p>
             </div>
@@ -105,45 +107,45 @@ export default async function HomePage() {
           {/* Student-specific cards */}
           {role === "student" && (
             <>
-              <Link href="/dashboard/grad-plan">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    🗺️ Create a four-year graduation map
+              <Link href="/dashboard/grad-plan" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Create a four-year graduation map
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     that gives me my personalized path to finish when I want
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/major-choice">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    🎯 Help me choose a major
+              <Link href="/dashboard/major-choice" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Help me choose a major
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     based on my preferences and previous coursework
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/semester-scheduler">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    📅 Plan my schedule for next semester
+              <Link href="/dashboard/semester-scheduler" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Plan my schedule for next semester
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     using my current four-year graduation plan
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/meet-with-advisor">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    👥 Help me connect with my advisor
+              <Link href="/dashboard/meet-with-advisor" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Help me connect with my advisor
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     to discuss my academic goals and course planning
                   </p>
                 </div>
@@ -154,45 +156,45 @@ export default async function HomePage() {
           {/* Advisor-specific cards */}
           {role === "advisor" && (
             <>
-              <Link href="/dashboard/approve-grad-plans">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    ✅ Approve graduation plans
+              <Link href="/dashboard/approve-grad-plans" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Approve graduation plans
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     Review and approve student graduation plans awaiting your feedback
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/my-advisees">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    👥 My advisees
+              <Link href="/dashboard/my-advisees" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    My advisees
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     View and manage your assigned students and their academic progress
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/appointments">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    📅 Appointments
+              <Link href="/dashboard/appointments" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Appointments
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     Manage your appointment schedule and meet with students
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/reports">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    📊 Reports
+              <Link href="/dashboard/reports" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Reports
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     View academic reports and analytics for your advisees
                   </p>
                 </div>
@@ -203,45 +205,45 @@ export default async function HomePage() {
           {/* Admin-specific cards */}
           {role === "admin" && (
             <>
-              <Link href="/dashboard/users">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    👤 Manage users
+              <Link href="/dashboard/users" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Manage users
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     Add, edit, and manage user accounts and permissions
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/programs">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    🎓 Manage programs
+              <Link href="/dashboard/programs" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    Manage programs
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     Configure academic programs and degree requirements
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/system">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    ⚙️ System settings
+              <Link href="/dashboard/system" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    System settings
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     Configure system-wide settings and administrative options
                   </p>
                 </div>
               </Link>
 
-              <Link href="/dashboard/reports">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 cursor-pointer">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    📈 System reports
+              <Link href="/dashboard/reports" className="block mb-3">
+                <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                  <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
+                    System reports
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     View comprehensive system analytics and usage reports
                   </p>
                 </div>

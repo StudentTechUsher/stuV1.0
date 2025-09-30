@@ -4,6 +4,9 @@ import AcademicSummarySkeleton from "@/components/dashboard/skeletons/academic-s
 import CalendarSkeleton from "@/components/dashboard/skeletons/calendar-skeleton";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
 import AcademicSummary from "@/components/dashboard/academic-summary";
+import AcademicProgressCard from "@/components/dashboard/academic-progress-card";
+import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
+import { AdvisorDashboard } from "@/components/dashboard/advisor-dashboard";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -98,52 +101,51 @@ function RoleView({
     case "student":
       return <StudentDashboard userId={userId} studentData={studentData} />;
     case "advisor":
-      return <AdvisorDashboard />;
+      return <AdvisorDashboardWrapper />;
     case "admin":
-      return <AdminDashboard />;
+      return <AdminDashboardWrapper />;
     default:
       return null;
   }
 }
 
-function StudentDashboard({ 
-  userId, 
-  studentData 
-}: Readonly<{ 
-  userId: string; 
-  studentData: { year_in_school: string } | null; 
+function StudentDashboard({
+  userId,
+  studentData
+}: Readonly<{
+  userId: string;
+  studentData: { year_in_school: string } | null;
 }>) {
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
-      <Suspense fallback={<AcademicSummarySkeleton />}>
-        <AcademicSummary yearInSchool={studentData?.year_in_school} />
-      </Suspense>
+      {/* Left Column - Academic Summary and Progress Card */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Suspense fallback={<AcademicSummarySkeleton />}>
+          <AcademicSummary yearInSchool={studentData?.year_in_school} />
+        </Suspense>
+        <AcademicProgressCard />
+      </Box>
+
+      {/* Right Column - Calendar */}
       <Suspense fallback={<CalendarSkeleton />}>
-        <CalendarPanel userId={userId} />
+        <CalendarPanel userId={userId} showSchedulerButton={true} />
       </Suspense>
     </Box>
   );
 }
 
-function AdvisorDashboard() {
+function AdvisorDashboardWrapper() {
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: { md: "2fr 1fr" }, gap: 2 }}>
-      <Suspense fallback={<AcademicSummarySkeleton />}>
-        <div>Advisor: Advisee Overview (stub)</div>
-      </Suspense>
-      <Suspense fallback={<CalendarSkeleton />}>
-        <div>Advisor: Appointments (stub)</div>
-      </Suspense>
+    <Box sx={{ p: 0 }}>
+      <AdvisorDashboard />
     </Box>
   );
 }
 
-function AdminDashboard() {
+function AdminDashboardWrapper() {
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr 1fr" }, gap: 2 }}>
-      <div>Admin: Metrics (stub)</div>
-      <div>Admin: User Management (stub)</div>
-      <div>Admin: System Notices (stub)</div>
+    <Box sx={{ p: 0 }}>
+      <AdminDashboard />
     </Box>
   );
 }

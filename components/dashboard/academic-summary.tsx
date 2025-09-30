@@ -9,6 +9,7 @@ import {
   Stack,
   Typography,
   ButtonBase,
+  Tooltip,
 } from "@mui/material";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -189,12 +190,14 @@ export default function AcademicSummary({
         color: "var(--background)",
         boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
         border: "1px solid rgba(255,255,255,0.08)",
-        height: "50%",
+        height: "fit-content",
+        maxHeight: "200vh",
+        overflow: "auto"
       }}
     >
-      <CardContent sx={{ p: 3, pb: 3 }}>
+      <CardContent sx={{ p: 2, pb: 2 }}>
         {/* Header row */}
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1.5 }}>
           <Avatar 
             src={avatarUrl || undefined}
             sx={{ 
@@ -222,7 +225,7 @@ export default function AcademicSummary({
         </Stack>
 
         {/* Graduation Progress */}
-        <Typography sx={{ mb: 1.5, fontWeight: 700 }}>
+        <Typography sx={{ mb: 1, fontWeight: 700 }}>
           Graduation Progress
         </Typography>
         <ProgressPill
@@ -230,28 +233,34 @@ export default function AcademicSummary({
           label={`${Math.round(d.gradProgress * 100)} % progress toward graduation`}
         />
 
-        {/* 4-Year Plan Progress */}
-        <Typography sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>
-          4-Year Plan Progress
+        {/* Graduation Plan Progress */}
+        <Typography sx={{ mt: 2, mb: 1, fontWeight: 700 }}>
+          Graduation Plan Progress
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
           <FilledChip>
-            4-year plan {Math.round(d.planProgress * 100)} % complete
+            Grad plan {Math.round(d.planProgress * 100)} % complete
           </FilledChip>
           <OptimizationBadge level={d.optimization} />
         </Stack>
 
-        {/* 4-Year Plan Follow Through */}
-        <Typography sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>
-          4-Year Plan Follow Through
-        </Typography>
+        {/* Grad Plan Follow Through */}
+        <Tooltip
+          title="See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations, helping you stay on track toward graduation."
+          placement="top"
+          arrow
+        >
+          <Typography sx={{ mt: 2, mb: 1, fontWeight: 700, cursor: "help" }}>
+            Grad Plan Follow Through
+          </Typography>
+        </Tooltip>
         <ProgressPill
           value={d.followThrough}
-          label={`4-year plan ${Math.round(d.followThrough * 100)}% similar to actual course completion`}
+          label={`Grad plan ${Math.round(d.followThrough * 100)}% similar to actual course completion`}
         />
 
         {/* Footer stats */}
-        <Stack sx={{ mt: 2.5 }} spacing={0.8}>
+        <Stack sx={{ mt: 1.5 }} spacing={0.5}>
           <Typography sx={{ fontWeight: 700 }}>
             {d.earnedCredits} credit hours complete
           </Typography>
