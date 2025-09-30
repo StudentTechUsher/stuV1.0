@@ -9,6 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -213,7 +214,7 @@ function DraggableCourse({
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     zIndex: isDragging ? 1000 : 'auto',
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   } : undefined;
 
   // Check if this course has been moved
@@ -396,6 +397,38 @@ interface GraduationPlannerProps {
   };
 }
 
+// Trash Zone Component
+function TrashZone() {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        position: 'fixed',
+        bottom: 40,
+        left: '50%',
+        transform: isOver ? 'translateX(-50%) scale(1.15)' : 'translateX(-50%) scale(1)',
+        width: 100,
+        height: 100,
+        borderRadius: '50%',
+        backgroundColor: isOver ? 'var(--destructive)' : 'var(--action-cancel)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1001,
+        transition: 'all 0.2s ease-in-out',
+        boxShadow: isOver ? '0 8px 24px rgba(239, 68, 68, 0.5)' : '0 4px 12px rgba(244, 67, 54, 0.4)',
+        cursor: 'pointer',
+      }}
+    >
+      <DeleteIcon sx={{ fontSize: 48, color: 'white' }} />
+    </Box>
+  );
+}
+
 // Separate component for the course move TextField
 interface CourseMoveFieldProps {
   currentTerm: number;
@@ -561,12 +594,48 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     if (!over || !isEditMode) return;
 
     const activeData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
+
+    // Check if dropping on trash zone
+    if (over.id === 'trash-zone') {
+      deleteCourse(activeData.termIndex, activeData.courseIndex);
+      return;
+    }
+
     const overData = over.data.current as { term: Term; termIndex: number };
 
     // Only move if dropping onto a different term
     if (activeData.termIndex !== overData.termIndex) {
       moveCourse(activeData.termIndex, activeData.courseIndex, overData.termIndex + 1);
     }
+  };
+
+  // Function to delete a course
+  const deleteCourse = (termIndex: number, courseIndex: number) => {
+    if (!isEditMode) return;
+
+    setEditablePlanData(prevData => {
+      const newData = prevData.map((term, idx) => {
+        if (idx === termIndex) {
+          const updatedCourses = term.courses ? [...term.courses] : [];
+          updatedCourses.splice(courseIndex, 1);
+          const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+          return {
+            ...term,
+            courses: updatedCourses,
+            credits_planned: updatedCredits
+          };
+        }
+        return term;
+      });
+
+      setModifiedTerms(prev => new Set(prev).add(termIndex));
+
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      return newData;
+    });
   };
 
   // Function to move a course between terms
@@ -684,6 +753,9 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
           </Typography>
         </Box>
       )}
+
+      {/* Trash Zone - Only visible when dragging */}
+      {activeCourse && isEditMode && <TrashZone />}
       
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -692,7 +764,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
           </Typography>
           {Boolean(durationYears) && (
             <Typography variant="body1" className="font-body">
-              {durationYears} years
+              Years: <Box component="span" sx={{ fontWeight: 'bold' }}>{durationYears}</Box> 
             </Typography>
           )}
           <Typography variant="body1" className="font-body">
@@ -740,7 +812,18 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                 </Box>
                 
                 {term.notes && (
-                  <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
+                  <Box sx={{ p: 1, backgroundColor: 'var(--primary-15)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Box
+                        component="img"
+                        src="/stu_icon_black.png"
+                        alt="stu logo"
+                        sx={{ width: 21, height: 21 }}
+                      />
+                      <Typography variant="body2" className="font-brand-bold" sx={{ fontWeight: 700, color: 'var(--foreground)' }}>
+                        stu. tip!
+                      </Typography>
+                    </Box>
                     <Typography variant="body2" className="font-body" color="text.secondary">
                       {term.notes}
                     </Typography>

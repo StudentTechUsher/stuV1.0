@@ -111,7 +111,7 @@ export default function SchedulerCalendar({
         case "Family":
           return "var(--hover-gray)";
         default:
-          return "var(--muted)";
+          return "var(--hover-green)"; // Darker green for "Other"
       }
     }
   };
