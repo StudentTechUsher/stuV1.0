@@ -271,7 +271,7 @@ export default function EditGradPlanPage() {
             color: 'black',
             fontSize: '2rem'
           }}>
-            {isStudent ? 'Graduation Plan' : `${studentName}'s Graduation Plan`}
+            {isStudent ? 'Edit Graduation Plan' : `Graduation Plan for ${studentName}`}
           </Typography>
           
           {isStudent && (

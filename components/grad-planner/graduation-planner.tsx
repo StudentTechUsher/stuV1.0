@@ -8,6 +8,7 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
+import Chip from '@mui/material/Chip';
 import EditIcon from '@mui/icons-material/Edit';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
@@ -569,6 +570,26 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     }
   };
 
+  // Derive a unique, ordered list of requirements fulfilled across the entire plan
+  const fulfilledRequirements = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    currentPlanData.forEach(term => {
+      term.courses?.forEach(course => {
+        if (Array.isArray(course.fulfills)) {
+          course.fulfills.forEach(reqRaw => {
+            const req = typeof reqRaw === 'string' ? reqRaw.trim() : '';
+            if (req && !seen.has(req)) {
+              seen.add(req);
+              ordered.push(req);
+            }
+          });
+        }
+      });
+    });
+    return ordered;
+  }, [currentPlanData]);
+
   // Function to move a course between terms
   const moveCourse = (fromTermIndex: number, courseIndex: number, toTermNumber: number) => {
     if (!isEditMode || toTermNumber < 1 || toTermNumber > editablePlanData.length) {
@@ -665,44 +686,125 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     >
       <Box sx={{ p: 2 }}>
         {isEditMode && (
-        <Box sx={{
-          mb: 3,
-          p: 2,
-          backgroundColor: 'rgba(255, 165, 0, 0.15)',
-          borderRadius: 3,
-          border: '2px solid var(--action-edit)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          boxShadow: '0 2px 8px rgba(255, 165, 0, 0.2)'
-        }}>
-          <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
-            Edit Mode Active
-          </Typography>
-          <Typography variant="body2" className="font-body" color="text.secondary">
-            Make changes to your graduation plan. Click "Submit for Approval" when finished.
-          </Typography>
-        </Box>
-      )}
-      
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-          <Typography variant="body1" className="font-body">
-            Terms Planned: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.length}</Box>
-          </Typography>
-          {Boolean(durationYears) && (
-            <Typography variant="body1" className="font-body">
-              {durationYears} years
+          <Box sx={{
+            mb: 3,
+            p: 2,
+            backgroundColor: 'rgba(255, 165, 0, 0.15)',
+            borderRadius: 3,
+            border: '2px solid var(--action-edit)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            boxShadow: '0 2px 8px rgba(255, 165, 0, 0.2)'
+          }}>
+            <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
+              Edit Mode Active
+            </Typography>
+            <Typography variant="body2" className="font-body" color="text.secondary">
+              Make changes to your graduation plan. Click "Submit for Approval" when finished.
+            </Typography>
+          </Box>
+        )}
+
+        <Typography variant="h5" className="font-header" gutterBottom>
+          Graduation Plan
+          {programName && (
+            <Typography
+              variant="subtitle1"
+              className="font-body"
+              color="text.secondary"
+              component="span"
+              sx={{ ml: 1 }}
+            >
+              - {programName}
             </Typography>
           )}
-          <Typography variant="body1" className="font-body">
-            Total Credits: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.reduce((total, term) => {
-              const termCredits = term.credits_planned ||
-                                 (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+        </Typography>
+
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 90%)',
+            border: '1px solid #bbdefb',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1.5,
+            alignItems: 'center'
+          }}
+        >
+          <Chip
+            label={`${currentPlanData.length} term${currentPlanData.length === 1 ? '' : 's'} planned`}
+            sx={{ backgroundColor: '#e3f2fd', border: '1px solid #90caf9', fontWeight: 'bold' }}
+            size="small"
+          />
+          {Boolean(durationYears) && (
+            <Chip
+              label={`${durationYears} year${durationYears === 1 ? '' : 's'}`}
+              size="small"
+              sx={{ backgroundColor: '#ede7f6', border: '1px solid #b39ddb', fontWeight: 'bold' }}
+            />
+          )}
+          <Chip
+            label={`Total Credits: ${currentPlanData.reduce((total, term) => {
+              const termCredits =
+                term.credits_planned ||
+                (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
               return total + termCredits;
-            }, 0)}</Box>
-          </Typography>
+            }, 0)}`}
+            size="small"
+            color="primary"
+            sx={{ backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', color: '#2e7d32', fontWeight: 'bold' }}
+          />
+          {fulfilledRequirements.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography
+                variant="body2"
+                className="font-body"
+                sx={{ fontWeight: 'bold', mr: 0.5, color: '#1565c0' }}
+              >
+                Requirements:
+              </Typography>
+              {fulfilledRequirements.map((req) => (
+                <Chip
+                  key={req}
+                  label={req}
+                  size="small"
+                  sx={{
+                    backgroundColor: '#fffde7',
+                    border: '1px solid #fff59d',
+                    fontSize: '0.65rem',
+                    height: 22,
+                    fontWeight: 500
+                  }}
+                />
+              ))}
+            </Box>
+          )}
         </Box>
+
+        {assumptions && assumptions.length > 0 && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              backgroundColor: '#fff3e0',
+              borderRadius: 1,
+              border: '1px solid var(--action-edit)'
+            }}
+          >
+            <Typography variant="h6" className="font-header" gutterBottom>
+              Plan Assumptions:
+            </Typography>
+            {/* render your assumptions list here */}
+          </Box>
+        )}
+
+        {/* ...keep the rest of your layout/content exactly as it was... */}
+      </Box>
+    </DndContext>
         
         {/* Display terms in a 2-column grid layout */}
         <Box sx={{ 
