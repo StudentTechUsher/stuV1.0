@@ -554,18 +554,13 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     const courseData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
     setActiveCourse(courseData.course);
   };
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCourse(null);
-
     if (!over || !isEditMode) return;
-
     const activeData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
     const overData = over.data.current as { term: Term; termIndex: number };
-
-    // Only move if dropping onto a different term
-    if (activeData.termIndex !== overData.termIndex) {
+    if (activeData && overData && activeData.termIndex !== overData.termIndex) {
       moveCourse(activeData.termIndex, activeData.courseIndex, overData.termIndex + 1);
     }
   };
@@ -659,9 +654,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         <Typography variant="body2" className="font-body" color="text.secondary" gutterBottom>
           Expected to find an array of terms, but got:
         </Typography>
-        <pre className="bg-muted p-4 rounded text-xs overflow-auto">
-          {JSON.stringify(plan, null, 2)}
-        </pre>
+        <pre className="bg-muted p-4 rounded text-xs overflow-auto">{JSON.stringify(plan, null, 2)}</pre>
       </Box>
     );
   }
@@ -677,6 +670,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   
   const assumptions = sourceData.assumptions as string[];
   const durationYears = sourceData.duration_years as number;
+  const programName = (sourceData as any)?.program_name || (sourceData as any)?.program || null;
 
   return (
     <DndContext
@@ -802,138 +796,91 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
           </Box>
         )}
 
-        {/* ...keep the rest of your layout/content exactly as it was... */}
-      </Box>
-    </DndContext>
-        
-        {/* Display terms in a 2-column grid layout */}
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(2, 1fr)', 
+        {/* Terms grid */}
+        <Box sx={{
+          mt: 2,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: 3,
-          '@media (max-width: 900px)': {
-            gridTemplateColumns: '1fr' // Single column on smaller screens
-          }
+          '@media (max-width: 900px)': { gridTemplateColumns: '1fr' }
         }}>
           {currentPlanData.map((term, index) => {
-
-            const termCredits = term.credits_planned ||
-                               (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-
+            const termCredits = term.credits_planned || (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
             return (
               <DroppableTerm key={term.term || `term-${index}`} term={term} termIndex={index} isEditMode={isEditMode} modifiedTerms={modifiedTerms}>
-              <Box
-                sx={{
-                  p: 3,
-                  border: '2px solid var(--border)',
-                  borderRadius: 2,
-                  backgroundColor: 'var(--muted)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  minHeight: '200px' // Ensure consistent height
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
-                    Term {term.term || index + 1}
-                  </Typography>
-                  <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
-                    {termCredits} Credits
-                  </Typography>
-                </Box>
-                
-                {term.notes && (
-                  <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
-                    <Typography variant="body2" className="font-body" color="text.secondary">
-                      {term.notes}
+                <Box sx={{ p: 3, border: '2px solid var(--border)', borderRadius: 2, backgroundColor: 'var(--muted)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', minHeight: '200px' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
+                      Term {term.term || index + 1}
+                    </Typography>
+                    <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+                      {termCredits} Credits
                     </Typography>
                   </Box>
-                )}
-
-                {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
-                  <Box>
-                    <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
-                      Courses ({term.courses.length}):
-                    </Typography>
-                    {/* Single column of course cards within each term */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {term.courses.map((course: Course, courseIndex: number) => {
-                        // Add validation to ensure we have required fields
-                        if (!course.code || !course.title) {
-                          console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course);
-                          return null;
-                        }
-
-                        return (
-                          <DraggableCourse
-                            key={`term-${index}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
-                            course={course}
-                            courseIndex={courseIndex}
-                            termIndex={index}
-                            isEditMode={isEditMode}
-                            currentPlanData={currentPlanData}
-                            onMoveCourse={moveCourse}
-                            movedCourses={movedCourses}
-                          />
-                        );
-                      }).filter(Boolean)} {/* Filter out null returns */}
+                  {term.notes && (
+                    <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
+                      <Typography variant="body2" className="font-body" color="text.secondary">{term.notes}</Typography>
                     </Box>
-                  </Box>
-                ) : (
-                  <Typography variant="body2" className="font-body" color="text.secondary">
-                    No courses defined for this term
-                  </Typography>
-                )}
-              </Box>
+                  )}
+                  {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
+                    <Box>
+                      <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
+                        Courses ({term.courses.length}):
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {term.courses.map((course: Course, courseIndex: number) => {
+                          if (!course.code || !course.title) { console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course); return null; }
+                          return (
+                            <DraggableCourse
+                              key={`term-${index}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
+                              course={course}
+                              courseIndex={courseIndex}
+                              termIndex={index}
+                              isEditMode={isEditMode}
+                              currentPlanData={currentPlanData}
+                              onMoveCourse={moveCourse}
+                              movedCourses={movedCourses}
+                            />
+                          );
+                        }).filter(Boolean)}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" className="font-body" color="text.secondary">No courses defined for this term</Typography>
+                  )}
+                </Box>
               </DroppableTerm>
             );
           })}
         </Box>
-      </Box>
-
-      <br />
-      {assumptions && assumptions.length > 0 && (
-        <Box sx={{ mb: 3, p: 2, backgroundColor: 'var(--primary-15)', borderRadius: 3, border: '1px solid var(--primary)' }}>
-          <Typography variant="h6" className="font-header-bold" gutterBottom>
-            Plan Assumptions:
-          </Typography>
-          <Box component="ul" sx={{ m: 0, pl: 2 }}>
-            {assumptions.map((assumption) => (
-              <Typography key={assumption} component="li" variant="body2" className="font-body">
-                {assumption}
+        {/* Drag Overlay for visual feedback */}
+        <DragOverlay>
+          {activeCourse ? (
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: 'white',
+                borderRadius: 2,
+                border: '2px solid var(--primary)',
+                minHeight: '80px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                opacity: 0.9,
+                transform: 'rotate(5deg)',
+                boxShadow: '0 8px 32px rgba(18, 249, 135, 0.3)',
+              }}
+            >
+              <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
+                {activeCourse.code}: {activeCourse.title}
               </Typography>
-            ))}
-          </Box>
-        </Box>
-      )}
+              <Typography variant="caption" className="font-body" color="text.secondary">
+                {activeCourse.credits} credits
+              </Typography>
+            </Box>
+          ) : null}
+        </DragOverlay>
       </Box>
-
-      {/* Drag Overlay for visual feedback */}
-      <DragOverlay>
-        {activeCourse ? (
-          <Box
-            sx={{
-              p: 2,
-              backgroundColor: 'white',
-              borderRadius: 2,
-              border: '2px solid var(--primary)',
-              minHeight: '80px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              opacity: 0.9,
-              transform: 'rotate(5deg)',
-              boxShadow: '0 8px 32px rgba(18, 249, 135, 0.3)',
-            }}
-          >
-            <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
-              {activeCourse.code}: {activeCourse.title}
-            </Typography>
-            <Typography variant="caption" className="font-body" color="text.secondary">
-              {activeCourse.credits} credits
-            </Typography>
-          </Box>
-        ) : null}
-      </DragOverlay>
     </DndContext>
   );
 }

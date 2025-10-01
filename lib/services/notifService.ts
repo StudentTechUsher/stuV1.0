@@ -32,3 +32,103 @@ export async function getPendingGradPlansCount(): Promise<number> {
 export async function hasPendingGradPlans(): Promise<boolean> {
 	return (await getPendingGradPlansCount()) > 0
 }
+
+export type NotificationStatus = "queued" | "sent" | "failed";
+
+export async function createNotification({
+	target_user_id,
+	initiator_user_id,
+	type,
+	context_json,
+	url,
+	is_read,
+	read_utc,
+	created_utc,
+	channel_mask,
+	status
+}: {
+	target_user_id: string,
+	initiator_user_id: string | null,
+	type: string,
+	context_json: any | null,
+	url: string | null,
+	is_read: false,
+	read_utc: string | null,
+	created_utc: string,
+	channel_mask: number,
+	status: NotificationStatus
+}) {
+	try {
+		if (!target_user_id) throw new Error("targetUserId is required.");
+		const insertPayload = {
+			target_user_id,
+			initiator_user_id,
+			type,
+			context_json,
+			url,
+			is_read,
+			read_utc,
+			channel_mask,
+			status,
+			created_utc
+		}
+
+		const { data, error } = await supabase
+			.from("notifications")
+			.insert(insertPayload)
+			.select("*")
+			.single();
+
+		if (error) {
+			console.error('❌ Error creating notification:', error)
+			return null
+		}
+
+		return data
+	} catch (err) {
+		console.error('❌ Unexpected error creating notification:', err)
+		return null;
+	}
+}
+
+export async function createNotifForPlanReady(userId: string, accessId: string) {
+	try {
+		return await createNotification({
+			target_user_id: userId,
+			type: "PlanReady",
+			context_json: { accessId },
+			url: `/grad-planner/${accessId}`,
+			status: "queued",
+			initiator_user_id: null,
+			is_read: false,
+			read_utc: null,
+			created_utc: new Date().toISOString(),
+			channel_mask: 1
+		})
+	}
+	catch (err) {
+		console.error('❌ Error creating PlanReady notification:', err)
+		return null;
+	}
+}
+
+export async function markSingleNotificationRead(notifId: string) {
+	try {
+		const { data, error } = await supabase
+			.from("notifications")
+			.update({ is_read: true, read_utc: new Date().toISOString() })
+			.eq("id", notifId)
+			.select("*")
+			.single();
+
+		if (error) {
+			console.error('❌ Error marking notification as read:', error)
+			return null
+		}
+
+		return data
+	} catch (err) {
+		console.error('❌ Unexpected error marking notification as read:', err)
+		return null
+	}
+}

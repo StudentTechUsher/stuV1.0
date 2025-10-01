@@ -21,6 +21,7 @@ const ROLE_MAP: Record<string, Role> = {
 // A serializable icon key the client can turn into an actual icon element
 type IconKey =
   | "dashboard"
+  | "inbox"
   | "planner"
   | "map"
   | "semester"
@@ -97,6 +98,7 @@ function getNavItems(role: Role, pendingCount = 0): NavItem[] {
     case "student":
       return [
         { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
+        { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",                icon: "inbox" },
         { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/dashboard/academic-history",   segment: "academic-history",    label: "Academic History",     icon: "history" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
@@ -108,6 +110,7 @@ function getNavItems(role: Role, pendingCount = 0): NavItem[] {
     case "advisor":
       return [
         { href: "/dashboard",                    segment: null,                 label: "Overview",       icon: "dashboard" },
+        { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",          icon: "inbox" },
         { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
         { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
@@ -118,6 +121,7 @@ function getNavItems(role: Role, pendingCount = 0): NavItem[] {
     case "admin":
       return [
         { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/dashboard/inbox",                 segment: "inbox",                 label: "Inbox",                  icon: "inbox" },
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
