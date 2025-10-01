@@ -1,23 +1,19 @@
-import { Typography, Box } from "@mui/material";
-
 export default function SettingsPage() {
     return (
-        <Box sx={{ p: 2 }}>
-            <Typography
-                variant="h4"
-                sx={{
+        <div className="space-y-6 p-6">
+            <div className="flex items-center justify-between">
+                <h1 style={{
                     fontFamily: '"Red Hat Display", sans-serif',
                     fontWeight: 800,
                     color: 'black',
-                    mb: 3,
-                    fontSize: '2rem'
-                }}
-            >
-                Settings
-            </Typography>
-            <Typography variant="body1" className="font-body" color="text.secondary">
-                Manage your application settings here.
-            </Typography>
-        </Box>
+                    fontSize: '2rem',
+                    margin: 0,
+                    marginBottom: '24px'
+                }}>Settings</h1>
+                <div className="text-sm text-muted-foreground">
+                    Manage your application settings
+                </div>
+            </div>
+        </div>
     );
 }

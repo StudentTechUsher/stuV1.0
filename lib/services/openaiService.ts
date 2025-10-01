@@ -164,7 +164,29 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       };
     }
 
-    const serializedInput = JSON.stringify(coursesData, null, 2);
+    // Extract selection mode (if present in payload)
+    const selectionMode = cd.selectionMode || 'MANUAL';
+
+    // Branch based on selection mode
+    let processedCoursesData = coursesData;
+    if (selectionMode === 'AUTO') {
+      // TODO: AUTO mode logic - AI should auto-select courses for multi-option requirements
+      // For now, pass through as-is. In full implementation:
+      // - For each requirement with multiple course options, select one based on:
+      //   * Student preferences (time-of-day, modality, work blocks if available in cd)
+      //   * Catalog constraints (prerequisites, co-requisites, repeats)
+      //   * Load balancing heuristics (spread credits across terms)
+      // - Fallback to first valid course if no preference match
+      // - Return warnings if no valid course can be selected
+      console.log('📌 AUTO mode: AI will auto-select from multi-option requirements');
+    } else if (selectionMode === 'MANUAL') {
+      // MANUAL mode: trust student selections (already validated client-side)
+      // Auto-populate single-option requirements only (done in dialog already)
+      console.log('📌 MANUAL mode: using student-selected courses');
+    }
+    // CHOICE mode is resolved client-side to AUTO or MANUAL, so no separate branch here
+
+    const serializedInput = JSON.stringify(processedCoursesData, null, 2);
 
     // Execute AI prompt via helper
     // Normalize prompt config (line referenced earlier for injection point)

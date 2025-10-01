@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
-import { extractTranscriptCourses, upsertCoursesDirect } from '@/lib/parseTranscript';
+import { uploadPdfToOpenAI, extractCoursesWithOpenAI } from '@/lib/openaiTranscript';
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,7 +88,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 8. Parse transcript immediately (instead of n8n webhook)
+    // 8. Parse transcript using OpenAI (synchronous for now)
+    let coursesCount = 0;
     try {
       // Update status to 'parsing'
       await supabase
@@ -108,38 +109,75 @@ export async function POST(request: NextRequest) {
         }
       );
 
-      // Download the PDF from storage
+      // Download PDF bytes from storage
       const { data: downloadData, error: downloadError } = await admin.storage
         .from('transcripts')
         .download(storagePath);
 
-      if (downloadError) throw downloadError;
+      if (downloadError || !downloadData) {
+        throw new Error(`Failed to download PDF: ${downloadError?.message || 'No data'}`);
+      }
 
-      // Convert to Buffer for pdf-parse
       const pdfBytes = Buffer.from(await downloadData.arrayBuffer());
 
-      // Extract courses from PDF
-      const courses = await extractTranscriptCourses(pdfBytes);
+      // Upload PDF to OpenAI
+      const fileId = await uploadPdfToOpenAI(pdfBytes, `${document.id}.pdf`);
+      console.log('[Transcript Upload] OpenAI file_id:', fileId);
 
-      // Upsert courses into database + update status to 'parsed'
-      await upsertCoursesDirect(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { userId: user.id, documentId: document.id, courses }
-      );
+      // Extract courses using OpenAI
+      const courses = await extractCoursesWithOpenAI(fileId);
+      console.log('[Transcript Upload] Extracted', courses.length, 'courses');
+
+      // Upsert courses into user_courses table
+      for (const course of courses) {
+        const { error: upsertError } = await admin.from('user_courses').upsert(
+          {
+            user_id: user.id,
+            term: course.term ?? null,
+            subject: course.subject,
+            number: course.number,
+            title: course.title ?? null,
+            credits: course.credits ?? null,
+            grade: course.grade ?? null,
+            confidence: course.confidence ?? null,
+            source_document: document.id,
+          },
+          { onConflict: 'user_id,subject,number,term' }
+        );
+        if (upsertError) {
+          console.error('[Transcript Upload] Upsert error:', upsertError);
+          throw upsertError;
+        }
+      }
+
+      // Update document status to 'parsed'
+      await admin
+        .from('documents')
+        .update({ status: 'parsed' })
+        .eq('id', document.id);
+
+      coursesCount = courses.length;
     } catch (parseError: any) {
-      // Mark document as failed but don't fail the request
+      // Mark document as failed
       await supabase
         .from('documents')
         .update({ status: 'failed' })
         .eq('id', document.id);
-      console.error('Transcript parse failed:', parseError?.message || parseError);
+      console.error('[Transcript Upload] Parse failed:', parseError?.message || parseError);
+
+      // Return failure status to client
+      return NextResponse.json({
+        documentId: document.id,
+        status: 'failed',
+        error: 'Failed to parse transcript',
+      }, { status: 500 });
     }
 
     // 9. Return success response
     return NextResponse.json({
       documentId: document.id,
-      status: 'uploaded',
+      status: 'parsed',
+      count: coursesCount,
     });
 
   } catch (error) {

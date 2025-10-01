@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type UploadStatus = 'idle' | 'uploaded' | 'parsing' | 'parsed' | 'failed';
 
@@ -28,6 +28,7 @@ export default function TranscriptUpload({
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const supabase = createSupabaseBrowserClient();
 
   // Poll document status
   const pollDocumentStatus = useCallback(async (docId: string) => {

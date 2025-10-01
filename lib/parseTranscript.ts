@@ -25,9 +25,84 @@ function guessTerm(context: string): string | null {
 }
 
 export async function extractTranscriptCourses(pdfBuffer: Buffer): Promise<ParsedCourse[]> {
-  // Dynamic import to avoid Next.js build issues with pdf-parse
-  const pdfParse = (await import("pdf-parse")).default;
-  const { text } = await pdfParse(pdfBuffer);
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY not configured');
+  }
+
+  // Convert PDF to base64 for OpenAI
+  const base64Pdf = pdfBuffer.toString('base64');
+
+  // Call OpenAI GPT-4o with vision to extract courses
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a transcript parser. Extract all courses from the academic transcript. Return ONLY valid JSON array with this structure: [{"term":"Fall 2023","subject":"CS","number":"142","title":"Intro to Programming","credits":3,"grade":"A"}]. Use null for missing fields.'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Extract all courses from this transcript PDF. Return only the JSON array, no other text.'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:application/pdf;base64,${base64Pdf}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 4000,
+      temperature: 0
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('OpenAI API error:', error);
+    throw new Error(`OpenAI API failed: ${response.status}`);
+  }
+
+  const result = await response.json();
+  const content = result.choices?.[0]?.message?.content || '[]';
+
+  // Parse JSON response
+  let parsedCourses: any[];
+  try {
+    // Remove markdown code blocks if present
+    const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    parsedCourses = JSON.parse(jsonStr);
+  } catch (e) {
+    console.error('Failed to parse OpenAI response:', content);
+    throw new Error('Failed to parse course data from OpenAI');
+  }
+
+  // Convert to our format
+  const courses: ParsedCourse[] = parsedCourses.map((c: any) => ({
+    term: c.term || null,
+    subject: c.subject || '',
+    number: c.number || '',
+    title: c.title || null,
+    credits: c.credits ? Number(c.credits) : null,
+    grade: c.grade || null,
+    confidence: 0.95 // High confidence since OpenAI extracted it
+  }));
+
+  return courses;
+
+  // Old regex-based parsing code (kept for reference):
+  /*
   const courses: ParsedCourse[] = [];
   let m: RegExpExecArray | null;
 
@@ -64,6 +139,7 @@ export async function extractTranscriptCourses(pdfBuffer: Buffer): Promise<Parse
   }
 
   return courses;
+  */
 }
 
 export async function upsertCoursesDirect(

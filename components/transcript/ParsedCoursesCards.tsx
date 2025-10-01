@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Chip, IconButton, Tooltip } from '@mui/material';
 import { Delete, School, CalendarToday, Grade } from '@mui/icons-material';
-import { supabase } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type ParsedCourse = {
   id?: string;
@@ -28,6 +28,7 @@ export default function ParsedCoursesCards({
 }: ParsedCoursesCardsProps) {
   const [courses, setCourses] = useState<ParsedCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     loadCourses();

@@ -19,10 +19,17 @@ export default async function SettingsPage() {
   const isDev = process.env.NEXT_PUBLIC_ENV === 'dev';
 
   return (
-    <div className="px-4 sm:px-6 md:px-8 max-w-screen-lg mx-auto space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-2">
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 style={{
+          fontFamily: '"Red Hat Display", sans-serif',
+          fontWeight: 800,
+          color: 'black',
+          fontSize: '2rem',
+          margin: 0,
+          marginBottom: '8px'
+        }}>Settings</h1>
+        <p className="text-sm text-muted-foreground">
           Manage your account preferences and theme customization
         </p>
       </div>

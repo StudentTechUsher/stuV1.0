@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent } from '@mui/material';
+import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent, Autocomplete } from '@mui/material';
 import { Add, Delete, Edit, Save, FileCopy, Refresh, Upload } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProgressCircle } from '@/components/ui/progress-circle';
@@ -40,6 +40,7 @@ export default function AcademicHistoryPage() {
 	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
 	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 	const [parsedCoursesCount, setParsedCoursesCount] = useState(0);
+	const [availableCourses, setAvailableCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
 
 	// Optimistic immediate sample (only if everything truly empty at mount)
 	useEffect(() => {
@@ -68,6 +69,17 @@ export default function AcademicHistoryPage() {
 			const { data: sess } = await supabase.auth.getSession();
 			const id = sess.session?.user?.id || null;
 			setUserId(id);
+		})();
+	}, [supabase]);
+
+	// Load available courses from database
+	useEffect(() => {
+		(async () => {
+			const { data: courses } = await supabase
+				.from('courses')
+				.select('code, title, credits')
+				.order('code');
+			if (courses) setAvailableCourses(courses);
 		})();
 	}, [supabase]);
 
@@ -174,12 +186,77 @@ export default function AcademicHistoryPage() {
 		setDirty(true);
 	};
 
+	const saveToDatabase = async () => {
+		if (!userId) {
+			alert('Please log in to save courses');
+			return;
+		}
+
+		try {
+			// Collect all courses from all columns
+			const allCourses = [
+				...data.general,
+				...data.program,
+				...data.electives
+			];
+
+			// Save each course to user_courses table
+			for (const course of allCourses) {
+				if (!course.code) continue; // Skip empty courses
+
+				// Parse code into subject and number
+				const match = course.code.match(/^([A-Z]+)\s*(\d+)$/i);
+				if (!match) continue;
+
+				const [_, subject, number] = match;
+
+				await supabase.from('user_courses').upsert({
+					user_id: userId,
+					subject: subject.toUpperCase(),
+					number: number,
+					title: course.title || null,
+					credits: course.credits || null,
+					term: course.term || null,
+					grade: null,
+					confidence: 1.0,
+					source_document: null
+				}, {
+					onConflict: 'user_id,subject,number,term'
+				});
+			}
+
+			alert(`Successfully saved ${allCourses.filter(c => c.code).length} courses to your profile!`);
+			// Trigger reload of parsed courses
+			setParsedCoursesCount(prev => prev + 1);
+		} catch (error) {
+			console.error('Error saving courses:', error);
+			alert('Failed to save courses to database');
+		}
+	};
+
 	const renderCourseRow = (col: keyof ColumnState, course: CourseEntry) => {
 		const editing = !!course.editing;
 		return (
 			<Box key={course.id} sx={{ display: 'grid', gridTemplateColumns: '110px 1fr 80px 120px 36px 36px', gap: 1, alignItems: 'center', mb: 1 }}>
 				{editing ? (
-					<TextField size="small" placeholder="CODE" value={course.code} onChange={e => updateCourse(col, course.id, { code: e.target.value })} />
+					<Autocomplete
+						size="small"
+						freeSolo
+						options={availableCourses}
+						getOptionLabel={(option) => typeof option === 'string' ? option : option.code}
+						value={course.code || ''}
+						onInputChange={(_, newValue) => updateCourse(col, course.id, { code: newValue })}
+						onChange={(_, newValue) => {
+							if (newValue && typeof newValue !== 'string') {
+								updateCourse(col, course.id, {
+									code: newValue.code,
+									title: newValue.title,
+									credits: newValue.credits
+								});
+							}
+						}}
+						renderInput={(params) => <TextField {...params} placeholder="CODE" />}
+					/>
 				) : (
 					<Typography variant="body2" fontWeight={600}>{course.code || '—'}</Typography>
 				)}
@@ -212,11 +289,23 @@ export default function AcademicHistoryPage() {
 
 	// Fixed variant mapping (GE = red, Program = blue, Electives = green)
 	// Using existing variant keys: error (red), default (blue), success (green)
-	const progressMeta = useMemo(() => ([
-		{ variant: 'error' as const, value: Math.floor(10 + Math.random() * 86) },    // General Education
-		{ variant: 'default' as const, value: Math.floor(10 + Math.random() * 86) },  // Program Requirements
-		{ variant: 'success' as const, value: Math.floor(10 + Math.random() * 86) },  // Electives
-	]), []);
+	// Calculate progress based on actual credits completed
+	const progressMeta = useMemo(() => {
+		const genTotal = totalCredits('general');
+		const progTotal = totalCredits('program');
+		const electTotal = totalCredits('electives');
+
+		// Assume standard requirements: GE=40, Program=60, Electives=20
+		const genPct = Math.min(100, Math.round((genTotal / 40) * 100));
+		const progPct = Math.min(100, Math.round((progTotal / 60) * 100));
+		const electPct = Math.min(100, Math.round((electTotal / 20) * 100));
+
+		return [
+			{ variant: 'error' as const, value: genPct },    // General Education
+			{ variant: 'default' as const, value: progPct },  // Program Requirements
+			{ variant: 'success' as const, value: electPct }, // Electives
+		];
+	}, [data]);
 
 	const renderColumn = (col: keyof ColumnState, title: string, description: string, idx: number) => (
 		<Paper elevation={2} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -252,8 +341,13 @@ export default function AcademicHistoryPage() {
 					<Typography variant="body2" color="text.secondary">Track previously completed coursework across your curriculum.</Typography>
 				</Box>
 				<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+					<Tooltip title="Save courses to your profile">
+						<Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase} color="primary">
+							Save to Profile
+						</Button>
+					</Tooltip>
 					<Tooltip title="Upload transcript PDF">
-						<Button variant="contained" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
+						<Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
 							Upload Transcript
 						</Button>
 					</Tooltip>
