@@ -648,9 +648,6 @@ export default function PathfinderPage() {
               {lastAction && <span>{lastAction}</span>}
             </div>
           )}
-          <div className="mt-auto pt-4 text-[11px] text-gray-400">
-            * This is an early prototype. Data is mocked. Future iterations will surface actionable pivots and minor completion audits.
-          </div>
         </div>
       </div>
       {/* Toast render container */}

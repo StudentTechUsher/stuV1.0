@@ -14,9 +14,21 @@ export interface Course {
 interface CourseHistoryListProps {
   courses: Course[];
   onSelectCourse?: (course: Course) => void;
+  /**
+   * Optional max height (e.g. 480, '60vh'). If omitted the component will stretch to parent height.
+   */
+  maxHeight?: number | string;
+  /** Additional classNames to append to outer container */
+  className?: string;
+  /**
+   * When no explicit maxHeight is provided, we compute a viewport-relative cap: calc(100vh - viewportOffsetPx).
+   * This helps ensure the component fits within the visible area and becomes internally scrollable.
+   * Defaults to 180 (approx header + page padding). Set to 0 to disable auto viewport sizing.
+   */
+  viewportOffsetPx?: number;
 }
 
-export function CourseHistoryList({ courses, onSelectCourse }: CourseHistoryListProps) {
+export function CourseHistoryList({ courses, onSelectCourse, maxHeight, className, viewportOffsetPx = 180 }: Readonly<CourseHistoryListProps>) {
   const [query, setQuery] = React.useState("");
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -24,19 +36,40 @@ export function CourseHistoryList({ courses, onSelectCourse }: CourseHistoryList
     return courses.filter(c => c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q));
   }, [query, courses]);
 
+  // Determine max height strategy.
+  // Priority: explicit maxHeight prop -> auto viewport-based height (unless offset disabled).
+  let computedMaxHeight: string | undefined;
+  if (typeof maxHeight !== 'undefined') {
+    computedMaxHeight = typeof maxHeight === 'number' ? `${maxHeight}px` : String(maxHeight);
+  } else if (viewportOffsetPx >= 0) {
+    computedMaxHeight = `calc(100vh - ${viewportOffsetPx}px)`;
+  }
+
+  const style: React.CSSProperties | undefined = computedMaxHeight ? { maxHeight: computedMaxHeight } : undefined;
+
   return (
-    <div className="flex flex-col h-full border rounded-lg bg-white/70 backdrop-blur p-4 shadow-sm">
-      <div className="mb-3">
+    <div
+      className={
+        `flex flex-col border rounded-lg bg-white/70 backdrop-blur shadow-sm ` +
+        `overflow-y-auto overflow-x-hidden custom-scroll min-h-0 ` +
+        `focus:outline-none focus:ring-2 focus:ring-emerald-300 ${className || ''}`
+      }
+      style={style}
+      aria-label="Course history"
+    >
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur px-4 pt-4 pb-3 border-b border-emerald-100">
         <h2 className="text-lg font-semibold text-gray-800">Completed Courses</h2>
         <p className="text-xs text-gray-500">Showing {filtered.length} of {courses.length}</p>
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search courses..."
+          className="mt-3 w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring focus:ring-emerald-300"
+        />
       </div>
-      <input
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        placeholder="Search courses..."
-        className="mb-3 w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring focus:ring-emerald-300"
-      />
-      <div className="overflow-auto custom-scroll flex-1 pr-1">
+      {/* List */}
+      <div className="px-4 pb-4 pt-3">
         <ul className="space-y-2">
           {filtered.map(c => (
             <li key={c.id}>

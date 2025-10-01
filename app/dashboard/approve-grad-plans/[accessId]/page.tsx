@@ -6,6 +6,7 @@ import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } fro
 import { CheckCircle, Save } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction } from '@/lib/services/server-actions';
+import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
 import GradPlanViewer from '@/components/approve-grad-plans/grad-plan-viewer';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -221,6 +222,34 @@ export default function ApproveGradPlanPage() {
         if (hasSuggestions) {
           setHasSuggestions(false);
         }
+        // Fire a notification to the student that their plan was edited.
+        try {
+          // Get advisor (current user) id
+          const { data: { session } } = await supabase.auth.getSession();
+          const advisorUserId = session?.user?.id || null;
+          const accessId = params.accessId as string;
+          // Look up student.profile_id from numeric student_id in grad plan
+          let targetUserId: string | null = null;
+          if (gradPlan.student_id) {
+            const { data: studentRow, error: studentErr } = await supabase
+              .from('student')
+              .select('profile_id')
+              .eq('id', gradPlan.student_id)
+              .maybeSingle();
+            if (studentErr) {
+              console.warn('⚠️ Could not fetch student row for notification:', studentErr.message);
+            } else if (studentRow?.profile_id) {
+              targetUserId = studentRow.profile_id;
+            }
+          }
+          if (targetUserId) {
+            void createNotifForGradPlanEdited(targetUserId, advisorUserId, accessId);
+          } else {
+            console.warn('⚠️ Could not resolve target_user_id (profile_id) from student_id for notification.');
+          }
+        } catch (notifyErr) {
+          console.error('Notification dispatch failed (non-blocking):', notifyErr);
+        }
         // Redirect to approval list after short delay so user sees snackbar
         setTimeout(() => router.push('/dashboard/approve-grad-plans'), 1100);
       } else {
@@ -246,6 +275,31 @@ export default function ApproveGradPlanPage() {
       const result = await approveGradPlan(gradPlan.id);
       if (result.success) {
         showSnackbar('Graduation plan approved successfully! The student can now view their active plan.', 'success');
+        // Fire notification to student about approval (non-blocking)
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const advisorUserId = session?.user?.id || null;
+          let targetUserId: string | null = null;
+          if (gradPlan.student_id) {
+            const { data: studentRow, error: studentErr } = await supabase
+              .from('student')
+              .select('profile_id')
+              .eq('id', gradPlan.student_id)
+              .maybeSingle();
+            if (studentErr) {
+              console.warn('⚠️ Could not fetch student row for approval notification:', studentErr.message);
+            } else if (studentRow?.profile_id) {
+              targetUserId = studentRow.profile_id;
+            }
+          }
+            if (targetUserId) {
+              void createNotifForGradPlanApproved(targetUserId, advisorUserId);
+            } else {
+              console.warn('⚠️ Could not resolve target_user_id for approval notification.');
+            }
+        } catch (notifyErr) {
+          console.error('Approval notification dispatch failed (non-blocking):', notifyErr);
+        }
         setTimeout(() => router.push('/dashboard/approve-grad-plans'), 2000);
       } else {
         showSnackbar(`Failed to approve plan: ${result.error || 'Unknown error'}`, 'error');
