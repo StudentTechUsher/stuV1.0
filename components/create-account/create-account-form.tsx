@@ -8,6 +8,7 @@ import { Option } from "@/types/option";
 import ChipsField from "@/helpers/chips-field";
 import SingleSelect from "@/helpers/single-select";
 import { TextField } from "@mui/material";
+import TranscriptUploadSection from "@/components/transcript/TranscriptUploadSection";
 
 type Preload = {
   universities: Option[];
@@ -243,6 +244,13 @@ export default function CreateAccountForm({
         values={classPreferences}
         onChange={setClassPreferences}
       />
+
+      {/* Transcript Upload - only show in create mode, not edit mode */}
+      {!isEditMode && (
+        <div style={{ marginTop: 24 }}>
+          <TranscriptUploadSection />
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
         {(() => {

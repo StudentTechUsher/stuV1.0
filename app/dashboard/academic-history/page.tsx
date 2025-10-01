@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip } from '@mui/material';
-import { Add, Delete, Edit, Save, FileCopy, Refresh } from '@mui/icons-material';
+import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent } from '@mui/material';
+import { Add, Delete, Edit, Save, FileCopy, Refresh, Upload } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProgressCircle } from '@/components/ui/progress-circle';
+import ParsedCoursesCards from '@/components/transcript/ParsedCoursesCards';
+import TranscriptUpload from '@/components/transcript/TranscriptUpload';
 
 type CourseEntry = {
 	id: string;
@@ -36,6 +38,8 @@ export default function AcademicHistoryPage() {
 	const [loadedKey, setLoadedKey] = useState<string | null>(null);
 	const [dirty, setDirty] = useState(false);
 	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+	const [parsedCoursesCount, setParsedCoursesCount] = useState(0);
 
 	// Optimistic immediate sample (only if everything truly empty at mount)
 	useEffect(() => {
@@ -248,6 +252,11 @@ export default function AcademicHistoryPage() {
 					<Typography variant="body2" color="text.secondary">Track previously completed coursework across your curriculum.</Typography>
 				</Box>
 				<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+					<Tooltip title="Upload transcript PDF">
+						<Button variant="contained" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
+							Upload Transcript
+						</Button>
+					</Tooltip>
 					<Tooltip title="Copy JSON to clipboard">
 						<Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson}>{copyStatus === 'copied' ? 'Copied!' : 'Export JSON'}</Button>
 					</Tooltip>
@@ -266,6 +275,40 @@ export default function AcademicHistoryPage() {
 			<Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
 				<Typography variant="body2" color="text.secondary">Grand Total Credits: {grandTotal}</Typography>
 			</Box>
+
+			{/* Parsed Transcript Courses Section */}
+			{parsedCoursesCount > 0 && (
+				<Box sx={{ mt: 4 }}>
+					<Divider sx={{ mb: 3 }} />
+					<Box sx={{ mb: 2 }}>
+						<Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+							Transcript Courses
+						</Typography>
+						<Typography variant="body2" color="text.secondary">
+							{parsedCoursesCount} course{parsedCoursesCount !== 1 ? 's' : ''} parsed from uploaded transcripts
+						</Typography>
+					</Box>
+					<ParsedCoursesCards userId={userId} onCoursesLoaded={setParsedCoursesCount} />
+				</Box>
+			)}
+
+			{/* Upload Transcript Dialog */}
+			<Dialog
+				open={uploadDialogOpen}
+				onClose={() => setUploadDialogOpen(false)}
+				maxWidth="sm"
+				fullWidth
+			>
+				<DialogContent sx={{ p: 3 }}>
+					<TranscriptUpload
+						onUploadSuccess={() => {
+							setUploadDialogOpen(false);
+							// Trigger reload of parsed courses
+							setParsedCoursesCount(prev => prev + 1);
+						}}
+					/>
+				</DialogContent>
+			</Dialog>
 		</Box>
 	);
 }

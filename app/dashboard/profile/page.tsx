@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import CreateAccountClient from "@/components/create-account/create-account-client";
+import TranscriptUploadSectionWrapper from "@/components/transcript/TranscriptUploadSectionWrapper";
 import {
   listUniversities,
   listMajors,
@@ -75,6 +76,11 @@ export default async function ProfilePage() {
         initial={profileWithEmail}
         isEditMode={true}
       />
+
+      {/* Transcript Upload Section */}
+      <div style={{ marginTop: '3rem' }}>
+        <TranscriptUploadSectionWrapper />
+      </div>
     </main>
   );
 }
