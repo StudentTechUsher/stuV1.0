@@ -169,7 +169,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     const selectionMode = cd.selectionMode || 'MANUAL';
 
     // Branch based on selection mode
-    let processedCoursesData = coursesData;
+    const processedCoursesData = coursesData;
     if (selectionMode === 'AUTO') {
       // TODO: AUTO mode logic - AI should auto-select courses for multi-option requirements
       // For now, pass through as-is. In full implementation:
