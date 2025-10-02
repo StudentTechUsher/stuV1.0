@@ -94,3 +94,24 @@ export async function getStudentsWithPrograms(): Promise<AdvisorStudentRow[]> {
 // NOTE: The server-side variant has been moved to profileService.server.ts to avoid bundling server-only
 // next/headers usage into client modules. Import getStudentsWithProgramsServer from:
 //   '@/lib/services/profileService.server'
+
+/**
+ * Persist a targeted career string for the authenticated student profile.
+ * Assumes a `student` table with columns: profile_id (FK to profiles.id), targeted_career (text).
+ * Relies on RLS allowing the current user to update their own student row.
+ */
+export async function saveTargetedCareerClient(careerTitle: string): Promise<{ success: boolean; error?: string }> {
+    const title = careerTitle.trim();
+    if (!title) return { success: false, error: 'Empty career title' };
+    // Ensure we have current auth user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Not authenticated' };
+
+    const { error: updateError } = await supabase
+        .from('student')
+        .update({ targeted_career: title })
+        .eq('profile_id', user.id);
+
+    if (updateError) return { success: false, error: updateError.message };
+    return { success: true };
+}

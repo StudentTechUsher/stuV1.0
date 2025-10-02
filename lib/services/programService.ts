@@ -34,6 +34,22 @@ export default async function GetProgramsForUniversity(university_id: number) {
     return data || [];
 }
 
+export async function GetMajorsForUniversity(university_id: number) {
+  const { data, error } = await supabase
+    .from('program')
+    .select('*')
+    .eq('university_id', university_id)
+    .eq('program_type', 'major')
+    .eq('is_general_ed', false);
+
+  if (error) {
+    console.error('❌ Error fetching majors:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 export async function GetGenEdsForUniversity(university_id: number) {
     const { data, error } = await supabase
       .from('program')
@@ -118,4 +134,19 @@ export async function createProgram(programData: Omit<ProgramRow, 'id' | 'create
 
   if (error) throw error;
   return data as ProgramRow;
+}
+
+export async function GetMinorsForUniversity(university_id: number) {
+  const { data, error } = await supabase
+    .from('program')
+    .select('*')
+    .eq('university_id', university_id)
+    .eq('program_type', 'minor')
+    .eq('is_general_ed', false);
+
+  if (error) {
+    console.error('❌ Error fetching minors:', error);
+    return [];
+  }
+  return data || [];
 }

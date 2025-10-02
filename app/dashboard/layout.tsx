@@ -1,7 +1,7 @@
 // app/dashboard/layout.tsx
 import type { ReactNode } from "react";
 import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-client";
-import { getPendingGradPlansCount } from '@/lib/services/notifService';
+import { getPendingGradPlansCount, getUnreadNotificationsCount } from '@/lib/services/notifService';
 
 // 👇 NEW: read Supabase session in a server component
 import { cookies } from "next/headers";
@@ -21,6 +21,7 @@ const ROLE_MAP: Record<string, Role> = {
 // A serializable icon key the client can turn into an actual icon element
 type IconKey =
   | "dashboard"
+  | "inbox"
   | "planner"
   | "map"
   | "semester"
@@ -80,7 +81,10 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   // If advisor, fetch pending approvals count (for badge)
   const pendingCount = role === 'advisor' ? await getPendingGradPlansCount() : 0;
 
-  const items = getNavItems(role, pendingCount);
+  // Unread inbox notifications badge for all authenticated roles
+  const unreadInboxCount = userId ? await getUnreadNotificationsCount(userId) : 0;
+
+  const items = getNavItems(role, pendingCount, unreadInboxCount);
 
   return (
     <DashboardLayoutClient
@@ -92,11 +96,13 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   );
 }
 
-function getNavItems(role: Role, pendingCount = 0): NavItem[] {
+function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavItem[] {
+  const inboxBadge = unreadInboxCount > 0 ? unreadInboxCount : undefined;
   switch (role) {
     case "student":
       return [
         { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
+  { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",                icon: "inbox", badgeCount: inboxBadge },
         { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/dashboard/academic-history",   segment: "academic-history",    label: "Academic History",     icon: "history" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
@@ -108,16 +114,18 @@ function getNavItems(role: Role, pendingCount = 0): NavItem[] {
     case "advisor":
       return [
         { href: "/dashboard",                    segment: null,                 label: "Overview",       icon: "dashboard" },
+  { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",          icon: "inbox", badgeCount: inboxBadge },
         { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
         { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
-        { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports" },
+        { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",        icon: "profile" },
       ];
 
     case "admin":
       return [
         { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
+  { href: "/dashboard/inbox",                 segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
