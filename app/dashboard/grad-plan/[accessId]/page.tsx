@@ -19,6 +19,13 @@ interface GradPlanDetails {
   programs: Array<{ id: number; name: string }>;
 }
 
+interface Event {
+  id: string;
+  type: 'Major/Minor Application' | 'Internship';
+  title: string;
+  afterTerm: number;
+}
+
 interface Term {
   term: string;
   notes?: string;
@@ -46,6 +53,7 @@ export default function EditGradPlanPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPlanData, setCurrentPlanData] = React.useState<Term[] | null>(null);
+  const [currentEvents, setCurrentEvents] = React.useState<Event[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = React.useState(true);
   const [userRole, setUserRole] = React.useState<Role | null>(null);
@@ -73,6 +81,13 @@ export default function EditGradPlanPage() {
 
   const handlePlanUpdate = (updatedPlan: Term[]) => {
     setCurrentPlanData(updatedPlan);
+  };
+
+  const handleSave = (updatedPlan: Term[], events: Event[]) => {
+    setCurrentPlanData(updatedPlan);
+    setCurrentEvents(events);
+    showSnackbar('Plan saved! Events are saved locally.', 'success');
+    // TODO: In the future, save events to database
   };
 
   // Check if user has access to this graduation plan
@@ -389,6 +404,7 @@ export default function EditGradPlanPage() {
               plan={raw as Record<string, unknown>}
               isEditMode={isEditMode}
               onPlanUpdate={handlePlanUpdate}
+              onSave={handleSave}
             />
           );
         })()}

@@ -4,12 +4,25 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Chip from '@mui/material/Chip';
 import EditIcon from '@mui/icons-material/Edit';
+import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
+import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
+import AddIcon from '@mui/icons-material/Add';
+import EventIcon from '@mui/icons-material/Event';
+import WorkIcon from '@mui/icons-material/Work';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
@@ -380,6 +393,13 @@ interface Course {
   fulfills?: string[];
 }
 
+interface Event {
+  id: string;
+  type: 'Major/Minor Application' | 'Internship';
+  title: string;
+  afterTerm: number; // Which term this event comes after
+}
+
 interface Term {
   term: string;
   notes?: string;
@@ -391,6 +411,7 @@ interface GraduationPlannerProps {
   plan?: Record<string, unknown> | GraduationPlan | Term[];
   isEditMode?: boolean;
   onPlanUpdate?: (updatedPlan: Term[]) => void;
+  onSave?: (updatedPlan: Term[], events: Event[]) => void;
   studentProfile?: {
     profile_id: string;
     university_id: number;
@@ -507,7 +528,7 @@ function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex
   );
 }
 
-export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpdate }: Readonly<GraduationPlannerProps>) {
+export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpdate, onSave }: Readonly<GraduationPlannerProps>) {
 
   // State for managing plan data when in edit mode
   const [editablePlanData, setEditablePlanData] = useState<Term[]>([]);
@@ -516,6 +537,15 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   // Track moved courses and modified terms for styling
   const [movedCourses, setMovedCourses] = useState<Set<string>>(new Set());
   const [modifiedTerms, setModifiedTerms] = useState<Set<number>>(new Set());
+  // View mode state
+  const [isSpaceView, setIsSpaceView] = useState(false);
+  // Events state
+  const [events, setEvents] = useState<Event[]>([]);
+  const [showEventDialog, setShowEventDialog] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [newEventType, setNewEventType] = useState<'Major/Minor Application' | 'Internship'>('Major/Minor Application');
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventAfterTerm, setNewEventAfterTerm] = useState<number>(1);
 
   // Set up DnD sensors
   const sensors = useSensors(
@@ -605,6 +635,50 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     }
   };
 
+  // Event management functions
+  const handleOpenEventDialog = (event?: Event) => {
+    if (event) {
+      // Editing existing event
+      setEditingEvent(event);
+      setNewEventType(event.type);
+      setNewEventTitle(event.title);
+      setNewEventAfterTerm(event.afterTerm);
+    } else {
+      // Creating new event
+      setEditingEvent(null);
+      setNewEventType('Major/Minor Application');
+      setNewEventTitle('');
+      setNewEventAfterTerm(1);
+    }
+    setShowEventDialog(true);
+  };
+
+  const handleSaveEvent = () => {
+    if (editingEvent) {
+      // Update existing event
+      setEvents(events.map(e =>
+        e.id === editingEvent.id
+          ? { ...e, type: newEventType, title: newEventTitle || newEventType, afterTerm: newEventAfterTerm }
+          : e
+      ));
+    } else {
+      // Create new event
+      const newEvent: Event = {
+        id: `event-${Date.now()}`,
+        type: newEventType,
+        title: newEventTitle || newEventType,
+        afterTerm: newEventAfterTerm
+      };
+      setEvents([...events, newEvent]);
+    }
+    setShowEventDialog(false);
+    setEditingEvent(null);
+    setNewEventTitle('');
+    setNewEventAfterTerm(1);
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(events.filter(e => e.id !== eventId));
   // Derive a unique, ordered list of requirements fulfilled across the entire plan
   const fulfilledRequirements = useMemo(() => {
     const seen = new Set<string>();
@@ -787,15 +861,35 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
           border: '2px solid var(--action-edit)',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 2,
           boxShadow: '0 2px 8px rgba(255, 165, 0, 0.2)'
         }}>
-          <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
-            Edit Mode Active
-          </Typography>
-          <Typography variant="body2" className="font-body" color="text.secondary">
-            Make changes to your graduation plan. Click "Submit for Approval" when finished.
-          </Typography>
+          <Box>
+            <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
+              Edit Mode Active
+            </Typography>
+            <Typography variant="body2" className="font-body" color="text.secondary">
+              Make changes to your graduation plan. Click "Submit for Approval" when finished.
+            </Typography>
+          </Box>
+          {onSave && (
+            <Button
+              variant="contained"
+              startIcon={<SaveIcon />}
+              onClick={() => onSave(editablePlanData, events)}
+              className="font-body-semi"
+              sx={{
+                backgroundColor: 'var(--primary)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'var(--hover-green)'
+                }
+              }}
+            >
+              Save
+            </Button>
+          )}
         </Box>
       )}
 
@@ -803,12 +897,33 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       {activeCourse && isEditMode && <TrashZone />}
       
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-          <Typography variant="body1" className="font-body">
-            Terms Planned: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.length}</Box>
-          </Typography>
-          {Boolean(durationYears) && (
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Typography variant="body1" className="font-body">
+              Terms Planned: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.length}</Box>
+            </Typography>
+            {Boolean(durationYears) && (
+              <Typography variant="body1" className="font-body">
+                {durationYears} years
+              </Typography>
+            )}
+            <Typography variant="body1" className="font-body">
+              Total Credits: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.reduce((total, term) => {
+                const termCredits = term.credits_planned ||
+                                   (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+                return total + termCredits;
+              }, 0)}</Box>
+            </Typography>
+          </Box>
+
+          {/* View Mode Toggle and Add Event Button */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {isEditMode && (
+              <Button
+                variant="contained"
+                onClick={() => handleOpenEventDialog()}
+                startIcon={<AddIcon />}
+                className="font-body-semi"
               Years: <Box component="span" sx={{ fontWeight: 'bold' }}>{durationYears}</Box> 
             </Typography>
           )}
@@ -913,21 +1028,459 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                       Term {term.term || index + 1}
               <Box
                 sx={{
-                  p: 3,
-                  border: '2px solid var(--border)',
-                  borderRadius: 2,
-                  backgroundColor: 'var(--muted)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  minHeight: '200px' // Ensure consistent height
+                  backgroundColor: '#1A1A1A',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#000000',
+                  }
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
+                Add Event
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              onClick={() => setIsSpaceView(!isSpaceView)}
+              startIcon={isSpaceView ? <ZoomInMapIcon /> : <ZoomOutMapIcon />}
+              className="font-body-semi"
+              sx={{
+                borderColor: '#1A1A1A',
+                color: '#1A1A1A',
+                '&:hover': {
+                  borderColor: '#000000',
+                  backgroundColor: 'rgba(26, 26, 26, 0.08)',
+                }
+              }}
+            >
+              {isSpaceView ? 'Detail View' : 'Zoom Out'}
+            </Button>
+          </Box>
+        </Box>
+        
+        {/* Display terms with events between them */}
+        {isSpaceView ? (
+          // Space View: 4 columns grid with events
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 2,
+            '@media (max-width: 1200px)': {
+              gridTemplateColumns: 'repeat(3, 1fr)'
+            },
+            '@media (max-width: 900px)': {
+              gridTemplateColumns: 'repeat(2, 1fr)'
+            }
+          }}>
+            {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
+              const termNumber = index + 1;
+              const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
+              const termCredits = term.credits_planned ||
+                                 (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+
+              // Add term card
+              acc.push(
+                <Box
+                  key={`term-${index}`}
+                  sx={{
+                    p: 2,
+                    border: '1px solid var(--border)',
+                    borderRadius: 2,
+                    backgroundColor: 'white',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    minHeight: '150px',
+                  }}
+                >
+                  <Typography variant="subtitle2" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 700, mb: 1, fontSize: '0.9rem' }}>
                     Term {term.term || index + 1}
                   </Typography>
-                  <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+                  <Typography variant="caption" className="font-body" sx={{ color: 'var(--primary)', fontWeight: 600, display: 'block', mb: 1.5 }}>
                     {termCredits} Credits
                   </Typography>
+
+                  {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {term.courses.map((course: Course, courseIndex: number) => {
+                        if (!course.code || !course.title) return null;
+                        return (
+                          <Typography
+                            key={`space-term-${index}-course-${courseIndex}`}
+                            variant="caption"
+                            className="font-body"
+                            sx={{
+                              fontSize: '0.75rem',
+                              color: 'text.secondary',
+                              lineHeight: 1.4
+                            }}
+                          >
+                            {course.code}
+                          </Typography>
+                        );
+                      })}
+                    </Box>
+                  ) : (
+                    <Typography variant="caption" className="font-body" color="text.secondary">
+                      No courses
+                    </Typography>
+                  )}
+                </Box>
+              );
+
+              // Add events after this term (as individual grid items)
+              if (eventsAfterThisTerm.length > 0) {
+                eventsAfterThisTerm.forEach((event) => {
+                  const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
+                  const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
+
+                  acc.push(
+                    <Box
+                      key={event.id}
+                      sx={{
+                        p: 1.5,
+                        backgroundColor: eventColor,
+                        color: 'white',
+                        borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        minHeight: '150px',
+                        position: 'relative',
+                      }}
+                    >
+                      <EventIconComponent sx={{ fontSize: 32, mb: 1 }} />
+                      <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '0.85rem', textAlign: 'center', mb: 0.5 }}>
+                        {event.title}
+                      </Typography>
+                      <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.65rem', textAlign: 'center' }}>
+                        {event.type}
+                      </Typography>
+                      {isEditMode && (
+                        <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 0.5 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenEventDialog(event)}
+                            sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteEvent(event.id)}
+                            sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                });
+              }
+
+              return acc;
+            }, [])}
+          </Box>
+        ) : (
+          // Detail View: Render pairs of terms side-by-side, with events spanning full width
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
+              const termNumber = index + 1;
+              const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
+              const termCredits = term.credits_planned ||
+                                 (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+
+              // Render term card
+              const termCard = (
+                <Box key={`term-wrapper-${index}`} sx={{ flex: '1 1 48%' }}>
+                  <DroppableTerm term={term} termIndex={index} isEditMode={isEditMode} modifiedTerms={modifiedTerms}>
+                    <Box
+                      sx={{
+                        p: 3,
+                        border: '2px solid var(--border)',
+                        borderRadius: 2,
+                        backgroundColor: 'var(--muted)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        minHeight: '200px',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
+                          Term {term.term || index + 1}
+                        </Typography>
+                        <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+                          {termCredits} Credits
+                        </Typography>
+                      </Box>
+
+                      {term.notes && (
+                        <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
+                          <Typography variant="body2" className="font-body" color="text.secondary">
+                            {term.notes}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
+                        <Box>
+                          <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
+                            Courses ({term.courses.length}):
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {term.courses.map((course: Course, courseIndex: number) => {
+                              if (!course.code || !course.title) {
+                                console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course);
+                                return null;
+                              }
+
+                              return (
+                                <DraggableCourse
+                                  key={`term-${index}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
+                                  course={course}
+                                  courseIndex={courseIndex}
+                                  termIndex={index}
+                                  isEditMode={isEditMode}
+                                  currentPlanData={currentPlanData}
+                                  onMoveCourse={moveCourse}
+                                  movedCourses={movedCourses}
+                                />
+                              );
+                            }).filter(Boolean)}
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" className="font-body" color="text.secondary">
+                          No courses defined for this term
+                        </Typography>
+                      )}
+                    </Box>
+                  </DroppableTerm>
+                </Box>
+              );
+
+              // Group terms in pairs (2 columns)
+              if (index % 2 === 0) {
+                // Start of a new row
+                const nextTerm = currentPlanData[index + 1];
+                const nextTermNumber = index + 2;
+                const nextTermCredits = nextTerm ? (nextTerm.credits_planned || (nextTerm.courses ? nextTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0)) : 0;
+                const nextEventsAfterTerm = nextTerm ? events.filter(e => e.afterTerm === nextTermNumber) : [];
+
+                const nextTermCard = nextTerm ? (
+                  <Box key={`term-wrapper-${index + 1}`} sx={{ flex: '1 1 48%' }}>
+                    <DroppableTerm term={nextTerm} termIndex={index + 1} isEditMode={isEditMode} modifiedTerms={modifiedTerms}>
+                      <Box
+                        sx={{
+                          p: 3,
+                          border: '2px solid var(--border)',
+                          borderRadius: 2,
+                          backgroundColor: 'var(--muted)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          minHeight: '200px',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
+                            Term {nextTerm.term || index + 2}
+                          </Typography>
+                          <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+                            {nextTermCredits} Credits
+                          </Typography>
+                        </Box>
+
+                        {nextTerm.notes && (
+                          <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
+                            <Typography variant="body2" className="font-body" color="text.secondary">
+                              {nextTerm.notes}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {nextTerm.courses && Array.isArray(nextTerm.courses) && nextTerm.courses.length > 0 ? (
+                          <Box>
+                            <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
+                              Courses ({nextTerm.courses.length}):
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              {nextTerm.courses.map((course: Course, courseIndex: number) => {
+                                if (!course.code || !course.title) return null;
+
+                                return (
+                                  <DraggableCourse
+                                    key={`term-${index + 1}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
+                                    course={course}
+                                    courseIndex={courseIndex}
+                                    termIndex={index + 1}
+                                    isEditMode={isEditMode}
+                                    currentPlanData={currentPlanData}
+                                    onMoveCourse={moveCourse}
+                                    movedCourses={movedCourses}
+                                  />
+                                );
+                              }).filter(Boolean)}
+                            </Box>
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" className="font-body" color="text.secondary">
+                            No courses defined for this term
+                          </Typography>
+                        )}
+                      </Box>
+                    </DroppableTerm>
+                  </Box>
+                ) : null;
+
+                // Render events after first term
+                const firstTermEvents = eventsAfterThisTerm.length > 0 ? (
+                  <Box key={`events-after-${index}`} sx={{ width: '100%' }}>
+                    {eventsAfterThisTerm.map((event) => {
+                      const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
+                      const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
+
+                      return (
+                        <Box
+                          key={event.id}
+                          sx={{
+                            p: 1.5,
+                            py: 1,
+                            backgroundColor: eventColor,
+                            color: 'white',
+                            borderRadius: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            mb: 2,
+                            minHeight: '60px',
+                            maxHeight: '60px',
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <EventIconComponent sx={{ fontSize: 24 }} />
+                            <Box>
+                              <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                                {event.title}
+                              </Typography>
+                              <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.7rem' }}>
+                                {event.type}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          {isEditMode && (
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenEventDialog(event)}
+                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteEvent(event.id)}
+                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : null;
+
+                // Render events after second term
+                const secondTermEvents = nextTerm && nextEventsAfterTerm.length > 0 ? (
+                  <Box key={`events-after-${index + 1}`} sx={{ width: '100%' }}>
+                    {nextEventsAfterTerm.map((event) => {
+                      const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
+                      const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
+
+                      return (
+                        <Box
+                          key={event.id}
+                          sx={{
+                            p: 1.5,
+                            py: 1,
+                            backgroundColor: eventColor,
+                            color: 'white',
+                            borderRadius: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            mb: 2,
+                            minHeight: '60px',
+                            maxHeight: '60px',
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <EventIconComponent sx={{ fontSize: 24 }} />
+                            <Box>
+                              <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                                {event.title}
+                              </Typography>
+                              <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.7rem' }}>
+                                {event.type}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          {isEditMode && (
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenEventDialog(event)}
+                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteEvent(event.id)}
+                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : null;
+
+                // Add row with 2 terms
+                acc.push(
+                  <Box key={`row-${index}`} sx={{ display: 'flex', gap: 3, '@media (max-width: 900px)': { flexDirection: 'column' } }}>
+                    {termCard}
+                    {nextTermCard}
+                  </Box>
+                );
+
+                // Add events after first term
+                if (firstTermEvents) acc.push(firstTermEvents);
+                // Add events after second term
+                if (secondTermEvents) acc.push(secondTermEvents);
+              }
+              // Skip odd indices as they're handled in the even index case
+
+              return acc;
+            }, [])}
+          </Box>
+        )}
+      </Box>
+
+      <br />
+      {assumptions && assumptions.length > 0 && (
+        <Box sx={{ mb: 3, p: 2, backgroundColor: 'var(--primary-15)', borderRadius: 3, border: '1px solid var(--primary)' }}>
+          <Typography variant="h6" className="font-header-bold" gutterBottom>
+            Plan Assumptions:
+          </Typography>
+          <Box component="ul" sx={{ m: 0, pl: 2 }}>
+            {assumptions.map((assumption) => (
+              <Typography key={assumption} component="li" variant="body2" className="font-body">
+                {assumption}
                 </Box>
                 
                 {term.notes && (
@@ -1014,6 +1567,152 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
           ) : null}
         </DragOverlay>
       </Box>
+
+      {/* Drag Overlay for visual feedback */}
+      <DragOverlay>
+        {activeCourse ? (
+          <Box
+            sx={{
+              p: 2,
+              backgroundColor: 'white',
+              borderRadius: 2,
+              border: '2px solid var(--primary)',
+              minHeight: '80px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              opacity: 0.9,
+              transform: 'rotate(5deg)',
+              boxShadow: '0 8px 32px rgba(18, 249, 135, 0.3)',
+            }}
+          >
+            <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {activeCourse.code}: {activeCourse.title}
+            </Typography>
+            <Typography variant="caption" className="font-body" color="text.secondary">
+              {activeCourse.credits} credits
+            </Typography>
+          </Box>
+        ) : null}
+      </DragOverlay>
+
+      {/* Add Event Dialog */}
+      <Dialog open={showEventDialog} onClose={() => setShowEventDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle className="font-header-bold">{editingEvent ? 'Edit Event' : 'Add Event'}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel
+                className="font-body"
+                sx={{
+                  '&.Mui-focused': {
+                    color: 'var(--primary-dark)',
+                  },
+                }}
+              >
+                Event Type
+              </InputLabel>
+              <Select
+                value={newEventType}
+                label="Event Type"
+                onChange={(e) => setNewEventType(e.target.value as 'Major/Minor Application' | 'Internship')}
+                className="font-body"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--border)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                  },
+                }}
+              >
+                <MenuItem value="Major/Minor Application" className="font-body">Major/Minor Application</MenuItem>
+                <MenuItem value="Internship" className="font-body">Internship</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Event Title (Optional)"
+              value={newEventTitle}
+              onChange={(e) => setNewEventTitle(e.target.value)}
+              placeholder={newEventType}
+              className="font-body"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'var(--border)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'var(--primary)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'var(--primary)',
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: 'var(--primary-dark)',
+                },
+              }}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel
+                className="font-body"
+                sx={{
+                  '&.Mui-focused': {
+                    color: 'var(--primary-dark)',
+                  },
+                }}
+              >
+                After Term
+              </InputLabel>
+              <Select
+                value={newEventAfterTerm}
+                label="After Term"
+                onChange={(e) => setNewEventAfterTerm(e.target.value as number)}
+                className="font-body"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--border)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                  },
+                }}
+              >
+                {currentPlanData.map((_, index) => (
+                  <MenuItem key={index + 1} value={index + 1} className="font-body">
+                    After Term {index + 1}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEventDialog(false)} className="font-body-semi">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveEvent}
+            variant="contained"
+            className="font-body-semi"
+            sx={{
+              backgroundColor: 'var(--primary)',
+              '&:hover': { backgroundColor: 'var(--hover-green)' }
+            }}
+          >
+            {editingEvent ? 'Save Changes' : 'Add Event'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DndContext>
   );
 }

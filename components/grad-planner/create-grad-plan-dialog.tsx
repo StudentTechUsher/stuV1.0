@@ -30,6 +30,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { ProgramRow } from '@/types/program';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
+import { type SelectionMode } from '@/lib/selectionMode';
 import {
   parseRequirementsFromGenEd,
   parseProgramRequirements,
@@ -85,6 +86,11 @@ export default function CreateGradPlanDialog({
   prompt
 }: Readonly<CreateGradPlanDialogProps>) {
 
+  // State: institution selection mode and effective mode
+  const [institutionMode, setInstitutionMode] = useState<SelectionMode | null>(null);
+  const [loadingInstitutionMode, setLoadingInstitutionMode] = useState(true);
+  const [userChosenMode, setUserChosenMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
+
   // State: selected courses per requirement (array because we may need multiple dropdowns)
   const [selectedCourses, setSelectedCourses] = useState<Record<string, string[]>>({});
   // State: selected courses for program requirements
@@ -107,54 +113,92 @@ export default function CreateGradPlanDialog({
     subtitle: 'AI is organizing your courses into semesters...'
   });
 
-  // User-added elective courses (manually specified by user to fulfill elective requirements)
-  interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
-  const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
-  const [showElectiveForm, setShowElectiveForm] = useState(false);
-  const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
-  const [electiveError, setElectiveError] = useState<string | null>(null);
+// --- Institution selection mode (fetch on open) ---
+useEffect(() => {
+  async function fetchInstitutionMode() {
+    try {
+      const profileRes = await fetch('/api/my-profile');
+      if (!profileRes.ok) throw new Error('Failed to fetch profile');
+      const profileData = await profileRes.json();
+      const universityId = profileData.university_id;
 
-  // GenEd sequencing strategy: 'early' or 'balanced'
-  type GenEdStrategy = 'early' | 'balanced';
-  const [genEdStrategy, setGenEdStrategy] = useState<GenEdStrategy>('balanced');
-  const handleChangeGenEdStrategy = (_: unknown, value: GenEdStrategy | null) => {
-    if (value) setGenEdStrategy(value);
-  };
-
-  const resetElectiveDraft = () => {
-    setElectiveDraft({ code: '', title: '', credits: '' });
-    setElectiveError(null);
-  };
-
-  const handleAddElective = () => {
-    const code = electiveDraft.code.trim().toUpperCase();
-    const title = electiveDraft.title.trim();
-    const creditsNum = parseFloat(electiveDraft.credits);
-
-    if (!code || !title) {
-      setElectiveError('Code and title are required.');
-      return;
+      const settingsRes = await fetch(`/api/institutions/${universityId}/settings`);
+      if (!settingsRes.ok) throw new Error('Failed to fetch settings');
+      const settingsData = await settingsRes.json();
+      setInstitutionMode(settingsData.selection_mode || 'MANUAL');
+    } catch (error) {
+      console.error('Error fetching institution mode:', error);
+      setInstitutionMode('MANUAL'); // default fallback
+    } finally {
+      setLoadingInstitutionMode(false);
     }
-    if (isNaN(creditsNum) || creditsNum <= 0) {
-      setElectiveError('Credits must be a positive number.');
-      return;
-    }
-    // Optional: restrict to quarter or half credit increments (commented out)
-    // if ((creditsNum * 2) % 1 !== 0) { setElectiveError('Use increments of 0.5 credits.'); return; }
-    if (userElectives.some(e => e.code === code)) {
-      setElectiveError('This course code has already been added.');
-      return;
-    }
-    const normalizedCredits = parseFloat(creditsNum.toFixed(2));
-    const newCourse: UserElectiveCourse = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, code, title, credits: normalizedCredits };
-    setUserElectives(prev => [...prev, newCourse]);
-    resetElectiveDraft();
-    setShowElectiveForm(false);
-  };
+  }
 
-  const handleRemoveElective = (id: string) => {
-    setUserElectives(prev => prev.filter(c => c.id !== id));
+  if (open) {
+    fetchInstitutionMode();
+  }
+}, [open]);
+
+// Determine effective mode
+const effectiveMode: 'AUTO' | 'MANUAL' = useMemo(() => {
+  if (!institutionMode) return 'MANUAL';
+  if (institutionMode === 'AUTO') return 'AUTO';
+  if (institutionMode === 'MANUAL') return 'MANUAL';
+  // institutionMode === 'CHOICE'
+  return userChosenMode;
+}, [institutionMode, userChosenMode]);
+
+// --- User-added elective courses & GenEd strategy ---
+interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
+const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
+const [showElectiveForm, setShowElectiveForm] = useState(false);
+const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
+const [electiveError, setElectiveError] = useState<string | null>(null);
+
+// GenEd sequencing strategy: 'early' or 'balanced'
+type GenEdStrategy = 'early' | 'balanced';
+const [genEdStrategy, setGenEdStrategy] = useState<GenEdStrategy>('balanced');
+const handleChangeGenEdStrategy = (_: unknown, value: GenEdStrategy | null) => {
+  if (value) setGenEdStrategy(value);
+};
+
+const resetElectiveDraft = () => {
+  setElectiveDraft({ code: '', title: '', credits: '' });
+  setElectiveError(null);
+};
+
+const handleAddElective = () => {
+  const code = electiveDraft.code.trim().toUpperCase();
+  const title = electiveDraft.title.trim();
+  const creditsNum = parseFloat(electiveDraft.credits);
+
+  if (!code || !title) {
+    setElectiveError('Code and title are required.');
+    return;
+  }
+  if (isNaN(creditsNum) || creditsNum <= 0) {
+    setElectiveError('Credits must be a positive number.');
+    return;
+  }
+  if (userElectives.some(e => e.code === code)) {
+    setElectiveError('This course code has already been added.');
+    return;
+  }
+  const normalizedCredits = parseFloat(creditsNum.toFixed(2));
+  const newCourse: UserElectiveCourse = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    code,
+    title,
+    credits: normalizedCredits
   };
+  setUserElectives(prev => [...prev, newCourse]);
+  resetElectiveDraft();
+  setShowElectiveForm(false);
+};
+
+const handleRemoveElective = (id: string) => {
+  setUserElectives(prev => prev.filter(c => c.id !== id));
+};
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
@@ -349,18 +393,22 @@ export default function CreateGradPlanDialog({
     });
   };
 
-  // Check if all required dropdowns are filled
+  // Check if all required dropdowns are filled (only when effectiveMode is MANUAL)
   const areAllDropdownsFilled = useMemo(() => {
     // Require at least one program to be selected
     if (selectedPrograms.size === 0) return false;
-    
+
+    // In AUTO mode, don't require dropdowns to be filled
+    if (effectiveMode === 'AUTO') return true;
+
+    // In MANUAL mode, check all dropdowns
     // Check GenEd requirements
     const genEdFilled = requirements.every(req => {
       if (!req.requirement?.rule) return true; // Skip if no rule
-      
+
       const dropdownCount = getDropdownCount(req);
       if (dropdownCount === 0) return true; // No dropdowns needed
-      
+
       const selected = selectedCourses[req.subtitle] || [];
       return selected.length >= dropdownCount && selected.every(course => course && course.trim() !== '');
     });
@@ -390,7 +438,7 @@ export default function CreateGradPlanDialog({
     });
 
     return genEdFilled && programsFilled;
-  }, [selectedCourses, selectedProgramCourses, selectedPrograms, requirements, programRequirements]);
+  }, [selectedCourses, selectedProgramCourses, selectedPrograms, requirements, programRequirements, effectiveMode]);
 
   // Generate selected classes JSON
   const generateSelectedClassesJson = useMemo(() => {
@@ -529,7 +577,12 @@ export default function CreateGradPlanDialog({
     setPlanCreationError(null);
 
     try {
-      
+      // Attach the effective mode to the payload
+      const payloadWithMode = {
+        ...generateSelectedClassesJson,
+        selectionMode: effectiveMode
+      };
+
       // Step 1: Send the course data to AI for semester organization
       // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
       const strategyText = genEdStrategy === 'early'
@@ -543,7 +596,7 @@ export default function CreateGradPlanDialog({
         showSnackbar(`AI Planning Error: ${aiResult.message}`, 'error');
         return;
       }
-      
+
       if (aiResult.success && aiResult.accessId) {
         // Call the onPlanCreated callback with the AI-generated plan
         if (onPlanCreated && aiResult.semesterPlan) {
@@ -553,7 +606,7 @@ export default function CreateGradPlanDialog({
           onPlanCreated(aiResult.semesterPlan as Term[], programIds, aiResult.accessId);
         }
         showSnackbar('Semester plan generated successfully!', 'success');
-        
+
         // Close dialog on success
         onClose();
       } else {
@@ -631,12 +684,36 @@ export default function CreateGradPlanDialog({
         subtitle: 'Balancing credits across semesters...'
       },
       {
-        title: 'Verifying Output Structure',
-        subtitle: 'Ensuring plan meets all requirements...'
+        title: 'Checking Prerequisites',
+        subtitle: 'Ensuring courses are in the right order...'
       },
       {
-        title: 'Finalizing Details',
-        subtitle: 'Adding checkpoints and graduation timeline...'
+        title: 'Distributing Workload',
+        subtitle: 'Creating a balanced schedule across terms...'
+      },
+      {
+        title: 'Validating Degree Requirements',
+        subtitle: 'Making sure all requirements are fulfilled...'
+      },
+      {
+        title: 'Scheduling Core Courses',
+        subtitle: 'Placing major and minor requirements...'
+      },
+      {
+        title: 'Adding Electives',
+        subtitle: 'Fitting in your elective choices...'
+      },
+      {
+        title: 'Checking Course Availability',
+        subtitle: 'Confirming typical offering patterns...'
+      },
+      {
+        title: 'Finalizing Timeline',
+        subtitle: 'Building your path to graduation...'
+      },
+      {
+        title: 'Almost Done',
+        subtitle: 'Wrapping up your personalized plan...'
       }
     ];
 
@@ -646,7 +723,7 @@ export default function CreateGradPlanDialog({
     const interval = setInterval(() => {
       currentIndex = (currentIndex + 1) % messages.length;
       setLoadingMessage(messages[currentIndex]);
-    }, 35000); // 35 seconds
+    }, 5000); // 5 seconds
 
     return () => clearInterval(interval);
   }, [isCreatingPlan]);
@@ -675,6 +752,91 @@ export default function CreateGradPlanDialog({
       </DialogTitle>
 
       <DialogContent>
+
+        {/* Loading skeleton during institution mode fetch */}
+        {loadingInstitutionMode && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+            <CircularProgress size={40} />
+          </Box>
+        )}
+
+        {/* Mode toggle for CHOICE institution mode */}
+        {!loadingInstitutionMode && institutionMode === 'CHOICE' && (
+          <Box sx={{ mb: 3, p: 3, bgcolor: 'var(--muted)', borderRadius: 2 }}>
+            <Typography variant="subtitle1" className="font-header-bold" sx={{ mb: 2 }}>
+              Choose Your Plan Mode
+            </Typography>
+
+            {/* Custom toggle buttons */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <Button
+                onClick={() => setUserChosenMode('AUTO')}
+                disabled={isCreatingPlan}
+                variant={userChosenMode === 'AUTO' ? 'contained' : 'outlined'}
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  backgroundColor: userChosenMode === 'AUTO' ? '#1A1A1A' : 'transparent',
+                  color: userChosenMode === 'AUTO' ? 'white' : '#1A1A1A',
+                  borderColor: '#1A1A1A',
+                  fontWeight: 600,
+                  '&:hover': {
+                    backgroundColor: userChosenMode === 'AUTO' ? '#333333' : 'rgba(26, 26, 26, 0.04)',
+                    borderColor: '#1A1A1A',
+                  },
+                  '&:disabled': {
+                    backgroundColor: userChosenMode === 'AUTO' ? '#666666' : 'transparent',
+                    color: userChosenMode === 'AUTO' ? 'white' : '#999999',
+                    borderColor: '#999999',
+                  }
+                }}
+                className="font-body-semi"
+              >
+                AUTO
+              </Button>
+              <Button
+                onClick={() => setUserChosenMode('MANUAL')}
+                disabled={isCreatingPlan}
+                variant={userChosenMode === 'MANUAL' ? 'contained' : 'outlined'}
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  backgroundColor: userChosenMode === 'MANUAL' ? '#1A1A1A' : 'transparent',
+                  color: userChosenMode === 'MANUAL' ? 'white' : '#1A1A1A',
+                  borderColor: '#1A1A1A',
+                  fontWeight: 600,
+                  '&:hover': {
+                    backgroundColor: userChosenMode === 'MANUAL' ? '#333333' : 'rgba(26, 26, 26, 0.04)',
+                    borderColor: '#1A1A1A',
+                  },
+                  '&:disabled': {
+                    backgroundColor: userChosenMode === 'MANUAL' ? '#666666' : 'transparent',
+                    color: userChosenMode === 'MANUAL' ? 'white' : '#999999',
+                    borderColor: '#999999',
+                  }
+                }}
+                className="font-body-semi"
+              >
+                MANUAL
+              </Button>
+            </Box>
+
+            {/* Description */}
+            <Typography variant="body2" className="font-body" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+              {userChosenMode === 'AUTO'
+                ? '✨ Courses will be auto-selected by STU. You can edit after creation.'
+                : '✏️ You will choose from available course options before creating the plan.'}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Informational note for AUTO mode */}
+        {!loadingInstitutionMode && effectiveMode === 'AUTO' && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Courses will be auto-selected by STU based on your major/minor and preferences. You can edit and swap courses after plan creation.
+          </Alert>
+        )}
+
         {/* GenEd Strategy Selection */}
         <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
@@ -800,83 +962,85 @@ export default function CreateGradPlanDialog({
           </Box>
 
           {/* General Education Requirements */}
-          <Box>
-            <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
+          {effectiveMode === 'MANUAL' && (
+            <Box>
+              <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
 
-            {requirements && requirements.length ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                {requirements.map((req, idx) => {
-                  const dropdownCount = getDropdownCount(req);
-                  const courses = requirementCoursesMap[req.subtitle] || [];
-                  const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+              {requirements && requirements.length ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  {requirements.map((req, idx) => {
+                    const dropdownCount = getDropdownCount(req);
+                    const courses = requirementCoursesMap[req.subtitle] || [];
+                    const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
 
-                  return (
-                    <Box key={`${req.subtitle}-${idx}`} sx={{ py: 2 }}>
-                      <Typography variant="subtitle1" className="font-header" sx={{ mb: 1 }}>
-                        {req.subtitle}
-                        {isAutoSelected && (
-                          <Chip
-                            label="Auto-selected"
-                            size="small"
-                            className="font-body"
-                            sx={{
-                              ml: 1,
-                              backgroundColor: 'var(--primary)',
-                              color: 'white'
-                            }}
-                          />
-                        )}
-                      </Typography>
-                      {isAutoSelected && (
-                        <Typography variant="body2" className="font-body" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
-                          All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                    return (
+                      <Box key={`${req.subtitle}-${idx}`} sx={{ py: 2 }}>
+                        <Typography variant="subtitle1" className="font-header" sx={{ mb: 1 }}>
+                          {req.subtitle}
+                          {isAutoSelected && (
+                            <Chip
+                              label="Auto-selected"
+                              size="small"
+                              className="font-body"
+                              sx={{
+                                ml: 1,
+                                backgroundColor: 'var(--primary)',
+                                color: 'white'
+                              }}
+                            />
+                          )}
                         </Typography>
-                      )}
+                        {isAutoSelected && (
+                          <Typography variant="body2" className="font-body" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                            All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                          </Typography>
+                        )}
 
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {Array.from({ length: dropdownCount }).map((_, slot) => (
-                          <FormControl key={`${req.subtitle}-slot-${slot}`} fullWidth>
-                            <InputLabel className="font-body">
-                              {dropdownCount > 1
-                                ? `${req.subtitle} — Select course #${slot + 1}`
-                                : req.subtitle}
-                            </InputLabel>
-                            <Select
-                              value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
-                              label={
-                                dropdownCount > 1
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {Array.from({ length: dropdownCount }).map((_, slot) => (
+                            <FormControl key={`${req.subtitle}-slot-${slot}`} fullWidth>
+                              <InputLabel className="font-body">
+                                {dropdownCount > 1
                                   ? `${req.subtitle} — Select course #${slot + 1}`
-                                  : req.subtitle
-                              }
-                              disabled={isAutoSelected}
-                              onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
-                            >
-                              <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
-                              {courses && Array.isArray(courses) ? courses
-                                .filter(c => c.status !== 'retired' && c.credits != null)
-                                .map((c) => (
-                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code} className="font-body">
-                                  {c.code} — {c.title} ({creditText(c.credits)})
-                                </MenuItem>
-                              )) : null}
-                            </Select>
-                          </FormControl>
-                        ))}
-                      </Box>
+                                  : req.subtitle}
+                              </InputLabel>
+                              <Select
+                                value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
+                                label={
+                                  dropdownCount > 1
+                                    ? `${req.subtitle} — Select course #${slot + 1}`
+                                    : req.subtitle
+                                }
+                                disabled={isAutoSelected}
+                                onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
+                              >
+                                <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
+                                {courses && Array.isArray(courses) ? courses
+                                  .filter(c => c.status !== 'retired' && c.credits != null)
+                                  .map((c) => (
+                                  <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code} className="font-body">
+                                    {c.code} — {c.title} ({creditText(c.credits)})
+                                  </MenuItem>
+                                )) : null}
+                              </Select>
+                            </FormControl>
+                          ))}
+                        </Box>
 
-                      {/* Divider between requirement sections */}
-                      {idx < requirements.length - 1 && <Divider sx={{ mt: 2 }} />}
-                    </Box>
-                  );
-                })}
-              </Box>
-            ) : (
-              <Typography className="font-body">No general education requirements found</Typography>
-            )}
-          </Box>
+                        {/* Divider between requirement sections */}
+                        {idx < requirements.length - 1 && <Divider sx={{ mt: 2 }} />}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              ) : (
+                <Typography className="font-body">No general education requirements found</Typography>
+              )}
+            </Box>
+          )}
 
           {/* Selected Program Requirements */}
-          {selectedPrograms && selectedPrograms.size > 0 && (
+          {selectedPrograms && selectedPrograms.size > 0 && effectiveMode === 'MANUAL' && (
             <>
               {Array.from(selectedPrograms).map((programId) => {
                 const program = programsData?.find(p => p.id === programId);
@@ -887,7 +1051,7 @@ export default function CreateGradPlanDialog({
                     <Typography variant="h6" sx={{ mb: 2, color: 'success.main' }}>
                       {program.name} Requirements:
                     </Typography>
-                    
+
                     {programRequirements && programRequirements.length ? (
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         {getFlattenedRequirements(programRequirements, programId, getRequirementKey).map((item, idx) => {

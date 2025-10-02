@@ -50,7 +50,7 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
             .single();
 
           if (error) {
-            console.error('Error loading university:', error);
+            console.error('Error loading university:', error?.message || error);
             // Use default STU theme
             applyTheme(DEFAULT_THEME);
           } else if (universityData) {

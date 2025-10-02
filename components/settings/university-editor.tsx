@@ -19,11 +19,10 @@ export default function UniversityEditor() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [extractedColors, setExtractedColors] = useState<{
-    primary: string;
-    secondary: string;
-    accent: string;
-  }>({ primary: '', secondary: '', accent: '' });
+  const [brandUrl, setBrandUrl] = useState('');
+  const [isExtractingFromUrl, setIsExtractingFromUrl] = useState(false);
+  const [extractedColors, setExtractedColors] = useState<string[]>([]);
+  const [selectedExtractedColor, setSelectedExtractedColor] = useState<string | null>(null);
   const [tempColors, setTempColors] = useState({
     primary_color: '#12F987',
     secondary_color: '#0D8B56',
@@ -192,7 +191,8 @@ export default function UniversityEditor() {
     try {
       // Extract dominant colors (top 3)
       const colors = await extractDominantColors(file);
-      setExtractedColors(colors);
+      setExtractedColors([colors.primary, colors.secondary, colors.accent]);
+      setSelectedExtractedColor(null);
 
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop();
@@ -227,15 +227,68 @@ export default function UniversityEditor() {
     }
   };
 
-  const applyExtractedColors = () => {
-    if (extractedColors.primary) {
-      setTempColors(prev => ({
-        ...prev,
-        primary_color: extractedColors.primary,
-        secondary_color: extractedColors.secondary,
-        accent_color: extractedColors.accent,
-      }));
+  const extractColorsFromUrl = async () => {
+    if (!brandUrl.trim()) {
+      showToast({
+        title: "Invalid URL",
+        description: "Please enter a valid brand guidelines URL.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    setIsExtractingFromUrl(true);
+    try {
+      // Use a simple regex to find hex colors in the webpage
+      const response = await fetch(brandUrl, { mode: 'no-cors' });
+
+      // Since we can't read the response with no-cors, we'll use a proxy or fallback
+      // For now, let's create a simple API route to fetch and parse
+      const apiResponse = await fetch('/api/extract-colors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: brandUrl })
+      });
+
+      if (!apiResponse.ok) {
+        throw new Error('Failed to extract colors from URL');
+      }
+
+      const { colors } = await apiResponse.json();
+
+      if (colors && colors.length > 0) {
+        setExtractedColors(colors);
+        setSelectedExtractedColor(null);
+
+        showToast({
+          title: "Colors Extracted!",
+          description: `Found ${colors.length} colors from the brand page.`,
+        });
+      } else {
+        throw new Error('No colors found');
+      }
+
+    } catch (error) {
+      console.error('Error extracting colors from URL:', error);
+      showToast({
+        title: "Extraction Failed",
+        description: "Could not extract colors from the URL. Try uploading a logo instead.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExtractingFromUrl(false);
+    }
+  };
+
+  const assignColorToField = (color: string, field: keyof typeof tempColors) => {
+    setTempColors(prev => ({
+      ...prev,
+      [field]: color,
+    }));
+    showToast({
+      title: "Color Assigned",
+      description: `${color} assigned to ${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+    });
   };
 
   const handleSaveTheme = async () => {
@@ -359,9 +412,97 @@ export default function UniversityEditor() {
 
         {selectedUniversity && (
           <>
+            {/* Brand URL Extractor */}
+            <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Palette className="h-5 w-5 text-blue-600" />
+                <Label htmlFor="brand-url" className="text-blue-900 font-semibold">
+                  Extract Colors from Brand Guidelines URL
+                </Label>
+              </div>
+              <p className="text-sm text-blue-700">
+                Paste a link to your university's brand guidelines page, and we'll automatically extract the main colors.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  id="brand-url"
+                  type="url"
+                  placeholder="https://university.edu/brand-guidelines"
+                  value={brandUrl}
+                  onChange={(e) => setBrandUrl(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={extractColorsFromUrl}
+                  disabled={isExtractingFromUrl || !brandUrl.trim()}
+                  variant="outline"
+                >
+                  {isExtractingFromUrl ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Extract Colors'
+                  )}
+                </Button>
+              </div>
+
+              {/* Display extracted colors */}
+              {extractedColors.length > 0 && (
+                <div className="space-y-3 mt-4 p-4 bg-white border border-blue-300 rounded-lg">
+                  <p className="text-sm font-semibold text-blue-900">
+                    Extracted {extractedColors.length} colors - Click a color, then choose where to assign it:
+                  </p>
+
+                  {/* Color grid */}
+                  <div className="grid grid-cols-5 gap-3">
+                    {extractedColors.map((color, index) => (
+                      <div key={index} className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={() => setSelectedExtractedColor(color)}
+                          className={`w-14 h-14 rounded-lg border-2 shadow-sm transition-all hover:scale-105 ${
+                            selectedExtractedColor === color ? 'border-blue-600 ring-2 ring-blue-400' : 'border-gray-300'
+                          }`}
+                          style={{ backgroundColor: color }}
+                          title={`Click to select ${color}`}
+                        />
+                        <span className="text-xs font-mono text-gray-700">{color}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Assignment dropdown */}
+                  {selectedExtractedColor && (
+                    <div className="space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-medium text-blue-900">
+                        Selected: <span className="font-mono">{selectedExtractedColor}</span>
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm text-blue-800">Assign to:</Label>
+                        <Select
+                          onValueChange={(value) => assignColorToField(selectedExtractedColor, value as keyof typeof tempColors)}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Choose a field..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="primary_color">Primary Color</SelectItem>
+                            <SelectItem value="secondary_color">Secondary Color</SelectItem>
+                            <SelectItem value="accent_color">Accent Color</SelectItem>
+                            <SelectItem value="dark_color">Dark Color</SelectItem>
+                            <SelectItem value="light_color">Light Color</SelectItem>
+                            <SelectItem value="text_color">Text Color</SelectItem>
+                            <SelectItem value="secondary_text_color">Secondary Text Color</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Logo Upload */}
             <div className="space-y-4">
-              <Label htmlFor="logo-upload">University Logo</Label>
+              <Label htmlFor="logo-upload">University Logo (Alternative Method)</Label>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Input
@@ -374,47 +515,10 @@ export default function UniversityEditor() {
                   <Upload className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                {logoFile && extractedColors.primary && (
+                {logoFile && extractedColors.length > 0 && (
                   <div className="space-y-3 p-4 bg-muted rounded-lg">
-                    <p className="text-sm font-medium">Extracted Colors from: {logoFile.name}</p>
-
-                    {/* Color Preview Swatches */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex flex-col items-center gap-1">
-                        <div
-                          className="w-12 h-12 rounded border shadow-sm"
-                          style={{ backgroundColor: extractedColors.primary }}
-                        />
-                        <span className="text-xs text-muted-foreground">Primary</span>
-                        <span className="text-xs font-mono">{extractedColors.primary}</span>
-                      </div>
-
-                      <div className="flex flex-col items-center gap-1">
-                        <div
-                          className="w-12 h-12 rounded border shadow-sm"
-                          style={{ backgroundColor: extractedColors.secondary }}
-                        />
-                        <span className="text-xs text-muted-foreground">Secondary</span>
-                        <span className="text-xs font-mono">{extractedColors.secondary}</span>
-                      </div>
-
-                      <div className="flex flex-col items-center gap-1">
-                        <div
-                          className="w-12 h-12 rounded border shadow-sm"
-                          style={{ backgroundColor: extractedColors.accent }}
-                        />
-                        <span className="text-xs text-muted-foreground">Accent</span>
-                        <span className="text-xs font-mono">{extractedColors.accent}</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={applyExtractedColors}
-                      size="sm"
-                      className="w-full"
-                    >
-                      Apply All 3 Colors
-                    </Button>
+                    <p className="text-sm font-medium">Extracted {extractedColors.length} colors from: {logoFile.name}</p>
+                    <p className="text-xs text-muted-foreground">Use the extracted colors section above to assign them to fields.</p>
                   </div>
                 )}
               </div>

@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip } from '@mui/material';
-import { Add, Delete, Edit, Save, FileCopy, Refresh } from '@mui/icons-material';
+import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent, Autocomplete } from '@mui/material';
+import { Add, Delete, Edit, Save, FileCopy, Refresh, Upload } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProgressCircle } from '@/components/ui/progress-circle';
+import ParsedCoursesCards from '@/components/transcript/ParsedCoursesCards';
+import TranscriptUpload from '@/components/transcript/TranscriptUpload';
 
 type CourseEntry = {
 	id: string;
@@ -38,6 +40,9 @@ export default function AcademicHistoryPage() {
 	const [loadedKey, setLoadedKey] = useState<string | null>(null);
 	const [dirty, setDirty] = useState(false);
 	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+	const [parsedCoursesCount, setParsedCoursesCount] = useState(0);
+	const [availableCourses, setAvailableCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
 
 	// Optimistic immediate sample (only if everything truly empty at mount)
 	useEffect(() => {
@@ -72,6 +77,17 @@ export default function AcademicHistoryPage() {
 			const { data: sess } = await supabase.auth.getSession();
 			const id = sess.session?.user?.id || null;
 			setUserId(id);
+		})();
+	}, [supabase]);
+
+	// Load available courses from database
+	useEffect(() => {
+		(async () => {
+			const { data: courses } = await supabase
+				.from('courses')
+				.select('code, title, credits')
+				.order('code');
+			if (courses) setAvailableCourses(courses);
 		})();
 	}, [supabase]);
 
@@ -192,12 +208,77 @@ export default function AcademicHistoryPage() {
 		setDirty(true);
 	};
 
+	const saveToDatabase = async () => {
+		if (!userId) {
+			alert('Please log in to save courses');
+			return;
+		}
+
+		try {
+			// Collect all courses from all columns
+			const allCourses = [
+				...data.general,
+				...data.program,
+				...data.electives
+			];
+
+			// Save each course to user_courses table
+			for (const course of allCourses) {
+				if (!course.code) continue; // Skip empty courses
+
+				// Parse code into subject and number
+				const match = course.code.match(/^([A-Z]+)\s*(\d+)$/i);
+				if (!match) continue;
+
+				const [_, subject, number] = match;
+
+				await supabase.from('user_courses').upsert({
+					user_id: userId,
+					subject: subject.toUpperCase(),
+					number: number,
+					title: course.title || null,
+					credits: course.credits || null,
+					term: course.term || null,
+					grade: null,
+					confidence: 1.0,
+					source_document: null
+				}, {
+					onConflict: 'user_id,subject,number,term'
+				});
+			}
+
+			alert(`Successfully saved ${allCourses.filter(c => c.code).length} courses to your profile!`);
+			// Trigger reload of parsed courses
+			setParsedCoursesCount(prev => prev + 1);
+		} catch (error) {
+			console.error('Error saving courses:', error);
+			alert('Failed to save courses to database');
+		}
+	};
+
 	const renderCourseRow = (col: keyof ColumnState, course: CourseEntry) => {
 		const editing = !!course.editing;
 		return (
 			<Box key={course.id} sx={{ display: 'grid', gridTemplateColumns: '110px 1fr 80px 120px 36px 36px', gap: 1, alignItems: 'center', mb: 1 }}>
 				{editing ? (
-					<TextField size="small" placeholder="CODE" value={course.code} onChange={e => updateCourse(col, course.id, { code: e.target.value })} />
+					<Autocomplete
+						size="small"
+						freeSolo
+						options={availableCourses}
+						getOptionLabel={(option) => typeof option === 'string' ? option : option.code}
+						value={course.code || ''}
+						onInputChange={(_, newValue) => updateCourse(col, course.id, { code: newValue })}
+						onChange={(_, newValue) => {
+							if (newValue && typeof newValue !== 'string') {
+								updateCourse(col, course.id, {
+									code: newValue.code,
+									title: newValue.title,
+									credits: newValue.credits
+								});
+							}
+						}}
+						renderInput={(params) => <TextField {...params} placeholder="CODE" />}
+					/>
 				) : (
 					<Typography variant="body2" fontWeight={600}>{course.code || '—'}</Typography>
 				)}
@@ -276,6 +357,16 @@ export default function AcademicHistoryPage() {
 					<Typography variant="body2" color="text.secondary">Track previously completed coursework across your curriculum.</Typography>
 				</Box>
 				<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+					<Tooltip title="Save courses to your profile">
+						<Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase} color="primary">
+							Save to Profile
+						</Button>
+					</Tooltip>
+					<Tooltip title="Upload transcript PDF">
+						<Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
+							Upload Transcript
+						</Button>
+					</Tooltip>
 					<Tooltip title="Copy JSON to clipboard">
 						<Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson}>{copyStatus === 'copied' ? 'Copied!' : 'Export JSON'}</Button>
 					</Tooltip>
@@ -296,6 +387,40 @@ export default function AcademicHistoryPage() {
 			<Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
 				<Typography variant="body2" color="text.secondary">Grand Total Credits: {grandTotal}</Typography>
 			</Box>
+
+			{/* Parsed Transcript Courses Section */}
+			{parsedCoursesCount > 0 && (
+				<Box sx={{ mt: 4 }}>
+					<Divider sx={{ mb: 3 }} />
+					<Box sx={{ mb: 2 }}>
+						<Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+							Transcript Courses
+						</Typography>
+						<Typography variant="body2" color="text.secondary">
+							{parsedCoursesCount} course{parsedCoursesCount !== 1 ? 's' : ''} parsed from uploaded transcripts
+						</Typography>
+					</Box>
+					<ParsedCoursesCards userId={userId} onCoursesLoaded={setParsedCoursesCount} />
+				</Box>
+			)}
+
+			{/* Upload Transcript Dialog */}
+			<Dialog
+				open={uploadDialogOpen}
+				onClose={() => setUploadDialogOpen(false)}
+				maxWidth="sm"
+				fullWidth
+			>
+				<DialogContent sx={{ p: 3 }}>
+					<TranscriptUpload
+						onUploadSuccess={() => {
+							setUploadDialogOpen(false);
+							// Trigger reload of parsed courses
+							setParsedCoursesCount(prev => prev + 1);
+						}}
+					/>
+				</DialogContent>
+			</Dialog>
 		</Box>
 	);
 }
