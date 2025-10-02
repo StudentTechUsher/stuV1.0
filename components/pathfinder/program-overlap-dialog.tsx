@@ -18,6 +18,9 @@ interface MajorOverlapDialogProps {
   onClose: () => void;
   major: MajorProgramData | null;
   completedCourses: Array<{ code: string; title: string; credits: number; term?: string; grade?: string; tags?: string[] }>;
+  matchedClasses?: number;
+  totalClassesInSemester?: number;
+  selectedSemesterName?: string;
 }
 
 // Utility to walk an unknown requirements JSON tree and collect course codes (simple heuristic: look for objects with code or course_code keys or strings that look like codes)
@@ -46,7 +49,7 @@ function extractRequirementCourseCodes(requirements: any): string[] {
   return Array.from(out).sort((a, b) => a.localeCompare(b));
 }
 
-export function ProgramOverlapDialog({ open, onClose, major, completedCourses }: Readonly<MajorOverlapDialogProps>) {
+export function ProgramOverlapDialog({ open, onClose, major, completedCourses, matchedClasses, totalClassesInSemester, selectedSemesterName }: Readonly<MajorOverlapDialogProps>) {
   const requirementCodes = React.useMemo(() => major ? extractRequirementCourseCodes(major.requirements) : [], [major]);
   const completedCodes = React.useMemo(() => completedCourses.map(c => c.code.trim().toUpperCase()), [completedCourses]);
   const completedSet = React.useMemo(() => new Set(completedCodes), [completedCodes]);
@@ -57,15 +60,47 @@ export function ProgramOverlapDialog({ open, onClose, major, completedCourses }:
   const requirementSet = new Set(requirementCodes);
   const extras = completedCodes.filter(c => !requirementSet.has(c));
 
+  const derivedCounts = React.useMemo((): { matched: number; total: number; type: 'provided' | 'semester' | 'overall' } | null => {
+    if (typeof matchedClasses === 'number' && typeof totalClassesInSemester === 'number') {
+      return { matched: matchedClasses, total: totalClassesInSemester, type: 'provided' };
+    }
+    if (selectedSemesterName) {
+      const inTerm = completedCourses.filter(c => (c.term || '').toLowerCase() === selectedSemesterName.toLowerCase());
+      const total = inTerm.length;
+      const reqSet = new Set(requirementCodes);
+      const matchedCount = inTerm.filter(c => reqSet.has((c.code || '').trim().toUpperCase())).length;
+      return { matched: matchedCount, total, type: 'semester' };
+    }
+    // Fallback: compute from overall Matched/Missing lists (self-contained)
+    const totalOverall = matched.length + missing.length;
+    return { matched: matched.length, total: totalOverall, type: 'overall' };
+  }, [matchedClasses, totalClassesInSemester, selectedSemesterName, completedCourses, requirementCodes, matched.length, missing.length]);
+
+  const percentSimilar = React.useMemo(() => {
+    if (!derivedCounts || derivedCounts.total <= 0) return null;
+    const pct = Math.round((derivedCounts.matched / derivedCounts.total) * 100);
+    return Math.max(0, Math.min(100, pct));
+  }, [derivedCounts]);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl border border-emerald-200 flex flex-col max-h-[90vh]">
         <div className="px-5 py-4 border-b flex items-start justify-between gap-4">
-          <div>
+          <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold text-emerald-800">Program Fit Overview</h2>
             {major && <p className="text-xs text-gray-600 mt-1">Selected Major: <span className="font-medium text-gray-800">{major.name}</span></p>}
+            {typeof percentSimilar === 'number' && derivedCounts && (
+              <div className="mt-2 inline-flex items-center gap-2 rounded border border-emerald-200 bg-emerald-50 px-2 py-1">
+                <span className="inline-flex items-center justify-center rounded bg-emerald-600 text-white text-[11px] font-semibold px-1.5 py-0.5">
+                  {percentSimilar}% similar
+                </span>
+                <span className="text-[11px] text-emerald-800 truncate">
+                  {derivedCounts.matched} of {derivedCounts.total} {derivedCounts.type === 'overall' ? 'requirements' : `classes${selectedSemesterName ? ` in ${selectedSemesterName}` : ''}`} match
+                </span>
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700">Close</button>
         </div>

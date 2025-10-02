@@ -14,9 +14,15 @@ interface MajorPivotFormProps {
   onSubmit: (values: MajorPivotFormValues) => void;
   onCancel?: () => void;
   className?: string;
+  /** Optional: number of classes that match criteria in the selected semester */
+  matchedClasses?: number;
+  /** Optional: total number of classes in the selected semester */
+  totalClassesInSemester?: number;
+  /** Optional: display name of the selected semester (e.g., 'Fall 2024') */
+  selectedSemesterName?: string;
 }
 
-export function MajorPivotForm({ currentMajor, onSubmit, onCancel, className }: MajorPivotFormProps) {
+export function MajorPivotForm({ currentMajor, onSubmit, onCancel, className, matchedClasses, totalClassesInSemester, selectedSemesterName }: Readonly<MajorPivotFormProps>) {
   const [values, setValues] = React.useState<MajorPivotFormValues>({
     whyMajor: '',
     notWorking: '',
@@ -33,6 +39,12 @@ export function MajorPivotForm({ currentMajor, onSubmit, onCancel, className }: 
 
   const missingRequired = !values.whyMajor.trim() || !values.notWorking.trim() || !values.partsLiked.trim() || (!values.wantCareerHelp && !values.consideredCareer.trim());
 
+  const percentSimilar = React.useMemo(() => {
+    if (typeof matchedClasses !== 'number' || typeof totalClassesInSemester !== 'number' || totalClassesInSemester <= 0) return null;
+    const pct = Math.round((matchedClasses / totalClassesInSemester) * 100);
+    return Math.max(0, Math.min(100, pct));
+  }, [matchedClasses, totalClassesInSemester]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ whyMajor: true, notWorking: true, partsLiked: true, consideredCareer: true });
@@ -47,6 +59,18 @@ export function MajorPivotForm({ currentMajor, onSubmit, onCancel, className }: 
 
   return (
     <form onSubmit={handleSubmit} className={"space-y-5 " + (className || '')}>
+      {typeof percentSimilar === 'number' && (
+        <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 flex items-center gap-2">
+          <span className="inline-flex items-center justify-center rounded bg-emerald-600 text-white text-xs font-semibold px-2 py-0.5">
+            {percentSimilar}% similar
+          </span>
+          <span className="text-[11px] text-emerald-800">
+            {matchedClasses ?? 0} of {totalClassesInSemester ?? 0} classes
+            {selectedSemesterName ? ` in ${selectedSemesterName}` : ''}
+            {` match`}
+          </span>
+        </div>
+      )}
       <div>
         <label htmlFor="whyMajor" className="block text-xs font-medium text-gray-600 mb-1">Why {currentMajor || 'this major'}?</label>
         <textarea
