@@ -22,10 +22,12 @@ type CourseEntry = {
 interface ColumnState {
 	general: CourseEntry[];
 	program: CourseEntry[];
+	minor: CourseEntry[];
+	religion: CourseEntry[];
 	electives: CourseEntry[];
 }
 
-const EMPTY: ColumnState = { general: [], program: [], electives: [] };
+const EMPTY: ColumnState = { general: [], program: [], minor: [], religion: [], electives: [] };
 
 function newCourse(): CourseEntry {
 	return { id: crypto.randomUUID(), code: '', title: '', credits: null, editing: true };
@@ -45,7 +47,7 @@ export default function AcademicHistoryPage() {
 	// Optimistic immediate sample (only if everything truly empty at mount)
 	useEffect(() => {
 		setData(prev => {
-			if (prev.general.length || prev.program.length || prev.electives.length) return prev;
+			if (prev.general.length || prev.program.length || prev.minor.length || prev.religion.length || prev.electives.length) return prev;
 			return {
 				general: [
 					{ id: 'seed-eng101', code: 'ENG 101', title: 'College Writing I', credits: 3, requirement: 'Communication', editing: false },
@@ -54,6 +56,12 @@ export default function AcademicHistoryPage() {
 				program: [
 					{ id: 'seed-cs101', code: 'CS 101', title: 'Intro to Computer Science', credits: 3, requirement: 'Major Core', editing: false },
 					{ id: 'seed-cs201', code: 'CS 201', title: 'Data Structures', credits: 4, requirement: 'Major Core', editing: false },
+				],
+				minor: [
+					{ id: 'seed-bus101', code: 'BUS 101', title: 'Principles of Business', credits: 3, requirement: 'Minor Requirement', editing: false },
+				],
+				religion: [
+					{ id: 'seed-rel121', code: 'REL 121', title: 'Book of Mormon', credits: 2, requirement: 'Religion', editing: false },
 				],
 				electives: [
 					{ id: 'seed-art105', code: 'ART 105', title: 'Foundations of Drawing', credits: 3, requirement: 'Fine Arts Elective', editing: false },
@@ -95,10 +103,12 @@ export default function AcademicHistoryPage() {
 				const loaded: ColumnState = {
 					general: Array.isArray(parsed.general) ? parsed.general : [],
 					program: Array.isArray(parsed.program) ? parsed.program : [],
+					minor: Array.isArray(parsed.minor) ? parsed.minor : [],
+					religion: Array.isArray(parsed.religion) ? parsed.religion : [],
 					electives: Array.isArray(parsed.electives) ? parsed.electives : [],
 				};
-				// If all three arrays are empty, treat as fresh and seed
-				const allEmpty = !loaded.general.length && !loaded.program.length && !loaded.electives.length;
+				// If all arrays are empty, treat as fresh and seed
+				const allEmpty = !loaded.general.length && !loaded.program.length && !loaded.minor.length && !loaded.religion.length && !loaded.electives.length;
 				if (allEmpty) {
 					setData({
 						general: [
@@ -108,6 +118,12 @@ export default function AcademicHistoryPage() {
 						program: [
 							{ id: crypto.randomUUID(), code: 'CS 101', title: 'Intro to Computer Science', credits: 3, requirement: 'Major Core', editing: false },
 							{ id: crypto.randomUUID(), code: 'CS 201', title: 'Data Structures', credits: 4, requirement: 'Major Core', editing: false },
+						],
+						minor: [
+							{ id: crypto.randomUUID(), code: 'BUS 101', title: 'Principles of Business', credits: 3, requirement: 'Minor Requirement', editing: false },
+						],
+						religion: [
+							{ id: crypto.randomUUID(), code: 'REL 121', title: 'Book of Mormon', credits: 2, requirement: 'Religion', editing: false },
 						],
 						electives: [
 							{ id: crypto.randomUUID(), code: 'ART 105', title: 'Foundations of Drawing', credits: 3, requirement: 'Fine Arts Elective', editing: false },
@@ -128,6 +144,12 @@ export default function AcademicHistoryPage() {
 					program: [
 						{ id: crypto.randomUUID(), code: 'CS 101', title: 'Intro to Computer Science', credits: 3, requirement: 'Major Core', editing: false },
 						{ id: crypto.randomUUID(), code: 'CS 201', title: 'Data Structures', credits: 4, requirement: 'Major Core', editing: false },
+					],
+					minor: [
+						{ id: crypto.randomUUID(), code: 'BUS 101', title: 'Principles of Business', credits: 3, requirement: 'Minor Requirement', editing: false },
+					],
+					religion: [
+						{ id: crypto.randomUUID(), code: 'REL 121', title: 'Book of Mormon', credits: 2, requirement: 'Religion', editing: false },
 					],
 					electives: [
 						{ id: crypto.randomUUID(), code: 'ART 105', title: 'Foundations of Drawing', credits: 3, requirement: 'Fine Arts Elective', editing: false },
@@ -168,7 +190,7 @@ export default function AcademicHistoryPage() {
 	const deleteCourse = (col: keyof ColumnState, id: string) => mutate(col, arr => arr.filter(c => c.id !== id));
 
 	const totalCredits = (col: keyof ColumnState) => data[col].reduce((sum, c) => sum + (c.credits || 0), 0);
-	const grandTotal = totalCredits('general') + totalCredits('program') + totalCredits('electives');
+	const grandTotal = totalCredits('general') + totalCredits('program') + totalCredits('minor') + totalCredits('religion') + totalCredits('electives');
 
 	const exportJson = async () => {
 		try {
@@ -287,25 +309,19 @@ export default function AcademicHistoryPage() {
 		);
 	};
 
-	// Fixed variant mapping (GE = red, Program = blue, Electives = green)
-	// Using existing variant keys: error (red), default (blue), success (green)
-	// Calculate progress based on actual credits completed
-	const progressMeta = useMemo(() => {
-		const genTotal = totalCredits('general');
-		const progTotal = totalCredits('program');
-		const electTotal = totalCredits('electives');
-
-		// Assume standard requirements: GE=40, Program=60, Electives=20
-		const genPct = Math.min(100, Math.round((genTotal / 40) * 100));
-		const progPct = Math.min(100, Math.round((progTotal / 60) * 100));
-		const electPct = Math.min(100, Math.round((electTotal / 20) * 100));
-
-		return [
-			{ variant: 'error' as const, value: genPct },    // General Education
-			{ variant: 'default' as const, value: progPct },  // Program Requirements
-			{ variant: 'success' as const, value: electPct }, // Electives
-		];
-	}, [data]);
+	// Color scheme matching graduation-planner and academic-progress-card:
+	// General Education = blue (#2196f3) - default variant
+	// Program (Major) = primary green (var(--primary)) - success variant
+	// Minor = dark blue (#001F54) - navy variant
+	// Religion = purple (#5E35B1) - purple variant
+	// Electives = violet (#9C27B0) - violet variant
+	const progressMeta = useMemo(() => ([
+		{ variant: 'default' as const, value: Math.floor(10 + Math.random() * 86) },  // General Education (blue)
+		{ variant: 'success' as const, value: Math.floor(10 + Math.random() * 86) },  // Program Requirements (green/primary)
+		{ variant: 'navy' as const, value: Math.floor(10 + Math.random() * 86) },     // Minor (dark blue #001F54)
+		{ variant: 'purple' as const, value: Math.floor(10 + Math.random() * 86) },   // Religion (purple #5E35B1)
+		{ variant: 'violet' as const, value: Math.floor(10 + Math.random() * 86) },   // Electives (violet #9C27B0)
+	]), []);
 
 	const renderColumn = (col: keyof ColumnState, title: string, description: string, idx: number) => (
 		<Paper elevation={2} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -361,10 +377,12 @@ export default function AcademicHistoryPage() {
 					</Tooltip>
 				</Box>
 			</Box>
-			<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 2, flex: 1, alignItems: 'stretch' }}>
+			<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, flex: 1, alignItems: 'stretch', '@media (max-width: 1200px)': { gridTemplateColumns: 'repeat(2, 1fr)' }, '@media (max-width: 768px)': { gridTemplateColumns: '1fr' } }}>
 				{renderColumn('general', 'General Education', 'Core / general education / foundational courses already completed.', 0)}
-				{renderColumn('program', 'Program Requirements', 'Major / minor / program-specific requirement courses completed.', 1)}
-				{renderColumn('electives', 'Electives', 'Elective or exploratory courses taken that count toward credit totals.', 2)}
+				{renderColumn('program', 'Major Requirements', 'Major / program-specific requirement courses completed.', 1)}
+				{renderColumn('minor', 'Minor Requirements', 'Minor program courses completed.', 2)}
+				{renderColumn('religion', 'Religion', 'Religion requirement courses completed.', 3)}
+				{renderColumn('electives', 'Electives', 'Elective or exploratory courses taken that count toward credit totals.', 4)}
 			</Box>
 			<Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
 				<Typography variant="body2" color="text.secondary">Grand Total Credits: {grandTotal}</Typography>

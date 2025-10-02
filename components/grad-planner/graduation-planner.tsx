@@ -9,6 +9,7 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
+import Chip from '@mui/material/Chip';
 import EditIcon from '@mui/icons-material/Edit';
 import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
@@ -22,6 +23,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -226,7 +228,7 @@ function DraggableCourse({
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     zIndex: isDragging ? 1000 : 'auto',
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   } : undefined;
 
   // Check if this course has been moved
@@ -417,6 +419,38 @@ interface GraduationPlannerProps {
   };
 }
 
+// Trash Zone Component
+function TrashZone() {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        position: 'fixed',
+        bottom: 40,
+        left: '50%',
+        transform: isOver ? 'translateX(-50%) scale(1.15)' : 'translateX(-50%) scale(1)',
+        width: 100,
+        height: 100,
+        borderRadius: '50%',
+        backgroundColor: isOver ? 'var(--destructive)' : 'var(--action-cancel)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1001,
+        transition: 'all 0.2s ease-in-out',
+        boxShadow: isOver ? '0 8px 24px rgba(239, 68, 68, 0.5)' : '0 4px 12px rgba(244, 67, 54, 0.4)',
+        cursor: 'pointer',
+      }}
+    >
+      <DeleteIcon sx={{ fontSize: 48, color: 'white' }} />
+    </Box>
+  );
+}
+
 // Separate component for the course move TextField
 interface CourseMoveFieldProps {
   currentTerm: number;
@@ -583,18 +617,20 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     const courseData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
     setActiveCourse(courseData.course);
   };
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCourse(null);
-
     if (!over || !isEditMode) return;
-
     const activeData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
-    const overData = over.data.current as { term: Term; termIndex: number };
 
-    // Only move if dropping onto a different term
-    if (activeData.termIndex !== overData.termIndex) {
+    // Check if dropping on trash zone
+    if (over.id === 'trash-zone') {
+      deleteCourse(activeData.termIndex, activeData.courseIndex);
+      return;
+    }
+
+    const overData = over.data.current as { term: Term; termIndex: number };
+    if (activeData && overData && activeData.termIndex !== overData.termIndex) {
       moveCourse(activeData.termIndex, activeData.courseIndex, overData.termIndex + 1);
     }
   };
@@ -643,6 +679,52 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
 
   const handleDeleteEvent = (eventId: string) => {
     setEvents(events.filter(e => e.id !== eventId));
+  // Derive a unique, ordered list of requirements fulfilled across the entire plan
+  const fulfilledRequirements = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    currentPlanData.forEach(term => {
+      term.courses?.forEach(course => {
+        if (Array.isArray(course.fulfills)) {
+          course.fulfills.forEach(reqRaw => {
+            const req = typeof reqRaw === 'string' ? reqRaw.trim() : '';
+            if (req && !seen.has(req)) {
+              seen.add(req);
+              ordered.push(req);
+            }
+          });
+        }
+      });
+    });
+    return ordered;
+  }, [currentPlanData]);
+  // Function to delete a course
+  const deleteCourse = (termIndex: number, courseIndex: number) => {
+    if (!isEditMode) return;
+
+    setEditablePlanData(prevData => {
+      const newData = prevData.map((term, idx) => {
+        if (idx === termIndex) {
+          const updatedCourses = term.courses ? [...term.courses] : [];
+          updatedCourses.splice(courseIndex, 1);
+          const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+          return {
+            ...term,
+            courses: updatedCourses,
+            credits_planned: updatedCredits
+          };
+        }
+        return term;
+      });
+
+      setModifiedTerms(prev => new Set(prev).add(termIndex));
+
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      return newData;
+    });
   };
 
   // Function to move a course between terms
@@ -714,9 +796,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         <Typography variant="body2" className="font-body" color="text.secondary" gutterBottom>
           Expected to find an array of terms, but got:
         </Typography>
-        <pre className="bg-muted p-4 rounded text-xs overflow-auto">
-          {JSON.stringify(plan, null, 2)}
-        </pre>
+        <pre className="bg-muted p-4 rounded text-xs overflow-auto">{JSON.stringify(plan, null, 2)}</pre>
       </Box>
     );
   }
@@ -732,6 +812,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   
   const assumptions = sourceData.assumptions as string[];
   const durationYears = sourceData.duration_years as number;
+  const programName = (sourceData as any)?.program_name || (sourceData as any)?.program || null;
 
   return (
     <DndContext
@@ -741,6 +822,37 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     >
       <Box sx={{ p: 2 }}>
         {isEditMode && (
+          <Box sx={{
+            mb: 3,
+            p: 2,
+            backgroundColor: 'rgba(255, 165, 0, 0.15)',
+            borderRadius: 3,
+            border: '2px solid var(--action-edit)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            boxShadow: '0 2px 8px rgba(255, 165, 0, 0.2)'
+          }}>
+            <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
+              Edit Mode Active
+            </Typography>
+            <Typography variant="body2" className="font-body" color="text.secondary">
+              Make changes to your graduation plan. Click "Submit for Approval" when finished.
+            </Typography>
+          </Box>
+        )}
+
+        <Typography variant="h5" className="font-header" gutterBottom>
+          Graduation Plan
+          {programName && (
+            <Typography
+              variant="subtitle1"
+              className="font-body"
+              color="text.secondary"
+              component="span"
+              sx={{ ml: 1 }}
+            >
+              - {programName}
         <Box sx={{
           mb: 3,
           p: 2,
@@ -781,6 +893,9 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         </Box>
       )}
 
+      {/* Trash Zone - Only visible when dragging */}
+      {activeCourse && isEditMode && <TrashZone />}
+      
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -809,6 +924,109 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                 onClick={() => handleOpenEventDialog()}
                 startIcon={<AddIcon />}
                 className="font-body-semi"
+              Years: <Box component="span" sx={{ fontWeight: 'bold' }}>{durationYears}</Box> 
+            </Typography>
+          )}
+        </Typography>
+
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 90%)',
+            border: '1px solid #bbdefb',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1.5,
+            alignItems: 'center'
+          }}
+        >
+          <Chip
+            label={`${currentPlanData.length} term${currentPlanData.length === 1 ? '' : 's'} planned`}
+            sx={{ backgroundColor: '#e3f2fd', border: '1px solid #90caf9', fontWeight: 'bold' }}
+            size="small"
+          />
+          {Boolean(durationYears) && (
+            <Chip
+              label={`${durationYears} year${durationYears === 1 ? '' : 's'}`}
+              size="small"
+              sx={{ backgroundColor: '#ede7f6', border: '1px solid #b39ddb', fontWeight: 'bold' }}
+            />
+          )}
+          <Chip
+            label={`Total Credits: ${currentPlanData.reduce((total, term) => {
+              const termCredits =
+                term.credits_planned ||
+                (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+              return total + termCredits;
+            }, 0)}`}
+            size="small"
+            color="primary"
+            sx={{ backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', color: '#2e7d32', fontWeight: 'bold' }}
+          />
+          {fulfilledRequirements.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography
+                variant="body2"
+                className="font-body"
+                sx={{ fontWeight: 'bold', mr: 0.5, color: '#1565c0' }}
+              >
+                Requirements:
+              </Typography>
+              {fulfilledRequirements.map((req) => (
+                <Chip
+                  key={req}
+                  label={req}
+                  size="small"
+                  sx={{
+                    backgroundColor: '#fffde7',
+                    border: '1px solid #fff59d',
+                    fontSize: '0.65rem',
+                    height: 22,
+                    fontWeight: 500
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        {assumptions && assumptions.length > 0 && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              backgroundColor: '#fff3e0',
+              borderRadius: 1,
+              border: '1px solid var(--action-edit)'
+            }}
+          >
+            <Typography variant="h6" className="font-header" gutterBottom>
+              Plan Assumptions:
+            </Typography>
+            {/* render your assumptions list here */}
+          </Box>
+        )}
+
+        {/* Terms grid */}
+        <Box sx={{
+          mt: 2,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 3,
+          '@media (max-width: 900px)': { gridTemplateColumns: '1fr' }
+        }}>
+          {currentPlanData.map((term, index) => {
+            const termCredits = term.credits_planned || (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+            return (
+              <DroppableTerm key={term.term || `term-${index}`} term={term} termIndex={index} isEditMode={isEditMode} modifiedTerms={modifiedTerms}>
+                <Box sx={{ p: 3, border: '2px solid var(--border)', borderRadius: 2, backgroundColor: 'var(--muted)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', minHeight: '200px' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
+                      Term {term.term || index + 1}
+              <Box
                 sx={{
                   backgroundColor: '#1A1A1A',
                   color: 'white',
@@ -1263,11 +1481,91 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
             {assumptions.map((assumption) => (
               <Typography key={assumption} component="li" variant="body2" className="font-body">
                 {assumption}
-              </Typography>
-            ))}
-          </Box>
+                </Box>
+                
+                {term.notes && (
+                  <Box sx={{ p: 1, backgroundColor: 'var(--primary-15)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Box
+                        component="img"
+                        src="/stu_icon_black.png"
+                        alt="stu logo"
+                        sx={{ width: 21, height: 21 }}
+                      />
+                      <Typography variant="body2" className="font-brand-bold" sx={{ fontWeight: 700, color: 'var(--foreground)' }}>
+                        stu. tip!
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" className="font-body" color="text.secondary">
+                      {term.notes}
+                    </Typography>
+                    <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+                      {termCredits} Credits
+                    </Typography>
+                  </Box>
+                  {term.notes && (
+                    <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
+                      <Typography variant="body2" className="font-body" color="text.secondary">{term.notes}</Typography>
+                    </Box>
+                  )}
+                  {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
+                    <Box>
+                      <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
+                        Courses ({term.courses.length}):
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {term.courses.map((course: Course, courseIndex: number) => {
+                          if (!course.code || !course.title) { console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course); return null; }
+                          return (
+                            <DraggableCourse
+                              key={`term-${index}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
+                              course={course}
+                              courseIndex={courseIndex}
+                              termIndex={index}
+                              isEditMode={isEditMode}
+                              currentPlanData={currentPlanData}
+                              onMoveCourse={moveCourse}
+                              movedCourses={movedCourses}
+                            />
+                          );
+                        }).filter(Boolean)}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" className="font-body" color="text.secondary">No courses defined for this term</Typography>
+                  )}
+                </Box>
+              </DroppableTerm>
+            );
+          })}
         </Box>
-      )}
+        {/* Drag Overlay for visual feedback */}
+        <DragOverlay>
+          {activeCourse ? (
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: 'white',
+                borderRadius: 2,
+                border: '2px solid var(--primary)',
+                minHeight: '80px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                opacity: 0.9,
+                transform: 'rotate(5deg)',
+                boxShadow: '0 8px 32px rgba(18, 249, 135, 0.3)',
+              }}
+            >
+              <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
+                {activeCourse.code}: {activeCourse.title}
+              </Typography>
+              <Typography variant="caption" className="font-body" color="text.secondary">
+                {activeCourse.credits} credits
+              </Typography>
+            </Box>
+          ) : null}
+        </DragOverlay>
       </Box>
 
       {/* Drag Overlay for visual feedback */}

@@ -527,3 +527,55 @@ export async function submitGradPlanForApproval(
         };
     }
 }
+
+/** AUTHORIZED FOR ADVISORS ONLY (non-approval save)
+ * Updates only plan_details for an existing grad plan. Does NOT modify approval / active flags.
+ */
+export async function updateGradPlanDetails(
+    gradPlanId: string,
+    planDetails: unknown
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ plan_details: planDetails })
+            .eq('id', gradPlanId);
+        if (error) {
+            console.error('❌ Error updating plan_details:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (err) {
+        console.error('❌ Unexpected error updating plan_details:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/** AUTHORIZED FOR ADVISORS ONLY
+ * Atomically update plan_details and advisor_notes and transition to pending_edits state (removes from pending_approval).
+ */
+export async function updateGradPlanDetailsAndAdvisorNotes(
+    gradPlanId: string,
+    planDetails: unknown,
+    advisorNotes: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ 
+                plan_details: planDetails,
+                advisor_notes: advisorNotes,
+                pending_edits: true,
+                pending_approval: false
+            })
+            .eq('id', gradPlanId);
+        if (error) {
+            console.error('❌ Error updating plan & notes:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (err) {
+        console.error('❌ Unexpected error updating plan & notes:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}

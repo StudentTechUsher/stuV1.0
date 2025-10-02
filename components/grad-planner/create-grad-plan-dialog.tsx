@@ -19,6 +19,15 @@ import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
+import TextField from '@mui/material/TextField';
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import AddIcon from '@mui/icons-material/Add';
+import Fab from '@mui/material/Fab';
+import Tooltip from '@mui/material/Tooltip';
+import SchoolIcon from '@mui/icons-material/School';
+import BalanceIcon from '@mui/icons-material/Scale';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { ProgramRow } from '@/types/program';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
 import { type SelectionMode } from '@/lib/selectionMode';
@@ -104,40 +113,92 @@ export default function CreateGradPlanDialog({
     subtitle: 'AI is organizing your courses into semesters...'
   });
 
-  // Fetch institution selection mode on mount
-  useEffect(() => {
-    async function fetchInstitutionMode() {
-      try {
-        const profileRes = await fetch('/api/my-profile');
-        if (!profileRes.ok) throw new Error('Failed to fetch profile');
-        const profileData = await profileRes.json();
-        const universityId = profileData.university_id;
+// --- Institution selection mode (fetch on open) ---
+useEffect(() => {
+  async function fetchInstitutionMode() {
+    try {
+      const profileRes = await fetch('/api/my-profile');
+      if (!profileRes.ok) throw new Error('Failed to fetch profile');
+      const profileData = await profileRes.json();
+      const universityId = profileData.university_id;
 
-        const settingsRes = await fetch(`/api/institutions/${universityId}/settings`);
-        if (!settingsRes.ok) throw new Error('Failed to fetch settings');
-        const settingsData = await settingsRes.json();
-        setInstitutionMode(settingsData.selection_mode || 'MANUAL');
-      } catch (error) {
-        console.error('Error fetching institution mode:', error);
-        setInstitutionMode('MANUAL'); // default fallback
-      } finally {
-        setLoadingInstitutionMode(false);
-      }
+      const settingsRes = await fetch(`/api/institutions/${universityId}/settings`);
+      if (!settingsRes.ok) throw new Error('Failed to fetch settings');
+      const settingsData = await settingsRes.json();
+      setInstitutionMode(settingsData.selection_mode || 'MANUAL');
+    } catch (error) {
+      console.error('Error fetching institution mode:', error);
+      setInstitutionMode('MANUAL'); // default fallback
+    } finally {
+      setLoadingInstitutionMode(false);
     }
+  }
 
-    if (open) {
-      fetchInstitutionMode();
-    }
-  }, [open]);
+  if (open) {
+    fetchInstitutionMode();
+  }
+}, [open]);
 
-  // Determine effective mode
-  const effectiveMode: 'AUTO' | 'MANUAL' = useMemo(() => {
-    if (!institutionMode) return 'MANUAL';
-    if (institutionMode === 'AUTO') return 'AUTO';
-    if (institutionMode === 'MANUAL') return 'MANUAL';
-    // institutionMode === 'CHOICE'
-    return userChosenMode;
-  }, [institutionMode, userChosenMode]);
+// Determine effective mode
+const effectiveMode: 'AUTO' | 'MANUAL' = useMemo(() => {
+  if (!institutionMode) return 'MANUAL';
+  if (institutionMode === 'AUTO') return 'AUTO';
+  if (institutionMode === 'MANUAL') return 'MANUAL';
+  // institutionMode === 'CHOICE'
+  return userChosenMode;
+}, [institutionMode, userChosenMode]);
+
+// --- User-added elective courses & GenEd strategy ---
+interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
+const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
+const [showElectiveForm, setShowElectiveForm] = useState(false);
+const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
+const [electiveError, setElectiveError] = useState<string | null>(null);
+
+// GenEd sequencing strategy: 'early' or 'balanced'
+type GenEdStrategy = 'early' | 'balanced';
+const [genEdStrategy, setGenEdStrategy] = useState<GenEdStrategy>('balanced');
+const handleChangeGenEdStrategy = (_: unknown, value: GenEdStrategy | null) => {
+  if (value) setGenEdStrategy(value);
+};
+
+const resetElectiveDraft = () => {
+  setElectiveDraft({ code: '', title: '', credits: '' });
+  setElectiveError(null);
+};
+
+const handleAddElective = () => {
+  const code = electiveDraft.code.trim().toUpperCase();
+  const title = electiveDraft.title.trim();
+  const creditsNum = parseFloat(electiveDraft.credits);
+
+  if (!code || !title) {
+    setElectiveError('Code and title are required.');
+    return;
+  }
+  if (isNaN(creditsNum) || creditsNum <= 0) {
+    setElectiveError('Credits must be a positive number.');
+    return;
+  }
+  if (userElectives.some(e => e.code === code)) {
+    setElectiveError('This course code has already been added.');
+    return;
+  }
+  const normalizedCredits = parseFloat(creditsNum.toFixed(2));
+  const newCourse: UserElectiveCourse = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    code,
+    title,
+    credits: normalizedCredits
+  };
+  setUserElectives(prev => [...prev, newCourse]);
+  resetElectiveDraft();
+  setShowElectiveForm(false);
+};
+
+const handleRemoveElective = (id: string) => {
+  setUserElectives(prev => prev.filter(c => c.id !== id));
+};
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
@@ -414,6 +475,11 @@ export default function CreateGradPlanDialog({
     const selectedClasses = {
       timestamp: new Date().toISOString(),
       selectedPrograms: Array.from(selectedPrograms),
+      assumptions: {
+        genEdStrategy: genEdStrategy === 'early'
+          ? 'Student prefers to complete the majority of general education requirements in the earliest possible terms to free later terms for major-focused courses.'
+          : 'Student prefers to distribute general education requirements evenly across terms for a balanced workload.'
+      },
       programs: {} as Record<string, {
         programId: string;
         programName: string;
@@ -425,6 +491,7 @@ export default function CreateGradPlanDialog({
         }>;
       }>,
       generalEducation: {} as Record<string, Array<{code: string, title: string, credits: string | number, prerequisite?: string}>>,
+      userAddedElectives: [] as Array<{code: string; title: string; credits: number}>
     };
 
     // Add GenEd courses with details
@@ -488,6 +555,13 @@ export default function CreateGradPlanDialog({
       });
     });
     
+    // Append user-added electives (treated as fulfilling generic elective requirements)
+    if (userElectives.length > 0) {
+      selectedClasses.userAddedElectives = userElectives.map(e => ({ code: e.code, title: e.title, credits: e.credits }));
+      // Also expose inside generalEducation for backward compatibility under a stable key
+      selectedClasses.generalEducation['User Added Electives'] = userElectives.map(e => ({ code: e.code, title: e.title, credits: e.credits }));
+    }
+
     return selectedClasses;
   }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap]);
 
@@ -510,8 +584,13 @@ export default function CreateGradPlanDialog({
       };
 
       // Step 1: Send the course data to AI for semester organization
-      const aiResult = await OrganizeCoursesIntoSemesters(payloadWithMode, prompt);
-
+      // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
+      const strategyText = genEdStrategy === 'early'
+        ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
+        : 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.';
+      const augmentedPrompt = `${prompt}\n\nGenEd Sequencing Preference:\n${strategyText}`;
+      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson, augmentedPrompt);
+      
       if (!aiResult.success) {
         setPlanCreationError(`AI Planning Error: ${aiResult.message}`);
         showSnackbar(`AI Planning Error: ${aiResult.message}`, 'error');
@@ -758,6 +837,38 @@ export default function CreateGradPlanDialog({
           </Alert>
         )}
 
+        {/* GenEd Strategy Selection */}
+        <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+            General Education Sequencing Preference
+          </Typography>
+          <ToggleButtonGroup
+            value={genEdStrategy}
+            exclusive
+            size="small"
+            onChange={handleChangeGenEdStrategy}
+            aria-label="General Education Strategy"
+            sx={{
+              alignSelf: 'flex-start',
+              backgroundColor: 'background.paper',
+              borderRadius: 2,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+          >
+            <ToggleButton value="early" aria-label="Prioritize GenEds Early" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
+              <SchoolIcon fontSize="inherit" style={{ marginRight: 4 }} /> Early Focus
+            </ToggleButton>
+            <ToggleButton value="balanced" aria-label="Balance GenEds" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
+              <BalanceIcon fontSize="inherit" style={{ marginRight: 4 }} /> Balanced
+            </ToggleButton>
+          </ToggleButtonGroup>
+          <Typography variant="caption" color="text.secondary">
+            {genEdStrategy === 'early'
+              ? 'GenEd requirements will be scheduled as early as feasible.'
+              : 'GenEd requirements will be distributed across terms.'}
+          </Typography>
+        </Box>
+        
         {/* Loading overlay during AI processing */}
         {isCreatingPlan && (
           <Box sx={{ 
@@ -1057,6 +1168,92 @@ export default function CreateGradPlanDialog({
               })}
             </>
           )}
+
+          {/* User Added Elective Courses Section */}
+          <Box sx={{ mt: 4 }}>
+            <Divider sx={{ mb: 3 }} />
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Additional Elective Courses
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              If you want to include extra elective courses not covered above, add them here. These will be included in the AI planning step.
+            </Typography>
+            {userElectives.length > 0 && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {userElectives.map(course => (
+                  <Chip
+                    key={course.id}
+                    label={`${course.code} – ${course.title} (${course.credits})`}
+                    onDelete={() => handleRemoveElective(course.id)}
+                    color="info"
+                    variant="outlined"
+                    sx={{
+                      '& .MuiChip-label': { fontSize: '0.7rem' }
+                    }}
+                  />
+                ))}
+              </Box>
+            )}
+            {showElectiveForm ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField
+                    label="Course Code"
+                    value={electiveDraft.code}
+                    onChange={(e) => setElectiveDraft(d => ({ ...d, code: e.target.value }))}
+                    size="small"
+                    sx={{ flex: '1 1 140px', minWidth: '120px' }}
+                  />
+                  <TextField
+                    label="Course Title"
+                    value={electiveDraft.title}
+                    onChange={(e) => setElectiveDraft(d => ({ ...d, title: e.target.value }))}
+                    size="small"
+                    sx={{ flex: '2 1 240px', minWidth: '200px' }}
+                  />
+                  <TextField
+                    label="Credits"
+                    value={electiveDraft.credits}
+                    onChange={(e) => setElectiveDraft(d => ({ ...d, credits: e.target.value }))}
+                    size="small"
+                    sx={{ flex: '0 1 110px', minWidth: '110px' }}
+                    placeholder="e.g. 3.0"
+                    inputProps={{ inputMode: 'decimal', pattern: '^[0-9]+(\\.[0-9]+)?$' }}
+                  />
+                </Box>
+                {electiveError && (
+                  <Alert severity="warning" onClose={() => setElectiveError(null)}>{electiveError}</Alert>
+                )}
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleAddElective}
+                    startIcon={<AddIcon />}
+                    sx={{ fontWeight: 'bold' }}
+                  >
+                    Add Elective
+                  </Button>
+                  <Button
+                    variant="text"
+                    color="inherit"
+                    onClick={() => { resetElectiveDraft(); setShowElectiveForm(false); }}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setShowElectiveForm(true)}
+                sx={{ fontWeight: 'bold' }}
+              >
+                Add Elective Course
+              </Button>
+            )}
+          </Box>
         </Box>
 
         {/* JSON Preview Section
