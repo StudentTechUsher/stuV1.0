@@ -147,27 +147,48 @@ export default function AcademicSummary({
       try {
         // Get the current user session
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         if (user) {
-          // Update the user data with the actual name from the session
-          const displayName = user.user_metadata?.full_name || 
-                              user.user_metadata?.name || 
-                              user.email?.split('@')[0] || 
-                              "Student";
-          
+          // Fetch profile data for graduation timeline
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("fname, lname, est_grad_sem, est_grad_date")
+            .eq("id", user.id)
+            .single();
+
+          const displayName = profileData?.fname && profileData?.lname
+            ? `${profileData.fname} ${profileData.lname}`
+            : user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.email?.split('@')[0] ||
+              "Student";
+
           // Get avatar URL from various possible sources
-          const profilePicture = user.user_metadata?.avatar_url || 
-                                user.user_metadata?.picture || 
+          const profilePicture = user.user_metadata?.avatar_url ||
+                                user.user_metadata?.picture ||
                                 user.user_metadata?.photo_url ||
                                 user.user_metadata?.image_url ||
                                 null;
-          
+
+          // Format graduation date if available
+          let formattedGradDate = DEFAULT_DATA.estGradDate;
+          if (profileData?.est_grad_date) {
+            const date = new Date(profileData.est_grad_date);
+            formattedGradDate = date.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+          }
+
           setUserData(prev => ({
             ...prev,
             name: displayName,
-            standing: yearInSchool || prev.standing // Use the prop or fallback to default
+            standing: yearInSchool || prev.standing,
+            estSemester: profileData?.est_grad_sem || prev.estSemester,
+            estGradDate: formattedGradDate,
           }));
-          
+
           setAvatarUrl(profilePicture);
         }
       } catch (error) {

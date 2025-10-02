@@ -17,6 +17,8 @@ interface GradPlanDetails {
   plan_details: unknown;
   student_id: number;
   programs: Array<{ id: number; name: string }>;
+  est_grad_sem?: string;
+  est_grad_date?: string;
 }
 
 interface Event {
@@ -151,6 +153,24 @@ export default function EditGradPlanPage() {
         }
 
         setGradPlan(planData);
+
+        // Initialize currentPlanData with the fetched plan so Submit is enabled for new plans
+        let raw: any = planData.plan_details;
+        if (typeof raw === 'string') {
+          try { raw = JSON.parse(raw); } catch {/* leave as-is */}
+        }
+        // Extract the plan array from various possible shapes
+        let planArray: Term[] | null = null;
+        if (raw && typeof raw === 'object') {
+          if (Array.isArray(raw.plan)) planArray = raw.plan;
+          else if (Array.isArray(raw.semesters)) planArray = raw.semesters;
+          else if (Array.isArray(raw.terms)) planArray = raw.terms;
+          else if (Array.isArray(raw.plan_details?.plan)) planArray = raw.plan_details.plan;
+        }
+        if (planArray) {
+          setCurrentPlanData(planArray);
+        }
+
         setIsCheckingAccess(false);
 
       } catch (e: unknown) {
@@ -388,17 +408,26 @@ export default function EditGradPlanPage() {
         {(() => {
           // Normalize various possible stored shapes of plan_details
           let raw: any = gradPlan.plan_details;
+
           // If stored as raw JSON string (legacy), parse it
             if (typeof raw === 'string') {
             try { raw = JSON.parse(raw); } catch {/* leave raw as-is */}
           }
-          // Unwrap if root contains known keys
-          if (raw && typeof raw === 'object') {
-            if (Array.isArray(raw.plan)) raw = { plan: raw.plan }; // keep consistent shape for component
-            else if (Array.isArray(raw.semesters)) raw = { plan: raw.semesters };
-            else if (Array.isArray(raw.terms)) raw = { plan: raw.terms };
-            else if (Array.isArray(raw.plan_details?.plan)) raw = { plan: raw.plan_details.plan };
+
+          // If raw is directly an array, wrap it in an object
+          if (Array.isArray(raw)) {
+            raw = { plan: raw };
           }
+          // Unwrap if root contains known keys
+          else if (raw && typeof raw === 'object') {
+            if (Array.isArray(raw.plan)) raw = { ...raw, plan: raw.plan }; // keep existing data
+            else if (Array.isArray(raw.semesters)) raw = { ...raw, plan: raw.semesters };
+            else if (Array.isArray(raw.terms)) raw = { ...raw, plan: raw.terms };
+            else if (Array.isArray(raw.plan_details?.plan)) raw = { ...raw, plan: raw.plan_details.plan };
+          }
+
+          // Add graduation timeline from the gradPlan object
+          raw = { ...raw, est_grad_sem: gradPlan.est_grad_sem, est_grad_date: gradPlan.est_grad_date };
           return (
             <GraduationPlanner
               plan={raw as Record<string, unknown>}

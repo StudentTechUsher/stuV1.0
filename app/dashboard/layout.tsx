@@ -33,7 +33,8 @@ type IconKey =
   | "reports"
   | "users"
   | "programs"
-  | "system";
+  | "system"
+  | "forecast";
 
 export type NavItem = {
   href: string;
@@ -118,6 +119,7 @@ function getNavItems(role: Role, pendingCount = 0): NavItem[] {
     case "admin":
       return [
         { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/dashboard/admin/forecast",        segment: "admin",                 label: "Forecasting",            icon: "forecast" },
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },

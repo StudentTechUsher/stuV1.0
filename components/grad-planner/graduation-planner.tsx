@@ -35,6 +35,9 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
+import { SpaceView, PlanSpaceView } from '@/components/space/SpaceView';
+import { TermBlock } from '@/components/space/TermCard';
+import { CourseItem } from '@/components/space/CoursePill';
 
 // Color mapping for requirement types (matching academic-progress-card)
 const REQUIREMENT_COLORS: Record<string, string> = {
@@ -528,12 +531,19 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     })
   );
 
+  // Extract est_grad_sem BEFORE processing plan structure
+  const estGradSem = useMemo(() => {
+    if (!plan) return undefined;
+    const planRecord = plan as Record<string, unknown>;
+    return planRecord.est_grad_sem as string | undefined;
+  }, [plan]);
+
   // Handle different possible database structures
   const planData = useMemo((): Term[] => {
     if (!plan) return [];
-    
+
     const planRecord = plan as Record<string, unknown>;
-    
+
     // Check if plan itself is an array of terms (direct plan_details passed)
     if (Array.isArray(plan)) {
       return plan;
@@ -726,12 +736,43 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   
   // If we're passed plan_details directly, metadata is at root level
   // If we're passed the full database record, metadata is in plan_details
-  const sourceData = planRecord.plan_details ? 
-    (planRecord.plan_details as Record<string, unknown>) : 
+  const sourceData = planRecord.plan_details ?
+    (planRecord.plan_details as Record<string, unknown>) :
     planRecord;
-  
+
   const assumptions = sourceData.assumptions as string[];
   const durationYears = sourceData.duration_years as number;
+
+  // Transform current plan data to SpaceView format
+  const spaceViewData: PlanSpaceView = useMemo(() => {
+    const planRecord = plan as Record<string, unknown>;
+    const planName = (planRecord.plan_name as string) || 'My Graduation Plan';
+    const degree = (sourceData.program as string) || 'Degree Program';
+    const gradSemester = estGradSem || 'Not set';
+
+    const terms: TermBlock[] = currentPlanData.map((term, index) => {
+      const courses: CourseItem[] = (term.courses || []).map((course, courseIndex) => ({
+        id: `${index}-${courseIndex}`,
+        code: course.code || '',
+        title: course.title || '',
+        credits: course.credits || 0,
+        requirements: course.fulfills || [],
+      }));
+
+      return {
+        id: `term-${index}`,
+        label: term.term || `Term ${index + 1}`,
+        courses,
+      };
+    });
+
+    return {
+      planName,
+      degree,
+      gradSemester,
+      terms,
+    };
+  }, [plan, currentPlanData, sourceData.program, estGradSem]);
 
   return (
     <DndContext
@@ -841,128 +882,8 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         
         {/* Display terms with events between them */}
         {isSpaceView ? (
-          // Space View: 4 columns grid with events
-          <Box sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 2,
-            '@media (max-width: 1200px)': {
-              gridTemplateColumns: 'repeat(3, 1fr)'
-            },
-            '@media (max-width: 900px)': {
-              gridTemplateColumns: 'repeat(2, 1fr)'
-            }
-          }}>
-            {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
-              const termNumber = index + 1;
-              const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
-              const termCredits = term.credits_planned ||
-                                 (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-
-              // Add term card
-              acc.push(
-                <Box
-                  key={`term-${index}`}
-                  sx={{
-                    p: 2,
-                    border: '1px solid var(--border)',
-                    borderRadius: 2,
-                    backgroundColor: 'white',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    minHeight: '150px',
-                  }}
-                >
-                  <Typography variant="subtitle2" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 700, mb: 1, fontSize: '0.9rem' }}>
-                    Term {term.term || index + 1}
-                  </Typography>
-                  <Typography variant="caption" className="font-body" sx={{ color: 'var(--primary)', fontWeight: 600, display: 'block', mb: 1.5 }}>
-                    {termCredits} Credits
-                  </Typography>
-
-                  {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {term.courses.map((course: Course, courseIndex: number) => {
-                        if (!course.code || !course.title) return null;
-                        return (
-                          <Typography
-                            key={`space-term-${index}-course-${courseIndex}`}
-                            variant="caption"
-                            className="font-body"
-                            sx={{
-                              fontSize: '0.75rem',
-                              color: 'text.secondary',
-                              lineHeight: 1.4
-                            }}
-                          >
-                            {course.code}
-                          </Typography>
-                        );
-                      })}
-                    </Box>
-                  ) : (
-                    <Typography variant="caption" className="font-body" color="text.secondary">
-                      No courses
-                    </Typography>
-                  )}
-                </Box>
-              );
-
-              // Add events after this term (as individual grid items)
-              if (eventsAfterThisTerm.length > 0) {
-                eventsAfterThisTerm.forEach((event) => {
-                  const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
-                  const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
-
-                  acc.push(
-                    <Box
-                      key={event.id}
-                      sx={{
-                        p: 1.5,
-                        backgroundColor: eventColor,
-                        color: 'white',
-                        borderRadius: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                        minHeight: '150px',
-                        position: 'relative',
-                      }}
-                    >
-                      <EventIconComponent sx={{ fontSize: 32, mb: 1 }} />
-                      <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '0.85rem', textAlign: 'center', mb: 0.5 }}>
-                        {event.title}
-                      </Typography>
-                      <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.65rem', textAlign: 'center' }}>
-                        {event.type}
-                      </Typography>
-                      {isEditMode && (
-                        <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 0.5 }}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenEventDialog(event)}
-                            sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteEvent(event.id)}
-                            sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                });
-              }
-
-              return acc;
-            }, [])}
-          </Box>
+          // Space View: Clean grid layout
+          <SpaceView plan={spaceViewData} />
         ) : (
           // Detail View: Render pairs of terms side-by-side, with events spanning full width
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

@@ -1,10 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardCard, type KpiOption } from "@/components/ui/dashboard-card"
 import { DashboardChart, type ChartData } from "@/components/ui/dashboard-chart"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { parseCSVData, calculateKPIs, getColleges, type StudentKPIData, type KPICalculations } from "@/lib/utils/csv-parser"
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import { IconButton, Tooltip } from '@mui/material'
 
 const KPI_OPTIONS: KpiOption[] = [
   { key: "studentsWithoutActivePlan", label: "Without Active Plans", description: "Students without a completed active grad plan" },
@@ -24,6 +27,7 @@ const KPI_OPTIONS: KpiOption[] = [
 ]
 
 export function AdminDashboard() {
+  const router = useRouter()
   const [data, setData] = useState<StudentKPIData[]>([])
   const [selectedCollege, setSelectedCollege] = useState<string>("all")
   const [colleges, setColleges] = useState<string[]>([])
@@ -111,6 +115,20 @@ export function AdminDashboard() {
           marginBottom: '24px'
         }}>Admin Dashboard</h1>
         <div className="flex items-center gap-2">
+          <Tooltip title="Forecasting Tool">
+            <IconButton
+              onClick={() => router.push('/dashboard/admin/forecast')}
+              sx={{
+                bgcolor: 'var(--primary)',
+                color: 'var(--primary-dark)',
+                '&:hover': {
+                  bgcolor: 'var(--hover-green)'
+                }
+              }}
+            >
+              <TrendingUpIcon />
+            </IconButton>
+          </Tooltip>
           <span className="text-sm font-medium">View:</span>
           <Select value={selectedCollege} onValueChange={setSelectedCollege}>
             <SelectTrigger className="w-[200px]">
