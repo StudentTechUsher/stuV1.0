@@ -15,9 +15,26 @@ import {
   Box,
   Typography,
   IconButton,
+  ThemeProvider,
+  createTheme,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 import { X, Clock, MapPin, User } from "lucide-react";
 import type { SchedulerEvent } from "./scheduler-calendar";
+
+// Create a theme with green time picker
+const greenTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#12F987',
+      light: '#12F987',
+      dark: '#06C96C',
+      contrastText: '#000000',
+    },
+  },
+});
 
 type Props = {
   open: boolean;
@@ -45,7 +62,7 @@ export default function EventManager({
       return {
         title: event.title,
         category: (event.category as typeof eventCategories[number]) || "Other",
-        dayOfWeek: event.dayOfWeek,
+        daysOfWeek: [event.dayOfWeek], // Convert single day to array
         startTime: event.startTime,
         endTime: event.endTime,
       };
@@ -53,7 +70,7 @@ export default function EventManager({
       return {
         title: "",
         category: "Other" as typeof eventCategories[number],
-        dayOfWeek: selectedSlot.dayOfWeek,
+        daysOfWeek: [selectedSlot.dayOfWeek],
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
       };
@@ -61,7 +78,7 @@ export default function EventManager({
       return {
         title: "",
         category: "Other" as typeof eventCategories[number],
-        dayOfWeek: 1, // Monday
+        daysOfWeek: [] as number[], // Empty array for multiple selection
         startTime: "09:00",
         endTime: "10:00",
       };
@@ -74,7 +91,7 @@ export default function EventManager({
       setFormData({
         title: event.title,
         category: (event.category as typeof eventCategories[number]) || "Other",
-        dayOfWeek: event.dayOfWeek,
+        daysOfWeek: [event.dayOfWeek],
         startTime: event.startTime,
         endTime: event.endTime,
       });
@@ -82,7 +99,7 @@ export default function EventManager({
       setFormData({
         title: "",
         category: "Other" as typeof eventCategories[number],
-        dayOfWeek: selectedSlot.dayOfWeek,
+        daysOfWeek: [selectedSlot.dayOfWeek],
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
       });
@@ -90,7 +107,7 @@ export default function EventManager({
       setFormData({
         title: "",
         category: "Other" as typeof eventCategories[number],
-        dayOfWeek: 1, // Monday
+        daysOfWeek: [],
         startTime: "09:00",
         endTime: "10:00",
       });
@@ -98,20 +115,42 @@ export default function EventManager({
   }, [event, selectedSlot]);
 
   const handleSave = () => {
-    const eventData: Omit<SchedulerEvent, "id"> = {
-      title: formData.title,
-      dayOfWeek: formData.dayOfWeek,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      type: "personal",
-      status: "blocked",
-      category: formData.category,
-    };
+    console.log('Saving events for days:', formData.daysOfWeek);
 
+    // Create an event for each selected day
+    if (formData.daysOfWeek.length === 0) {
+      console.warn('No days selected');
+      return;
+    }
+
+    // For editing, only update the single event
     if (isEdit && event) {
-      onSave({ ...eventData, id: event.id });
-    } else {
+      const eventData: Omit<SchedulerEvent, "id"> & { id: string } = {
+        id: event.id,
+        title: formData.title,
+        dayOfWeek: formData.daysOfWeek[0], // Use first selected day for edit
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        type: "personal",
+        status: "blocked",
+        category: formData.category,
+      };
       onSave(eventData);
+    } else {
+      // For new events, create an array of events for all selected days
+      const events: Array<Omit<SchedulerEvent, "id">> = formData.daysOfWeek.map(dayOfWeek => ({
+        title: formData.title,
+        dayOfWeek: dayOfWeek,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        type: "personal",
+        status: "blocked",
+        category: formData.category,
+      }));
+
+      console.log('Creating events for multiple days:', events);
+      // Pass all events at once as an array
+      onSave(events as any);
     }
 
     onClose();
@@ -127,18 +166,19 @@ export default function EventManager({
   const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          p: 1,
-        },
-      }}
-    >
+    <ThemeProvider theme={greenTheme}>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1,
+          },
+        }}
+      >
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Typography variant="h6" className="font-header">
@@ -159,10 +199,18 @@ export default function EventManager({
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Enter event title"
             className="font-body"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: 'var(--primary)' },
+                '&:hover fieldset': { borderColor: 'var(--hover-green)' },
+                '&.Mui-focused fieldset': { borderColor: 'var(--primary)' },
+              },
+              '& .MuiInputLabel-root': { color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } },
+            }}
           />
 
           <FormControl fullWidth>
-            <InputLabel>Category</InputLabel>
+            <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>Category</InputLabel>
             <Select
               value={formData.category}
               label="Category"
@@ -173,6 +221,11 @@ export default function EventManager({
                 })
               }
               className="font-body"
+              sx={{
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--hover-green)' },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' }
+              }}
             >
               {eventCategories.map((category) => (
                 <MenuItem key={category} value={category} className="font-body">
@@ -183,21 +236,37 @@ export default function EventManager({
           </FormControl>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Day of Week</InputLabel>
-            <Select
-              value={formData.dayOfWeek}
-              label="Day of Week"
-              onChange={(e) =>
-                setFormData({ ...formData, dayOfWeek: e.target.value as number })
-              }
-              className="font-body"
-            >
+            <Typography variant="subtitle2" className="font-body-semi" sx={{ mb: 1, fontWeight: 600 }}>
+              Days of Week
+            </Typography>
+            <FormGroup sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
               {dayNames.map((day, index) => (
-                <MenuItem key={index + 1} value={index + 1} className="font-body">
-                  {day}
-                </MenuItem>
+                <FormControlLabel
+                  key={index + 1}
+                  control={
+                    <Checkbox
+                      checked={formData.daysOfWeek.includes(index + 1)}
+                      onChange={(e) => {
+                        const dayValue = index + 1;
+                        setFormData({
+                          ...formData,
+                          daysOfWeek: e.target.checked
+                            ? [...formData.daysOfWeek, dayValue].sort()
+                            : formData.daysOfWeek.filter(d => d !== dayValue)
+                        });
+                      }}
+                      sx={{
+                        color: 'var(--primary)',
+                        '&.Mui-checked': {
+                          color: 'var(--primary)',
+                        },
+                      }}
+                    />
+                  }
+                  label={<Typography className="font-body" sx={{ fontSize: 14 }}>{day}</Typography>}
+                />
               ))}
-            </Select>
+            </FormGroup>
           </FormControl>
 
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
@@ -211,6 +280,14 @@ export default function EventManager({
               }
               slotProps={{ inputLabel: { shrink: true } }}
               className="font-body"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: 'var(--primary)' },
+                  '&:hover fieldset': { borderColor: 'var(--hover-green)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--primary)' },
+                },
+                '& .MuiInputLabel-root': { color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } },
+              }}
             />
 
             <TextField
@@ -223,6 +300,14 @@ export default function EventManager({
               }
               slotProps={{ inputLabel: { shrink: true } }}
               className="font-body"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: 'var(--primary)' },
+                  '&:hover fieldset': { borderColor: 'var(--hover-green)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--primary)' },
+                },
+                '& .MuiInputLabel-root': { color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } },
+              }}
             />
           </Box>
 
@@ -285,7 +370,7 @@ export default function EventManager({
             <Button
               onClick={handleSave}
               variant="contained"
-              disabled={!formData.title.trim()}
+              disabled={!formData.title.trim() || formData.daysOfWeek.length === 0}
               className="font-body-semi"
               sx={{
                 bgcolor: "var(--primary)",
@@ -298,5 +383,6 @@ export default function EventManager({
         </Box>
       </DialogActions>
     </Dialog>
+    </ThemeProvider>
   );
 }

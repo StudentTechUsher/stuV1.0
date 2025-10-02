@@ -10,6 +10,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Chip from '@mui/material/Chip';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -214,7 +215,7 @@ function DraggableCourse({
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     zIndex: isDragging ? 1000 : 'auto',
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   } : undefined;
 
   // Check if this course has been moved
@@ -397,6 +398,38 @@ interface GraduationPlannerProps {
   };
 }
 
+// Trash Zone Component
+function TrashZone() {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        position: 'fixed',
+        bottom: 40,
+        left: '50%',
+        transform: isOver ? 'translateX(-50%) scale(1.15)' : 'translateX(-50%) scale(1)',
+        width: 100,
+        height: 100,
+        borderRadius: '50%',
+        backgroundColor: isOver ? 'var(--destructive)' : 'var(--action-cancel)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1001,
+        transition: 'all 0.2s ease-in-out',
+        boxShadow: isOver ? '0 8px 24px rgba(239, 68, 68, 0.5)' : '0 4px 12px rgba(244, 67, 54, 0.4)',
+        cursor: 'pointer',
+      }}
+    >
+      <DeleteIcon sx={{ fontSize: 48, color: 'white' }} />
+    </Box>
+  );
+}
+
 // Separate component for the course move TextField
 interface CourseMoveFieldProps {
   currentTerm: number;
@@ -559,6 +592,13 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     setActiveCourse(null);
     if (!over || !isEditMode) return;
     const activeData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
+
+    // Check if dropping on trash zone
+    if (over.id === 'trash-zone') {
+      deleteCourse(activeData.termIndex, activeData.courseIndex);
+      return;
+    }
+
     const overData = over.data.current as { term: Term; termIndex: number };
     if (activeData && overData && activeData.termIndex !== overData.termIndex) {
       moveCourse(activeData.termIndex, activeData.courseIndex, overData.termIndex + 1);
@@ -584,6 +624,34 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     });
     return ordered;
   }, [currentPlanData]);
+  // Function to delete a course
+  const deleteCourse = (termIndex: number, courseIndex: number) => {
+    if (!isEditMode) return;
+
+    setEditablePlanData(prevData => {
+      const newData = prevData.map((term, idx) => {
+        if (idx === termIndex) {
+          const updatedCourses = term.courses ? [...term.courses] : [];
+          updatedCourses.splice(courseIndex, 1);
+          const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+          return {
+            ...term,
+            courses: updatedCourses,
+            credits_planned: updatedCredits
+          };
+        }
+        return term;
+      });
+
+      setModifiedTerms(prev => new Set(prev).add(termIndex));
+
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      return newData;
+    });
+  };
 
   // Function to move a course between terms
   const moveCourse = (fromTermIndex: number, courseIndex: number, toTermNumber: number) => {
@@ -711,6 +779,37 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
               sx={{ ml: 1 }}
             >
               - {programName}
+        <Box sx={{
+          mb: 3,
+          p: 2,
+          backgroundColor: 'rgba(255, 165, 0, 0.15)',
+          borderRadius: 3,
+          border: '2px solid var(--action-edit)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          boxShadow: '0 2px 8px rgba(255, 165, 0, 0.2)'
+        }}>
+          <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
+            Edit Mode Active
+          </Typography>
+          <Typography variant="body2" className="font-body" color="text.secondary">
+            Make changes to your graduation plan. Click "Submit for Approval" when finished.
+          </Typography>
+        </Box>
+      )}
+
+      {/* Trash Zone - Only visible when dragging */}
+      {activeCourse && isEditMode && <TrashZone />}
+      
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+          <Typography variant="body1" className="font-body">
+            Terms Planned: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.length}</Box>
+          </Typography>
+          {Boolean(durationYears) && (
+            <Typography variant="body1" className="font-body">
+              Years: <Box component="span" sx={{ fontWeight: 'bold' }}>{durationYears}</Box> 
             </Typography>
           )}
         </Typography>
@@ -812,6 +911,40 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
                       Term {term.term || index + 1}
+              <Box
+                sx={{
+                  p: 3,
+                  border: '2px solid var(--border)',
+                  borderRadius: 2,
+                  backgroundColor: 'var(--muted)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  minHeight: '200px' // Ensure consistent height
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
+                    Term {term.term || index + 1}
+                  </Typography>
+                  <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+                    {termCredits} Credits
+                  </Typography>
+                </Box>
+                
+                {term.notes && (
+                  <Box sx={{ p: 1, backgroundColor: 'var(--primary-15)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Box
+                        component="img"
+                        src="/stu_icon_black.png"
+                        alt="stu logo"
+                        sx={{ width: 21, height: 21 }}
+                      />
+                      <Typography variant="body2" className="font-brand-bold" sx={{ fontWeight: 700, color: 'var(--foreground)' }}>
+                        stu. tip!
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" className="font-body" color="text.secondary">
+                      {term.notes}
                     </Typography>
                     <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
                       {termCredits} Credits

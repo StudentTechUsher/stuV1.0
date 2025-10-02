@@ -48,7 +48,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
         case "Family":
           return "var(--hover-gray)";
         default:
-          return "var(--muted)";
+          return "var(--hover-green)"; // Darker green for "Other"
       }
     }
     return "var(--primary)";
@@ -68,7 +68,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
         case "Family":
           return "rgba(63, 63, 70, 0.1)"; // gray with 10% opacity
         default:
-          return "var(--muted)";
+          return "rgba(6, 201, 108, 0.1)"; // Darker green with opacity for "Other"
       }
     }
     return "var(--primary-15)";
@@ -139,8 +139,18 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   };
 
 
-  const handleEventSave = (eventData: Omit<SchedulerEvent, "id"> | SchedulerEvent) => {
-    if ('id' in eventData) {
+  const handleEventSave = (eventData: Omit<SchedulerEvent, "id"> | SchedulerEvent | Array<Omit<SchedulerEvent, "id"> | SchedulerEvent>) => {
+    // Handle array of events (for multi-day selection)
+    if (Array.isArray(eventData)) {
+      const newEvents: SchedulerEvent[] = eventData.map((evt, index) => ({
+        ...evt,
+        id: 'id' in evt ? evt.id : `personal-${Date.now()}-${Math.random()}-${index}`,
+      })) as SchedulerEvent[];
+
+      const updatedEvents = [...personalEvents, ...newEvents];
+      setPersonalEvents(updatedEvents);
+      localStorage.setItem('scheduler-personal-events', JSON.stringify(updatedEvents));
+    } else if ('id' in eventData) {
       // Edit existing event
       const updatedEvents = personalEvents.map(event =>
         event.id === eventData.id ? eventData : event

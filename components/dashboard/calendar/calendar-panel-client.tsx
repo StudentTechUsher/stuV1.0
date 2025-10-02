@@ -132,12 +132,31 @@ export default function CalendarPanelClient({
           boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
         }}
       >
-        {/* Title / Semester block */}
-        <Typography variant="h5" className="font-header-bold" sx={{ mb: 1, color: "var(--primary-dark, #003228)", fontWeight: 800 }}>
-          {semester}
-        </Typography>
+        {/* Title / Semester block with scheduler button */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+          <Typography variant="h5" className="font-header-bold" sx={{ color: "var(--primary-dark, #003228)", fontWeight: 800 }}>
+            {semester}
+          </Typography>
+          {showSchedulerButton && (
+            <Link href="/dashboard/semester-scheduler" passHref>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<Calendar size={16} />}
+                className="font-body-semi"
+                sx={{
+                  bgcolor: "var(--primary-dark, #003228)",
+                  color: "white",
+                  "&:hover": { bgcolor: "rgba(0, 50, 40, 0.8)" },
+                }}
+              >
+                Open Scheduler
+              </Button>
+            </Link>
+          )}
+        </Box>
 
-        {/* Calendar with “mock” look */}
+        {/* Calendar with "mock" look */}
         <Box
           sx={{
             // Outer frame like the mock
@@ -232,29 +251,10 @@ export default function CalendarPanelClient({
           />
         </Box>
 
-        {/* Legend & CTA (optional, matches mock) */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 1.5 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <LegendDot sx={{ bgcolor: "#000" }} /> Registered
-            <LegendDot sx={{ bgcolor: "#e6e6e6", border: "1px solid #cfcfcf" }} /> Waitlisted
-          </Box>
-          {showSchedulerButton && (
-            <Link href="/dashboard/semester-scheduler" passHref>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<Calendar size={16} />}
-                className="font-body-semi"
-                sx={{
-                  bgcolor: "var(--primary-dark, #003228)",
-                  color: "white",
-                  "&:hover": { bgcolor: "rgba(0, 50, 40, 0.8)" },
-                }}
-              >
-                Open Scheduler
-              </Button>
-            </Link>
-          )}
+        {/* Legend */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1.5 }}>
+          <LegendDot sx={{ bgcolor: "#000" }} /> Registered
+          <LegendDot sx={{ bgcolor: "#e6e6e6", border: "1px solid #cfcfcf" }} /> Waitlisted
         </Box>
       </CardContent>
     </Card>
