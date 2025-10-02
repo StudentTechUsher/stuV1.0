@@ -1,6 +1,7 @@
 // app/demo/demo-thanks.tsx
 
 import Image from "next/image"
+import Link from "next/link"
 
 export default function DemoThanksPage() {
   return (
@@ -26,6 +27,12 @@ export default function DemoThanksPage() {
         >
           Your demo request has been submitted successfully. We'll be in touch shortly to schedule a time.
         </p>
+        <Link
+          href="/"
+          className="inline-block mt-6 px-6 py-3 bg-black text-white font-body-semi rounded-lg hover:bg-zinc-800 transition-colors"
+        >
+          Back to Home
+        </Link>
       </div>
     </main>
   )
