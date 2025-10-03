@@ -117,6 +117,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     plan_details: unknown;
     student_id: number;
     programs: Array<{ id: number; name: string }>;
+    est_grad_sem?: string;
+    est_grad_date?: string;
     advisor_notes: string | null;
 }> {
     try {
@@ -149,10 +151,10 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             throw new GradPlanFetchError('Failed to fetch related student record', studentError);
         }
 
-        // 3. Profile names
+        // 3. Profile names and graduation timeline
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('fname, lname')
+            .select('fname, lname, est_grad_sem, est_grad_date')
             .eq('id', studentData.profile_id)
             .single();
         if (profileError) {
@@ -182,6 +184,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             plan_details: gradPlanData.plan_details,
             student_id: gradPlanData.student_id,
             programs,
+            est_grad_sem: profileData.est_grad_sem,
+            est_grad_date: profileData.est_grad_date
             advisor_notes: gradPlanData.advisor_notes || null
         };
     } catch (err) {

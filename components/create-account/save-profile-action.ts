@@ -58,7 +58,10 @@ export async function saveProfileAndPreferences(payload: SavePayload): Promise<S
     if (!fname.trim() || !lname.trim()) return { ok: false, error: "First and last name are required" };
     if (universityId == null) return { ok: false, error: "University is required" };
 
-    const uniq = (xs: number[]) => Array.from(new Set(xs.filter(n => Number.isFinite(n))));
+    const uniq = (xs: number[] | null | undefined) => {
+      if (!xs || !Array.isArray(xs)) return [];
+      return Array.from(new Set(xs.filter(n => Number.isFinite(n))));
+    };
 
     // 1. Upsert profile
     const { error: profileError } = await supabase
@@ -76,7 +79,7 @@ export async function saveProfileAndPreferences(payload: SavePayload): Promise<S
       profile_id: userId,
       selected_programs: selectedProgramIds.length ? selectedProgramIds : null,
       selected_interests: uniq(interests).length ? uniq(interests) : null,
-      career_options: uniq(careerSelections).length ? uniq(careerSelections) : null,
+      targeted_career: uniq(careerSelections).length ? uniq(careerSelections) : null,
       class_preferences: uniq(classPreferences).length ? uniq(classPreferences) : null,
     };
 

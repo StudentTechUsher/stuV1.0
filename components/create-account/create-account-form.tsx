@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 // Removed direct client-side upsert; persistence handled by server action now.
 import { saveProfileAndPreferences } from "./save-profile-action";
+import { saveGradTimeline } from "./save-grad-timeline-action";
 import { Option } from "@/types/option";
 import ChipsField from "@/helpers/chips-field";
 import SingleSelect from "@/helpers/single-select";
-import { TextField } from "@mui/material";
+import { TextField, Select, MenuItem, FormControl, InputLabel, FormHelperText, TextareaAutosize } from "@mui/material";
 import TranscriptUploadSection from "@/components/transcript/TranscriptUploadSection";
+import { Term, termYearToDate, termYearToSem } from "@/lib/gradDate";
 
 type Preload = {
   universities: Option[];
@@ -29,6 +31,9 @@ type Initial = {
   selected_interests: number[] | null;
   career_options: number[] | null;
   class_preferences: number[] | null;
+  est_grad_sem?: string | null;
+  est_grad_date?: string | null;
+  career_goals?: string | null;
 } | null;
 
 type Props = {
@@ -71,6 +76,11 @@ export default function CreateAccountForm({
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName]   = useState<string>("");
 
+  // Graduation timeline fields
+  const [gradTerm, setGradTerm] = useState<Term | "">("");
+  const [gradYear, setGradYear] = useState<number | "">("");
+  const [careerGoalsText, setCareerGoalsText] = useState<string>("");
+
   // Helper: keep only values that exist in options
   const clampToOptions = useCallback((values: number[], options: Option[]) => {
     const valid = new Set(options.map(o => o.id));
@@ -88,6 +98,19 @@ export default function CreateAccountForm({
     setInterests(initial.selected_interests ?? []);
     setCareerSelections(initial.career_options ?? []);
     setClassPreferences(initial.class_preferences ?? []);
+    setCareerGoalsText(initial.career_goals ?? "");
+
+    // Parse graduation semester if provided
+    if (initial.est_grad_sem) {
+      const parts = initial.est_grad_sem.trim().split(/\s+/);
+      if (parts.length === 2) {
+        const [term, year] = parts;
+        if (["Spring", "Summer", "Fall", "Winter"].includes(term)) {
+          setGradTerm(term as Term);
+          setGradYear(parseInt(year, 10));
+        }
+      }
+    }
   }, [initial]);
 
   // Filter majors/minors by selected university (and clamp existing selections instead of clearing)
@@ -112,12 +135,23 @@ export default function CreateAccountForm({
   }, [universityId, preload.majorsAll, preload.minorsAll, clampToOptions]);
 
   const canSubmit = useMemo(() => {
+    // For create mode, require graduation timeline
+    if (!isEditMode) {
+      return (
+        universityId != null &&
+        firstName.trim().length > 0 &&
+        lastName.trim().length > 0 &&
+        gradTerm !== "" &&
+        gradYear !== ""
+      );
+    }
+    // For edit mode, don't require timeline (already set)
     return (
       universityId != null &&
       firstName.trim().length > 0 &&
       lastName.trim().length > 0
     );
-  }, [universityId, firstName, lastName]);
+  }, [universityId, firstName, lastName, gradTerm, gradYear, isEditMode]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -141,6 +175,43 @@ export default function CreateAccountForm({
         setSaving(false);
         return;
       }
+
+      // Save graduation timeline directly to profiles table
+      if (gradTerm !== "" && gradYear !== "") {
+        const estGradSem = termYearToSem(gradTerm, gradYear as number);
+        const estGradDate = termYearToDate(gradTerm, gradYear as number);
+
+        const timelineResult = await saveGradTimeline({
+          userId,
+          est_grad_sem: estGradSem,
+          est_grad_date: estGradDate,
+          career_goals: careerGoalsText || null,
+        });
+
+        if (!timelineResult.ok) {
+          setError(timelineResult.error || "Could not save graduation timeline.");
+          setSaving(false);
+          return;
+        }
+      } else if (isEditMode) {
+        // In edit mode, always save (even if empty)
+        const estGradSem = gradTerm !== "" && gradYear !== "" ? termYearToSem(gradTerm, gradYear as number) : null;
+        const estGradDate = gradTerm !== "" && gradYear !== "" ? termYearToDate(gradTerm, gradYear as number) : null;
+
+        const timelineResult = await saveGradTimeline({
+          userId,
+          est_grad_sem: estGradSem,
+          est_grad_date: estGradDate,
+          career_goals: careerGoalsText || null,
+        });
+
+        if (!timelineResult.ok) {
+          setError(timelineResult.error || "Could not save graduation timeline.");
+          setSaving(false);
+          return;
+        }
+      }
+
       router.push(nextHref);
     } catch (err) {
       console.error("[CreateAccount] Submit exception:", err);
@@ -244,6 +315,94 @@ export default function CreateAccountForm({
         values={classPreferences}
         onChange={setClassPreferences}
       />
+
+      {/* Graduation Timeline */}
+      <div style={{ marginTop: 16, marginBottom: 16 }}>
+        <h3 className="font-header-bold" style={{ fontSize: '1rem', marginBottom: 8 }}>
+          Graduation Timeline {!isEditMode && <span style={{ color: 'var(--action-cancel)' }}>*</span>}
+        </h3>
+        <p className="font-body" style={{ color: "var(--text-secondary, #666)", marginBottom: 12, fontSize: '0.9rem' }}>
+          When do you plan to graduate?
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <FormControl fullWidth required={!isEditMode}>
+            <InputLabel id="grad-term-label">Term</InputLabel>
+            <Select
+              labelId="grad-term-label"
+              value={gradTerm}
+              label="Term"
+              onChange={(e) => setGradTerm(e.target.value as Term | "")}
+            >
+              <MenuItem value="">
+                <em>Select term</em>
+              </MenuItem>
+              <MenuItem value="Spring">Spring</MenuItem>
+              <MenuItem value="Summer">Summer</MenuItem>
+              <MenuItem value="Fall">Fall</MenuItem>
+              <MenuItem value="Winter">Winter</MenuItem>
+            </Select>
+            {!isEditMode && (
+              <FormHelperText>When you plan to graduate</FormHelperText>
+            )}
+          </FormControl>
+
+          <FormControl fullWidth required={!isEditMode}>
+            <InputLabel id="grad-year-label">Year</InputLabel>
+            <Select
+              labelId="grad-year-label"
+              value={gradYear}
+              label="Year"
+              onChange={(e) => setGradYear(e.target.value as number | "")}
+            >
+              <MenuItem value="">
+                <em>Select year</em>
+              </MenuItem>
+              {Array.from({ length: 10 }, (_, i) => {
+                const year = new Date().getFullYear() + i;
+                return (
+                  <MenuItem key={year} value={year}>
+                    {year}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+            {!isEditMode && (
+              <FormHelperText>You can edit this later</FormHelperText>
+            )}
+          </FormControl>
+        </div>
+      </div>
+
+      {/* Career Goals */}
+      <div style={{ marginTop: 16, marginBottom: 16 }}>
+        <h3 className="font-header-bold" style={{ fontSize: '1rem', marginBottom: 8 }}>
+          Career Goals
+        </h3>
+        <p className="font-body" style={{ color: "var(--text-secondary, #666)", marginBottom: 12, fontSize: '0.9rem' }}>
+          What are your career aspirations? (Optional)
+        </p>
+
+        <textarea
+          value={careerGoalsText}
+          onChange={(e) => setCareerGoalsText(e.target.value)}
+          placeholder="E.g., I want to work in software engineering, focus on AI/ML, and eventually start my own company..."
+          maxLength={1000}
+          style={{
+            width: '100%',
+            minHeight: '100px',
+            padding: '12px',
+            borderRadius: '8px',
+            border: '1px solid var(--border, #ccc)',
+            fontFamily: 'inherit',
+            fontSize: '0.95rem',
+            resize: 'vertical',
+          }}
+        />
+        <p className="font-body" style={{ color: "var(--text-secondary, #666)", fontSize: '0.8rem', marginTop: 4 }}>
+          {careerGoalsText.length}/1000 characters
+        </p>
+      </div>
 
       {/* Transcript Upload - only show in create mode, not edit mode */}
       {!isEditMode && (

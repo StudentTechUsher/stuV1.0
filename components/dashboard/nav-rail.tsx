@@ -24,6 +24,7 @@ import PeopleAltRounded from "@mui/icons-material/PeopleAlt";
 import AccountTreeRounded from "@mui/icons-material/AccountTree";
 import AdminPanelSettingsRounded from "@mui/icons-material/AdminPanelSettings";
 import MapRounded from "@mui/icons-material/MapRounded";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { MdHistory } from "react-icons/md";
 import type { NavItem } from "@/app/dashboard/layout";
 import { JSX } from "react";
@@ -53,6 +54,7 @@ const iconMap: Record<NavItem["icon"], JSX.Element> = {
   users: <PeopleAltRounded />,
   programs: <AccountTreeRounded />,
   system: <AdminPanelSettingsRounded />,
+  forecast: <TrendingUpIcon />,
 };
 
 export default function NavRail({ items, railWidth = 88, showSettings = true }: Readonly<Props>) {

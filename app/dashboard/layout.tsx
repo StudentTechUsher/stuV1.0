@@ -34,7 +34,8 @@ type IconKey =
   | "reports"
   | "users"
   | "programs"
-  | "system";
+  | "system"
+  | "forecast";
 
 export type NavItem = {
   href: string;
@@ -125,6 +126,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
     case "admin":
       return [
         { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/dashboard/admin/forecast",        segment: "admin",                 label: "Forecasting",            icon: "forecast" },
   { href: "/dashboard/inbox",                 segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },

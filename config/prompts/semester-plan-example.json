@@ -84,13 +84,13 @@
           "fulfills": ["Religion cornerstone/BoM"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
-          "credits": 1,
-          "fulfills": ["Elective/GE"]
+          "code": "PHIL 205",
+          "title": "Ethics and Values",
+          "credits": 3,
+          "fulfills": ["Humanities (GE)"]
         }
       ],
-      "credits_planned": 15
+      "credits_planned": 17
     },
     {
       "term": "3",
@@ -121,13 +121,19 @@
           "fulfills": ["Religion cornerstone"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
-          "credits": 5,
-          "fulfills": ["Elective/GE"]
+          "code": "PSYCH 111",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "fulfills": ["Social Science (GE)"]
+        },
+        {
+          "code": "MATH 112",
+          "title": "Calculus 1",
+          "credits": 4,
+          "fulfills": ["Quantitative Reasoning (GE)"]
         }
       ],
-      "credits_planned": 15
+      "credits_planned": 17
     },
     {
       "term": "4",
@@ -146,13 +152,25 @@
           "fulfills": ["Religion elective"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
-          "credits": 10,
-          "fulfills": ["Elective/GE"]
+          "code": "ENGL 295",
+          "title": "Literature and Film",
+          "credits": 3,
+          "fulfills": ["Humanities (GE)"]
+        },
+        {
+          "code": "BIO 100",
+          "title": "Principles of Biology",
+          "credits": 3,
+          "fulfills": ["Life Science (GE)"]
+        },
+        {
+          "code": "STAT 121",
+          "title": "Principles of Statistics",
+          "credits": 3,
+          "fulfills": ["Quantitative Reasoning (GE)"]
         }
       ],
-      "credits_planned": 14
+      "credits_planned": 13
     },
     {
       "term": "5",
@@ -189,13 +207,13 @@
           "fulfills": ["Junior Core"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
-          "credits": 2,
-          "fulfills": ["Elective/GE"]
+          "code": "ART 101",
+          "title": "Introduction to Visual Arts",
+          "credits": 3,
+          "fulfills": ["Fine Arts (GE)"]
         }
       ],
-      "credits_planned": 14
+      "credits_planned": 15
     },
     {
       "term": "6",
@@ -263,10 +281,10 @@
           "fulfills": ["Business Core"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
+          "code": "GEOG 120",
+          "title": "World Regional Geography",
           "credits": 3,
-          "fulfills": ["Elective/GE"]
+          "fulfills": ["Global & Cultural Awareness (GCA)"]
         }
       ],
       "credits_planned": 12
@@ -282,22 +300,22 @@
           "fulfills": ["Business Core"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
+          "code": "HIST 202",
+          "title": "American History Since 1877",
           "credits": 3,
-          "fulfills": ["Elective/GE"]
+          "fulfills": ["Humanities (GE)"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
+          "code": "MUSIC 101",
+          "title": "Introduction to Music",
           "credits": 3,
-          "fulfills": ["Elective/GE"]
+          "fulfills": ["Fine Arts (GE)"]
         },
         {
-          "code": "ELECTIVE",
-          "title": "Open elective/GE",
+          "code": "COMM 316",
+          "title": "Business and Professional Communication",
           "credits": 3,
-          "fulfills": ["Elective/GE"]
+          "fulfills": ["Advanced Communication"]
         }
       ],
       "credits_planned": 12
@@ -309,7 +327,7 @@
     "Minimum B in ACC 200 and ACC 310 before applying to the Accounting program.",
     "M COM 320 satisfies Advanced Writing / Communication.",
     "Religion 'cornerstones' distributed across years; total Religion hours planned ≈ 14.",
-    "Electives are used flexibly (1–10 credits) to keep each term within 12–18 credits and to avoid back-loading."
+    "Real catalog courses are selected to fill remaining credits, complete general education requirements, keep each term within 12–18 credits, and avoid back-loading."
   ],
   "checkpoints": [
     {

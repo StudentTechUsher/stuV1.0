@@ -291,8 +291,24 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       
       {selectedGradPlan ? (
         <Box>
-          <GraduationPlanner 
-            plan={selectedGradPlan.plan_details as Record<string, unknown>} 
+          <GraduationPlanner
+            plan={(() => {
+              const planDetails = selectedGradPlan.plan_details;
+              // If plan_details is an array, wrap it in an object with a 'plan' key
+              if (Array.isArray(planDetails)) {
+                return {
+                  plan: planDetails,
+                  est_grad_sem: studentRecord?.est_grad_sem,
+                  est_grad_date: studentRecord?.est_grad_date
+                };
+              }
+              // Otherwise, spread it and add graduation fields
+              return {
+                ...(planDetails as Record<string, unknown>),
+                est_grad_sem: studentRecord?.est_grad_sem,
+                est_grad_date: studentRecord?.est_grad_date
+              };
+            })()}
             isEditMode={false}
           />
         </Box>

@@ -71,6 +71,9 @@ export async function getCurrentUserProfile(userId: string) {
       fname,
       lname,
       university_id,
+      est_grad_sem,
+      est_grad_date,
+      career_goals,
       university:university_id(id, name)
     `)
     .eq("id", userId)
@@ -89,7 +92,7 @@ export async function getCurrentUserProfile(userId: string) {
     .from("student")
     .select(`
       selected_interests,
-      career_options,
+      targeted_career,
       selected_programs,
       class_preferences
     `)
@@ -99,7 +102,7 @@ export async function getCurrentUserProfile(userId: string) {
   // If student data doesn't exist, use null values
   const studentInfo = studentError ? {
     selected_interests: null,
-    career_options: null,
+    targeted_career: null,
     selected_programs: null,
     class_preferences: null,
   } : studentData;
@@ -134,7 +137,10 @@ export async function getCurrentUserProfile(userId: string) {
     selected_majors: selectedMajors,
     selected_minors: selectedMinors,
     selected_interests: studentInfo.selected_interests,
-    career_options: studentInfo.career_options,
+    career_options: studentInfo.targeted_career,
     class_preferences: studentInfo.class_preferences,
+    est_grad_sem: profileData.est_grad_sem,
+    est_grad_date: profileData.est_grad_date,
+    career_goals: profileData.career_goals,
   };
 }
