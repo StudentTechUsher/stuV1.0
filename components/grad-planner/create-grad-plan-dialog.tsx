@@ -389,19 +389,6 @@ const handleRemoveElective = (id: string) => {
     });
   };
 
-  // handle program selection toggle
-  const handleProgramToggle = (programId: string) => {
-    setSelectedPrograms(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(programId)) {
-        newSet.delete(programId);
-      } else {
-        newSet.add(programId);
-      }
-      return newSet;
-    });
-  };
-
   // Check if all required dropdowns are filled (only when effectiveMode is MANUAL)
   const areAllDropdownsFilled = useMemo(() => {
     // Require at least one program to be selected
@@ -857,17 +844,10 @@ const handleRemoveElective = (id: string) => {
                           <Chip
                             key={program.id}
                             label={`${program.name}${program.version ? ` (${program.version})` : ''}`}
-                            onClick={() => handleProgramToggle(program.id)}
                             sx={{
-                              cursor: 'pointer',
                               backgroundColor: selectedPrograms.has(program.id) ? 'var(--primary)' : 'transparent',
                               color: selectedPrograms.has(program.id) ? 'white' : 'text.primary',
                               border: selectedPrograms.has(program.id) ? '1px solid var(--primary)' : '1px solid var(--border)',
-                              '&:hover': {
-                                backgroundColor: selectedPrograms.has(program.id)
-                                  ? 'var(--hover-green)'
-                                  : 'var(--muted)'
-                              }
                             }}
                             className="font-body"
                           />
