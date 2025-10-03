@@ -13,7 +13,7 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
-import { ProgramRow } from "@/types/program";
+import ProgramSelectionDialog, { type ProgramSelections } from "@/components/grad-planner/ProgramSelectionDialog";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 
@@ -48,8 +48,6 @@ interface GradPlanClientProps {
   } | null;
   allGradPlans: GradPlanRecord[];
   activeGradPlan: GradPlanRecord | null;
-  programsData: ProgramRow[];
-  genEdData: ProgramRow[];
   /**
    * Prompt string retrieved from ai_prompts table used to guide AI plan generation.
    * If retrieval fails upstream we pass an empty string so the dialog can still render.
@@ -57,9 +55,14 @@ interface GradPlanClientProps {
   prompt: string;
 }
 
-export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, programsData, genEdData, prompt }: Readonly<GradPlanClientProps>) {
+export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, prompt }: Readonly<GradPlanClientProps>) {
   const router = useRouter();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Two-step dialog flow
+  const [showProgramSelection, setShowProgramSelection] = useState(false);
+  const [showCourseSelection, setShowCourseSelection] = useState(false);
+  const [programSelections, setProgramSelections] = useState<ProgramSelections | null>(null);
+
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -74,7 +77,25 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   };
 
   const handleCreatePlan = () => {
-    setIsDialogOpen(true);
+    // Start with step 1: program selection
+    setShowProgramSelection(true);
+  };
+
+  const handleProgramSelectionNext = (selections: ProgramSelections) => {
+    // Save selections and move to step 2
+    setProgramSelections(selections);
+    setShowProgramSelection(false);
+    setShowCourseSelection(true);
+  };
+
+  const handleProgramSelectionClose = () => {
+    setShowProgramSelection(false);
+    setProgramSelections(null);
+  };
+
+  const handleCourseSelectionClose = () => {
+    setShowCourseSelection(false);
+    setProgramSelections(null);
   };
 
   const handleEditPlan = async () => {
@@ -98,14 +119,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     setNotification({ ...notification, open: false });
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-  };
-
   const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string) => {
-    // Close the create plan dialog
-    setIsDialogOpen(false);
-    
+    // Close all dialogs
+    setShowCourseSelection(false);
+    setProgramSelections(null);
+
     // Show success notification
     setNotification({
       open: true,
@@ -322,14 +340,28 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         </Box>
       )}
 
-      <CreateGradPlanDialog
-        open={isDialogOpen}
-        onClose={handleCloseDialog}
-        programsData={programsData}
-        genEdData={genEdData}
-        onPlanCreated={handlePlanCreated}
-        prompt={prompt}
+      {/* Step 1: Program Selection Dialog */}
+      <ProgramSelectionDialog
+        open={showProgramSelection}
+        onClose={handleProgramSelectionClose}
+        onNext={handleProgramSelectionNext}
+        universityId={studentRecord?.university_id || 0}
       />
+
+      {/* Step 2: Course Selection Dialog */}
+      {programSelections && (
+        <CreateGradPlanDialog
+          open={showCourseSelection}
+          onClose={handleCourseSelectionClose}
+          selectedProgramIds={[...programSelections.majorIds, ...programSelections.minorIds]}
+          genEdProgramIds={programSelections.genEdIds}
+          genEdStrategy={programSelections.genEdStrategy}
+          planMode={programSelections.planMode}
+          universityId={studentRecord?.university_id || 0}
+          onPlanCreated={handlePlanCreated}
+          prompt={prompt}
+        />
+      )}
       
       <Snackbar
         open={notification.open}

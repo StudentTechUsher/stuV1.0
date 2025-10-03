@@ -116,15 +116,34 @@ export async function createNotifForPlanReady(userId: string, accessId: string) 
  * Creates a notification informing a student their graduation plan was edited by an advisor.
  * Uses the "edit grad plan" type (as requested) so downstream filters can differentiate.
  */
-export async function createNotifForGradPlanEdited(targetUserId: string, initiatorUserId: string | null, accessId: string) {
+export async function createNotifForGradPlanEdited(
+  targetUserId: string,
+  initiatorUserId: string | null,
+  accessId: string,
+  changeData?: {
+    movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
+    hasSuggestions: boolean;
+  }
+) {
   try {
     if (!targetUserId || !accessId) throw new Error('Missing target user or accessId');
+
+    // Build context with change details
+    const contextJson: any = {
+      message: 'Your most recent grad plan was just updated with edits'
+    };
+
+    if (changeData) {
+      contextJson.movedCourses = changeData.movedCourses;
+      contextJson.hasSuggestions = changeData.hasSuggestions;
+    }
+
     return await createNotification({
       target_user_id: targetUserId,
       initiator_user_id: initiatorUserId,
       type: 'edit grad plan',
-      context_json: { message: 'Your most recent grad plan was just updated with edits' },
-      url: `/dashboard/grad-planner/${accessId}`,
+      context_json: contextJson,
+      url: `/dashboard/grad-plan/${accessId}`,
       status: 'queued',
       is_read: false,
       read_utc: null,

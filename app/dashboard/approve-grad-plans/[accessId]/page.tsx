@@ -203,11 +203,58 @@ export default function ApproveGradPlanPage() {
     });
   };
 
+  // Helper to detect moved courses between original and edited plans
+  const detectMovedCourses = (originalTerms: any[], editedTerms: any[]) => {
+    const movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }> = [];
+
+    // Build a map of course locations in original plan
+    const originalCourseMap = new Map<string, number>();
+    originalTerms.forEach((term, termIdx) => {
+      const courses = term.courses || [];
+      courses.forEach((course: any) => {
+        const key = course.code || course.name || JSON.stringify(course);
+        originalCourseMap.set(key, termIdx + 1); // 1-indexed term numbers
+      });
+    });
+
+    // Check each course in edited plan
+    editedTerms.forEach((term, termIdx) => {
+      const courses = term.courses || [];
+      courses.forEach((course: any) => {
+        const key = course.code || course.name || JSON.stringify(course);
+        const originalTermNum = originalCourseMap.get(key);
+        const currentTermNum = termIdx + 1;
+
+        if (originalTermNum && originalTermNum !== currentTermNum) {
+          movedCourses.push({
+            courseName: course.name || course.code || 'Unknown Course',
+            courseCode: course.code || '',
+            fromTerm: originalTermNum,
+            toTerm: currentTermNum
+          });
+        }
+      });
+    });
+
+    return movedCourses;
+  };
+
   const handleSave = async () => {
     if (!gradPlan || !editablePlan) return;
     setIsSaving(true);
     try {
       const original = gradPlan.plan_details as any;
+
+      // Extract original terms for comparison
+      let originalTerms: any[] = [];
+      if (Array.isArray(original)) originalTerms = original;
+      else if (original?.plan && Array.isArray(original.plan)) originalTerms = original.plan;
+      else if (original?.semesters && Array.isArray(original.semesters)) originalTerms = original.semesters;
+      else if (original?.terms && Array.isArray(original.terms)) originalTerms = original.terms;
+
+      // Detect moved courses
+      const movedCourses = detectMovedCourses(originalTerms, editablePlan);
+
       let payload: any;
       if (Array.isArray(original)) payload = editablePlan;
       else if (original?.plan) payload = { ...original, plan: editablePlan };
@@ -243,7 +290,10 @@ export default function ApproveGradPlanPage() {
             }
           }
           if (targetUserId) {
-            void createNotifForGradPlanEdited(targetUserId, advisorUserId, accessId);
+            void createNotifForGradPlanEdited(targetUserId, advisorUserId, accessId, {
+              movedCourses,
+              hasSuggestions
+            });
           } else {
             console.warn('⚠️ Could not resolve target_user_id (profile_id) from student_id for notification.');
           }

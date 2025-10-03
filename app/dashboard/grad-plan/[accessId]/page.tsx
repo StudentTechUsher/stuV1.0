@@ -7,6 +7,7 @@ import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/services/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
+import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface GradPlanDetails {
@@ -17,6 +18,7 @@ interface GradPlanDetails {
   plan_details: unknown;
   student_id: number;
   programs: Array<{ id: number; name: string }>;
+  advisor_notes: string | null;
 }
 
 interface Event {
@@ -57,8 +59,27 @@ export default function EditGradPlanPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = React.useState(true);
   const [userRole, setUserRole] = React.useState<Role | null>(null);
-  
+  const [advisorChanges, setAdvisorChanges] = React.useState<{
+    movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
+    hasSuggestions: boolean;
+  } | null>(null);
+
   const isEditMode = true; // Always in edit mode for this page
+
+  // Extract advisor changes from localStorage (if coming from notification)
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem('advisorChanges');
+      if (stored) {
+        const data = JSON.parse(stored);
+        setAdvisorChanges(data);
+        // Clear after reading so it doesn't persist on future visits
+        localStorage.removeItem('advisorChanges');
+      }
+    } catch (e) {
+      console.error('Error reading advisor changes from localStorage:', e);
+    }
+  }, []);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -383,6 +404,11 @@ export default function EditGradPlanPage() {
         )}
       </Box>
 
+      {/* Advisor Notes - Show above plan if present */}
+      {gradPlan.advisor_notes && (
+        <AdvisorNotesBox advisorNotes={gradPlan.advisor_notes} />
+      )}
+
       {/* Plan Details */}
       <Paper elevation={0} sx={{ p: 4, mb: 4, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
         {(() => {
@@ -405,6 +431,7 @@ export default function EditGradPlanPage() {
               isEditMode={isEditMode}
               onPlanUpdate={handlePlanUpdate}
               onSave={handleSave}
+              advisorChanges={advisorChanges}
             />
           );
         })()}

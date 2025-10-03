@@ -4,6 +4,7 @@ import * as React from 'react';
 import { DataGrid, GridColDef, GridEventListener } from '@mui/x-data-grid';
 import { Box } from '@mui/material';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export type NotificationRow = {
   id: string;
@@ -11,6 +12,7 @@ export type NotificationRow = {
   url: string | null;
   created_utc: string;
   type: string;
+  context_json?: any;
 };
 
 interface NotificationsGridProps {
@@ -18,6 +20,8 @@ interface NotificationsGridProps {
 }
 
 export function NotificationsGrid({ rows }: NotificationsGridProps) {
+  const router = useRouter();
+
   const columns: GridColDef[] = [
     { field: 'message', headerName: 'Message', flex: 1, sortable: false },
     {
@@ -40,7 +44,17 @@ export function NotificationsGrid({ rows }: NotificationsGridProps) {
     } catch (e) {
       console.error('Failed to mark notification read', e);
     } finally {
-      if (row?.url) window.location.href = row.url;
+      if (row?.url) {
+        // Store notification context in localStorage for grad plan edits
+        if (row.type === 'edit grad plan' && row.context_json) {
+          const changeData = {
+            movedCourses: row.context_json.movedCourses || [],
+            hasSuggestions: row.context_json.hasSuggestions || false
+          };
+          localStorage.setItem('advisorChanges', JSON.stringify(changeData));
+        }
+        router.push(row.url);
+      }
     }
   };
 

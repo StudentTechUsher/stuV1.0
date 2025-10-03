@@ -117,12 +117,13 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     plan_details: unknown;
     student_id: number;
     programs: Array<{ id: number; name: string }>;
+    advisor_notes: string | null;
 }> {
     try {
         // 1. Base grad plan (no pending_approval filter so advisors/students can edit)
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('id, created_at, student_id, plan_details, programs_in_plan')
+            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes')
             .eq('id', gradPlanId)
             .single();
 
@@ -180,7 +181,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             created_at: gradPlanData.created_at,
             plan_details: gradPlanData.plan_details,
             student_id: gradPlanData.student_id,
-            programs
+            programs,
+            advisor_notes: gradPlanData.advisor_notes || null
         };
     } catch (err) {
         // Pass through known structured errors; wrap unknowns

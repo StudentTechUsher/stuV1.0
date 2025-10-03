@@ -20,10 +20,7 @@ import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
-import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import Fab from '@mui/material/Fab';
-import Tooltip from '@mui/material/Tooltip';
 import SchoolIcon from '@mui/icons-material/School';
 import BalanceIcon from '@mui/icons-material/Scale';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -71,8 +68,11 @@ interface Course {
 interface CreateGradPlanDialogProps {
   open: boolean;
   onClose: () => void;
-  programsData: ProgramRow[];
-  genEdData: ProgramRow[];
+  selectedProgramIds: string[];
+  genEdProgramIds: string[];
+  genEdStrategy: 'early' | 'balanced';
+  planMode: 'AUTO' | 'MANUAL';
+  universityId: number;
   onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string) => void;
   prompt: string;
 }
@@ -80,23 +80,30 @@ interface CreateGradPlanDialogProps {
 export default function CreateGradPlanDialog({
   open,
   onClose,
-  programsData,
-  genEdData,
+  selectedProgramIds,
+  genEdProgramIds,
+  genEdStrategy: initialGenEdStrategy,
+  planMode: initialPlanMode,
+  universityId,
   onPlanCreated,
   prompt
 }: Readonly<CreateGradPlanDialogProps>) {
 
-  // State: institution selection mode and effective mode
-  const [institutionMode, setInstitutionMode] = useState<SelectionMode | null>(null);
-  const [loadingInstitutionMode, setLoadingInstitutionMode] = useState(true);
-  const [userChosenMode, setUserChosenMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
+  // State: program data (loaded dynamically)
+  const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
+  const [genEdData, setGenEdData] = useState<ProgramRow[]>([]);
+  const [loadingProgramData, setLoadingProgramData] = useState(false);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+
+  // State: Use passed-in plan mode instead of fetching institution mode
+  const effectiveMode: 'AUTO' | 'MANUAL' = initialPlanMode;
 
   // State: selected courses per requirement (array because we may need multiple dropdowns)
   const [selectedCourses, setSelectedCourses] = useState<Record<string, string[]>>({});
   // State: selected courses for program requirements
   const [selectedProgramCourses, setSelectedProgramCourses] = useState<Record<string, string[]>>({});
-  // State: selected programs
-  const [selectedPrograms, setSelectedPrograms] = useState<Set<string>>(new Set());
+  // State: Use selected programs from props
+  const selectedPrograms = useMemo(() => new Set(selectedProgramIds), [selectedProgramIds]);
   // State: plan creation
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
@@ -113,40 +120,41 @@ export default function CreateGradPlanDialog({
     subtitle: 'AI is organizing your courses into semesters...'
   });
 
-// --- Institution selection mode (fetch on open) ---
+// --- Fetch program data dynamically when dialog opens ---
 useEffect(() => {
-  async function fetchInstitutionMode() {
-    try {
-      const profileRes = await fetch('/api/my-profile');
-      if (!profileRes.ok) throw new Error('Failed to fetch profile');
-      const profileData = await profileRes.json();
-      const universityId = profileData.university_id;
+  async function fetchProgramData() {
+    if (!open || (selectedProgramIds.length === 0 && genEdProgramIds.length === 0)) return;
 
-      const settingsRes = await fetch(`/api/institutions/${universityId}/settings`);
-      if (!settingsRes.ok) throw new Error('Failed to fetch settings');
-      const settingsData = await settingsRes.json();
-      setInstitutionMode(settingsData.selection_mode || 'MANUAL');
+    setLoadingProgramData(true);
+    setDataLoadError(null);
+
+    try {
+      // Fetch selected programs (majors + minors) with full requirements
+      if (selectedProgramIds.length > 0) {
+        const programsRes = await fetch(`/api/programs/batch?ids=${selectedProgramIds.join(',')}&universityId=${universityId}`);
+        if (!programsRes.ok) throw new Error('Failed to fetch program data');
+        const programsJson = await programsRes.json();
+        setProgramsData(programsJson);
+      }
+
+      // Fetch GenEd programs with full requirements
+      if (genEdProgramIds.length > 0) {
+        const genEdRes = await fetch(`/api/programs/batch?ids=${genEdProgramIds.join(',')}&universityId=${universityId}`);
+        if (!genEdRes.ok) throw new Error('Failed to fetch GenEd data');
+        const genEdJson = await genEdRes.json();
+        setGenEdData(genEdJson);
+      }
+
     } catch (error) {
-      console.error('Error fetching institution mode:', error);
-      setInstitutionMode('MANUAL'); // default fallback
+      console.error('Error fetching program data:', error);
+      setDataLoadError('Failed to load program data. Please try again.');
     } finally {
-      setLoadingInstitutionMode(false);
+      setLoadingProgramData(false);
     }
   }
 
-  if (open) {
-    fetchInstitutionMode();
-  }
-}, [open]);
-
-// Determine effective mode
-const effectiveMode: 'AUTO' | 'MANUAL' = useMemo(() => {
-  if (!institutionMode) return 'MANUAL';
-  if (institutionMode === 'AUTO') return 'AUTO';
-  if (institutionMode === 'MANUAL') return 'MANUAL';
-  // institutionMode === 'CHOICE'
-  return userChosenMode;
-}, [institutionMode, userChosenMode]);
+  fetchProgramData();
+}, [open, selectedProgramIds, genEdProgramIds, universityId]);
 
 // --- User-added elective courses & GenEd strategy ---
 interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
@@ -155,12 +163,9 @@ const [showElectiveForm, setShowElectiveForm] = useState(false);
 const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
 const [electiveError, setElectiveError] = useState<string | null>(null);
 
-// GenEd sequencing strategy: 'early' or 'balanced'
+// GenEd sequencing strategy: use passed-in value
 type GenEdStrategy = 'early' | 'balanced';
-const [genEdStrategy, setGenEdStrategy] = useState<GenEdStrategy>('balanced');
-const handleChangeGenEdStrategy = (_: unknown, value: GenEdStrategy | null) => {
-  if (value) setGenEdStrategy(value);
-};
+const genEdStrategy = initialGenEdStrategy;
 
 const resetElectiveDraft = () => {
   setElectiveDraft({ code: '', title: '', credits: '' });
@@ -202,7 +207,7 @@ const handleRemoveElective = (id: string) => {
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
-  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms]);
+  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms, selectedProgramIds]);
 
   // course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
@@ -304,29 +309,33 @@ const handleRemoveElective = (id: string) => {
     if (!open || selectedPrograms.size === 0) return;
 
     const timer = setTimeout(() => {
+      console.log('🔍 Auto-selection running for programs:', Array.from(selectedPrograms));
       Array.from(selectedPrograms).forEach(programId => {
         programRequirements.forEach(req => {
           if (req.courses) {
             const dropdownCount = getProgramDropdownCount(req);
             const requirementKey = getRequirementKey(programId, req);
             const validCourses = getValidCourses(req);
-            
+
             if (shouldAutoSelect(req, false)) {
+              console.log(`✅ Auto-selecting for requirement ${req.requirementId} (${requirementKey}):`, validCourses.slice(0, dropdownCount).map(c => c.code));
               setSelectedProgramCourses(prev => {
                 const existing = prev[requirementKey] ?? [];
                 const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
-                
+
                 if (hasEmptySlots) {
                   const next = [...existing];
                   while (next.length < dropdownCount) next.push('');
-                  
+
                   for (let i = 0; i < dropdownCount && i < validCourses.length; i++) {
                     if (!next[i] || next[i].trim() === '') {
                       next[i] = validCourses[i].code;
                     }
                   }
+                  console.log(`📝 Setting selected courses for ${requirementKey}:`, next);
                   return { ...prev, [requirementKey]: next };
                 }
+                console.log(`⏭️  Skipping ${requirementKey} - already filled`);
                 return prev;
               });
             }
@@ -336,7 +345,7 @@ const handleRemoveElective = (id: string) => {
     }, 300); // 300ms delay for program selection changes
 
     return () => clearTimeout(timer);
-  }, [open, selectedPrograms, programRequirements]);
+  }, [open, selectedPrograms, programRequirements, selectedProgramIds]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -475,6 +484,7 @@ const handleRemoveElective = (id: string) => {
     const selectedClasses = {
       timestamp: new Date().toISOString(),
       selectedPrograms: Array.from(selectedPrograms),
+      genEdPrograms: genEdProgramIds, // Include GenEd program IDs
       assumptions: {
         genEdStrategy: genEdStrategy === 'early'
           ? 'Student prefers to complete the majority of general education requirements in the earliest possible terms to free later terms for major-focused courses.'
@@ -600,10 +610,10 @@ const handleRemoveElective = (id: string) => {
       if (aiResult.success && aiResult.accessId) {
         // Call the onPlanCreated callback with the AI-generated plan
         if (onPlanCreated && aiResult.semesterPlan) {
-          // Convert selected program IDs from strings to numbers
-          const programIds = Array.from(selectedPrograms).map(id => parseInt(id, 10));
+          // Convert selected program IDs from strings to numbers (include both majors/minors AND GenEd programs)
+          const allProgramIds = [...Array.from(selectedPrograms), ...genEdProgramIds].map(id => parseInt(id, 10));
           // Use the accessId from the AI result
-          onPlanCreated(aiResult.semesterPlan as Term[], programIds, aiResult.accessId);
+          onPlanCreated(aiResult.semesterPlan as Term[], allProgramIds, aiResult.accessId);
         }
         showSnackbar('Semester plan generated successfully!', 'success');
 
@@ -753,121 +763,32 @@ const handleRemoveElective = (id: string) => {
 
       <DialogContent>
 
-        {/* Loading skeleton during institution mode fetch */}
-        {loadingInstitutionMode && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+        {/* Loading skeleton during program data fetch */}
+        {loadingProgramData && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 4, gap: 2 }}>
             <CircularProgress size={40} />
-          </Box>
-        )}
-
-        {/* Mode toggle for CHOICE institution mode */}
-        {!loadingInstitutionMode && institutionMode === 'CHOICE' && (
-          <Box sx={{ mb: 3, p: 3, bgcolor: 'var(--muted)', borderRadius: 2 }}>
-            <Typography variant="subtitle1" className="font-header-bold" sx={{ mb: 2 }}>
-              Choose Your Plan Mode
-            </Typography>
-
-            {/* Custom toggle buttons */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <Button
-                onClick={() => setUserChosenMode('AUTO')}
-                disabled={isCreatingPlan}
-                variant={userChosenMode === 'AUTO' ? 'contained' : 'outlined'}
-                sx={{
-                  flex: 1,
-                  py: 1.5,
-                  backgroundColor: userChosenMode === 'AUTO' ? '#1A1A1A' : 'transparent',
-                  color: userChosenMode === 'AUTO' ? 'white' : '#1A1A1A',
-                  borderColor: '#1A1A1A',
-                  fontWeight: 600,
-                  '&:hover': {
-                    backgroundColor: userChosenMode === 'AUTO' ? '#333333' : 'rgba(26, 26, 26, 0.04)',
-                    borderColor: '#1A1A1A',
-                  },
-                  '&:disabled': {
-                    backgroundColor: userChosenMode === 'AUTO' ? '#666666' : 'transparent',
-                    color: userChosenMode === 'AUTO' ? 'white' : '#999999',
-                    borderColor: '#999999',
-                  }
-                }}
-                className="font-body-semi"
-              >
-                AUTO
-              </Button>
-              <Button
-                onClick={() => setUserChosenMode('MANUAL')}
-                disabled={isCreatingPlan}
-                variant={userChosenMode === 'MANUAL' ? 'contained' : 'outlined'}
-                sx={{
-                  flex: 1,
-                  py: 1.5,
-                  backgroundColor: userChosenMode === 'MANUAL' ? '#1A1A1A' : 'transparent',
-                  color: userChosenMode === 'MANUAL' ? 'white' : '#1A1A1A',
-                  borderColor: '#1A1A1A',
-                  fontWeight: 600,
-                  '&:hover': {
-                    backgroundColor: userChosenMode === 'MANUAL' ? '#333333' : 'rgba(26, 26, 26, 0.04)',
-                    borderColor: '#1A1A1A',
-                  },
-                  '&:disabled': {
-                    backgroundColor: userChosenMode === 'MANUAL' ? '#666666' : 'transparent',
-                    color: userChosenMode === 'MANUAL' ? 'white' : '#999999',
-                    borderColor: '#999999',
-                  }
-                }}
-                className="font-body-semi"
-              >
-                MANUAL
-              </Button>
-            </Box>
-
-            {/* Description */}
-            <Typography variant="body2" className="font-body" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-              {userChosenMode === 'AUTO'
-                ? '✨ Courses will be auto-selected by STU. You can edit after creation.'
-                : '✏️ You will choose from available course options before creating the plan.'}
+            <Typography variant="body2" className="font-body" color="text.secondary">
+              Loading program requirements...
             </Typography>
           </Box>
         )}
 
-        {/* Informational note for AUTO mode */}
-        {!loadingInstitutionMode && effectiveMode === 'AUTO' && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Courses will be auto-selected by STU based on your major/minor and preferences. You can edit and swap courses after plan creation.
+        {/* Error state */}
+        {dataLoadError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {dataLoadError}
           </Alert>
         )}
 
-        {/* GenEd Strategy Selection */}
-        <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
-            General Education Sequencing Preference
-          </Typography>
-          <ToggleButtonGroup
-            value={genEdStrategy}
-            exclusive
-            size="small"
-            onChange={handleChangeGenEdStrategy}
-            aria-label="General Education Strategy"
-            sx={{
-              alignSelf: 'flex-start',
-              backgroundColor: 'background.paper',
-              borderRadius: 2,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}
-          >
-            <ToggleButton value="early" aria-label="Prioritize GenEds Early" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
-              <SchoolIcon fontSize="inherit" style={{ marginRight: 4 }} /> Early Focus
-            </ToggleButton>
-            <ToggleButton value="balanced" aria-label="Balance GenEds" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
-              <BalanceIcon fontSize="inherit" style={{ marginRight: 4 }} /> Balanced
-            </ToggleButton>
-          </ToggleButtonGroup>
-          <Typography variant="caption" color="text.secondary">
-            {genEdStrategy === 'early'
-              ? 'GenEd requirements will be scheduled as early as feasible.'
-              : 'GenEd requirements will be distributed across terms.'}
-          </Typography>
-        </Box>
+        {/* Show content only when data is loaded */}
+        {!loadingProgramData && !dataLoadError && (
+          <>
+        {/* Informational note for AUTO mode */}
+        {effectiveMode === 'AUTO' && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Courses will be auto-selected by STU based on your selected programs and preferences. You can edit and swap courses after plan creation.
+          </Alert>
+        )}
         
         {/* Loading overlay during AI processing */}
         {isCreatingPlan && (
@@ -1132,7 +1053,13 @@ const handleRemoveElective = (id: string) => {
                                             : `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId}`}
                                         </InputLabel>
                                         <Select
-                                          value={(selectedProgramCourses[key]?.[slot] ?? '')}
+                                          value={(() => {
+                                            const val = selectedProgramCourses[key]?.[slot] ?? '';
+                                            if (isAutoSelected && slot === 0) {
+                                              console.log(`🎯 Rendering ${key} slot ${slot}, value:`, val, 'from state:', selectedProgramCourses[key]);
+                                            }
+                                            return val;
+                                          })()}
                                           label={
                                             dropdownCount > 1
                                               ? `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId} — Course #${slot + 1}`
@@ -1289,6 +1216,8 @@ const handleRemoveElective = (id: string) => {
             </Accordion>
           </Box>
         )} */}
+          </>
+        )}
       </DialogContent>
 
       {/* Error Display */}

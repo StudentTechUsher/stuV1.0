@@ -31,6 +31,7 @@ export default async function InboxPage() {
 		url: n.url,
 		created_utc: n.created_utc,
 		type: n.type,
+		context_json: n.context_json,
 	}));
 
 	return (
