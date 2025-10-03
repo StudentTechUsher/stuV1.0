@@ -26,7 +26,9 @@ export async function uploadPdfToOpenAI(
 
   // Create FormData for multipart upload
   const formData = new FormData();
-  const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+  // Convert Buffer to Uint8Array with a proper ArrayBuffer for Blob compatibility
+  const uint8Array = new Uint8Array(pdfBuffer);
+  const blob = new Blob([uint8Array], { type: 'application/pdf' });
   formData.append('file', blob, filename);
   formData.append('purpose', 'assistants'); // Required: purpose for file upload
 

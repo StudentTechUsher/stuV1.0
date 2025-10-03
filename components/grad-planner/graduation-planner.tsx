@@ -3,25 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import Button from '@mui/material/Button';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import EditIcon from '@mui/icons-material/Edit';
-import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
-import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
-import AddIcon from '@mui/icons-material/Add';
-import EventIcon from '@mui/icons-material/Event';
-import WorkIcon from '@mui/icons-material/Work';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from '@mui/icons-material/Save';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -32,381 +13,28 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
-  useDraggable,
-  useDroppable,
 } from '@dnd-kit/core';
 import { SpaceView, PlanSpaceView } from '@/components/space/SpaceView';
 import { TermBlock } from '@/components/space/TermCard';
 import { CourseItem } from '@/components/space/CoursePill';
 
-// Color mapping for requirement types (matching academic-progress-card)
-const REQUIREMENT_COLORS: Record<string, string> = {
-  'major': 'var(--primary)', // #12F987
-  'minor': '#001F54', // dark blue
-  'general education': '#2196f3', // bright blue
-  'gen ed': '#2196f3', // alternate name for general education
-  'religion': '#5E35B1', // purple
-  'electives': '#9C27B0', // violet
-  'elective': '#9C27B0', // singular form
-};
+// Import types
+import { Course, Event, Term } from './types';
 
-// Helper function to get color for a requirement type
-function getRequirementColor(requirement: string): string {
-  const req = requirement.toLowerCase().trim();
+// Import components
+import { PlanSummary } from './PlanSummary';
+import { PlanAssumptions } from './PlanAssumptions';
+import { EventDialog } from './EventDialog';
+import { TrashZone } from './TrashZone';
+import { DraggableCourseOverlay } from './DraggableCourseOverlay';
+import { EditModeBanner } from './EditModeBanner';
+import { PlanHeader } from './PlanHeader';
+import { SpaceView } from './SpaceView';
+import { DetailView } from './DetailView';
+import ChangesSummaryBox from './ChangesSummaryBox';
 
-  // Direct matches first
-  if (REQUIREMENT_COLORS[req]) {
-    return REQUIREMENT_COLORS[req];
-  }
-
-  // Pattern matching for specific requirement categories
-  // Religion-related requirements
-  if (req.includes('book of mormon') ||
-      req.includes('doctrine and covenants') ||
-      req.includes('teachings') ||
-      req.includes('jesus christ') ||
-      req.includes('christ') ||
-      req.includes('gospel') ||
-      req.includes('eternal family') ||
-      req.includes('old testament') ||
-      req.includes('new testament') ||
-      req.includes('pearl of great price') ||
-      req.includes('restoration') ||
-      req.includes('religion') ||
-      req.includes('rel ')) {
-    return REQUIREMENT_COLORS['religion'];
-  }
-
-  // General Education patterns
-  if (req.includes('skills') ||
-      req.includes('first-year writing') ||
-      req.includes('adv written') ||
-      req.includes('global and cultural awareness') ||
-      req.includes('quantitative reasoning') ||
-      req.includes('science') ||
-      req.includes('social science') ||
-      req.includes('humanities') ||
-      req.includes('fine arts') ||
-      req.includes('american heritage') ||
-      req.includes('languages of learning') ||
-      req.includes('gen ed') ||
-      req.includes('general education')) {
-    return REQUIREMENT_COLORS['general education'];
-  }
-
-  // Major-related (often have course codes or department names)
-  if (req.includes('major') ||
-      req.includes('core') ||
-      req.includes('capstone') ||
-      req.includes('requirement') ||
-      req.includes('subrequirement') ||
-      // Add common major course prefixes if needed
-      req.match(/^[a-z]{2,4}\s?\d{3,4}/)) { // matches course codes like "CS 142"
-    return REQUIREMENT_COLORS['major'];
-  }
-
-  // Minor-related
-  if (req.includes('minor')) {
-    return REQUIREMENT_COLORS['minor'];
-  }
-
-  // Elective patterns
-  if (req.includes('elective') ||
-      req.includes('foundation') ||
-      req.includes('free elective') ||
-      req.includes('open elective') ||
-      req.includes('unrestricted elective')) {
-    return REQUIREMENT_COLORS['electives'];
-  }
-
-  // Fallback to gray for unmatched requirements
-  return '#6b7280';
-}
-
-// Helper function to render requirement bubbles
-function RequirementBubbles({ fulfills }: { fulfills: string[] }) {
-  if (!fulfills || fulfills.length === 0) return null;
-
-  return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-      {fulfills.map((requirement, index) => {
-        const color = getRequirementColor(requirement);
-
-        // Handle CSS variables differently for background colors
-        let backgroundColor: string;
-        let borderColor: string;
-        let textColor: string = color; // Default to the requirement color
-
-        if (color.startsWith('var(')) {
-          // For CSS variables, use rgba with opacity
-          if (color === 'var(--primary)') {
-            backgroundColor = 'rgba(18, 249, 135, 0.15)'; // #12F987 with 15% opacity
-            borderColor = 'rgba(18, 249, 135, 0.3)'; // #12F987 with 30% opacity
-            textColor = 'var(--hover-green)'; // Use hover green for better contrast
-          } else {
-            // Fallback for other CSS variables
-            backgroundColor = 'rgba(107, 114, 128, 0.15)';
-            borderColor = 'rgba(107, 114, 128, 0.3)';
-          }
-        } else {
-          // For hex colors, convert to rgba
-          const hex = color.replace('#', '');
-          const r = parseInt(hex.substring(0, 2), 16);
-          const g = parseInt(hex.substring(2, 4), 16);
-          const b = parseInt(hex.substring(4, 6), 16);
-          backgroundColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
-          borderColor = `rgba(${r}, ${g}, ${b}, 0.3)`;
-        }
-
-        return (
-          <Box
-            key={`${requirement}-${index}`}
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              px: 1,
-              py: 0.25,
-              borderRadius: 3,
-              backgroundColor: backgroundColor,
-              border: `1px solid ${borderColor}`,
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                color: textColor,
-                fontFamily: '"Inter", sans-serif',
-                lineHeight: 1,
-              }}
-            >
-              {requirement}
-            </Typography>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-}
-
-// Draggable Course Component
-function DraggableCourse({
-  course,
-  termIndex,
-  courseIndex,
-  isEditMode,
-  onMoveCourse,
-  currentPlanData,
-  movedCourses,
-}: {
-  course: Course;
-  termIndex: number;
-  courseIndex: number;
-  isEditMode: boolean;
-  onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
-  currentPlanData: Term[];
-  movedCourses: Set<string>;
-}) {
-  const courseId = `course-${termIndex}-${courseIndex}`;
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({
-    id: courseId,
-    data: {
-      course,
-      termIndex,
-      courseIndex,
-    },
-    disabled: !isEditMode,
-  });
-
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: isDragging ? 1000 : 'auto',
-    opacity: isDragging ? 0.5 : 1,
-  } : undefined;
-
-  // Check if this course has been moved
-  const courseIdentifier = `${course.code}-${course.title}`;
-  const hasMoved = movedCourses.has(courseIdentifier);
-
-  return (
-    <Box
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      sx={{
-        p: 2,
-        backgroundColor: 'white',
-        borderRadius: 2,
-        border: hasMoved ? '2px solid var(--action-edit)' : (isEditMode ? '1px solid var(--primary)' : '1px solid var(--border)'),
-        minHeight: '80px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        cursor: isEditMode ? 'grab' : 'default',
-        boxShadow: hasMoved ? '0 4px 12px rgba(255, 165, 0, 0.25)' : undefined,
-        '&:hover': isEditMode ? {
-          backgroundColor: hasMoved ? 'rgba(255, 165, 0, 0.1)' : 'var(--primary-22)',
-          borderColor: hasMoved ? 'var(--action-edit)' : 'var(--hover-green)',
-          transform: 'translateY(-2px)',
-          boxShadow: hasMoved ? '0 6px 16px rgba(255, 165, 0, 0.35)' : '0 4px 12px rgba(18, 249, 135, 0.15)'
-        } : {},
-        '&:active': isEditMode ? {
-          cursor: 'grabbing',
-        } : {},
-        transition: 'all 0.2s ease-in-out'
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-        <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
-          {course.code}: {course.title}
-        </Typography>
-        {isEditMode && (
-          <IconButton
-            size="small"
-            sx={{
-              ml: 1,
-              p: 0.5,
-              color: 'var(--primary)',
-              '&:hover': { backgroundColor: 'var(--primary-15)' }
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // TODO: Add course edit functionality
-            }}
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
-        )}
-      </Box>
-      <Box>
-        <Typography variant="caption" className="font-body" color="text.secondary" display="block">
-          {course.credits} credits
-        </Typography>
-        {course.fulfills && Array.isArray(course.fulfills) && course.fulfills.length > 0 && (
-          <RequirementBubbles fulfills={course.fulfills} />
-        )}
-        {isEditMode && (
-          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" className="font-body" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-              Move:
-            </Typography>
-            <CourseMoveField
-              currentTerm={termIndex + 1}
-              maxTerms={currentPlanData.length}
-              course={course}
-              termIndex={termIndex}
-              courseIndex={courseIndex}
-              onMoveCourse={onMoveCourse}
-            />
-          </Box>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
-// Droppable Term Component
-function DroppableTerm({
-  term,
-  termIndex,
-  children,
-  isEditMode,
-  modifiedTerms,
-}: {
-  term: Term;
-  termIndex: number;
-  children: React.ReactNode;
-  isEditMode: boolean;
-  modifiedTerms: Set<number>;
-}) {
-  const termId = `term-${termIndex}`;
-  const hasBeenModified = modifiedTerms.has(termIndex);
-
-  const {
-    setNodeRef,
-    isOver,
-  } = useDroppable({
-    id: termId,
-    data: {
-      term,
-      termIndex,
-    },
-    disabled: !isEditMode,
-  });
-
-  return (
-    <Box
-      ref={setNodeRef}
-      sx={{
-        // Invisible wrapper - only provide drop zone functionality
-        position: 'relative',
-        // Add orange glow effect for modified terms
-        ...(hasBeenModified && {
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            top: -2,
-            left: -2,
-            right: -2,
-            bottom: -2,
-            backgroundColor: 'transparent',
-            borderRadius: 3,
-            border: '2px solid var(--action-edit)',
-            pointerEvents: 'none',
-            zIndex: 0,
-            boxShadow: '0 0 8px rgba(255, 165, 0, 0.3)'
-          }
-        }),
-        // Add subtle visual feedback when dragging over in edit mode
-        '&::before': isOver && isEditMode ? {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'var(--primary-15)',
-          borderRadius: 2,
-          border: '2px dashed var(--primary)',
-          pointerEvents: 'none',
-          zIndex: 1
-        } : {}
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-
-interface Course {
-  code: string;
-  title: string;
-  credits: number;
-  fulfills?: string[];
-}
-
-interface Event {
-  id: string;
-  type: 'Major/Minor Application' | 'Internship';
-  title: string;
-  afterTerm: number; // Which term this event comes after
-}
-
-interface Term {
-  term: string;
-  notes?: string;
-  courses?: Course[];
-  credits_planned?: number;
-}
+// Import hooks
+import { usePlanParser } from './usePlanParser';
 
 interface GraduationPlannerProps {
   plan?: Record<string, unknown> | GraduationPlan | Term[];
@@ -418,87 +46,21 @@ interface GraduationPlannerProps {
     university_id: number;
     [key: string]: unknown;
   };
+  advisorChanges?: {
+    movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
+    hasSuggestions: boolean;
+  } | null;
 }
 
-// Separate component for the course move TextField
-interface CourseMoveFieldProps {
-  currentTerm: number;
-  maxTerms: number;
-  course: Course;
-  termIndex: number;
-  courseIndex: number;
-  onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
-}
-
-function CourseMoveField({ currentTerm, maxTerms, course, termIndex, courseIndex, onMoveCourse }: CourseMoveFieldProps) {
-  const [value, setValue] = useState(currentTerm);
-  
-  // Create a unique identifier for this course instance
-  const courseUniqueId = `${termIndex}-${courseIndex}-${course.code}`;
-
-  // Update value when currentTerm changes (after course move)
-  useEffect(() => {
-    setValue(currentTerm);
-  }, [currentTerm, courseUniqueId, value]);
-
-  const handleChange = (event: SelectChangeEvent<number>) => {
-    const newTermNumber = event.target.value as number;
-    setValue(newTermNumber);
-    
-    // Immediately move the course when selection changes
-    if (newTermNumber !== currentTerm && newTermNumber >= 1 && newTermNumber <= maxTerms) {
-      onMoveCourse(termIndex, courseIndex, newTermNumber);
-    }
-  };
-
-  // Generate term options
-  const termOptions = [];
-  for (let i = 1; i <= maxTerms; i++) {
-    termOptions.push(
-      <MenuItem key={i} value={i}>
-        Term {i}
-      </MenuItem>
-    );
-  }
-
-  return (
-    <FormControl size="small" sx={{ width: '100%', maxWidth: '160px' }}>
-      <InputLabel className="font-body" sx={{ fontSize: '0.75rem', color: 'var(--primary)' }}>Select Term</InputLabel>
-      <Select
-        value={value}
-        onChange={handleChange}
-        label="Select Term"
-        onClick={(e) => e.stopPropagation()}
-        className="font-body-semi"
-        sx={{
-          fontSize: '0.75rem',
-          height: '36px',
-          backgroundColor: 'white',
-          '& .MuiSelect-select': {
-            paddingTop: '8px',
-            paddingBottom: '8px',
-            fontSize: '0.75rem',
-            fontWeight: 600
-          },
-          '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'var(--primary)'
-          },
-          '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'var(--hover-green)'
-          },
-          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'var(--primary)'
-          }
-        }}
-      >
-        {termOptions}
-      </Select>
-    </FormControl>
-  );
-}
-
-export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpdate, onSave }: Readonly<GraduationPlannerProps>) {
-
+export default function GraduationPlanner({
+  plan,
+  isEditMode = false,
+  onPlanUpdate,
+  onSave,
+  advisorChanges
+}: Readonly<GraduationPlannerProps>) {
+  // Parse plan data using custom hook
+  const { planData, assumptions, durationYears } = usePlanParser(plan);
   // State for managing plan data when in edit mode
   const [editablePlanData, setEditablePlanData] = useState<Term[]>([]);
   // Drag and drop state
@@ -597,14 +159,17 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCourse(null);
-
     if (!over || !isEditMode) return;
-
     const activeData = active.data.current as { course: Course; termIndex: number; courseIndex: number };
-    const overData = over.data.current as { term: Term; termIndex: number };
 
-    // Only move if dropping onto a different term
-    if (activeData.termIndex !== overData.termIndex) {
+    // Check if dropping on trash zone
+    if (over.id === 'trash-zone') {
+      deleteCourse(activeData.termIndex, activeData.courseIndex);
+      return;
+    }
+
+    const overData = over.data.current as { term: Term; termIndex: number };
+    if (activeData && overData && activeData.termIndex !== overData.termIndex) {
       moveCourse(activeData.termIndex, activeData.courseIndex, overData.termIndex + 1);
     }
   };
@@ -655,6 +220,55 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
     setEvents(events.filter(e => e.id !== eventId));
   };
 
+  // Derive a unique, ordered list of requirements fulfilled across the entire plan
+  const fulfilledRequirements = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    currentPlanData.forEach(term => {
+      term.courses?.forEach(course => {
+        if (Array.isArray(course.fulfills)) {
+          course.fulfills.forEach(reqRaw => {
+            const req = typeof reqRaw === 'string' ? reqRaw.trim() : '';
+            if (req && !seen.has(req)) {
+              seen.add(req);
+              ordered.push(req);
+            }
+          });
+        }
+      });
+    });
+    return ordered;
+  }, [currentPlanData]);
+
+  // Function to delete a course
+  const deleteCourse = (termIndex: number, courseIndex: number) => {
+    if (!isEditMode) return;
+
+    setEditablePlanData(prevData => {
+      const newData = prevData.map((term, idx) => {
+        if (idx === termIndex) {
+          const updatedCourses = term.courses ? [...term.courses] : [];
+          updatedCourses.splice(courseIndex, 1);
+          const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+          return {
+            ...term,
+            courses: updatedCourses,
+            credits_planned: updatedCredits
+          };
+        }
+        return term;
+      });
+
+      setModifiedTerms(prev => new Set(prev).add(termIndex));
+
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      return newData;
+    });
+  };
+
   // Function to move a course between terms
   const moveCourse = (fromTermIndex: number, courseIndex: number, toTermNumber: number) => {
     if (!isEditMode || toTermNumber < 1 || toTermNumber > editablePlanData.length) {
@@ -672,10 +286,10 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         ...term,
         courses: term.courses ? [...term.courses] : []
       }));
-      
+
       const sourceTerm = newData[fromTermIndex];
       const course = sourceTerm.courses?.[courseIndex];
-      
+
       if (!course) {
         console.error(`❌ Course not found at term ${fromTermIndex}, index ${courseIndex}`);
         return prevData;
@@ -684,7 +298,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       // Remove course from source term
       if (sourceTerm.courses) {
         sourceTerm.courses.splice(courseIndex, 1);
-        
+
         // Update source term credits
         const sourceCredits = sourceTerm.courses.reduce((sum, c) => sum + (c.credits || 0), 0);
         sourceTerm.credits_planned = sourceCredits;
@@ -696,11 +310,11 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         destTerm.courses = [];
       }
       destTerm.courses.push(course);
-      
+
       // Update destination term credits
       const destCredits = destTerm.courses.reduce((sum, c) => sum + (c.credits || 0), 0);
       destTerm.credits_planned = destCredits;
-      
+
       // Track the moved course and modified terms
       const courseId = `${course.code}-${course.title}`;
       setMovedCourses(prev => new Set(prev).add(courseId));
@@ -724,9 +338,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
         <Typography variant="body2" className="font-body" color="text.secondary" gutterBottom>
           Expected to find an array of terms, but got:
         </Typography>
-        <pre className="bg-muted p-4 rounded text-xs overflow-auto">
-          {JSON.stringify(plan, null, 2)}
-        </pre>
+        <pre className="bg-muted p-4 rounded text-xs overflow-auto">{JSON.stringify(plan, null, 2)}</pre>
       </Box>
     );
   }
@@ -780,86 +392,51 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <Box sx={{ p: 2 }}>
-        {isEditMode && (
-        <Box sx={{
-          mb: 3,
-          p: 2,
-          backgroundColor: 'rgba(255, 165, 0, 0.15)',
-          borderRadius: 3,
-          border: '2px solid var(--action-edit)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          boxShadow: '0 2px 8px rgba(255, 165, 0, 0.2)'
-        }}>
-          <Box>
-            <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
-              Edit Mode Active
-            </Typography>
-            <Typography variant="body2" className="font-body" color="text.secondary">
-              Make changes to your graduation plan. Click "Submit for Approval" when finished.
-            </Typography>
-          </Box>
-          {onSave && (
-            <Button
-              variant="contained"
-              startIcon={<SaveIcon />}
-              onClick={() => onSave(editablePlanData, events)}
-              className="font-body-semi"
-              sx={{
-                backgroundColor: 'var(--primary)',
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'var(--hover-green)'
-                }
-              }}
-            >
-              Save
-            </Button>
+      <Box sx={{ p: 2, display: 'flex', gap: 3 }}>
+        {/* Main plan content */}
+        <Box sx={{ flex: advisorChanges ? '1 1 70%' : '1 1 100%' }}>
+          {isEditMode && (
+            <EditModeBanner
+              editablePlanData={editablePlanData}
+              events={events}
+              onSave={onSave}
+            />
           )}
-        </Box>
-      )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Typography variant="body1" className="font-body">
-              Terms Planned: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.length}</Box>
-            </Typography>
-            {Boolean(durationYears) && (
-              <Typography variant="body1" className="font-body">
-                {durationYears} years
-              </Typography>
-            )}
-            <Typography variant="body1" className="font-body">
-              Total Credits: <Box component="span" sx={{ fontWeight: 'bold' }}>{currentPlanData.reduce((total, term) => {
-                const termCredits = term.credits_planned ||
-                                   (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-                return total + termCredits;
-              }, 0)}</Box>
-            </Typography>
-          </Box>
+          {/* Trash Zone - Only visible when dragging */}
+          {activeCourse && isEditMode && <TrashZone />}
 
-          {/* View Mode Toggle and Add Event Button */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {isEditMode && (
-              <Button
-                variant="contained"
-                onClick={() => handleOpenEventDialog()}
-                startIcon={<AddIcon />}
-                className="font-body-semi"
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <PlanHeader
+              currentPlanData={currentPlanData}
+              durationYears={durationYears}
+              isEditMode={isEditMode}
+              isSpaceView={isSpaceView}
+              onToggleView={() => setIsSpaceView(!isSpaceView)}
+              onAddEvent={() => handleOpenEventDialog()}
+            />
+
+            <PlanSummary
+              planData={currentPlanData}
+              durationYears={durationYears}
+              fulfilledRequirements={fulfilledRequirements}
+            />
+
+            {assumptions && assumptions.length > 0 && (
+              <Box
                 sx={{
-                  backgroundColor: '#1A1A1A',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: '#000000',
-                  }
+                  mb: 3,
+                  p: 2,
+                  backgroundColor: '#fff3e0',
+                  borderRadius: 1,
+                  border: '1px solid var(--action-edit)'
                 }}
               >
-                Add Event
-              </Button>
+                <Typography variant="h6" className="font-header" gutterBottom>
+                  Plan Assumptions:
+                </Typography>
+                {/* render your assumptions list here */}
+              </Box>
             )}
             <Button
               variant="outlined"
@@ -999,343 +576,63 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
                           </Box>
                         )}
 
-                        {nextTerm.courses && Array.isArray(nextTerm.courses) && nextTerm.courses.length > 0 ? (
-                          <Box>
-                            <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
-                              Courses ({nextTerm.courses.length}):
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              {nextTerm.courses.map((course: Course, courseIndex: number) => {
-                                if (!course.code || !course.title) return null;
+            {/* Display terms with events between them */}
+            {isSpaceView ? (
+              <SpaceView
+                currentPlanData={currentPlanData}
+                events={events}
+                isEditMode={isEditMode}
+                onEditEvent={handleOpenEventDialog}
+                onDeleteEvent={handleDeleteEvent}
+              />
+            ) : (
+              <DetailView
+                currentPlanData={currentPlanData}
+                events={events}
+                isEditMode={isEditMode}
+                modifiedTerms={modifiedTerms}
+                movedCourses={movedCourses}
+                onMoveCourse={moveCourse}
+                onEditEvent={handleOpenEventDialog}
+                onDeleteEvent={handleDeleteEvent}
+              />
+            )}
+          </Box>
 
-                                return (
-                                  <DraggableCourse
-                                    key={`term-${index + 1}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
-                                    course={course}
-                                    courseIndex={courseIndex}
-                                    termIndex={index + 1}
-                                    isEditMode={isEditMode}
-                                    currentPlanData={currentPlanData}
-                                    onMoveCourse={moveCourse}
-                                    movedCourses={movedCourses}
-                                  />
-                                );
-                              }).filter(Boolean)}
-                            </Box>
-                          </Box>
-                        ) : (
-                          <Typography variant="body2" className="font-body" color="text.secondary">
-                            No courses defined for this term
-                          </Typography>
-                        )}
-                      </Box>
-                    </DroppableTerm>
-                  </Box>
-                ) : null;
+          <br />
+          <PlanAssumptions assumptions={assumptions ?? []} />
+        </Box>
 
-                // Render events after first term
-                const firstTermEvents = eventsAfterThisTerm.length > 0 ? (
-                  <Box key={`events-after-${index}`} sx={{ width: '100%' }}>
-                    {eventsAfterThisTerm.map((event) => {
-                      const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
-                      const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
-
-                      return (
-                        <Box
-                          key={event.id}
-                          sx={{
-                            p: 1.5,
-                            py: 1,
-                            backgroundColor: eventColor,
-                            color: 'white',
-                            borderRadius: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                            mb: 2,
-                            minHeight: '60px',
-                            maxHeight: '60px',
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <EventIconComponent sx={{ fontSize: 24 }} />
-                            <Box>
-                              <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                                {event.title}
-                              </Typography>
-                              <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.7rem' }}>
-                                {event.type}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          {isEditMode && (
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenEventDialog(event)}
-                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteEvent(event.id)}
-                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          )}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                ) : null;
-
-                // Render events after second term
-                const secondTermEvents = nextTerm && nextEventsAfterTerm.length > 0 ? (
-                  <Box key={`events-after-${index + 1}`} sx={{ width: '100%' }}>
-                    {nextEventsAfterTerm.map((event) => {
-                      const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
-                      const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
-
-                      return (
-                        <Box
-                          key={event.id}
-                          sx={{
-                            p: 1.5,
-                            py: 1,
-                            backgroundColor: eventColor,
-                            color: 'white',
-                            borderRadius: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                            mb: 2,
-                            minHeight: '60px',
-                            maxHeight: '60px',
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <EventIconComponent sx={{ fontSize: 24 }} />
-                            <Box>
-                              <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                                {event.title}
-                              </Typography>
-                              <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.7rem' }}>
-                                {event.type}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          {isEditMode && (
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenEventDialog(event)}
-                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteEvent(event.id)}
-                                sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          )}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                ) : null;
-
-                // Add row with 2 terms
-                acc.push(
-                  <Box key={`row-${index}`} sx={{ display: 'flex', gap: 3, '@media (max-width: 900px)': { flexDirection: 'column' } }}>
-                    {termCard}
-                    {nextTermCard}
-                  </Box>
-                );
-
-                // Add events after first term
-                if (firstTermEvents) acc.push(firstTermEvents);
-                // Add events after second term
-                if (secondTermEvents) acc.push(secondTermEvents);
-              }
-              // Skip odd indices as they're handled in the even index case
-
-              return acc;
-            }, [])}
+        {/* Changes summary sidebar - only show when there are advisor changes */}
+        {advisorChanges && (
+          <Box sx={{ flex: '0 0 28%' }}>
+            <ChangesSummaryBox
+              movedCourses={advisorChanges.movedCourses}
+              hasSuggestions={advisorChanges.hasSuggestions}
+            />
           </Box>
         )}
       </Box>
 
-      <br />
-      {assumptions && assumptions.length > 0 && (
-        <Box sx={{ mb: 3, p: 2, backgroundColor: 'var(--primary-15)', borderRadius: 3, border: '1px solid var(--primary)' }}>
-          <Typography variant="h6" className="font-header-bold" gutterBottom>
-            Plan Assumptions:
-          </Typography>
-          <Box component="ul" sx={{ m: 0, pl: 2 }}>
-            {assumptions.map((assumption) => (
-              <Typography key={assumption} component="li" variant="body2" className="font-body">
-                {assumption}
-              </Typography>
-            ))}
-          </Box>
-        </Box>
-      )}
-      </Box>
-
       {/* Drag Overlay for visual feedback */}
       <DragOverlay>
-        {activeCourse ? (
-          <Box
-            sx={{
-              p: 2,
-              backgroundColor: 'white',
-              borderRadius: 2,
-              border: '2px solid var(--primary)',
-              minHeight: '80px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              opacity: 0.9,
-              transform: 'rotate(5deg)',
-              boxShadow: '0 8px 32px rgba(18, 249, 135, 0.3)',
-            }}
-          >
-            <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
-              {activeCourse.code}: {activeCourse.title}
-            </Typography>
-            <Typography variant="caption" className="font-body" color="text.secondary">
-              {activeCourse.credits} credits
-            </Typography>
-          </Box>
-        ) : null}
+        {activeCourse ? <DraggableCourseOverlay course={activeCourse} /> : null}
       </DragOverlay>
 
       {/* Add Event Dialog */}
-      <Dialog open={showEventDialog} onClose={() => setShowEventDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle className="font-header-bold">{editingEvent ? 'Edit Event' : 'Add Event'}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel
-                className="font-body"
-                sx={{
-                  '&.Mui-focused': {
-                    color: 'var(--primary-dark)',
-                  },
-                }}
-              >
-                Event Type
-              </InputLabel>
-              <Select
-                value={newEventType}
-                label="Event Type"
-                onChange={(e) => setNewEventType(e.target.value as 'Major/Minor Application' | 'Internship')}
-                className="font-body"
-                sx={{
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--border)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--primary)',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--primary)',
-                  },
-                }}
-              >
-                <MenuItem value="Major/Minor Application" className="font-body">Major/Minor Application</MenuItem>
-                <MenuItem value="Internship" className="font-body">Internship</MenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              fullWidth
-              label="Event Title (Optional)"
-              value={newEventTitle}
-              onChange={(e) => setNewEventTitle(e.target.value)}
-              placeholder={newEventType}
-              className="font-body"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'var(--border)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'var(--primary)',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'var(--primary)',
-                  },
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: 'var(--primary-dark)',
-                },
-              }}
-            />
-
-            <FormControl fullWidth>
-              <InputLabel
-                className="font-body"
-                sx={{
-                  '&.Mui-focused': {
-                    color: 'var(--primary-dark)',
-                  },
-                }}
-              >
-                After Term
-              </InputLabel>
-              <Select
-                value={newEventAfterTerm}
-                label="After Term"
-                onChange={(e) => setNewEventAfterTerm(e.target.value as number)}
-                className="font-body"
-                sx={{
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--border)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--primary)',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--primary)',
-                  },
-                }}
-              >
-                {currentPlanData.map((_, index) => (
-                  <MenuItem key={index + 1} value={index + 1} className="font-body">
-                    After Term {index + 1}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowEventDialog(false)} className="font-body-semi">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveEvent}
-            variant="contained"
-            className="font-body-semi"
-            sx={{
-              backgroundColor: 'var(--primary)',
-              '&:hover': { backgroundColor: 'var(--hover-green)' }
-            }}
-          >
-            {editingEvent ? 'Save Changes' : 'Add Event'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EventDialog
+        open={showEventDialog}
+        editingEvent={editingEvent}
+        eventType={newEventType}
+        eventTitle={newEventTitle}
+        eventAfterTerm={newEventAfterTerm}
+        planData={currentPlanData}
+        onClose={() => setShowEventDialog(false)}
+        onSave={handleSaveEvent}
+        onTypeChange={setNewEventType}
+        onTitleChange={setNewEventTitle}
+        onAfterTermChange={setNewEventAfterTerm}
+      />
     </DndContext>
   );
 }

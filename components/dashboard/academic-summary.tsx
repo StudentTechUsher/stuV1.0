@@ -9,8 +9,18 @@ import {
   Stack,
   Typography,
   ButtonBase,
-  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
 } from "@mui/material";
+import { X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 /** ----- Default data for the PoC ----- */
@@ -134,13 +144,16 @@ function OptimizationBadge({ level }: Readonly<{ level: string }>) {
   );
 }
 
-export default function AcademicSummary({ 
-  yearInSchool 
-}: Readonly<{ 
-  yearInSchool?: string; 
+export default function AcademicSummary({
+  yearInSchool
+}: Readonly<{
+  yearInSchool?: string;
 }>) {
   const [userData, setUserData] = useState(DEFAULT_DATA);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [gradDialogOpen, setGradDialogOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<"April" | "December">("December");
+  const [selectedYear, setSelectedYear] = useState(2028);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -200,7 +213,36 @@ export default function AcademicSummary({
     getUserData();
   }, [yearInSchool]);
 
+  // Initialize selected month and year from current estGradDate
+  useEffect(() => {
+    if (userData.estGradDate) {
+      const dateMatch = userData.estGradDate.match(/(April|December) \d+, (\d{4})/);
+      if (dateMatch) {
+        setSelectedMonth(dateMatch[1] as "April" | "December");
+        setSelectedYear(parseInt(dateMatch[2]));
+      }
+    }
+  }, [userData.estGradDate]);
+
+  const handleSaveGradDate = () => {
+    const day = selectedMonth === "April" ? 21 : 21; // Both semesters end around the 21st
+    const newEstGradDate = `${selectedMonth} ${day}, ${selectedYear}`;
+    const newEstSemester = selectedMonth === "April" ? `Spring ${selectedYear}` : `Winter ${selectedYear}`;
+
+    setUserData(prev => ({
+      ...prev,
+      estGradDate: newEstGradDate,
+      estSemester: newEstSemester,
+    }));
+
+    setGradDialogOpen(false);
+  };
+
   const d = userData;
+
+  // Generate year options (current year to 10 years in the future)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
   return (
     <Card
@@ -266,19 +308,91 @@ export default function AcademicSummary({
         </Stack>
 
         {/* Grad Plan Follow Through */}
-        <Tooltip
-          title="See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations, helping you stay on track toward graduation."
-          placement="top"
-          arrow
-        >
-          <Typography sx={{ mt: 2, mb: 1, fontWeight: 700, cursor: "help" }}>
+        <Box sx={{ mt: 2, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ fontWeight: 700 }}>
             Grad Plan Follow Through
           </Typography>
-        </Tooltip>
-        <ProgressPill
-          value={d.followThrough}
-          label={`Grad plan ${Math.round(d.followThrough * 100)}% similar to actual course completion`}
-        />
+          <Box sx={{ position: 'relative', display: 'inline-block', '&:hover .info-popup': { opacity: 1 } }}>
+            <Box
+              sx={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                bgcolor: 'rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'help',
+              }}
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16v-4"/>
+                <path d="M12 8h.01"/>
+              </svg>
+            </Box>
+            <Box
+              className="info-popup"
+              sx={{
+                position: 'absolute',
+                left: 0,
+                top: 28,
+                width: 280,
+                p: 1.5,
+                bgcolor: 'var(--card)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 1.5,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                fontSize: 13,
+                color: 'var(--foreground)',
+                opacity: 0,
+                transition: 'opacity 0.2s',
+                pointerEvents: 'none',
+                zIndex: 10,
+              }}
+            >
+              See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations, helping you stay on track toward graduation.
+            </Box>
+          </Box>
+        </Box>
+        <Box sx={{ position: 'relative', '&:hover .info-popup': { opacity: 1 } }}>
+          <ProgressPill
+            value={d.followThrough}
+            label={`Grad plan ${Math.round(d.followThrough * 100)}% similar to actual course completion`}
+          />
+          <Box
+            className="info-popup"
+            sx={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              top: -100,
+              width: 280,
+              p: 1.5,
+              bgcolor: 'var(--card)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 1.5,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              fontSize: 13,
+              color: 'var(--foreground)',
+              opacity: 0,
+              transition: 'opacity 0.2s',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          >
+            See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations, helping you stay on track toward graduation.
+          </Box>
+        </Box>
 
         {/* Footer stats */}
         <Stack sx={{ mt: 1.5 }} spacing={0.5}>
@@ -293,12 +407,113 @@ export default function AcademicSummary({
           </Typography>
           <Typography>
             Estimated Graduation Date:&nbsp;
-            <Box component="span" sx={{ fontWeight: 700 }}>
+            <ButtonBase
+              onClick={() => setGradDialogOpen(true)}
+              sx={{
+                fontWeight: 700,
+                textDecoration: "underline",
+                cursor: "pointer",
+                "&:hover": { opacity: 0.8 },
+              }}
+            >
               {d.estGradDate}
-            </Box>
+            </ButtonBase>
           </Typography>
         </Stack>
       </CardContent>
+
+      {/* Edit Graduation Date Dialog */}
+      <Dialog
+        open={gradDialogOpen}
+        onClose={() => setGradDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1,
+            bgcolor: "var(--background)",
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="h6" className="font-header">
+              Edit Estimated Graduation Date
+            </Typography>
+            <IconButton onClick={() => setGradDialogOpen(false)} size="small">
+              <X size={20} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>
+                Graduation Month
+              </InputLabel>
+              <Select
+                value={selectedMonth}
+                label="Graduation Month"
+                onChange={(e) => setSelectedMonth(e.target.value as "April" | "December")}
+                className="font-body"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--hover-green)' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' }
+                }}
+              >
+                <MenuItem value="April" className="font-body">April (Spring Semester)</MenuItem>
+                <MenuItem value="December" className="font-body">December (Winter Semester)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>
+                Graduation Year
+              </InputLabel>
+              <Select
+                value={selectedYear}
+                label="Graduation Year"
+                onChange={(e) => setSelectedYear(e.target.value as number)}
+                className="font-body"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--hover-green)' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' }
+                }}
+              >
+                {yearOptions.map((year) => (
+                  <MenuItem key={year} value={year} className="font-body">
+                    {year}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", width: "100%", gap: 1 }}>
+            <Button onClick={() => setGradDialogOpen(false)} className="font-body-semi">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveGradDate}
+              variant="contained"
+              className="font-body-semi"
+              sx={{
+                bgcolor: "var(--primary)",
+                color: "var(--muted-foreground)",
+                "&:hover": { bgcolor: "var(--hover-green)" },
+              }}
+            >
+              Save
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

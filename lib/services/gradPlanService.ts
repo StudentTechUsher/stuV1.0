@@ -119,12 +119,13 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     programs: Array<{ id: number; name: string }>;
     est_grad_sem?: string;
     est_grad_date?: string;
+    advisor_notes: string | null;
 }> {
     try {
         // 1. Base grad plan (no pending_approval filter so advisors/students can edit)
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('id, created_at, student_id, plan_details, programs_in_plan')
+            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes')
             .eq('id', gradPlanId)
             .single();
 
@@ -185,6 +186,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             programs,
             est_grad_sem: profileData.est_grad_sem,
             est_grad_date: profileData.est_grad_date
+            advisor_notes: gradPlanData.advisor_notes || null
         };
     } catch (err) {
         // Pass through known structured errors; wrap unknowns
@@ -529,5 +531,57 @@ export async function submitGradPlanForApproval(
             success: false,
             message: 'Failed to submit graduation plan for approval. Please try again.'
         };
+    }
+}
+
+/** AUTHORIZED FOR ADVISORS ONLY (non-approval save)
+ * Updates only plan_details for an existing grad plan. Does NOT modify approval / active flags.
+ */
+export async function updateGradPlanDetails(
+    gradPlanId: string,
+    planDetails: unknown
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ plan_details: planDetails })
+            .eq('id', gradPlanId);
+        if (error) {
+            console.error('❌ Error updating plan_details:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (err) {
+        console.error('❌ Unexpected error updating plan_details:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/** AUTHORIZED FOR ADVISORS ONLY
+ * Atomically update plan_details and advisor_notes and transition to pending_edits state (removes from pending_approval).
+ */
+export async function updateGradPlanDetailsAndAdvisorNotes(
+    gradPlanId: string,
+    planDetails: unknown,
+    advisorNotes: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ 
+                plan_details: planDetails,
+                advisor_notes: advisorNotes,
+                pending_edits: true,
+                pending_approval: false
+            })
+            .eq('id', gradPlanId);
+        if (error) {
+            console.error('❌ Error updating plan & notes:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (err) {
+        console.error('❌ Unexpected error updating plan & notes:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }

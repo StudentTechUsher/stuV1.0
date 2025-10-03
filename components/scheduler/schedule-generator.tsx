@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, Box, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, LinearProgress } from "@mui/material";
 import { RefreshCw, Save, Calendar, Plus } from "lucide-react";
+import Link from "next/link";
 import type { SchedulerEvent } from "./scheduler-calendar";
 
 export type Course = {
@@ -233,28 +234,57 @@ export default function ScheduleGenerator({
             Schedule Generator
           </Typography>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Graduation Plan</InputLabel>
-            <Select
-              value={selectedPlan}
-              label="Graduation Plan"
-              onChange={(e) => setSelectedPlan(e.target.value)}
-              className="font-body"
-              disabled={gradPlans.length === 0}
-            >
-              {gradPlans.length === 0 ? (
-                <MenuItem value="" disabled className="font-body">
-                  No graduation plans found. Create one in the Grad Plan tab.
-                </MenuItem>
-              ) : (
-                gradPlans.map((plan) => (
+          {gradPlans.length === 0 ? (
+            <Box sx={{ mb: 2 }}>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2" className="font-body" sx={{ mb: 1 }}>
+                  No graduation plans found. Create one to start scheduling your classes.
+                </Typography>
+              </Alert>
+              <Link href="/dashboard/grad-plan" passHref>
+                <Button
+                  variant="contained"
+                  startIcon={<Plus size={16} />}
+                  fullWidth
+                  className="font-body-semi"
+                  sx={{
+                    bgcolor: "var(--primary)",
+                    color: "var(--muted-foreground)",
+                    "&:hover": { bgcolor: "var(--hover-green)", color: "var(--primary-foreground)" },
+                  }}
+                >
+                  Create Grad Plan
+                </Button>
+              </Link>
+            </Box>
+          ) : (
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>Graduation Plan</InputLabel>
+              <Select
+                value={selectedPlan}
+                label="Graduation Plan"
+                onChange={(e) => setSelectedPlan(e.target.value)}
+                className="font-body"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--hover-green)'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)'
+                  }
+                }}
+              >
+                {gradPlans.map((plan) => (
                   <MenuItem key={plan.id} value={plan.id} className="font-body">
                     {plan.name} {plan.isActive && "(Active)"}
                   </MenuItem>
-                ))
-              )}
-            </Select>
-          </FormControl>
+                ))}
+              </Select>
+            </FormControl>
+          )}
 
           {selectedGradPlan && (
             <Box sx={{ mb: 2, p: 2, bgcolor: "var(--muted)", borderRadius: 2 }}>

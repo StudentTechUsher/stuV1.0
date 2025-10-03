@@ -28,6 +28,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { MdHistory } from "react-icons/md";
 import type { NavItem } from "@/app/dashboard/layout";
 import { JSX } from "react";
+import { Inbox } from "@mui/icons-material";
 
 // We can now use CSS variables directly in Material-UI sx props
 
@@ -39,6 +40,7 @@ type Props = {
 
 const iconMap: Record<NavItem["icon"], JSX.Element> = {
   dashboard: <DashboardRounded />,
+  inbox: <Inbox />,
   planner: <SchoolRounded />,
   map: <MapRounded />,
   semester: <ChecklistRounded />,

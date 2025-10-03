@@ -94,6 +94,81 @@
   --primary-dark: #003228;
 }
 
+/* MUI Time Picker Clock Styling - Override default blue to green */
+.MuiClock-pin {
+  background-color: var(--primary) !important;
+}
+
+.MuiClockPointer-root {
+  background-color: var(--primary) !important;
+}
+
+.MuiClockPointer-thumb {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.MuiClockNumber-root.Mui-selected {
+  background-color: var(--primary) !important;
+  color: black !important;
+}
+
+.MuiClock-clock .MuiButtonBase-root.Mui-selected {
+  background-color: var(--primary) !important;
+}
+
+/* Digital clock section items - the scrollable hour/minute list */
+.MuiMultiSectionDigitalClockSection-item.Mui-selected {
+  background-color: var(--primary) !important;
+  color: black !important;
+}
+
+.MuiMultiSectionDigitalClockSection-item:hover {
+  background-color: var(--primary-22) !important;
+}
+
+/* Time picker dropdown list items */
+.MuiMenuItem-root.Mui-selected {
+  background-color: var(--primary) !important;
+  color: black !important;
+}
+
+.MuiMenuItem-root.Mui-selected:hover {
+  background-color: var(--hover-green) !important;
+}
+
+.MuiList-root .MuiMenuItem-root:focus {
+  background-color: var(--primary-22) !important;
+}
+
+/* Time field dropdown specifically */
+.MuiPickersPopper-root .MuiMenuItem-root.Mui-selected,
+.MuiPickersPopper-root .MuiListItem-root.Mui-selected,
+.MuiPickersPopper-root .MuiButtonBase-root.Mui-selected {
+  background-color: var(--primary) !important;
+  color: black !important;
+  border-color: var(--primary) !important;
+}
+
+/* Time picker button - the one you click to open */
+.MuiPickersPopper-root .MuiClock-amButton.Mui-selected,
+.MuiPickersPopper-root .MuiClock-pmButton.Mui-selected {
+  background-color: var(--primary) !important;
+  color: black !important;
+}
+
+/* Override any remaining blue colors in MUI pickers */
+.MuiTimeClock-root .Mui-selected,
+.MuiDigitalClock-root .Mui-selected,
+.MuiPickersDay-root.Mui-selected {
+  background-color: var(--primary) !important;
+  color: black !important;
+}
+
+.MuiPickersDay-root.Mui-selected:hover {
+  background-color: var(--hover-green) !important;
+}
+
 .dark {
   --background: #18181b;
   --foreground: #fafafa;

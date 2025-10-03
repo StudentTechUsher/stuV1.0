@@ -11,6 +11,8 @@ import {
     updateGradPlanWithAdvisorNotes as _updateGradPlanWithAdvisorNotes,
     approveGradPlan as _approveGradPlan,
     submitGradPlanForApproval as _submitGradPlanForApproval,
+    updateGradPlanDetails as _updateGradPlanDetails,
+    updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
 } from './gradPlanService';
 import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
@@ -57,6 +59,16 @@ export async function approveGradPlan(gradPlanId: string) {
 
 export async function submitGradPlanForApproval(userId: string, planData: any, programIds: number[]) {
     return await _submitGradPlanForApproval(userId, planData, programIds);
+}
+
+// Save (non-approval) plan edits
+export async function updateGradPlanDetailsAction(gradPlanId: string, planDetails: any) {
+    return await _updateGradPlanDetails(gradPlanId, planDetails);
+}
+
+// Save plan edits + advisor notes (suggestions) together
+export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: string, planDetails: any, advisorNotes: string) {
+    return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, planDetails, advisorNotes);
 }
 
 // Program related
