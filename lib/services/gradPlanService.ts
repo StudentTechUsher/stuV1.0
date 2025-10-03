@@ -185,7 +185,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             student_id: gradPlanData.student_id,
             programs,
             est_grad_sem: profileData.est_grad_sem,
-            est_grad_date: profileData.est_grad_date
+            est_grad_date: profileData.est_grad_date,
             advisor_notes: gradPlanData.advisor_notes || null
         };
     } catch (err) {

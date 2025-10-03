@@ -18,6 +18,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import SchoolIcon from '@mui/icons-material/School';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EditIcon from '@mui/icons-material/Edit';
+import { GetGenEdsForUniversity } from '@/lib/services/programService';
 
 interface ProgramOption {
   id: string;
@@ -94,15 +95,15 @@ export default function ProgramSelectionDialog({
         setLoadingMinors(false);
       }
 
-      // Fetch GenEd programs
+      // Fetch GenEd programs using service function
       setLoadingGenEds(true);
       try {
-        const genEdRes = await fetch(`/api/programs?universityId=${universityId}`);
-        if (!genEdRes.ok) throw new Error('Failed to fetch general education programs');
-        const allPrograms = await genEdRes.json();
-        // Filter for GenEd programs
-        const genEdPrograms = allPrograms.filter((p: ProgramOption & { is_general_ed?: boolean }) => p.is_general_ed === true);
-        setGenEds(genEdPrograms);
+        const genEdPrograms = await GetGenEdsForUniversity(universityId);
+        setGenEds(genEdPrograms.map(p => ({
+          id: p.id,
+          name: p.name,
+          program_type: p.program_type || 'general_ed'
+        })));
       } catch (err) {
         console.error('Error fetching GenEd programs:', err);
         setError('Failed to load general education programs. Please try again.');

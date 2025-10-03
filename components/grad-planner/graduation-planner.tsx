@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
+import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -29,7 +32,6 @@ import { TrashZone } from './TrashZone';
 import { DraggableCourseOverlay } from './DraggableCourseOverlay';
 import { EditModeBanner } from './EditModeBanner';
 import { PlanHeader } from './PlanHeader';
-import { SpaceView } from './SpaceView';
 import { DetailView } from './DetailView';
 import ChangesSummaryBox from './ChangesSummaryBox';
 
@@ -92,52 +94,6 @@ export default function GraduationPlanner({
       },
     })
   );
-
-  // Extract est_grad_sem BEFORE processing plan structure
-  const estGradSem = useMemo(() => {
-    if (!plan) return undefined;
-    const planRecord = plan as Record<string, unknown>;
-    return planRecord.est_grad_sem as string | undefined;
-  }, [plan]);
-
-  // Handle different possible database structures
-  const planData = useMemo((): Term[] => {
-    if (!plan) return [];
-
-    const planRecord = plan as Record<string, unknown>;
-
-    // Check if plan itself is an array of terms (direct plan_details passed)
-    if (Array.isArray(plan)) {
-      return plan;
-    }
-    
-    // Check for the actual database structure: plan_details.plan
-    if (planRecord.plan_details && 
-        typeof planRecord.plan_details === 'object' && 
-        planRecord.plan_details !== null) {
-      const planDetails = planRecord.plan_details as Record<string, unknown>;
-      if (Array.isArray(planDetails.plan)) {
-        return planDetails.plan as Term[];
-      }
-    }
-    // Check if plan has a 'plan' property (nested structure) - AI RESPONSE FORMAT
-    else if (Array.isArray(planRecord.plan)) {
-      return planRecord.plan as Term[];
-    }
-    
-    // Add more flexible parsing similar to GradPlanViewer
-    // Check for semesters property
-    if (Array.isArray(planRecord.semesters)) {
-      return planRecord.semesters as Term[];
-    }
-    
-    // Check for terms property
-    if (Array.isArray(planRecord.terms)) {
-      return planRecord.terms as Term[];
-    }
-    
-    return [];
-  }, [plan]);
 
   // Initialize editable plan data when plan changes or edit mode changes
   useEffect(() => {
@@ -329,38 +285,21 @@ export default function GraduationPlanner({
     });
   };
 
-  if (!planData || planData.length === 0) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h6" className="font-header" color="error">
-          Invalid plan structure - no terms found
-        </Typography>
-        <Typography variant="body2" className="font-body" color="text.secondary" gutterBottom>
-          Expected to find an array of terms, but got:
-        </Typography>
-        <pre className="bg-muted p-4 rounded text-xs overflow-auto">{JSON.stringify(plan, null, 2)}</pre>
-      </Box>
-    );
-  }
-
-  // Extract additional info from plan or plan_details if available
-  const planRecord = plan as Record<string, unknown>;
-  
-  // If we're passed plan_details directly, metadata is at root level
-  // If we're passed the full database record, metadata is in plan_details
-  const sourceData = planRecord.plan_details ?
-    (planRecord.plan_details as Record<string, unknown>) :
-    planRecord;
-
-  const assumptions = sourceData.assumptions as string[];
-  const durationYears = sourceData.duration_years as number;
-
-  // Transform current plan data to SpaceView format
+  // Transform current plan data to SpaceView format - MUST be before early return
   const spaceViewData: PlanSpaceView = useMemo(() => {
+    if (!currentPlanData || currentPlanData.length === 0) {
+      return {
+        planName: 'My Graduation Plan',
+        degree: 'Degree Program',
+        gradSemester: 'Not set',
+        terms: [],
+      };
+    }
+
     const planRecord = plan as Record<string, unknown>;
     const planName = (planRecord.plan_name as string) || 'My Graduation Plan';
-    const degree = (sourceData.program as string) || 'Degree Program';
-    const gradSemester = estGradSem || 'Not set';
+    const degree = 'Degree Program'; // Simplified since sourceData is not available
+    const gradSemester = (planRecord.est_grad_sem as string) || 'Not set';
 
     const terms: TermBlock[] = currentPlanData.map((term, index) => {
       const courses: CourseItem[] = (term.courses || []).map((course, courseIndex) => ({
@@ -384,7 +323,21 @@ export default function GraduationPlanner({
       gradSemester,
       terms,
     };
-  }, [plan, currentPlanData, sourceData.program, estGradSem]);
+  }, [plan, currentPlanData]);
+
+  if (!planData || planData.length === 0) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h6" className="font-header" color="error">
+          Invalid plan structure - no terms found
+        </Typography>
+        <Typography variant="body2" className="font-body" color="text.secondary" gutterBottom>
+          Expected to find an array of terms, but got:
+        </Typography>
+        <pre className="bg-muted p-4 rounded text-xs overflow-auto">{JSON.stringify(plan, null, 2)}</pre>
+      </Box>
+    );
+  }
 
   return (
     <DndContext
@@ -454,137 +407,10 @@ export default function GraduationPlanner({
             >
               {isSpaceView ? 'Detail View' : 'Zoom Out'}
             </Button>
-          </Box>
-        </Box>
-        
-        {/* Display terms with events between them */}
-        {isSpaceView ? (
-          // Space View: Clean grid layout
-          <SpaceView plan={spaceViewData} />
-        ) : (
-          // Detail View: Render pairs of terms side-by-side, with events spanning full width
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
-              const termNumber = index + 1;
-              const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
-              const termCredits = term.credits_planned ||
-                                 (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-
-              // Render term card
-              const termCard = (
-                <Box key={`term-wrapper-${index}`} sx={{ flex: '1 1 48%' }}>
-                  <DroppableTerm term={term} termIndex={index} isEditMode={isEditMode} modifiedTerms={modifiedTerms}>
-                    <Box
-                      sx={{
-                        p: 3,
-                        border: '2px solid var(--border)',
-                        borderRadius: 2,
-                        backgroundColor: 'var(--muted)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                        minHeight: '200px',
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
-                          Term {term.term || index + 1}
-                        </Typography>
-                        <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
-                          {termCredits} Credits
-                        </Typography>
-                      </Box>
-
-                      {term.notes && (
-                        <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
-                          <Typography variant="body2" className="font-body" color="text.secondary">
-                            {term.notes}
-                          </Typography>
-                        </Box>
-                      )}
-
-                      {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
-                        <Box>
-                          <Typography variant="subtitle1" className="font-header-bold" gutterBottom sx={{ fontWeight: 700 }}>
-                            Courses ({term.courses.length}):
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            {term.courses.map((course: Course, courseIndex: number) => {
-                              if (!course.code || !course.title) {
-                                console.warn(`⚠️ Skipping invalid course in term ${index + 1}:`, course);
-                                return null;
-                              }
-
-                              return (
-                                <DraggableCourse
-                                  key={`term-${index}-course-${courseIndex}-${course.code}-${course.title?.substring(0, 10)}`}
-                                  course={course}
-                                  courseIndex={courseIndex}
-                                  termIndex={index}
-                                  isEditMode={isEditMode}
-                                  currentPlanData={currentPlanData}
-                                  onMoveCourse={moveCourse}
-                                  movedCourses={movedCourses}
-                                />
-                              );
-                            }).filter(Boolean)}
-                          </Box>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" className="font-body" color="text.secondary">
-                          No courses defined for this term
-                        </Typography>
-                      )}
-                    </Box>
-                  </DroppableTerm>
-                </Box>
-              );
-
-              // Group terms in pairs (2 columns)
-              if (index % 2 === 0) {
-                // Start of a new row
-                const nextTerm = currentPlanData[index + 1];
-                const nextTermNumber = index + 2;
-                const nextTermCredits = nextTerm ? (nextTerm.credits_planned || (nextTerm.courses ? nextTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0)) : 0;
-                const nextEventsAfterTerm = nextTerm ? events.filter(e => e.afterTerm === nextTermNumber) : [];
-
-                const nextTermCard = nextTerm ? (
-                  <Box key={`term-wrapper-${index + 1}`} sx={{ flex: '1 1 48%' }}>
-                    <DroppableTerm term={nextTerm} termIndex={index + 1} isEditMode={isEditMode} modifiedTerms={modifiedTerms}>
-                      <Box
-                        sx={{
-                          p: 3,
-                          border: '2px solid var(--border)',
-                          borderRadius: 2,
-                          backgroundColor: 'var(--muted)',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          minHeight: '200px',
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 800 }}>
-                            Term {nextTerm.term || index + 2}
-                          </Typography>
-                          <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
-                            {nextTermCredits} Credits
-                          </Typography>
-                        </Box>
-
-                        {nextTerm.notes && (
-                          <Box sx={{ mb: 2, p: 1, backgroundColor: 'var(--primary-15)', borderRadius: 2 }}>
-                            <Typography variant="body2" className="font-body" color="text.secondary">
-                              {nextTerm.notes}
-                            </Typography>
-                          </Box>
-                        )}
 
             {/* Display terms with events between them */}
             {isSpaceView ? (
-              <SpaceView
-                currentPlanData={currentPlanData}
-                events={events}
-                isEditMode={isEditMode}
-                onEditEvent={handleOpenEventDialog}
-                onDeleteEvent={handleDeleteEvent}
-              />
+              <SpaceView plan={spaceViewData} />
             ) : (
               <DetailView
                 currentPlanData={currentPlanData}
