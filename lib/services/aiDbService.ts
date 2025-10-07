@@ -56,3 +56,35 @@ export async function InsertGeneratedGradPlan(args: {
 
   return { gradPlanId: data.id, accessId: encodeAccessId(data.id) };
 }
+
+/**
+ * Insert a chat exchange (user message + AI response) with a session_id to group related messages.
+ * Falls back gracefully if some analytics fields are missing.
+ */
+export async function InsertAiChatExchange(args: {
+  userId: string | null;
+  sessionId: string;
+  userMessage: string;
+  aiResponse: string;
+  outputTokens?: number;
+}): Promise<{ success: boolean; error?: string }> {
+  const { userId, sessionId, userMessage, aiResponse, outputTokens = 0 } = args;
+  try {
+    const { error } = await supabase
+      .from('ai_responses')
+      .insert({
+        user_id: userId, // can be null if anonymous usage is allowed by RLS
+        session_id: sessionId,
+        user_prompt: userMessage,
+        response: aiResponse,
+        output_tokens: outputTokens,
+      });
+    if (error) {
+      console.error('InsertAiChatExchange failed:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}

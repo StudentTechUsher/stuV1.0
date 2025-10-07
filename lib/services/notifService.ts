@@ -50,7 +50,7 @@ export async function createNotification({
 	target_user_id: string,
 	initiator_user_id: string | null,
 	type: string,
-	context_json: any | null,
+	context_json: Record<string, unknown> | null,
 	url: string | null,
 	is_read: false,
 	read_utc: string | null,
@@ -129,7 +129,7 @@ export async function createNotifForGradPlanEdited(
     if (!targetUserId || !accessId) throw new Error('Missing target user or accessId');
 
     // Build context with change details
-    const contextJson: any = {
+    const contextJson: Record<string, unknown> = {
       message: 'Your most recent grad plan was just updated with edits'
     };
 

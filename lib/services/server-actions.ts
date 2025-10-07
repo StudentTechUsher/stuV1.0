@@ -3,6 +3,7 @@
 // Centralized async server action wrappers. Each export must be an async function (Next.js requirement).
 
 import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
+import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
 import {
     fetchGradPlanForEditing as _fetchGradPlanForEditing,
@@ -14,6 +15,7 @@ import {
     updateGradPlanDetails as _updateGradPlanDetails,
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
 } from './gradPlanService';
+import { ChatbotSendMessage_ServerAction as _chatbotSendMessage } from './openaiService';
 import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
     deleteProgram as _deleteProgram,
@@ -50,10 +52,46 @@ export async function fetchPendingGradPlans() {
 }
 
 export async function updateGradPlanWithAdvisorNotes(gradPlanId: string, advisorNotes: string) {
+    // Enforce advisor-only access on server
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileError || !profile || profile.role_id !== 2) {
+            return { success: false, error: 'Not authorized' };
+        }
+    } catch (e) {
+        return { success: false, error: 'Authorization check failed' };
+    }
     return await _updateGradPlanWithAdvisorNotes(gradPlanId, advisorNotes);
 }
 
 export async function approveGradPlan(gradPlanId: string) {
+    // Advisor-only safeguard
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' } as { success: boolean; error?: string };
+        }
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileError || !profile || profile.role_id !== 2) {
+            return { success: false, error: 'Not authorized' } as { success: boolean; error?: string };
+        }
+    } catch (e) {
+        return { success: false, error: 'Authorization check failed' } as { success: boolean; error?: string };
+    }
     return await _approveGradPlan(gradPlanId);
 }
 
@@ -63,11 +101,47 @@ export async function submitGradPlanForApproval(userId: string, planData: any, p
 
 // Save (non-approval) plan edits
 export async function updateGradPlanDetailsAction(gradPlanId: string, planDetails: any) {
+    // Advisor-only safeguard
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileError || !profile || profile.role_id !== 2) {
+            return { success: false, error: 'Not authorized' };
+        }
+    } catch (e) {
+        return { success: false, error: 'Authorization check failed' };
+    }
     return await _updateGradPlanDetails(gradPlanId, planDetails);
 }
 
 // Save plan edits + advisor notes (suggestions) together
 export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: string, planDetails: any, advisorNotes: string) {
+    // Enforce advisor-only access on server (most critical: suggestions/notes)
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileError || !profile || profile.role_id !== 2) {
+            return { success: false, error: 'Not authorized' };
+        }
+    } catch (e) {
+        return { success: false, error: 'Authorization check failed' };
+    }
     return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, planDetails, advisorNotes);
 }
 
@@ -83,4 +157,9 @@ export async function deleteProgram(programId: string) {
 // Issue a server-format access ID (HMAC) for a grad plan id
 export async function issueGradPlanAccessId(gradPlanId: string): Promise<string> {
     return encodeAccessId(gradPlanId);
+}
+
+// Chatbot message server action wrapper
+export async function chatbotSendMessage(message: string, sessionId?: string) {
+    return await _chatbotSendMessage({ message, sessionId });
 }

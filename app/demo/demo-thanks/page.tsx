@@ -25,7 +25,7 @@ export default function DemoThanksPage() {
         <p
           className="text-zinc-600 text-lg sm:text-xl leading-snug font-body-medium"
         >
-          Your demo request has been submitted successfully. We'll be in touch shortly to schedule a time.
+          Your demo request has been submitted successfully. We&apos;ll be in touch shortly to schedule a time.
         </p>
         <Link
           href="/"

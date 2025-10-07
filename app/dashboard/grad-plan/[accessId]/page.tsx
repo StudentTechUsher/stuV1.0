@@ -460,6 +460,7 @@ export default function EditGradPlanPage() {
               isEditMode={isEditMode}
               onPlanUpdate={handlePlanUpdate}
               onSave={handleSave}
+              editorRole={userRole === 'advisor' ? 'advisor' : 'student'}
               advisorChanges={advisorChanges}
             />
           );

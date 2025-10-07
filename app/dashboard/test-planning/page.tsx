@@ -5,8 +5,9 @@ import React, { useState } from "react";
 
 function TestPlanningPage() {
   const [step, setStep] = useState(1);
-  const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
-  const [requirementSelections, setRequirementSelections] = useState<Record<string, string[]>>({});
+  // Note: These variables will be used when test planning functionality is implemented
+  // const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+  // const [requirementSelections, setRequirementSelections] = useState<Record<string, string[]>>({});
 
   return (
     <div>

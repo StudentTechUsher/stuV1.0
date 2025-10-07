@@ -43,6 +43,8 @@ interface GraduationPlannerProps {
   isEditMode?: boolean;
   onPlanUpdate?: (updatedPlan: Term[]) => void;
   onSave?: (updatedPlan: Term[], events: Event[]) => void;
+  initialSpaceView?: boolean;
+  editorRole?: 'student' | 'advisor';
   studentProfile?: {
     profile_id: string;
     university_id: number;
@@ -59,6 +61,8 @@ export default function GraduationPlanner({
   isEditMode = false,
   onPlanUpdate,
   onSave,
+  initialSpaceView = false,
+  editorRole = 'student',
   advisorChanges
 }: Readonly<GraduationPlannerProps>) {
   // Parse plan data using custom hook
@@ -71,7 +75,7 @@ export default function GraduationPlanner({
   const [movedCourses, setMovedCourses] = useState<Set<string>>(new Set());
   const [modifiedTerms, setModifiedTerms] = useState<Set<number>>(new Set());
   // View mode state
-  const [isSpaceView, setIsSpaceView] = useState(false);
+  const [isSpaceView, setIsSpaceView] = useState(initialSpaceView);
   // Events state
   const [events, setEvents] = useState<Event[]>([]);
   const [showEventDialog, setShowEventDialog] = useState(false);
@@ -353,6 +357,7 @@ export default function GraduationPlanner({
               editablePlanData={editablePlanData}
               events={events}
               onSave={onSave}
+              role={editorRole}
             />
           )}
 

@@ -15,9 +15,12 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
+import Fab from "@mui/material/Fab";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import CloseIcon from "@mui/icons-material/Close";
 import { getEnvRole } from "@/lib/mock-role";
+import { chatbotSendMessage } from "@/lib/services/server-actions";
 
 type Role = "student" | "advisor" | "admin";
 type QuickAction = { label: string; prompt: string };
@@ -66,6 +69,32 @@ export default function ChatbotDrawer({
   const [messages, setMessages] = React.useState<Array<{type: 'user' | 'bot', text: string, id: string}>>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const drawerRef = React.useRef<HTMLDivElement>(null);
+  const messagesRef = React.useRef<HTMLDivElement>(null);
+  const [showScrollFab, setShowScrollFab] = React.useState(false);
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [isTyping, setIsTyping] = React.useState(false);
+
+  const isScrollable = React.useCallback(() => {
+    const el = messagesRef.current;
+    if (!el) return false;
+    return el.scrollHeight > el.clientHeight + 2;
+  }, []);
+
+  const isNearBottom = React.useCallback(() => {
+    const el = messagesRef.current;
+    if (!el) return true;
+    const threshold = 24; // px tolerance
+    return el.scrollHeight - (el.scrollTop + el.clientHeight) <= threshold;
+  }, []);
+
+  const updateScrollFabVisibility = React.useCallback(() => {
+    const hasScroll = isScrollable();
+    const nearBottom = isNearBottom();
+    // Only show when content scrolls, user isn't at bottom, and last message is from bot
+    const last = messages[messages.length - 1];
+    const isBot = last?.type === 'bot';
+    setShowScrollFab(hasScroll && !nearBottom && !!isBot);
+  }, [isScrollable, isNearBottom, messages]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -75,19 +104,28 @@ export default function ChatbotDrawer({
       // Add user message to the chat
       setMessages(prev => [...prev, { type: 'user', text, id: `user-${Date.now()}` }]);
       
+      let currentSession = sessionId;
+      if (!currentSession) {
+        // generate a new session id once per drawer session
+        currentSession = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `sess_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        setSessionId(currentSession);
+      }
+
       if (onSend) {
         await onSend(text, { role });
-      } else {
-        // Add the temporary bot response
-        setTimeout(() => {
-          setMessages(prev => [...prev, { 
-            type: 'bot', 
-            text: "Hi, I'm still getting set up, but I'll be able to help you navigate the site and give you tips and advice along the way.",
-            id: `bot-${Date.now()}`
-          }]);
-        }, 500); // Small delay to simulate thinking
-        
-        console.log(`[CHAT:${role}]`, text);
+      }
+
+      // Call server action to get AI reply and persist exchange
+      try {
+        setIsTyping(true);
+        const result = await chatbotSendMessage(text, currentSession || undefined);
+        const reply = result?.success && result.reply ? result.reply : "I'm having trouble right now. Please try again in a moment.";
+        setMessages(prev => [...prev, { type: 'bot', text: reply, id: `bot-${Date.now()}` }]);
+        setIsTyping(false);
+      } catch (aiErr) {
+        console.error('AI send failed:', aiErr);
+        setMessages(prev => [...prev, { type: 'bot', text: "I'm having trouble right now. Please try again in a moment.", id: `bot-${Date.now()}` }]);
+        setIsTyping(false);
       }
       setInput("");
       inputRef.current?.focus();
@@ -101,24 +139,72 @@ export default function ChatbotDrawer({
     if (autoSend) {
       // small delay so TextField updates before send
       setTimeout(() => {
-        // Add user message immediately
-        setMessages(prev => [...prev, { type: 'user', text: qa.prompt, id: `user-${Date.now()}` }]);
-        
-        // Add bot response
-        setTimeout(() => {
-          setMessages(prev => [...prev, { 
-            type: 'bot', 
-            text: "Hi, I'm still getting set up, but I'll be able to help you navigate the site and give you tips and advice along the way.",
-            id: `bot-${Date.now()}`
-          }]);
-        }, 500);
-        
-        setInput("");
+        handleSend();
       }, 0);
     } else {
       inputRef.current?.focus();
     }
   };
+
+  // Toggle the scroll-to-bottom FAB based on scroll position and messages
+  React.useEffect(() => {
+    updateScrollFabVisibility();
+  }, [messages, open, updateScrollFabVisibility]);
+
+  const handleMessagesScroll: React.UIEventHandler<HTMLDivElement> = () => {
+    updateScrollFabVisibility();
+  };
+
+  const scrollToBottom = () => {
+    const el = messagesRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    // Hide the FAB after initiating scroll
+    setShowScrollFab(false);
+  };
+
+  // Simple three-dot typing indicator component
+  function TypingIndicator() {
+    const [active, setActive] = React.useState(0);
+    React.useEffect(() => {
+      const id = setInterval(() => {
+        setActive(prev => (prev + 1) % 3);
+      }, 450);
+      return () => clearInterval(id);
+    }, []);
+    const Dot = ({ index }: { index: number }) => (
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          mx: 0.5,
+          backgroundColor: 'text.primary',
+          opacity: active === index ? 0.95 : 0.35,
+          transition: 'opacity 150ms ease'
+        }}
+      />
+    );
+    return (
+      <Box sx={{
+        maxWidth: '60%',
+        p: 1.25,
+        px: 1.5,
+        borderRadius: 2,
+        backgroundColor: 'white',
+        color: 'text.primary',
+        boxShadow: 1,
+        display: 'inline-flex',
+        alignItems: 'center'
+      }}>
+        <Dot index={0} />
+        <Dot index={1} />
+        <Dot index={2} />
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -163,7 +249,7 @@ export default function ChatbotDrawer({
           } 
         }}
       >
-      <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%", position: 'relative' }}>
         {/* Header with close button */}
         <Box sx={{ mb: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box>
@@ -211,14 +297,15 @@ export default function ChatbotDrawer({
         <Divider sx={{ my: 1 }} />
 
         {/* Chat Messages Area */}
-        <Box sx={{ 
+        <Box ref={messagesRef} onScroll={handleMessagesScroll} sx={{ 
           flex: 1, 
           overflowY: 'auto', 
           mb: 2,
           p: 1,
           backgroundColor: 'grey.50',
           borderRadius: 1,
-          minHeight: '200px'
+          minHeight: '200px',
+          position: 'relative'
         }}>
           {messages.length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>
@@ -250,7 +337,43 @@ export default function ChatbotDrawer({
                   </Box>
                 </Box>
               ))}
+              {/* Typing indicator bubble */}
+              {isTyping && (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <TypingIndicator />
+                </Box>
+              )}
             </Stack>
+          )}
+
+          {/* Scroll-to-bottom FAB in the corner of the messaging window (sticky) */}
+          {showScrollFab && (
+            <Box
+              sx={{
+                position: 'sticky',
+                bottom: 8,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                zIndex: 1,
+                pointerEvents: 'none', // allow clicks to pass through except on the FAB
+              }}
+            >
+              <Fab
+                size="small"
+                onClick={scrollToBottom}
+                sx={{
+                  bgcolor: 'success.main',
+                  color: 'white',
+                  opacity: 0.9,
+                  '&:hover': { bgcolor: 'success.dark', opacity: 1 },
+                  boxShadow: 3,
+                  pointerEvents: 'auto',
+                }}
+                aria-label="Scroll to bottom"
+              >
+                <KeyboardArrowDownIcon />
+              </Fab>
+            </Box>
           )}
         </Box>
 
@@ -262,6 +385,8 @@ export default function ChatbotDrawer({
                 if (text === "New chat") {
                   setInput("");
                   setMessages([]);
+                  // start a new session
+                  setSessionId(null);
                 }
                 // wire up "Recent" & "Settings" to your internal routes or handlers as needed
               }}>

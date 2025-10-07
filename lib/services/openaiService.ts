@@ -3,7 +3,7 @@ import { supabase } from "../supabase";
 import { GetMajorsForUniversity } from '../services/programService';
 import { getVerifiedUser } from "../supabase/auth";
 // encodeAccessId no longer needed here after persistence refactor
-import { InsertGeneratedGradPlan } from './aiDbService';
+import { InsertGeneratedGradPlan, InsertAiChatExchange } from './aiDbService';
 import path from 'path';
 import { promises as fs } from 'fs';
 
@@ -281,26 +281,20 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     }
 
     // Persist generated plan via helper (store structured object/array, not raw JSON string)
-    let accessId: string | undefined;
-    try {
-      let planData: unknown = semesterPlan;
-      if (typeof planData === 'string') {
-        try { planData = JSON.parse(planData); } catch {/* leave as string if it can't parse */}
-      }
-      const { accessId: generatedAccessId } = await InsertGeneratedGradPlan({
-        studentId: studentData.id,
-        planData,
-        programsInPlan: Array.isArray(cd.selectedPrograms)
-          ? cd.selectedPrograms
-              .map((p: string | number) => Number(p))
-              .filter((n: number) => !Number.isNaN(n))
-          : [],
-        isActive: false,
-      });
-      accessId = generatedAccessId;
-    } catch (persistErr) {
-      console.error('⚠️ Error storing grad plan via helper:', persistErr);
+    let planData: unknown = semesterPlan;
+    if (typeof planData === 'string') {
+      try { planData = JSON.parse(planData); } catch {/* leave as string if it can't parse */}
     }
+    const { accessId } = await InsertGeneratedGradPlan({
+      studentId: studentData.id,
+      planData,
+      programsInPlan: Array.isArray(cd.selectedPrograms)
+        ? cd.selectedPrograms
+            .map((p: string | number) => Number(p))
+            .filter((n: number) => !Number.isNaN(n))
+        : [],
+      isActive: false,
+    });
 
     return {
       success: true,
@@ -753,3 +747,57 @@ JSON Shape:
   }
 }
 
+// ----------------------------------------------
+// Chatbot: send a message and get AI reply with session grouping
+// ----------------------------------------------
+/**
+ * Handles a single chatbot message. Adds guardrails: if message is not about
+ * academic, career, or student concerns, return a standard guidance response.
+ * Logs the exchange in ai_responses with a provided session_id.
+ */
+export async function ChatbotSendMessage_ServerAction(args: {
+  message: string;
+  sessionId?: string;
+  model?: string;
+}): Promise<{ success: boolean; reply: string; sessionId: string; requestId?: string; error?: string }>{
+  try {
+    const user = await getVerifiedUser(); // may be null if not required; leaving as requirement aligns with RLS
+    if (!user) return { success: false, reply: '', sessionId: args.sessionId || '', error: 'User not authenticated' };
+
+    const sessionId = args.sessionId && args.sessionId.trim() ? args.sessionId : `sess_${user.id}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    const userMessage = (args.message || '').trim();
+    if (!userMessage) return { success: false, reply: '', sessionId, error: 'Empty message' };
+
+    // Guardrailed prompt with JSON output to simplify handling
+    const systemInstruction = `You are a helpful university student assistant.
+If the user's message is about academic planning, courses, degree requirements, scheduling, registration, financial aid, student support, career pathways, internships, or campus resources, provide a concise, helpful answer.
+If the message is NOT related to academic, career, or student concerns, respond with this exact standard message:
+"I can help with academic, career, or student life questions. For other topics, please reach out to your advisor or campus support resources."
+Return valid JSON only with shape: { "reply": string, "category": "student" | "non-student" }.`;
+
+    const prompt = `${systemInstruction}\n\nUSER_MESSAGE:\n${userMessage}\n\nReturn JSON now.`;
+    const aiResult = await executeJsonPrompt({ prompt_name: 'chatbot_message', prompt, model: args.model || 'gpt-5-mini', max_output_tokens: 1200 });
+
+    const fallback = 'I can help with academic, career, or student life questions. For other topics, please reach out to your advisor or campus support resources.';
+    const reply = aiResult.success && aiResult.parsedJson && typeof (aiResult.parsedJson as any).reply === 'string'
+      ? String((aiResult.parsedJson as any).reply)
+      : (aiResult.rawText || fallback);
+
+    // Log to ai_responses with session_id
+    try {
+      await InsertAiChatExchange({
+        userId: user.id,
+        sessionId,
+        userMessage,
+        aiResponse: reply,
+        outputTokens: aiResult.usage?.completion_tokens || 0,
+      });
+    } catch (logErr) {
+      console.error('Failed to insert chat exchange:', logErr);
+    }
+
+    return { success: true, reply, sessionId, requestId: aiResult.requestId ?? undefined };
+  } catch (err) {
+    return { success: false, reply: '', sessionId: args.sessionId || '', error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}

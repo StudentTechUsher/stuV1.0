@@ -34,6 +34,11 @@ export default function DashboardChatFab({
   const [chatOpen, setChatOpen] = React.useState(false)
   const presetPrompts = ROLE_PRESETS[role] ?? []
 
+  // Only render chat for students for now
+  if (role !== 'student') {
+    return null;
+  }
+
   return (
     <ChatbotDrawer
       open={chatOpen}

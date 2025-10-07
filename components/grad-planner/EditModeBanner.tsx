@@ -9,9 +9,13 @@ interface EditModeBannerProps {
   editablePlanData: Term[];
   events: Event[];
   onSave?: (updatedPlan: Term[], events: Event[]) => void;
+  role?: 'student' | 'advisor';
 }
 
-export function EditModeBanner({ editablePlanData, events, onSave }: EditModeBannerProps) {
+export function EditModeBanner({ editablePlanData, events, onSave, role = 'student' }: EditModeBannerProps) {
+  const instruction = role === 'advisor'
+    ? 'Make changes to this graduation plan. Click "Approve Plan" or "Save Changes and Notify Student" when review is complete.'
+    : 'Make changes to this graduation plan. Click "Submit for Approval" when finished.';
   return (
     <Box sx={{
       mb: 3,
@@ -29,9 +33,7 @@ export function EditModeBanner({ editablePlanData, events, onSave }: EditModeBan
         <Typography variant="h6" className="font-header-bold" sx={{ color: 'var(--action-edit)' }}>
           Edit Mode Active
         </Typography>
-        <Typography variant="body2" className="font-body" color="text.secondary">
-          Make changes to your graduation plan. Click &quot;Submit for Approval&quot; when finished.
-        </Typography>
+        <Typography variant="body2" className="font-body" color="text.secondary">{instruction}</Typography>
       </Box>
       {onSave && (
         <Button

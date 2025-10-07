@@ -86,7 +86,7 @@ export class AIChatService {
       
       // Analyze response for escalation triggers
       const escalationSuggested = this.shouldSuggestEscalation(content, message, routeContext);
-      const intentCategory = this.categorizeIntent(message, routeContext);
+      const intentCategory = this.categorizeIntent(message);
 
       // Save to conversation history
       await conversationService.saveMessage(
@@ -210,7 +210,7 @@ Key guidelines:
     return responseContainsEscalation || userShowsUrgency;
   }
 
-  private categorizeIntent(message: string, routeContext: RouteContext): string {
+  private categorizeIntent(message: string): string {
     const message_lower = message.toLowerCase();
     
     if (message_lower.includes('course') || message_lower.includes('class')) {
@@ -229,7 +229,7 @@ Key guidelines:
       return 'advisor_request';
     }
     
-    return routeContext;
+    return 'general';
   }
 
   private createEscalationResponse(routeContext: RouteContext): ChatResponse {

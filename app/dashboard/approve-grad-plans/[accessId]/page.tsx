@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper, TextField, IconButton } from '@mui/material';
 import { CheckCircle, Save } from '@mui/icons-material';
+import { Add, Remove } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction } from '@/lib/services/server-actions';
 import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
-import GradPlanViewer from '@/components/approve-grad-plans/grad-plan-viewer';
+import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface GradPlanDetails {
@@ -61,10 +62,36 @@ export default function ApproveGradPlanPage() {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const handleSuggestionsChange = React.useCallback((hasSuggestions: boolean, suggestions: Record<string, string>) => {
-    setHasSuggestions(hasSuggestions);
-    setSuggestions(suggestions);
+  // Suggestions state helpers (advisor-only UI on this page)
+  const recomputeHasSuggestions = React.useCallback((next: Record<string, string>) => {
+    const has = Object.values(next).some(v => (v ?? '').toString().trim() !== '');
+    setHasSuggestions(has);
   }, []);
+
+  const addSuggestion = React.useCallback((termKey: string) => {
+    setSuggestions(prev => {
+      const next = { ...prev, [termKey]: prev[termKey] ?? '' };
+      recomputeHasSuggestions(next);
+      return next;
+    });
+  }, [recomputeHasSuggestions]);
+
+  const removeSuggestion = React.useCallback((termKey: string) => {
+    setSuggestions(prev => {
+      const next = { ...prev };
+      delete next[termKey];
+      recomputeHasSuggestions(next);
+      return next;
+    });
+  }, [recomputeHasSuggestions]);
+
+  const updateSuggestion = React.useCallback((termKey: string, value: string) => {
+    setSuggestions(prev => {
+      const next = { ...prev, [termKey]: value };
+      recomputeHasSuggestions(next);
+      return next;
+    });
+  }, [recomputeHasSuggestions]);
 
   const formatSuggestionsForAdvisorNotes = (suggestions: Record<string, string>): string => {
     const entries = Object.entries(suggestions).filter(([, value]) => value.trim() !== '');
@@ -445,7 +472,7 @@ export default function ApproveGradPlanPage() {
         </Typography>
       </Box>
 
-      {/* Unified Editable + Suggestions Viewer */}
+      {/* Planner + Suggestions (advisor-only) */}
       <Paper elevation={2} sx={{ p: 4, mb: 4, backgroundColor: '#fafafa' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
@@ -466,19 +493,59 @@ export default function ApproveGradPlanPage() {
             </Button>
           </Box>
         </Box>
-        <GradPlanViewer
-          planDetails={gradPlan.plan_details}
-          studentName={studentName}
-          programs={gradPlan.programs}
-          onSuggestionsChange={handleSuggestionsChange}
-          editable
-          enableTermMove
-          planOverride={editablePlan || []}
-          onPlanChange={(updated) => { setEditablePlan(updated as any[]); setUnsavedChanges(true); }}
+        <GraduationPlanner
+          plan={editablePlan || (gradPlan.plan_details as any)}
+          isEditMode
+          initialSpaceView
+          editorRole="advisor"
+          onPlanUpdate={(updated) => { setEditablePlan(updated as any[]); setUnsavedChanges(true); }}
         />
+        {/* Advisor Suggestions UI */}
+        <Box sx={{ mt:3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#333' }}>
+            Advisor Suggestions
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Add optional suggestions for specific terms. These notes are sent to the student.
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 2 }}>
+            {(editablePlan || []).map((term, idx) => {
+              const termKey = `term-${idx + 1}`;
+              const has = Object.prototype.hasOwnProperty.call(suggestions, termKey);
+              return (
+                <Box key={termKey} sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1, backgroundColor: '#fff' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Term {term?.term || (idx + 1)}
+                    </Typography>
+                    {has ? (
+                      <IconButton size="small" onClick={() => removeSuggestion(termKey)} sx={{ color: '#f44336' }}>
+                        <Remove fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <Button variant="outlined" size="small" startIcon={<Add />} onClick={() => addSuggestion(termKey)}>
+                        Suggest Edit
+                      </Button>
+                    )}
+                  </Box>
+                  {has && (
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      placeholder="Enter your suggestion for improving this term..."
+                      value={suggestions[termKey] || ''}
+                      onChange={(e) => updateSuggestion(termKey, e.target.value)}
+                    />
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
         <Box sx={{ mt:3 }}>
           <Alert severity={unsavedChanges ? 'warning':'info'}>
-            {unsavedChanges ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.' : 'You can move courses between terms or add term suggestions below. Saving does not approve the plan.'}
+            {unsavedChanges ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.' : 'You can move courses between terms or add per-term suggestions. Saving does not approve the plan.'}
           </Alert>
         </Box>
       </Paper>

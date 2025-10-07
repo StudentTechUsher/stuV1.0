@@ -170,13 +170,13 @@ export class ConversationService {
     return (metadata?.message_sequence || 0) + 1;
   }
 
-  private parseMetadata(response: any): ConversationMetadata | null {
+  private parseMetadata(response: string | object): ConversationMetadata | null {
     try {
       if (typeof response === 'string') {
         const parsed = JSON.parse(response);
         return parsed.metadata || null;
       }
-      return response?.metadata || null;
+      return (response as any)?.metadata || null;
     } catch {
       return null;
     }
