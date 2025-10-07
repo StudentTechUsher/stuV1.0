@@ -106,7 +106,6 @@ function getNavItems(role: Role): NavItem[] {
         { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
         { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
-        { href: "/dashboard/meet-with-advisor",  segment: "calendar",           label: "Meet with Advisor",    icon: "meet" },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",              icon: "profile" },
         { href: "/settings",                     segment: "settings",           label: "Settings",             icon: "system" },
       ];

@@ -1,6 +1,67 @@
 "use server";
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
+import type { NotificationPreferencesPayload } from '@/types/notification-preferences';
+import { buildNotificationPreferences } from '@/helpers/notification-preferences';
 import type { AdvisorStudentRow } from './profileService';
+
+export interface ProfileNotificationSummary {
+  id: string;
+  role_id: number;
+  notif_preferences: NotificationPreferencesPayload | null;
+}
+
+/** Fetch the authenticated user's profile with notification preferences for server components. */
+export async function getProfileNotificationSummary(profileId: string): Promise<ProfileNotificationSummary | null> {
+  try {
+    const supabaseSrv = await createSupabaseServerComponentClient();
+    const { data, error } = await supabaseSrv
+      .from('profiles')
+      .select('id, role_id, notif_preferences')
+      .eq('id', profileId)
+      .maybeSingle();
+
+    if (error || !data) {
+      if (error) {
+        console.error('❌ Failed to load profile notification summary:', error);
+      }
+      return null;
+    }
+
+    const roleId = Number(data.role_id);
+    let preferences = (data.notif_preferences as NotificationPreferencesPayload | null) ?? null;
+
+    if (!preferences || !preferences.events || Object.keys(preferences.events).length === 0) {
+      const defaults = buildNotificationPreferences(roleId, null);
+      const { data: updated, error: updateError } = await supabaseSrv
+        .from('profiles')
+        .update({
+          notif_preferences: defaults,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', profileId)
+        .select('id, role_id, notif_preferences')
+        .maybeSingle();
+
+      if (updateError) {
+        console.error('❌ Failed to seed default notification preferences:', updateError);
+        preferences = defaults;
+      } else if (updated) {
+        preferences = (updated.notif_preferences as NotificationPreferencesPayload | null) ?? defaults;
+      } else {
+        preferences = defaults;
+      }
+    }
+
+    return {
+      id: data.id,
+      role_id: roleId,
+      notif_preferences: preferences,
+    };
+  } catch (err) {
+    console.error('❌ Unexpected error loading profile notification summary:', err);
+    return null;
+  }
+}
 
 /** Server-side variant to be called in RSC pages (avoids exposing multiple round trips client-side). */
 export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow[]> {
