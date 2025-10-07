@@ -164,8 +164,9 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       };
     }
 
-    // Extract selection mode (if present in payload)
+    // Extract selection mode and plan name (if present in payload)
     const selectionMode = cd.selectionMode || 'MANUAL';
+    const planName = cd.planName;
 
     // Branch based on selection mode
     let processedCoursesData = coursesData;
@@ -295,6 +296,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
               .filter((n: number) => !Number.isNaN(n))
           : [],
         isActive: false,
+        planName: planName, // Include the plan name
       });
       accessId = generatedAccessId;
     } catch (persistErr) {

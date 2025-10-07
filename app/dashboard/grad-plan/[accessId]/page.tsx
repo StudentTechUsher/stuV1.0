@@ -2,12 +2,18 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
-import { Save, Cancel } from '@mui/icons-material';
+import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper, TextField, IconButton } from '@mui/material';
+import { Save, Cancel, Edit as EditIcon, Check as CheckIcon } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/services/server-actions';
+import { updateGradPlanName } from '@/lib/services/gradPlanService';
+import { validatePlanName } from '@/lib/utils/validate-plan-name';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import StuLoadingAnimation from '@/components/ui/StuLoadingAnimation';
+import ProgramProgressPanel from '@/components/progress/ProgramProgressPanel';
+import { useProgramProgress } from '@/lib/hooks/useProgramProgress';
+import type { AdvisorAction } from '@/types/program-progress';
 
 interface GradPlanDetails {
   id: string;
@@ -19,6 +25,7 @@ interface GradPlanDetails {
   programs: Array<{ id: number; name: string }>;
   est_grad_sem?: string;
   est_grad_date?: string;
+  plan_name?: string;
 }
 
 interface Event {
@@ -59,7 +66,10 @@ export default function EditGradPlanPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = React.useState(true);
   const [userRole, setUserRole] = React.useState<Role | null>(null);
-  
+  const [isEditingPlanName, setIsEditingPlanName] = React.useState(false);
+  const [editedPlanName, setEditedPlanName] = React.useState('');
+  const [planNameError, setPlanNameError] = React.useState<string | null>(null);
+
   const isEditMode = true; // Always in edit mode for this page
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
@@ -90,6 +100,42 @@ export default function EditGradPlanPage() {
     setCurrentEvents(events);
     showSnackbar('Plan saved! Events are saved locally.', 'success');
     // TODO: In the future, save events to database
+  };
+
+  const handleEditPlanName = () => {
+    setEditedPlanName(gradPlan?.plan_name || '');
+    setPlanNameError(null);
+    setIsEditingPlanName(true);
+  };
+
+  const handleSavePlanName = async () => {
+    if (!gradPlan) return;
+
+    // Validate plan name
+    const validation = validatePlanName(editedPlanName);
+    if (!validation.valid) {
+      setPlanNameError(validation.error || 'Invalid plan name');
+      return;
+    }
+
+    // Save to database
+    const result = await updateGradPlanName(gradPlan.id, editedPlanName);
+    if (result.success) {
+      // Update local state
+      setGradPlan({ ...gradPlan, plan_name: editedPlanName });
+      setIsEditingPlanName(false);
+      setPlanNameError(null);
+      showSnackbar('Plan name updated successfully!', 'success');
+    } else {
+      setPlanNameError(result.error || 'Failed to update plan name');
+      showSnackbar(result.error || 'Failed to update plan name', 'error');
+    }
+  };
+
+  const handleCancelEditPlanName = () => {
+    setIsEditingPlanName(false);
+    setEditedPlanName('');
+    setPlanNameError(null);
   };
 
   // Check if user has access to this graduation plan
@@ -232,8 +278,8 @@ export default function EditGradPlanPage() {
   if (isCheckingAccess || loading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <StuLoadingAnimation size={32} />
           <Typography variant="body2" color="text.secondary">
             {isCheckingAccess ? 'Checking access permissions...' : 'Loading graduation plan...'}
           </Typography>
@@ -279,8 +325,19 @@ export default function EditGradPlanPage() {
   const studentName = `${gradPlan.student_first_name} ${gradPlan.student_last_name}`;
   const isStudent = userRole === "student";
 
+  // Fetch program progress data (using mock data for now)
+  const { data: progressData, isLoading: progressLoading, error: progressError } = useProgramProgress({
+    useMockData: true, // TODO: Replace with actual student ID when API is ready
+  });
+
+  const handleAdvisorAction = async (action: AdvisorAction) => {
+    console.log('Advisor action:', action);
+    // TODO: Implement advisor action API call
+    showSnackbar(`Advisor action: ${action.type}`, 'info');
+  };
+
   return (
-    <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
+    <Box sx={{ p: 3 }}>
       {/* Header with back button */}
       <Box sx={{ mb: 4 }}>
         <Button
@@ -300,15 +357,76 @@ export default function EditGradPlanPage() {
         </Button>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h4" sx={{
-            fontFamily: '"Red Hat Display", sans-serif',
-            fontWeight: 800,
-            color: 'black',
-            fontSize: '2rem'
-          }}>
-            {isStudent ? 'Graduation Plan' : `${studentName}'s Graduation Plan`}
-          </Typography>
-          
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h4" sx={{
+              fontFamily: '"Red Hat Display", sans-serif',
+              fontWeight: 800,
+              color: 'black',
+              fontSize: '2rem',
+              mb: 1
+            }}>
+              {isStudent ? 'Graduation Plan' : `${studentName}'s Graduation Plan`}
+            </Typography>
+
+            {/* Plan Name Editing */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {isEditingPlanName ? (
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flex: 1, maxWidth: 500 }}>
+                  <TextField
+                    value={editedPlanName}
+                    onChange={(e) => setEditedPlanName(e.target.value)}
+                    error={!!planNameError}
+                    helperText={planNameError}
+                    placeholder="Enter plan name"
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    className="font-body"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': { borderColor: 'var(--border)' },
+                        '&:hover fieldset': { borderColor: 'var(--primary)' },
+                        '&.Mui-focused fieldset': { borderColor: 'var(--primary)' },
+                      },
+                    }}
+                  />
+                  <IconButton
+                    size="small"
+                    onClick={handleSavePlanName}
+                    sx={{ color: 'var(--primary)' }}
+                  >
+                    <CheckIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={handleCancelEditPlanName}
+                    sx={{ color: 'var(--muted-foreground)' }}
+                  >
+                    <Cancel />
+                  </IconButton>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle1" className="font-body" sx={{ color: 'text.secondary' }}>
+                    {gradPlan?.plan_name || 'Untitled Plan'}
+                  </Typography>
+                  {isStudent && (
+                    <IconButton
+                      size="small"
+                      onClick={handleEditPlanName}
+                      sx={{
+                        color: 'var(--primary)',
+                        '&:hover': { backgroundColor: 'var(--primary-15)' }
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Box>
+
           {isStudent && (
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
@@ -403,48 +521,70 @@ export default function EditGradPlanPage() {
         )}
       </Box>
 
-      {/* Plan Details */}
-      <Paper elevation={0} sx={{ p: 4, mb: 4, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
-        {(() => {
-          // Normalize various possible stored shapes of plan_details
-          let raw: any = gradPlan.plan_details;
+      {/* Main Content Grid - Planner on left, Progress on right */}
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', lg: '1fr 420px' },
+        gap: 3,
+        mb: 4
+      }}>
+        {/* Left Column - Graduation Planner */}
+        <Box>
+          {/* Plan Details */}
+          <Paper elevation={0} sx={{ p: 4, mb: 2, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
+            {(() => {
+              // Normalize various possible stored shapes of plan_details
+              let raw: any = gradPlan.plan_details;
 
-          // If stored as raw JSON string (legacy), parse it
-            if (typeof raw === 'string') {
-            try { raw = JSON.parse(raw); } catch {/* leave raw as-is */}
-          }
+              // If stored as raw JSON string (legacy), parse it
+                if (typeof raw === 'string') {
+                try { raw = JSON.parse(raw); } catch {/* leave raw as-is */}
+              }
 
-          // If raw is directly an array, wrap it in an object
-          if (Array.isArray(raw)) {
-            raw = { plan: raw };
-          }
-          // Unwrap if root contains known keys
-          else if (raw && typeof raw === 'object') {
-            if (Array.isArray(raw.plan)) raw = { ...raw, plan: raw.plan }; // keep existing data
-            else if (Array.isArray(raw.semesters)) raw = { ...raw, plan: raw.semesters };
-            else if (Array.isArray(raw.terms)) raw = { ...raw, plan: raw.terms };
-            else if (Array.isArray(raw.plan_details?.plan)) raw = { ...raw, plan: raw.plan_details.plan };
-          }
+              // If raw is directly an array, wrap it in an object
+              if (Array.isArray(raw)) {
+                raw = { plan: raw };
+              }
+              // Unwrap if root contains known keys
+              else if (raw && typeof raw === 'object') {
+                if (Array.isArray(raw.plan)) raw = { ...raw, plan: raw.plan }; // keep existing data
+                else if (Array.isArray(raw.semesters)) raw = { ...raw, plan: raw.semesters };
+                else if (Array.isArray(raw.terms)) raw = { ...raw, plan: raw.terms };
+                else if (Array.isArray(raw.plan_details?.plan)) raw = { ...raw, plan: raw.plan_details.plan };
+              }
 
-          // Add graduation timeline from the gradPlan object
-          raw = { ...raw, est_grad_sem: gradPlan.est_grad_sem, est_grad_date: gradPlan.est_grad_date };
-          return (
-            <GraduationPlanner
-              plan={raw as Record<string, unknown>}
-              isEditMode={isEditMode}
-              onPlanUpdate={handlePlanUpdate}
-              onSave={handleSave}
-            />
-          );
-        })()}
-      </Paper>
+              // Add graduation timeline from the gradPlan object
+              raw = { ...raw, est_grad_sem: gradPlan.est_grad_sem, est_grad_date: gradPlan.est_grad_date };
+              return (
+                <GraduationPlanner
+                  plan={raw as Record<string, unknown>}
+                  isEditMode={isEditMode}
+                  onPlanUpdate={handlePlanUpdate}
+                  onSave={handleSave}
+                />
+              );
+            })()}
+          </Paper>
 
-      {/* Info Alert for Students */}
-      {isStudent && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You are editing your graduation plan. Click courses to move them between terms, then click &quot;Submit for Approval&quot; to save your changes.
-        </Alert>
-      )}
+          {/* Info Alert for Students */}
+          {isStudent && (
+            <Alert severity="info">
+              You are editing your graduation plan. Click courses to move them between terms, then click &quot;Submit for Approval&quot; to save your changes.
+            </Alert>
+          )}
+        </Box>
+
+        {/* Right Column - Program Progress Panel */}
+        <Box sx={{ position: { lg: 'sticky' }, top: { lg: 80 }, height: { lg: 'calc(100vh - 100px)' } }}>
+          <ProgramProgressPanel
+            data={progressData}
+            isLoading={progressLoading}
+            error={progressError}
+            isAdvisor={userRole === 'advisor'}
+            onAdvisorAction={handleAdvisorAction}
+          />
+        </Box>
+      </Box>
 
       {/* Snackbar for notifications */}
       <Snackbar

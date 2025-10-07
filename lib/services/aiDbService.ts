@@ -33,8 +33,9 @@ export async function InsertGeneratedGradPlan(args: {
   rawJsonText?: string; // optional raw JSON text if you still want to retain
   programsInPlan?: number[]; // optional associated program IDs
   isActive?: boolean; // default false for newly generated pending plan
+  planName?: string; // optional custom plan name
 }): Promise<{ gradPlanId: number; accessId: string }> {
-  const { studentId, planData, programsInPlan = [], isActive = false } = args;
+  const { studentId, planData, programsInPlan = [], isActive = false, planName } = args;
 
   const { data, error } = await supabase
     .from('grad_plan')
@@ -44,7 +45,8 @@ export async function InsertGeneratedGradPlan(args: {
       pending_edits: false,
       pending_approval: true,
       plan_details: planData, // store structured object/array directly
-      programs_in_plan: programsInPlan
+      programs_in_plan: programsInPlan,
+      plan_name: planName // include plan name if provided
     })
     .select('id')
     .single();

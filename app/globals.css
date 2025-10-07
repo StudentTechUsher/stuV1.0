@@ -92,6 +92,26 @@
   --warning-background: #fff3e0;
   --nav-foreground: #fff;
   --primary-dark: #003228;
+
+  /* 🔹 Program Progress Category Colors */
+  --major: #12F987;
+  --major-tint: rgba(18, 249, 135, 0.05);
+  --minor: #001F54;
+  --minor-tint: rgba(0, 31, 84, 0.05);
+  --ge: #2196f3;
+  --ge-tint: rgba(33, 150, 243, 0.05);
+  --religion: #5E35B1;
+  --religion-tint: rgba(94, 53, 177, 0.05);
+  --rel: #5E35B1; /* Alias for religion */
+  --electives: #9C27B0;
+  --electives-tint: rgba(156, 39, 176, 0.05);
+  --elective: #9C27B0; /* Alias for electives */
+
+  /* 🔹 Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 .dark {
@@ -129,6 +149,26 @@
   --action-info-hover: #1565c0;
   --action-cancel: #f44336;
   --action-cancel-hover: #d32f2f;
+
+  /* 🔹 Program Progress Category Colors (Dark Mode) */
+  --major: #12F987;
+  --major-tint: rgba(18, 249, 135, 0.08);
+  --minor: #4A90E2;
+  --minor-tint: rgba(74, 144, 226, 0.08);
+  --ge: #64B5F6;
+  --ge-tint: rgba(100, 181, 246, 0.08);
+  --religion: #9575CD;
+  --religion-tint: rgba(149, 117, 205, 0.08);
+  --rel: #9575CD; /* Alias for religion */
+  --electives: #BA68C8;
+  --electives-tint: rgba(186, 104, 200, 0.08);
+  --elective: #BA68C8; /* Alias for electives */
+
+  /* 🔹 Shadows (Dark Mode) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
 }
 
 @layer base {

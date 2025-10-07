@@ -138,7 +138,7 @@ export default function LandingPage() {
         <div className="space-y-2 max-w-full">
         {/* Matching style from /students */}
         <h1
-        className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header"
+        className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-body-semi"
         >
         <div className="whitespace-nowrap">
         Revolutionize Academic Planning

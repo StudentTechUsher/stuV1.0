@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Box, Button, Typography, Alert, Paper } from "@mui/material";
 import { Plus, Trash2, BookOpen, Clock } from "lucide-react";
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
@@ -8,6 +8,13 @@ import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
 import ClassInfoDialog from "./class-info-dialog";
 import { loadMockCourses } from "@/lib/course-parser";
+import { SemesterDetailsCard } from "@/components/schedule/SemesterDetailsCard";
+import {
+  convertSchedulerEventsToCourseRows,
+  generateMockSectionOptions,
+  generateMockInstructorOptions,
+} from "@/lib/utils/scheduleConverter";
+import { calculateScheduleDifficulty } from "@/lib/utils/creditMath";
 
 type GradPlan = {
   id: string;
@@ -84,6 +91,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     event?: SchedulerEvent;
   }>({ isOpen: false });
   const [showAllPersonalEvents, setShowAllPersonalEvents] = useState(false);
+  const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -271,6 +279,171 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     }
 
     return { days, startTime, endTime };
+  };
+
+  const timeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Convert scheduler events to course rows for the details table
+  const courseRows = useMemo(() => {
+    const rows = convertSchedulerEventsToCourseRows(events);
+
+    // Enrich with actual course titles from the courses array
+    return rows.map(row => {
+      const matchingCourse = courses.find(c => c.course_code === row.code && c.section === row.section);
+      if (matchingCourse) {
+        return {
+          ...row,
+          title: matchingCourse.course_name,
+          description: undefined, // Could be added from course data if available
+        };
+      }
+      return row;
+    });
+  }, [events, courses]);
+
+  // Generate section and instructor options maps from actual course data
+  const sectionOptionsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    courseRows.forEach(row => {
+      // Find all alternative sections for this course from the courses array
+      const alternativeSections = courses.filter(c => c.course_code === row.code);
+
+      const options = alternativeSections.map(course => {
+        let days: string[], startTime: string, endTime: string;
+        try {
+          const parsed = parseSchedule(course.schedule);
+          days = parsed.days;
+          startTime = parsed.startTime;
+          endTime = parsed.endTime;
+        } catch (error) {
+          console.error('Error parsing schedule for course:', course.course_code, course.schedule);
+          // Return a default/invalid option that will be filtered out
+          return null;
+        }
+
+        // Check for conflicts
+        const conflicts: string[] = [];
+        for (const day of days) {
+          const dayMap: Record<string, number> = { "M": 1, "T": 2, "W": 3, "Th": 4, "F": 5, "S": 6 };
+          const dayOfWeek = dayMap[day];
+
+          for (const existingEvent of events) {
+            const eventKey = `${existingEvent.course_code}-${existingEvent.section}`;
+            // Skip the current course we're trying to replace
+            if (eventKey === row.id) continue;
+
+            if (existingEvent.dayOfWeek === dayOfWeek) {
+              const newStartMin = timeToMinutes(startTime);
+              const newEndMin = timeToMinutes(endTime);
+              const existingStartMin = timeToMinutes(existingEvent.startTime);
+              const existingEndMin = timeToMinutes(existingEvent.endTime);
+
+              if (newStartMin < existingEndMin && newEndMin > existingStartMin) {
+                if (existingEvent.course_code) {
+                  conflicts.push(eventKey);
+                }
+              }
+            }
+          }
+        }
+
+        return {
+          sectionId: `${course.course_code}-${course.section}`,
+          section: course.section,
+          instructorId: `inst-${course.professor.toLowerCase().replace(/\s+/g, '-')}`,
+          instructorName: course.professor,
+          instructorRating: undefined,
+          meeting: {
+            days: days.map(d => {
+              if (d === 'M') return 'M';
+              if (d === 'T') return 'Tu';
+              if (d === 'W') return 'W';
+              if (d === 'Th') return 'Th';
+              if (d === 'F') return 'F';
+              return 'M';
+            }) as any,
+            start: startTime,
+            end: endTime,
+          },
+          location: {
+            building: course.location,
+          },
+          seats: {
+            capacity: 45,
+            open: 12,
+            waitlist: 0,
+          },
+          conflicts: conflicts.length > 0 ? conflicts : undefined,
+        };
+      }).filter(Boolean); // Filter out null values from parse errors
+
+      map[row.id] = options;
+    });
+    return map;
+  }, [courseRows, courses, events]);
+
+  const instructorOptionsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    courseRows.forEach(row => {
+      const uniqueInstructors = new Map();
+      (sectionOptionsMap[row.id] || []).forEach((section: any) => {
+        if (!uniqueInstructors.has(section.instructorId)) {
+          uniqueInstructors.set(section.instructorId, {
+            instructorId: section.instructorId,
+            instructorName: section.instructorName,
+            instructorRating: section.instructorRating,
+            sectionId: section.sectionId,
+            section: section.section,
+            meeting: section.meeting,
+          });
+        }
+      });
+      map[row.id] = Array.from(uniqueInstructors.values());
+    });
+    return map;
+  }, [courseRows, sectionOptionsMap]);
+
+  const scheduleDifficulty = useMemo(() => {
+    return calculateScheduleDifficulty(courseRows);
+  }, [courseRows]);
+
+  // Handler for changing section
+  const handleChangeSection = async (courseId: string, newSectionId: string) => {
+    // Find the new course from the courses array
+    const [courseCode, newSection] = newSectionId.split('-');
+    const newCourse = courses.find(c => c.course_code === courseCode && c.section === newSection);
+
+    if (!newCourse) {
+      console.error('Course not found:', newSectionId);
+      return;
+    }
+
+    // Remove all events for the old course
+    const updatedEvents = events.filter(event => {
+      const eventKey = `${event.course_code}-${event.section}`;
+      return eventKey !== courseId;
+    });
+
+    // Generate new events for the replacement course
+    const newEvents = generateScheduleEventsFromCourse(newCourse);
+
+    // Update the events state
+    setEvents([...updatedEvents, ...newEvents]);
+    localStorage.setItem('scheduler-generated-schedule', JSON.stringify([...updatedEvents, ...newEvents]));
+  };
+
+  // Handler for withdrawing from a course
+  const handleWithdraw = async (courseId: string) => {
+    // Remove all events for this course
+    const updatedEvents = events.filter(event => {
+      const eventKey = `${event.course_code}-${event.section}`;
+      return eventKey !== courseId;
+    });
+    setEvents(updatedEvents);
+    localStorage.setItem('scheduler-generated-schedule', JSON.stringify(updatedEvents));
   };
 
   if (isLoading) {
@@ -472,6 +645,23 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
           />
         </Box>
       </Box>
+
+      {/* Semester Details Table - Shows only when schedule is generated */}
+      {events.length > 0 && courseRows.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <SemesterDetailsCard
+            termLabel="Winter 2025"
+            addDropDeadline="12 Sept"
+            scheduleDifficulty={scheduleDifficulty}
+            rows={courseRows}
+            sectionOptionsMap={sectionOptionsMap}
+            instructorOptionsMap={instructorOptionsMap}
+            onChangeSection={handleChangeSection}
+            onWithdraw={handleWithdraw}
+            onRowHover={setHoveredCourseId}
+          />
+        </Box>
+      )}
 
       <EventManager
         open={eventDialog.isOpen}

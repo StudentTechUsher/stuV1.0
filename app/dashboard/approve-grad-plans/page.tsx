@@ -2,11 +2,12 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, Alert } from '@mui/material';
 import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approve-table';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
 import { fetchPendingGradPlans, issueGradPlanAccessId } from '@/lib/services/server-actions';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import StuLoadingAnimation from '@/components/ui/StuLoadingAnimation';
 
 type Role = "student" | "advisor" | "admin";
 
@@ -116,8 +117,8 @@ export default function SelectGradPlansPage() {
   const renderContent = () => {
     if (isCheckingRole || loading) {
       return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3 }}>
-          <CircularProgress size={20} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3 }}>
+          <StuLoadingAnimation size={32} />
           <Typography variant="body2" color="text.secondary">
             {isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
           </Typography>

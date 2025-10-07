@@ -746,7 +746,7 @@ export default function GraduationPlanner({ plan, isEditMode = false, onPlanUpda
   // Transform current plan data to SpaceView format
   const spaceViewData: PlanSpaceView = useMemo(() => {
     const planRecord = plan as Record<string, unknown>;
-    const planName = (planRecord.plan_name as string) || 'My Graduation Plan';
+    const planName = (planRecord.plan_name as string) || (sourceData.plan_name as string) || 'My Graduation Plan';
     const degree = (sourceData.program as string) || 'Degree Program';
     const gradSemester = estGradSem || 'Not set';
 

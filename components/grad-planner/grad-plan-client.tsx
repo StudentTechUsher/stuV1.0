@@ -208,21 +208,21 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               >
                 {allGradPlans.map((plan) => {
                   try {
-                    const createdAt = plan.created_at 
+                    const createdAt = plan.created_at
                       ? new Date(plan.created_at as string).toLocaleString()
                       : 'Unknown Date';
+                    const planName = (plan as any).plan_name;
+
                     return (
                       <MenuItem key={plan.id} value={plan.id} className="font-body">
-                        Plan made on {createdAt}
+                        {planName ? `${planName}` : `Plan made on ${createdAt}`}
                       </MenuItem>
                     );
                   } catch (error) {
                     console.error('Error accessing plan data:', error);
                     return (
                       <MenuItem key={plan.id} value={plan.id} className="font-body">
-                        Plan {plan.id.slice(0, 8)} - {plan.created_at
-                          ? new Date(plan.created_at as string).toLocaleString()
-                          : 'Unknown Date'}
+                        Plan {plan.id.slice(0, 8)}
                       </MenuItem>
                     );
                   }

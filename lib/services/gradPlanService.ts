@@ -40,7 +40,7 @@ export async function GetAllGradPlans(profile_id: string) {
   // Get all grad plans for this student, ordered by creation date (newest first)
   const { data, error } = await supabase
     .from('grad_plan')
-    .select('*')
+    .select('id, student_id, is_active, pending_edits, pending_approval, plan_details, programs_in_plan, created_at, advisor_notes, plan_name')
     .eq('student_id', studentData.id)
     .order('created_at', { ascending: false });
 
@@ -81,9 +81,9 @@ export async function GetActiveGradPlan(profile_id: string) {
   }
 
   // Now get the active grad plan using the numeric student_id
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('grad_plan')
-    .select('*')
+    .select('id, student_id, is_active, pending_edits, pending_approval, plan_details, programs_in_plan, created_at, advisor_notes, plan_name')
     .eq('student_id', studentData.id)
     .eq('is_active', true)
     .single();
@@ -119,12 +119,13 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     programs: Array<{ id: number; name: string }>;
     est_grad_sem?: string;
     est_grad_date?: string;
+    plan_name?: string;
 }> {
     try {
         // 1. Base grad plan (no pending_approval filter so advisors/students can edit)
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('id, created_at, student_id, plan_details, programs_in_plan')
+            .select('id, created_at, student_id, plan_details, programs_in_plan, plan_name')
             .eq('id', gradPlanId)
             .single();
 
@@ -184,7 +185,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             student_id: gradPlanData.student_id,
             programs,
             est_grad_sem: profileData.est_grad_sem,
-            est_grad_date: profileData.est_grad_date
+            est_grad_date: profileData.est_grad_date,
+            plan_name: gradPlanData.plan_name
         };
     } catch (err) {
         // Pass through known structured errors; wrap unknowns
@@ -213,7 +215,7 @@ export async function fetchGradPlanById(gradPlanId: string): Promise<{
     // First, get the grad plan
     const { data: gradPlanData, error: gradPlanError } = await supabase
         .from('grad_plan')
-        .select('id, created_at, student_id, plan_details, programs_in_plan')
+        .select('id, created_at, student_id, plan_details, programs_in_plan, plan_name')
         .eq('id', gradPlanId)
         .eq('pending_approval', true)
         .single();
@@ -468,6 +470,46 @@ export async function approveGradPlan(
     }
 }
 
+/**
+ * AUTHORIZED FOR STUDENTS AND ADVISORS
+ * Updates the name of a graduation plan
+ */
+export async function updateGradPlanName(
+    gradPlanId: string,
+    planName: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Validate plan name
+        const { validatePlanName } = await import('../utils/validate-plan-name');
+        const validation = validatePlanName(planName);
+        if (!validation.valid) {
+            return {
+                success: false,
+                error: validation.error || 'Invalid plan name'
+            };
+        }
+
+        // Update the plan name
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ plan_name: planName.trim() })
+            .eq('id', gradPlanId);
+
+        if (error) {
+            console.error('❌ Error updating grad plan name:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Unexpected error updating grad plan name:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error occurred'
+        };
+    }
+}
+
 /** AUTHORIZED FOR STUDENTS ONLY
  * Sets pending_approval to true and is_active to false
  * TODO: Check for possible duplication
@@ -475,9 +517,22 @@ export async function approveGradPlan(
 export async function submitGradPlanForApproval(
     profileId: string,
     planDetails: unknown,
-    programIds: number[]
+    programIds: number[],
+    planName?: string
 ): Promise<{ success: boolean; message?: string; accessId?: string }> {
     try {
+        // Validate plan name if provided
+        if (planName) {
+            const { validatePlanName } = await import('../utils/validate-plan-name');
+            const validation = validatePlanName(planName);
+            if (!validation.valid) {
+                return {
+                    success: false,
+                    message: validation.error || 'Invalid plan name'
+                };
+            }
+        }
+
         // First, get the student_id (number) from the students table using the profile_id (UUID)
         const { data: studentData, error: studentError } = await supabase
             .from('student')
@@ -498,6 +553,7 @@ export async function submitGradPlanForApproval(
                 plan_details: planDetails,
                 programs_in_plan: programIds,
                 pending_approval: true,
+                plan_name: planName, // Include plan name if provided
             })
             .select('id')
             .single();

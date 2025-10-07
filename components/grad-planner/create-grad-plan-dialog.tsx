@@ -19,9 +19,12 @@ import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
+import TextField from '@mui/material/TextField';
 import type { ProgramRow } from '@/types/program';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
 import { type SelectionMode } from '@/lib/selectionMode';
+import { validatePlanName } from '@/lib/utils/validate-plan-name';
+import StuLoadingAnimation from '@/components/ui/StuLoadingAnimation';
 import {
   parseRequirementsFromGenEd,
   parseProgramRequirements,
@@ -91,6 +94,9 @@ export default function CreateGradPlanDialog({
   // State: plan creation
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
+  // State: plan name
+  const [planName, setPlanName] = useState('');
+  const [planNameError, setPlanNameError] = useState<string | null>(null);
   // Snackbar for success/error feedback
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>(
     { open: false, message: '', severity: 'info' }
@@ -332,6 +338,22 @@ export default function CreateGradPlanDialog({
     });
   };
 
+  // handle plan name change
+  const handlePlanNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = event.target.value;
+    setPlanName(newName);
+
+    // Clear error if empty (will be validated on submit)
+    if (!newName.trim()) {
+      setPlanNameError(null);
+      return;
+    }
+
+    // Validate on change for real-time feedback
+    const validation = validatePlanName(newName);
+    setPlanNameError(validation.valid ? null : validation.error || null);
+  };
+
   // Check if all required dropdowns are filled (only when effectiveMode is MANUAL)
   const areAllDropdownsFilled = useMemo(() => {
     // Require at least one program to be selected
@@ -493,6 +515,14 @@ export default function CreateGradPlanDialog({
 
   // Handle plan creation
   const handleCreatePlan = async () => {
+    // Validate plan name first
+    const nameValidation = validatePlanName(planName);
+    if (!nameValidation.valid) {
+      setPlanNameError(nameValidation.error || 'Invalid plan name');
+      showSnackbar(nameValidation.error || 'Invalid plan name', 'error');
+      return;
+    }
+
     if (!generateSelectedClassesJson) {
       setPlanCreationError('Please select all required courses before creating a plan.');
       showSnackbar('Please complete all required selections first.', 'warning');
@@ -501,12 +531,14 @@ export default function CreateGradPlanDialog({
 
     setIsCreatingPlan(true);
     setPlanCreationError(null);
+    setPlanNameError(null);
 
     try {
-      // Attach the effective mode to the payload
+      // Attach the effective mode and plan name to the payload
       const payloadWithMode = {
         ...generateSelectedClassesJson,
-        selectionMode: effectiveMode
+        selectionMode: effectiveMode,
+        planName: planName.trim()
       };
 
       // Step 1: Send the course data to AI for semester organization
@@ -674,10 +706,43 @@ export default function CreateGradPlanDialog({
 
       <DialogContent>
 
+        {/* Plan Name Input Field */}
+        {!loadingInstitutionMode && (
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Plan Name *"
+              value={planName}
+              onChange={handlePlanNameChange}
+              error={!!planNameError}
+              helperText={planNameError || 'Give your graduation plan a memorable name'}
+              disabled={isCreatingPlan}
+              placeholder="e.g., My 4-Year Plan, Spring 2025 Plan"
+              className="font-body"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'var(--border)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'var(--primary)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'var(--primary)',
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: 'var(--primary-dark)',
+                },
+              }}
+            />
+          </Box>
+        )}
+
         {/* Loading skeleton during institution mode fetch */}
         {loadingInstitutionMode && (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-            <CircularProgress size={40} />
+            <StuLoadingAnimation size={60} />
           </Box>
         )}
 
@@ -774,7 +839,7 @@ export default function CreateGradPlanDialog({
             alignItems: 'center',
             gap: 2
           }}>
-            <CircularProgress size={60} />
+            <StuLoadingAnimation size={80} />
             <Typography variant="h6" className="font-header-bold" sx={{ textAlign: 'center' }}>
               {loadingMessage.title}
             </Typography>
@@ -1123,7 +1188,7 @@ export default function CreateGradPlanDialog({
           variant="contained"
           onClick={handleCreatePlan}
           disabled={!areAllDropdownsFilled || isCreatingPlan}
-          startIcon={isCreatingPlan ? <CircularProgress size={20} /> : undefined}
+          startIcon={isCreatingPlan ? <StuLoadingAnimation size={20} /> : undefined}
           className="font-body-semi"
           sx={{
             backgroundColor: 'var(--primary)',

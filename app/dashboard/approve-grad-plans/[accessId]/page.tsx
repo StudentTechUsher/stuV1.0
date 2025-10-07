@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert, Paper } from '@mui/material';
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanById, updateGradPlanWithAdvisorNotes, approveGradPlan, decodeAccessIdServerAction } from '@/lib/services/server-actions';
 import GradPlanViewer from '@/components/approve-grad-plans/grad-plan-viewer';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import StuLoadingAnimation from '@/components/ui/StuLoadingAnimation';
 
 interface GradPlanDetails {
   id: string;
@@ -236,8 +237,8 @@ export default function ApproveGradPlanPage() {
   if (isCheckingRole || loading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <StuLoadingAnimation size={32} />
           <Typography variant="body2" color="text.secondary">
             {isCheckingRole ? 'Checking permissions...' : 'Loading graduation plan...'}
           </Typography>
