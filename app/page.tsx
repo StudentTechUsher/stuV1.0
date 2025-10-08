@@ -57,6 +57,9 @@ export default function LandingPage() {
             <Link href="#faq" className="text-base font-medium hover:text-primary transition-colors">
               FAQ
             </Link>
+            <Link href="/about-us" className="text-base font-medium hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-md px-2 py-1">
+              About Us
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-6">
@@ -109,6 +112,13 @@ export default function LandingPage() {
               >
                 FAQ
               </Link>
+              <Link
+                href="/about-us"
+                className="text-base font-medium hover:text-primary"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                About Us
+              </Link>
               <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
                 <Link
                   href="/students"
@@ -138,12 +148,12 @@ export default function LandingPage() {
         <div className="space-y-2 max-w-full">
         {/* Matching style from /students */}
         <h1
-        className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header"
+        className="text-black text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header"
         >
-        <div className="whitespace-nowrap">
+        <div className="sm:whitespace-nowrap">
         Revolutionize Academic Planning
         </div>
-        <div className="whitespace-nowrap">
+        <div className="sm:whitespace-nowrap">
         at Your University
         </div>
         </h1>
@@ -155,13 +165,13 @@ export default function LandingPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium text-base px-6 py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+        <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium text-sm sm:text-base px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
         <Link href="/demo" className="flex items-center">
         Request a demo
         <ArrowRight className="ml-2 h-4 w-4" />
         </Link>
         </Button>
-        <Button className="bg-transparent border-2 border-primary text-zinc-900 hover:bg-primary/10 font-medium text-base px-6 py-3">
+        <Button className="bg-transparent border-2 border-primary text-zinc-900 hover:bg-primary/10 font-medium text-sm sm:text-base px-4 sm:px-6 py-2.5 sm:py-3">
         Learn More
         </Button>
         </div>
@@ -289,11 +299,11 @@ export default function LandingPage() {
                   Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu&apos;s planning platform.
                 </p>
               </div>
-              <div className="w-full max-w-md">
+              <div className="w-full max-w-md px-4">
                 <Link href="/demo">
-                  <Button className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium py-3 text-lg">
+                  <Button className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium py-2.5 sm:py-3 text-base sm:text-lg">
                     Request a demo
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                    <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </Link>
               </div>

@@ -74,7 +74,7 @@ export function SubmitEmailForm() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4">
+    <div className="w-full max-w-md mx-auto space-y-4 px-4">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* First Name & Last Name (Side by Side) */}
         <div className="flex space-x-2">
@@ -169,13 +169,13 @@ export function SubmitEmailForm() {
         ))}
 
         {/* Submit Button */}
-        <Button
+        <button
           type="submit"
-          className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium transition-all"
+          className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium py-2.5 rounded-md transition-all disabled:opacity-50"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Submitting..." : "Join the Waitlist"}
-        </Button>
+        </button>
       </form>
 
       {/* Snackbar Component */}
