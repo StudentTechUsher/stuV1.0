@@ -570,6 +570,488 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
 }
 
 // ----------------------------------------------
+// Career Data Enrichment
+// ----------------------------------------------
+/**
+ * Given a career title and optional context (rationale from initial suggestion),
+ * generate comprehensive career information including education, skills, salary estimates,
+ * job outlook, day-to-day activities, and recommendations.
+ *
+ * Returns a partial Career object that can be used to populate the CareerInfoModal.
+ * This is meant to enrich AI-suggested careers with detailed information.
+ */
+export async function EnrichCareerData_ServerAction(args: {
+  careerTitle: string;
+  slug: string;
+  rationale?: string; // The AI-generated rationale from the initial suggestion
+  studentContext?: {
+    currentMajor?: string;
+    completedCourses?: Array<{ code: string; title: string; }>;
+  };
+}): Promise<{
+  success: boolean;
+  message: string;
+  careerData?: {
+    education: { typicalLevel: string; certifications?: string[] };
+    bestMajors: Array<{ id: string; name: string }>;
+    locationHubs: string[];
+    salaryUSD: { entry?: number; median?: number; p90?: number; source?: string };
+    outlook: { growthLabel?: string; notes?: string; source?: string };
+    topSkills: string[];
+    dayToDay: string[];
+    recommendedCourses?: string[];
+    internships?: string[];
+    clubs?: string[];
+    relatedCareers?: string[];
+    links?: Array<{ label: string; url: string }>;
+  };
+  rawText?: string;
+  requestId?: string;
+}> {
+  try {
+    const user = await getVerifiedUser();
+    if (!user) return { success: false, message: 'User not authenticated' };
+
+    const { careerTitle, slug, rationale, studentContext } = args;
+
+    const contextBlock = studentContext?.currentMajor
+      ? `\nSTUDENT_CONTEXT:\n- Current Major: ${studentContext.currentMajor}\n- Completed Courses: ${studentContext.completedCourses?.map(c => c.code).join(', ') || 'N/A'}\n`
+      : '';
+
+    const rationaleBlock = rationale ? `\nORIGINAL_RATIONALE: ${rationale}\n` : '';
+
+    const prompt = `You are a career information specialist. Generate comprehensive, accurate career data for the following role.
+
+CAREER_TITLE: ${careerTitle}
+${rationaleBlock}${contextBlock}
+
+Return ONLY valid JSON with the following structure. Do not wrap in markdown fences.
+{
+  "education": {
+    "typicalLevel": "BACHELOR" | "MASTER" | "PHD" | "VARIES",
+    "certifications": ["cert1", "cert2"] // Optional relevant certifications
+  },
+  "bestMajors": [
+    { "id": "slug-name", "name": "Computer Science" }
+    // 2-4 majors that best prepare for this career
+  ],
+  "locationHubs": [
+    "Bay Area, CA",
+    "NYC, NY"
+    // Top 3-5 U.S. cities/regions where this career thrives
+  ],
+  "salaryUSD": {
+    "entry": 60000, // Entry-level annual salary (realistic estimate)
+    "median": 85000, // Mid-career median
+    "p90": 120000, // 90th percentile
+    "source": "Based on BLS and industry data 2024"
+  },
+  "outlook": {
+    "growthLabel": "Hot" | "Growing" | "Stable" | "Declining",
+    "notes": "Brief 1-2 sentence outlook explanation",
+    "source": "BLS projections 2024-2034"
+  },
+  "topSkills": [
+    "Python",
+    "Data Analysis",
+    "SQL"
+    // 5-8 key technical and soft skills
+  ],
+  "dayToDay": [
+    "Analyze datasets to identify trends and insights",
+    "Create visualizations and reports for stakeholders"
+    // 4-6 typical daily activities
+  ],
+  "recommendedCourses": [
+    "Statistics and Probability",
+    "Database Management"
+    // 3-5 useful courses (generic enough for any university)
+  ],
+  "internships": [
+    "Data analytics internships at tech companies",
+    "Business intelligence roles at consulting firms"
+    // 2-3 types of relevant internship opportunities
+  ],
+  "clubs": [
+    "Data Science Club",
+    "Analytics & Business Intelligence Association"
+    // 2-3 relevant student organizations
+  ],
+  "relatedCareers": [
+    "business-intelligence-analyst",
+    "data-scientist",
+    "market-research-analyst"
+    // 3-5 related career slugs (kebab-case)
+  ],
+  "links": [
+    { "label": "BLS Occupational Outlook", "url": "https://www.bls.gov/ooh/" },
+    { "label": "O*NET Career Profile", "url": "https://www.onetonline.org/" }
+    // 2-3 authoritative career information sources
+  ]
+}
+
+IMPORTANT GUIDELINES:
+- Use realistic, research-based salary estimates (not inflated)
+- Choose growth labels based on actual labor market trends
+- Focus on transferable skills and activities
+- Keep courses generic enough to apply across universities
+- Related careers should use kebab-case slugs
+- Provide actionable, specific information
+- If uncertain about exact data, provide reasonable professional estimates and note in source field
+
+Return JSON now.`;
+
+    const aiResult = await executeJsonPrompt({
+      prompt_name: 'enrich_career_data',
+      prompt,
+      model: 'gpt-5-mini',
+      max_output_tokens: 4000,
+    });
+
+    // Log to ai_responses
+    try {
+      const { error: insertErr } = await supabase.from('ai_responses').insert({
+        user_id: user.id,
+        user_prompt: prompt,
+        response: aiResult.rawText || aiResult.message,
+        output_tokens: aiResult.usage?.completion_tokens || 0,
+      });
+      if (insertErr) console.error('⚠️ Failed to log career enrichment AI response:', insertErr);
+    } catch (logErr) {
+      console.error('⚠️ Exception logging career enrichment AI response:', logErr);
+    }
+
+    if (!aiResult.success) {
+      return {
+        success: false,
+        message: aiResult.message,
+        rawText: aiResult.rawText,
+        requestId: aiResult.requestId ?? undefined
+      };
+    }
+
+    const parsed = aiResult.parsedJson as any;
+    if (!parsed || typeof parsed !== 'object') {
+      return {
+        success: false,
+        message: 'Model returned unexpected shape',
+        rawText: aiResult.rawText,
+        requestId: aiResult.requestId ?? undefined
+      };
+    }
+
+    // Validate and normalize the response
+    const careerData = {
+      education: {
+        typicalLevel: parsed.education?.typicalLevel || 'BACHELOR',
+        certifications: Array.isArray(parsed.education?.certifications) ? parsed.education.certifications : []
+      },
+      bestMajors: Array.isArray(parsed.bestMajors) ? parsed.bestMajors : [],
+      locationHubs: Array.isArray(parsed.locationHubs) ? parsed.locationHubs : [],
+      salaryUSD: {
+        entry: parsed.salaryUSD?.entry,
+        median: parsed.salaryUSD?.median,
+        p90: parsed.salaryUSD?.p90,
+        source: parsed.salaryUSD?.source || 'AI estimate based on industry data'
+      },
+      outlook: {
+        growthLabel: parsed.outlook?.growthLabel,
+        notes: parsed.outlook?.notes,
+        source: parsed.outlook?.source || 'AI projection based on market trends'
+      },
+      topSkills: Array.isArray(parsed.topSkills) ? parsed.topSkills : [],
+      dayToDay: Array.isArray(parsed.dayToDay) ? parsed.dayToDay : [],
+      recommendedCourses: Array.isArray(parsed.recommendedCourses) ? parsed.recommendedCourses : [],
+      internships: Array.isArray(parsed.internships) ? parsed.internships : [],
+      clubs: Array.isArray(parsed.clubs) ? parsed.clubs : [],
+      relatedCareers: Array.isArray(parsed.relatedCareers) ? parsed.relatedCareers : [],
+      links: Array.isArray(parsed.links) ? parsed.links : []
+    };
+
+    return {
+      success: true,
+      message: 'Career data enriched successfully',
+      careerData,
+      rawText: aiResult.rawText,
+      requestId: aiResult.requestId ?? undefined
+    };
+  } catch (err) {
+    console.error('EnrichCareerData_ServerAction error:', err);
+    return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+// ----------------------------------------------
+// Major Data Enrichment
+// ----------------------------------------------
+/**
+ * Given a major name and optional context, generate comprehensive major information
+ * including course requirements, career paths, skills, equivalencies, and opportunities.
+ *
+ * Returns a partial MajorInfo object that can be used to populate the major detail dialog.
+ * This enriches AI-suggested majors with detailed institutional information.
+ */
+export async function EnrichMajorData_ServerAction(args: {
+  majorName: string;
+  slug: string;
+  rationale?: string; // The AI-generated rationale from the major suggestion
+  studentContext?: {
+    currentMajor?: string;
+    completedCourses?: Array<{ code: string; title: string; }>;
+    targetCareer?: string;
+  };
+  universityName?: string; // e.g., "Brigham Young University"
+}): Promise<{
+  success: boolean;
+  message: string;
+  majorData?: {
+    degreeType: string;
+    shortOverview: string;
+    overview: string;
+    topCareers: Array<{ slug: string; title: string }>;
+    careerOutlook: string;
+    totalCredits: number;
+    typicalDuration: string;
+    coreCourses: string[];
+    electiveCourses?: string[];
+    courseEquivalencies: Array<{ institutionCourse: string; equivalentCourses: string[]; notes?: string }>;
+    prerequisites: string[];
+    mathRequirements?: string;
+    otherRequirements?: string;
+    topSkills: string[];
+    learningOutcomes: string[];
+    internshipOpportunities?: string[];
+    researchAreas?: string[];
+    studyAbroadOptions?: string[];
+    clubs?: string[];
+    relatedMajors?: string[];
+    commonMinors?: string[];
+    dualDegreeOptions?: string[];
+    departmentWebsite?: string;
+    advisingContact?: string;
+    links?: Array<{ label: string; url: string }>;
+  };
+  rawText?: string;
+  requestId?: string;
+}> {
+  try {
+    const user = await getVerifiedUser();
+    if (!user) return { success: false, message: 'User not authenticated' };
+
+    const { majorName, slug, rationale, studentContext, universityName } = args;
+
+    const universityBlock = universityName ? `\nUNIVERSITY: ${universityName}\n` : '';
+    const contextBlock = studentContext?.currentMajor
+      ? `\nSTUDENT_CONTEXT:\n- Current Major: ${studentContext.currentMajor}\n- Completed Courses: ${studentContext.completedCourses?.map(c => c.code).join(', ') || 'N/A'}\n- Target Career: ${studentContext.targetCareer || 'N/A'}\n`
+      : '';
+    const rationaleBlock = rationale ? `\nORIGINAL_RATIONALE: ${rationale}\n` : '';
+
+    const prompt = `You are an academic program specialist. Generate comprehensive, accurate information for the following major/program.
+
+MAJOR_NAME: ${majorName}
+${universityBlock}${rationaleBlock}${contextBlock}
+
+Return ONLY valid JSON with the following structure. Do not wrap in markdown fences.
+{
+  "degreeType": "BS" | "BA" | "BFA" | "VARIES",
+  "shortOverview": "1-2 sentence teaser about this major",
+  "overview": "2-3 paragraphs describing the major, what students study, and why it's valuable",
+  "topCareers": [
+    { "slug": "software-engineer", "title": "Software Engineer" },
+    { "slug": "data-analyst", "title": "Data Analyst" }
+    // Top 5-7 careers this major commonly leads to
+  ],
+  "careerOutlook": "1-2 sentences about job prospects and market demand for graduates",
+  "totalCredits": 120, // Typical total credit hours for degree
+  "typicalDuration": "4 years",
+  "coreCourses": [
+    "CS 142 - Intro to Computer Science",
+    "CS 235 - Data Structures",
+    "CS 236 - Discrete Mathematics"
+    // 8-12 core required courses (use generic course codes like CS, MATH, PHYS)
+  ],
+  "electiveCourses": [
+    "CS 455 - Machine Learning",
+    "CS 460 - Computer Graphics"
+    // 4-6 common elective options
+  ],
+  "courseEquivalencies": [
+    {
+      "institutionCourse": "CS 111",
+      "equivalentCourses": ["IS 303", "IT 120"],
+      "notes": "Intro programming - any language accepted"
+    },
+    {
+      "institutionCourse": "MATH 112",
+      "equivalentCourses": ["MATH 110", "STAT 121"],
+      "notes": "Calculus I equivalent"
+    }
+    // 5-10 common course equivalencies/cross-listings
+  ],
+  "prerequisites": [
+    "High school Calculus or equivalent",
+    "3.0 GPA in prerequisite courses"
+    // 2-4 prerequisites for declaring the major
+  ],
+  "mathRequirements": "Calculus I & II required; Linear Algebra recommended",
+  "otherRequirements": "Minimum 2.5 GPA in major courses; Capstone project required",
+  "topSkills": [
+    "Programming (Python, Java, C++)",
+    "Problem Solving",
+    "Algorithm Design",
+    "Data Structures"
+    // 6-10 key skills developed
+  ],
+  "learningOutcomes": [
+    "Design and implement complex software systems",
+    "Analyze computational problems and develop algorithmic solutions",
+    "Work effectively in team-based development environments"
+    // 4-6 core learning outcomes
+  ],
+  "internshipOpportunities": [
+    "Software development internships at tech companies",
+    "Research assistant positions in CS labs",
+    "Data science internships in business/healthcare"
+    // 3-5 types of internship opportunities
+  ],
+  "researchAreas": [
+    "Artificial Intelligence & Machine Learning",
+    "Cybersecurity",
+    "Human-Computer Interaction"
+    // 3-5 active research areas in the department
+  ],
+  "studyAbroadOptions": [
+    "Semester exchange programs with partner universities",
+    "Summer research internships abroad"
+    // 2-3 study abroad opportunities if applicable
+  ],
+  "clubs": [
+    "Computer Science Club",
+    "ACM Student Chapter",
+    "Women in Computing"
+    // 3-5 relevant student organizations
+  ],
+  "relatedMajors": [
+    "information-systems",
+    "data-science",
+    "software-engineering"
+    // 3-5 related major slugs (kebab-case)
+  ],
+  "commonMinors": [
+    "Mathematics",
+    "Business Administration",
+    "Statistics"
+    // 3-4 popular minor pairings
+  ],
+  "dualDegreeOptions": [
+    "BS Computer Science + BS Mathematics (5 years)",
+    "BS Computer Science + MBA (5 years)"
+    // 1-3 dual degree options if common
+  ],
+  "departmentWebsite": "https://cs.university.edu",
+  "advisingContact": "cs-advising@university.edu",
+  "links": [
+    { "label": "Degree Requirements", "url": "https://cs.university.edu/requirements" },
+    { "label": "Course Catalog", "url": "https://catalog.university.edu/cs" }
+    // 2-3 authoritative program information sources
+  ]
+}
+
+IMPORTANT GUIDELINES:
+- Use realistic course codes and credit hours typical for U.S. universities
+- Course equivalencies should reflect common cross-listings and alternatives
+- Focus on transferable, broadly applicable information
+- Keep course codes generic enough to be recognizable (CS, MATH, PHYS, etc.)
+- Career slugs should be kebab-case
+- Provide actionable, specific information for prospective students
+- If uncertain about specific details, provide reasonable academic estimates and note generic nature
+- Learning outcomes should be measurable and specific
+- Research areas should reflect current trends in the field
+
+Return JSON now.`;
+
+    const aiResult = await executeJsonPrompt({
+      prompt_name: 'enrich_major_data',
+      prompt,
+      model: 'gpt-5-mini',
+      max_output_tokens: 5000,
+    });
+
+    // Log to ai_responses
+    try {
+      const { error: insertErr } = await supabase.from('ai_responses').insert({
+        user_id: user.id,
+        user_prompt: prompt,
+        response: aiResult.rawText || aiResult.message,
+        output_tokens: aiResult.usage?.completion_tokens || 0,
+      });
+      if (insertErr) console.error('⚠️ Failed to log major enrichment AI response:', insertErr);
+    } catch (logErr) {
+      console.error('⚠️ Exception logging major enrichment AI response:', logErr);
+    }
+
+    if (!aiResult.success) {
+      return {
+        success: false,
+        message: aiResult.message,
+        rawText: aiResult.rawText,
+        requestId: aiResult.requestId ?? undefined
+      };
+    }
+
+    const parsed = aiResult.parsedJson as any;
+    if (!parsed || typeof parsed !== 'object') {
+      return {
+        success: false,
+        message: 'Model returned unexpected shape',
+        rawText: aiResult.rawText,
+        requestId: aiResult.requestId ?? undefined
+      };
+    }
+
+    // Validate and normalize the response
+    const majorData = {
+      degreeType: parsed.degreeType || 'BS',
+      shortOverview: parsed.shortOverview || '',
+      overview: parsed.overview || '',
+      topCareers: Array.isArray(parsed.topCareers) ? parsed.topCareers : [],
+      careerOutlook: parsed.careerOutlook || '',
+      totalCredits: parsed.totalCredits || 120,
+      typicalDuration: parsed.typicalDuration || '4 years',
+      coreCourses: Array.isArray(parsed.coreCourses) ? parsed.coreCourses : [],
+      electiveCourses: Array.isArray(parsed.electiveCourses) ? parsed.electiveCourses : [],
+      courseEquivalencies: Array.isArray(parsed.courseEquivalencies) ? parsed.courseEquivalencies : [],
+      prerequisites: Array.isArray(parsed.prerequisites) ? parsed.prerequisites : [],
+      mathRequirements: parsed.mathRequirements,
+      otherRequirements: parsed.otherRequirements,
+      topSkills: Array.isArray(parsed.topSkills) ? parsed.topSkills : [],
+      learningOutcomes: Array.isArray(parsed.learningOutcomes) ? parsed.learningOutcomes : [],
+      internshipOpportunities: Array.isArray(parsed.internshipOpportunities) ? parsed.internshipOpportunities : [],
+      researchAreas: Array.isArray(parsed.researchAreas) ? parsed.researchAreas : [],
+      studyAbroadOptions: Array.isArray(parsed.studyAbroadOptions) ? parsed.studyAbroadOptions : [],
+      clubs: Array.isArray(parsed.clubs) ? parsed.clubs : [],
+      relatedMajors: Array.isArray(parsed.relatedMajors) ? parsed.relatedMajors : [],
+      commonMinors: Array.isArray(parsed.commonMinors) ? parsed.commonMinors : [],
+      dualDegreeOptions: Array.isArray(parsed.dualDegreeOptions) ? parsed.dualDegreeOptions : [],
+      departmentWebsite: parsed.departmentWebsite,
+      advisingContact: parsed.advisingContact,
+      links: Array.isArray(parsed.links) ? parsed.links : []
+    };
+
+    return {
+      success: true,
+      message: 'Major data enriched successfully',
+      majorData,
+      rawText: aiResult.rawText,
+      requestId: aiResult.requestId ?? undefined
+    };
+  } catch (err) {
+    console.error('EnrichMajorData_ServerAction error:', err);
+    return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+// ----------------------------------------------
 // Follow-up: Recommend Majors for Selected Career Option
 // ----------------------------------------------
 /**

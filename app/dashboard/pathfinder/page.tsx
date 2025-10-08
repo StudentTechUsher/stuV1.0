@@ -1,7 +1,7 @@
 "use client";
 import * as React from 'react';
 import { CourseHistoryList, PivotOptionsPanel, useDefaultPivotOptions, MajorPivotForm, MajorPivotFormValues } from '@/components/pathfinder';
-import { fetchMajorPivotSuggestions, fetchMajorsForCareerSelection, fetchAdjacentCareerSuggestions, fetchNearCompletionMinorAudit, fetchMinorsCatalog } from './actions';
+import { fetchMajorPivotSuggestions, fetchMajorsForCareerSelection, fetchAdjacentCareerSuggestions, fetchNearCompletionMinorAudit, fetchMinorsCatalog, enrichCareerData, enrichMajorData } from './actions';
 import { saveTargetedCareerClient } from '@/lib/services/profileService';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/ui/toast';
@@ -9,6 +9,10 @@ import AdjacentCareerForm, { AdjacentCareerFormValues } from '@/components/pathf
 import MajorOverlapDialog from '@/components/pathfinder/program-overlap-dialog';
 import { fetchMajorByName, fetchMinorByName } from './major-actions';
 import { useRouter } from 'next/navigation';
+import CareerInfoModal from '@/components/pathfinder/CareerInfoModal';
+import type { Career } from '@/types/career';
+import MajorInfoModal from '@/components/pathfinder/MajorInfoModal';
+import type { MajorInfo } from '@/types/major';
 
 export default function PathfinderPage() {
   // Fake course history data (replace with real query later)
@@ -62,8 +66,262 @@ export default function PathfinderPage() {
   const [minorCatalog, setMinorCatalog] = React.useState<Array<{ id: number | string; name: string; requirements: unknown }> | null>(null);
   const router = useRouter();
   const { toast, toasts, dismiss } = useToast();
+  // Career info modal state
+  const [activeCareerModal, setActiveCareerModal] = React.useState<Career | null>(null);
+  const [loadingCareer, setLoadingCareer] = React.useState(false);
+  const [careerLoadingMessageIndex, setCareerLoadingMessageIndex] = React.useState(0);
+  // Major info modal state
+  const [activeMajorModal, setActiveMajorModal] = React.useState<MajorInfo | null>(null);
+  const [loadingMajor, setLoadingMajor] = React.useState(false);
+  const [majorLoadingMessageIndex, setMajorLoadingMessageIndex] = React.useState(0);
   // NOTE: placeholder; will be replaced with real profile major value pulled from user profile context/server
   const currentMajor = 'Computer Science';
+
+  // Career loading messages
+  const careerLoadingMessages = [
+    { title: 'Gathering Career Info', subtitle: 'Compiling comprehensive career data, salary insights, and job outlook...' },
+    { title: 'Analyzing Job Market', subtitle: 'Reviewing current employment trends and industry demand...' },
+    { title: 'Compiling Salary Data', subtitle: 'Gathering salary ranges from entry-level to senior positions...' },
+    { title: 'Finding Skills & Requirements', subtitle: 'Identifying key skills and qualifications for this career...' },
+    { title: 'Exploring Career Pathways', subtitle: 'Mapping out typical career progression and opportunities...' },
+    { title: 'Almost Ready', subtitle: 'Finalizing your personalized career insights...' },
+  ];
+
+  // Major loading messages
+  const majorLoadingMessages = [
+    { title: 'Gathering Major Info', subtitle: 'Compiling program details, course requirements, and career pathways...' },
+    { title: 'Reviewing Curriculum', subtitle: 'Analyzing core courses, electives, and degree requirements...' },
+    { title: 'Finding Course Equivalencies', subtitle: 'Identifying cross-listed courses and transfer options...' },
+    { title: 'Exploring Career Options', subtitle: 'Discovering careers this major commonly leads to...' },
+    { title: 'Compiling Opportunities', subtitle: 'Gathering internship, research, and study abroad options...' },
+    { title: 'Almost Ready', subtitle: 'Finalizing your personalized program insights...' },
+  ];
+
+  // Rotate career loading messages every 5 seconds
+  React.useEffect(() => {
+    if (!loadingCareer) {
+      setCareerLoadingMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCareerLoadingMessageIndex(prev => (prev + 1) % careerLoadingMessages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loadingCareer, careerLoadingMessages.length]);
+
+  // Rotate major loading messages every 5 seconds
+  React.useEffect(() => {
+    if (!loadingMajor) {
+      setMajorLoadingMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setMajorLoadingMessageIndex(prev => (prev + 1) % majorLoadingMessages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loadingMajor, majorLoadingMessages.length]);
+
+  // Helper to fetch career data with advisor override logic
+  // Priority order: 1) Advisor-edited DB data, 2) AI-enriched data, 3) Minimal fallback
+  async function fetchOrCreateCareer(careerTitle: string, slug: string, rationale?: string): Promise<Career | null> {
+    try {
+      // STEP 1: Check if advisor has created/edited this career in the database
+      // This takes highest priority - advisor data overrides AI
+      const response = await fetch(`/api/careers/${slug}`);
+      if (response.ok) {
+        const json = await response.json();
+        // If we found it in DB, use it directly (advisor-curated data wins)
+        return json.career;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch career from database:', e);
+    }
+
+    // STEP 2: Not in database, so enrich with AI-generated comprehensive data
+    try {
+      const enrichResult = await enrichCareerData({
+        careerTitle,
+        slug,
+        rationale,
+        studentContext: {
+          currentMajor,
+          completedCourses: courses.map(c => ({ code: c.code, title: c.title }))
+        }
+      });
+
+      if (enrichResult.success && enrichResult.careerData) {
+        const aiData = enrichResult.careerData;
+        const overview = rationale || `The ${careerTitle} role offers diverse opportunities across industries.`;
+
+        return {
+          id: slug,
+          slug,
+          title: careerTitle,
+          shortOverview: overview,
+          overview,
+          education: {
+            typicalLevel: (aiData.education.typicalLevel as Career['education']['typicalLevel']) || 'BACHELOR',
+            certifications: aiData.education.certifications || [],
+          },
+          bestMajors: aiData.bestMajors || [],
+          locationHubs: aiData.locationHubs || [],
+          salaryUSD: {
+            entry: aiData.salaryUSD?.entry,
+            median: aiData.salaryUSD?.median,
+            p90: aiData.salaryUSD?.p90,
+            source: aiData.salaryUSD?.source || 'AI estimate based on industry data',
+          },
+          outlook: {
+            growthLabel: aiData.outlook?.growthLabel as Career['outlook']['growthLabel'],
+            notes: aiData.outlook?.notes,
+            source: aiData.outlook?.source,
+          },
+          topSkills: aiData.topSkills || [],
+          dayToDay: aiData.dayToDay || [],
+          recommendedCourses: aiData.recommendedCourses || [],
+          internships: aiData.internships || [],
+          clubs: aiData.clubs || [],
+          relatedCareers: aiData.relatedCareers || [],
+          links: aiData.links || [],
+          status: 'DRAFT' as const,
+          lastUpdatedISO: new Date().toISOString(),
+          updatedBy: undefined,
+        };
+      }
+    } catch (enrichError) {
+      console.warn('Failed to enrich career data with AI:', enrichError);
+    }
+
+    // STEP 3: Fallback to minimal Career object if AI enrichment fails
+    const overview = rationale || `The ${careerTitle} role offers diverse opportunities across industries. This career path leverages your skills and interests to create meaningful impact.`;
+
+    return {
+      id: slug,
+      slug,
+      title: careerTitle,
+      shortOverview: overview,
+      overview,
+      education: {
+        typicalLevel: 'BACHELOR' as const,
+        certifications: [],
+      },
+      bestMajors: [],
+      locationHubs: [],
+      salaryUSD: {
+        entry: undefined,
+        median: undefined,
+        p90: undefined,
+        source: 'Data not available',
+      },
+      outlook: {
+        growthLabel: undefined,
+        notes: 'Career outlook data coming soon.',
+        source: undefined,
+      },
+      topSkills: [],
+      dayToDay: [],
+      recommendedCourses: [],
+      internships: [],
+      clubs: [],
+      relatedCareers: [],
+      links: [],
+      status: 'DRAFT' as const,
+      lastUpdatedISO: new Date().toISOString(),
+      updatedBy: undefined,
+    };
+  }
+
+  // Helper to fetch major data with advisor override logic
+  // Priority order: 1) Advisor-edited DB data, 2) AI-enriched data, 3) Minimal fallback
+  async function fetchOrCreateMajor(majorName: string, code: string, rationale?: string): Promise<MajorInfo | null> {
+    const slug = code.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    // STEP 1: Check if advisor has created/edited this major in the database
+    // TODO: Create /api/majors/[slug] endpoint similar to careers
+    // For now, skip DB check and go straight to AI enrichment
+
+    // STEP 2: Enrich with AI-generated comprehensive data
+    try {
+      const enrichResult = await enrichMajorData({
+        majorName,
+        slug,
+        rationale,
+        studentContext: {
+          currentMajor,
+          completedCourses: courses.map(c => ({ code: c.code, title: c.title })),
+          targetCareer: selectedCareer?.title
+        },
+        universityName: 'Your University' // TODO: Replace with actual university name from context
+      });
+
+      if (enrichResult.success && enrichResult.majorData) {
+        const aiData = enrichResult.majorData;
+
+        return {
+          id: slug,
+          slug,
+          name: majorName,
+          degreeType: (aiData.degreeType as MajorInfo['degreeType']) || 'BS',
+          shortOverview: aiData.shortOverview || rationale || `Explore the ${majorName} program.`,
+          overview: aiData.overview || rationale || `The ${majorName} program provides comprehensive education and practical skills.`,
+          topCareers: aiData.topCareers || [],
+          careerOutlook: aiData.careerOutlook || '',
+          totalCredits: aiData.totalCredits || 120,
+          typicalDuration: aiData.typicalDuration || '4 years',
+          coreCourses: aiData.coreCourses || [],
+          electiveCourses: aiData.electiveCourses || [],
+          courseEquivalencies: aiData.courseEquivalencies || [],
+          prerequisites: aiData.prerequisites || [],
+          mathRequirements: aiData.mathRequirements,
+          otherRequirements: aiData.otherRequirements,
+          topSkills: aiData.topSkills || [],
+          learningOutcomes: aiData.learningOutcomes || [],
+          internshipOpportunities: aiData.internshipOpportunities || [],
+          researchAreas: aiData.researchAreas || [],
+          studyAbroadOptions: aiData.studyAbroadOptions || [],
+          clubs: aiData.clubs || [],
+          relatedMajors: aiData.relatedMajors || [],
+          commonMinors: aiData.commonMinors || [],
+          dualDegreeOptions: aiData.dualDegreeOptions || [],
+          departmentWebsite: aiData.departmentWebsite,
+          advisingContact: aiData.advisingContact,
+          links: aiData.links || [],
+          lastUpdatedISO: new Date().toISOString(),
+          status: 'DRAFT' as const,
+          updatedBy: undefined,
+        };
+      }
+    } catch (enrichError) {
+      console.warn('Failed to enrich major data with AI:', enrichError);
+    }
+
+    // STEP 3: Fallback to minimal MajorInfo object if AI enrichment fails
+    return {
+      id: slug,
+      slug,
+      name: majorName,
+      degreeType: 'BS' as const,
+      shortOverview: rationale || `Explore the ${majorName} program.`,
+      overview: rationale || `The ${majorName} program provides comprehensive education and practical skills for your career goals.`,
+      topCareers: [],
+      careerOutlook: '',
+      totalCredits: 120,
+      typicalDuration: '4 years',
+      coreCourses: [],
+      electiveCourses: [],
+      courseEquivalencies: [],
+      prerequisites: [],
+      topSkills: [],
+      learningOutcomes: [],
+      lastUpdatedISO: new Date().toISOString(),
+      status: 'DRAFT' as const,
+      updatedBy: undefined,
+    };
+  }
 
   function handleMajorPivotSubmit(values: MajorPivotFormValues) {
     setLastAction('Submitted major pivot context');
@@ -143,16 +401,36 @@ export default function PathfinderPage() {
     setClickedCareerId(id);
     // eslint-disable-next-line no-console
     console.log('[Pathfinder] Career clicked:', id, chosen.title);
-    setSelectedCareer({ id: chosen.id, title: chosen.title });
-    // Persist targeted career asynchronously (fire and forget style with minimal UI impact)
+
+    // Show loading state
+    setLoadingCareer(true);
+
+    try {
+      // Fetch or create career data for the modal, using the AI-generated rationale as overview
+      const careerData = await fetchOrCreateCareer(chosen.title, chosen.id, chosen.rationale);
+      if (careerData) {
+        setActiveCareerModal(careerData);
+      }
+    } finally {
+      setLoadingCareer(false);
+    }
+  }
+
+  // Called when user closes the career modal and wants to proceed with major selection
+  async function handleCareerModalProceed(careerTitle: string, careerId: string) {
+    setActiveCareerModal(null);
+    setSelectedCareer({ id: careerId, title: careerTitle });
+
+    // Persist targeted career asynchronously
     void (async () => {
-      const res = await saveTargetedCareerClient(chosen.title);
+      const res = await saveTargetedCareerClient(careerTitle);
       if (res.success) {
         toast({ title: 'New career target saved!' });
       } else if (res.error && res.error !== 'Not authenticated') {
         toast({ title: 'Could not save career', description: res.error, variant: 'destructive' });
       }
     })();
+
     setMajorOptions(null);
     setMajorMessage(null);
     setSuggestionError(null);
@@ -167,8 +445,8 @@ export default function PathfinderPage() {
       const derivedUniversityId: number | undefined = (globalThis as any).__UNIVERSITY_ID__ || undefined;
       const result = await fetchMajorsForCareerSelection({
         currentMajor,
-        selectedCareerId: chosen.id,
-        selectedCareerTitle: chosen.title,
+        selectedCareerId: careerId,
+        selectedCareerTitle: careerTitle,
         form: retainedFormRef.current,
         completedCourses: courses.map(c => ({ code: c.code, title: c.title, credits: c.credits, grade: c.grade, tags: c.tags })),
         universityId: derivedUniversityId,
@@ -190,18 +468,18 @@ export default function PathfinderPage() {
     // find the selected major option by code (code is slug; we need display name)
     const chosen = majorOptions?.find(m => m.code === code);
     if (!chosen) return;
+
+    // Show loading state
+    setLoadingMajor(true);
+
     try {
-      // placeholder university id 1
-      const res = await fetchMajorByName(1, chosen.name);
-      if (res.success && res.major) {
-        setOverlapProgram({ id: res.major.id, name: res.major.name, requirements: res.major.requirements, kind: 'major' });
-      } else {
-        // fallback: open dialog with no requirements
-        setOverlapProgram({ id: 'unknown', name: chosen.name, requirements: {}, kind: 'major' });
+      // Fetch or create comprehensive major info with AI enrichment
+      const majorInfo = await fetchOrCreateMajor(chosen.name, chosen.code, chosen.rationale);
+      if (majorInfo) {
+        setActiveMajorModal(majorInfo);
       }
-      setOverlapOpen(true);
     } finally {
-      // no-op
+      setLoadingMajor(false);
     }
   }
 
@@ -569,16 +847,18 @@ export default function PathfinderPage() {
                           key={opt.id}
                           type="button"
                           aria-label={`Select adjacent career ${opt.title}`}
-                          onClick={() => {
+                          onClick={async () => {
                             setClickedAdjacentId(opt.id);
-                            void (async () => {
-                              const res = await saveTargetedCareerClient(opt.title);
-                              if (res.success) {
-                                toast({ title: 'New career target saved!' });
-                              } else if (res.error && res.error !== 'Not authenticated') {
-                                toast({ title: 'Could not save career', description: res.error, variant: 'destructive' });
+                            setLoadingCareer(true);
+                            try {
+                              // Fetch or create career data for the modal, using the AI-generated rationale as overview
+                              const careerData = await fetchOrCreateCareer(opt.title, opt.id, opt.rationale);
+                              if (careerData) {
+                                setActiveCareerModal(careerData);
                               }
-                            })();
+                            } finally {
+                              setLoadingCareer(false);
+                            }
                           }}
                           className={
                             `text-left rounded border p-3 shadow-sm transition bg-white/80 hover:bg-emerald-50 border-emerald-200 ` +
@@ -587,7 +867,7 @@ export default function PathfinderPage() {
                         >
                           <div className="font-medium text-sm text-emerald-800 flex items-center gap-2">
                             {opt.title}
-                            {isClicked && <span className="text-[10px] uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Saved</span>}
+                            {isClicked && <span className="text-[10px] uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Viewed</span>}
                           </div>
                           <p className="mt-1 text-[11px] text-gray-600 line-clamp-3">{opt.rationale}</p>
                         </button>
@@ -663,6 +943,89 @@ export default function PathfinderPage() {
       major={overlapProgram}
       completedCourses={courses.map(c => ({ code: c.code, title: c.title, credits: c.credits, term: c.term, grade: c.grade, tags: c.tags }))}
     />
+    {/* Loading Overlay for Career */}
+    {loadingCareer && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+          <div className="mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-4">
+              <svg className="animate-spin h-8 w-8 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 transition-all duration-300">
+            {careerLoadingMessages[careerLoadingMessageIndex].title}
+          </h3>
+          <p className="text-sm text-gray-600 transition-all duration-300">
+            {careerLoadingMessages[careerLoadingMessageIndex].subtitle}
+          </p>
+        </div>
+      </div>
+    )}
+    {/* Loading Overlay for Major */}
+    {loadingMajor && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+          <div className="mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-4">
+              <svg className="animate-spin h-8 w-8 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 transition-all duration-300">
+            {majorLoadingMessages[majorLoadingMessageIndex].title}
+          </h3>
+          <p className="text-sm text-gray-600 transition-all duration-300">
+            {majorLoadingMessages[majorLoadingMessageIndex].subtitle}
+          </p>
+        </div>
+      </div>
+    )}
+    {activeCareerModal && (
+      <CareerInfoModal
+        open={!!activeCareerModal}
+        career={activeCareerModal}
+        onClose={() => {
+          const careerId = activeCareerModal.id;
+          const careerTitle = activeCareerModal.title;
+          setActiveCareerModal(null);
+
+          // If this was from Major Pivot (wantCareerHelp), proceed to majors stage
+          // Otherwise (Adjacent Career), just save the career
+          if (careerOptions && careerOptions.some(c => c.id === careerId)) {
+            // This is from Major Pivot - proceed to majors
+            handleCareerModalProceed(careerTitle, careerId);
+          } else if (adjacentOptions && adjacentOptions.some(c => c.id === careerId)) {
+            // This is from Adjacent Career - just save
+            void (async () => {
+              const res = await saveTargetedCareerClient(careerTitle);
+              if (res.success) {
+                toast({ title: 'Career saved!' });
+              } else if (res.error && res.error !== 'Not authenticated') {
+                toast({ title: 'Could not save career', description: res.error, variant: 'destructive' });
+              }
+            })();
+          }
+        }}
+        isAdvisor={false}
+      />
+    )}
+    {activeMajorModal && (
+      <MajorInfoModal
+        open={!!activeMajorModal}
+        major={activeMajorModal}
+        completedCourses={courses}
+        onClose={() => {
+          setActiveMajorModal(null);
+          // TODO: Optionally navigate to grad plan or save major selection
+        }}
+        isAdvisor={false}
+      />
+    )}
     </>
   );
 }

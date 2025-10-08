@@ -35,7 +35,8 @@ type IconKey =
   | "users"
   | "programs"
   | "system"
-  | "forecast";
+  | "forecast"
+  | "careers";
 
 export type NavItem = {
   href: string;
@@ -120,6 +121,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
         { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
+        { href: "/pathfinder/careers/manage",    segment: "pathfinder",         label: "Manage Careers", icon: "careers" },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",        icon: "profile" },
       ];
 
@@ -131,6 +133,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
+        { href: "/pathfinder/careers/manage",       segment: "pathfinder",            label: "Manage Careers",         icon: "careers" },
         { href: "/dashboard/system",                segment: "system",                label: "System",                 icon: "system" },
         { href: "/dashboard/profile",               segment: "profile",               label: "Profile",                icon: "profile" },
       ];

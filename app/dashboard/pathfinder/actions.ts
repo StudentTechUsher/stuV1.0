@@ -1,5 +1,5 @@
 'use server';
-import { GetMajorPivotCareerSuggestions_ServerAction, GetMajorsForCareerSelection_ServerAction, GetAdjacentCareerSuggestions_ServerAction, GetNearCompletionMinorAudit_ServerAction } from '@/lib/services/openaiService';
+import { GetMajorPivotCareerSuggestions_ServerAction, GetMajorsForCareerSelection_ServerAction, GetAdjacentCareerSuggestions_ServerAction, GetNearCompletionMinorAudit_ServerAction, EnrichCareerData_ServerAction, EnrichMajorData_ServerAction } from '@/lib/services/openaiService';
 import { GetMinorsForUniversity } from '@/lib/services/programService';
 import { createServerSupabase } from '@/lib/supabaseServer';
 
@@ -77,4 +77,32 @@ export async function saveTargetedCareer(careerTitle: string) {
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : 'Unknown error' };
   }
+}
+
+// Enrich career data using AI
+export async function enrichCareerData(args: {
+  careerTitle: string;
+  slug: string;
+  rationale?: string;
+  studentContext?: {
+    currentMajor?: string;
+    completedCourses?: Array<{ code: string; title: string; }>;
+  };
+}) {
+  return await EnrichCareerData_ServerAction(args);
+}
+
+// Enrich major data using AI
+export async function enrichMajorData(args: {
+  majorName: string;
+  slug: string;
+  rationale?: string;
+  studentContext?: {
+    currentMajor?: string;
+    completedCourses?: Array<{ code: string; title: string; }>;
+    targetCareer?: string;
+  };
+  universityName?: string;
+}) {
+  return await EnrichMajorData_ServerAction(args);
 }
