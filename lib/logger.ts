@@ -16,6 +16,8 @@ interface LogContext {
   duration?: number;    // Timing in ms (safe)
   status?: string;      // Status transitions (safe)
   httpStatus?: number;  // HTTP status codes (safe)
+  startDate?: string;   // ISO timestamps are safe
+  endDate?: string;     // ISO timestamps are safe
   // NEVER include: student data, course info, grades, names, emails, file content
 }
 

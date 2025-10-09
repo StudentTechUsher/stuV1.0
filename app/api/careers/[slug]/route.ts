@@ -13,10 +13,11 @@ import { logError } from '@/lib/logger';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const career = await fetchCareerBySlug(params.slug);
+    const { slug } = await context.params;
+    const career = await fetchCareerBySlug(slug);
     return NextResponse.json({ career });
   } catch (error) {
     if (error instanceof CareerNotFoundError) {

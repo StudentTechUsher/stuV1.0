@@ -8,8 +8,12 @@ export default function TranscriptUploadSection() {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [showParsedCourses, setShowParsedCourses] = useState(false);
 
-  const handleParseComplete = (docId: string) => {
-    setShowParsedCourses(true);
+  const handleUploadSuccess = (report: any) => {
+    const docId = report?.documentId ?? report?.document_id ?? null;
+    if (docId) {
+      setDocumentId(docId);
+      setShowParsedCourses(true);
+    }
   };
 
   const handleSaveComplete = () => {
@@ -20,8 +24,7 @@ export default function TranscriptUploadSection() {
   return (
     <div className="space-y-4">
       <TranscriptUpload
-        onUploadComplete={(docId) => setDocumentId(docId)}
-        onParseComplete={handleParseComplete}
+        onUploadSuccess={handleUploadSuccess}
       />
 
       {showParsedCourses && documentId && (

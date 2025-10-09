@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    const url = parsed.url;
+    const url = parsed.imageUrl;
 
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });

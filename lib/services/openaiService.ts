@@ -58,6 +58,7 @@ interface MinorAuditResult {
   id: string;
   name: string;
   reason: string;
+  rationale?: string;
 }
 
 interface MinorAuditResponse {
@@ -807,7 +808,14 @@ Return JSON now.`;
         typicalLevel: parsed.education?.typicalLevel || 'BACHELOR',
         certifications: Array.isArray(parsed.education?.certifications) ? parsed.education.certifications : []
       },
-      bestMajors: Array.isArray(parsed.bestMajors) ? parsed.bestMajors : [],
+      bestMajors: Array.isArray(parsed.bestMajors)
+        ? parsed.bestMajors
+            .filter((major): major is { id?: string; name?: string } => !!major && typeof major === 'object')
+            .map((major, index) => ({
+              id: typeof major.id === 'string' && major.id.trim() !== '' ? major.id : `major-${index + 1}`,
+              name: typeof major.name === 'string' && major.name.trim() !== '' ? major.name : 'Pending Major Name',
+            }))
+        : [],
       locationHubs: Array.isArray(parsed.locationHubs) ? parsed.locationHubs : [],
       salaryUSD: {
         entry: parsed.salaryUSD?.entry,
@@ -826,7 +834,14 @@ Return JSON now.`;
       internships: Array.isArray(parsed.internships) ? parsed.internships : [],
       clubs: Array.isArray(parsed.clubs) ? parsed.clubs : [],
       relatedCareers: Array.isArray(parsed.relatedCareers) ? parsed.relatedCareers : [],
-      links: Array.isArray(parsed.links) ? parsed.links : []
+      links: Array.isArray(parsed.links)
+        ? parsed.links
+            .filter((link): link is { label?: string; url?: string } => !!link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() !== '')
+            .map((link, index) => ({
+              label: typeof link.label === 'string' && link.label.trim() !== '' ? link.label : `Resource ${index + 1}`,
+              url: link.url!,
+            }))
+        : []
     };
 
     return {
@@ -1100,31 +1115,82 @@ Return JSON now.`;
 
     // Validate and normalize the response
     const majorData = {
-      degreeType: parsed.degreeType || 'BS',
-      shortOverview: parsed.shortOverview || '',
-      overview: parsed.overview || '',
-      topCareers: Array.isArray(parsed.topCareers) ? parsed.topCareers : [],
-      careerOutlook: parsed.careerOutlook || '',
-      totalCredits: parsed.totalCredits || 120,
-      typicalDuration: parsed.typicalDuration || '4 years',
-      coreCourses: Array.isArray(parsed.coreCourses) ? parsed.coreCourses : [],
-      electiveCourses: Array.isArray(parsed.electiveCourses) ? parsed.electiveCourses : [],
-      courseEquivalencies: Array.isArray(parsed.courseEquivalencies) ? parsed.courseEquivalencies : [],
-      prerequisites: Array.isArray(parsed.prerequisites) ? parsed.prerequisites : [],
-      mathRequirements: parsed.mathRequirements,
-      otherRequirements: parsed.otherRequirements,
-      topSkills: Array.isArray(parsed.topSkills) ? parsed.topSkills : [],
-      learningOutcomes: Array.isArray(parsed.learningOutcomes) ? parsed.learningOutcomes : [],
-      internshipOpportunities: Array.isArray(parsed.internshipOpportunities) ? parsed.internshipOpportunities : [],
-      researchAreas: Array.isArray(parsed.researchAreas) ? parsed.researchAreas : [],
-      studyAbroadOptions: Array.isArray(parsed.studyAbroadOptions) ? parsed.studyAbroadOptions : [],
-      clubs: Array.isArray(parsed.clubs) ? parsed.clubs : [],
-      relatedMajors: Array.isArray(parsed.relatedMajors) ? parsed.relatedMajors : [],
-      commonMinors: Array.isArray(parsed.commonMinors) ? parsed.commonMinors : [],
-      dualDegreeOptions: Array.isArray(parsed.dualDegreeOptions) ? parsed.dualDegreeOptions : [],
-      departmentWebsite: parsed.departmentWebsite,
-      advisingContact: parsed.advisingContact,
-      links: Array.isArray(parsed.links) ? parsed.links : []
+      degreeType: typeof parsed.degreeType === 'string' ? parsed.degreeType : 'BS',
+      shortOverview: typeof parsed.shortOverview === 'string' ? parsed.shortOverview : '',
+      overview: typeof parsed.overview === 'string' ? parsed.overview : '',
+      topCareers: Array.isArray(parsed.topCareers)
+        ? parsed.topCareers
+            .filter((career): career is { slug?: string; title?: string } => !!career && typeof career === 'object')
+            .map((career, index) => ({
+              slug: typeof career.slug === 'string' && career.slug.trim() !== '' ? career.slug : `career-${index + 1}`,
+              title: typeof career.title === 'string' && career.title.trim() !== '' ? career.title : 'Pending Career Title',
+            }))
+        : [],
+      careerOutlook: typeof parsed.careerOutlook === 'string' ? parsed.careerOutlook : '',
+      totalCredits: typeof parsed.totalCredits === 'number' ? parsed.totalCredits : 120,
+      typicalDuration: typeof parsed.typicalDuration === 'string' ? parsed.typicalDuration : '4 years',
+      coreCourses: Array.isArray(parsed.coreCourses)
+        ? parsed.coreCourses.filter((course): course is string => typeof course === 'string')
+        : [],
+      electiveCourses: Array.isArray(parsed.electiveCourses)
+        ? parsed.electiveCourses.filter((course): course is string => typeof course === 'string')
+        : [],
+      courseEquivalencies: Array.isArray(parsed.courseEquivalencies)
+        ? parsed.courseEquivalencies
+            .filter((course): course is { institutionCourse?: string; equivalentCourses?: string[]; notes?: string } => !!course && typeof course === 'object')
+            .map((course, index) => ({
+              institutionCourse:
+                typeof course.institutionCourse === 'string' && course.institutionCourse.trim() !== ''
+                  ? course.institutionCourse
+                  : `Course ${index + 1}`,
+              equivalentCourses: Array.isArray(course.equivalentCourses)
+                ? course.equivalentCourses.filter((eq): eq is string => typeof eq === 'string' && eq.trim() !== '')
+                : [],
+              ...(typeof course.notes === 'string' && course.notes.trim() !== '' ? { notes: course.notes } : {}),
+            }))
+        : [],
+      prerequisites: Array.isArray(parsed.prerequisites)
+        ? parsed.prerequisites.filter((item): item is string => typeof item === 'string')
+        : [],
+      mathRequirements: typeof parsed.mathRequirements === 'string' ? parsed.mathRequirements : undefined,
+      otherRequirements: typeof parsed.otherRequirements === 'string' ? parsed.otherRequirements : undefined,
+      topSkills: Array.isArray(parsed.topSkills)
+        ? parsed.topSkills.filter((skill): skill is string => typeof skill === 'string')
+        : [],
+      learningOutcomes: Array.isArray(parsed.learningOutcomes)
+        ? parsed.learningOutcomes.filter((outcome): outcome is string => typeof outcome === 'string')
+        : [],
+      internshipOpportunities: Array.isArray(parsed.internshipOpportunities)
+        ? parsed.internshipOpportunities.filter((item): item is string => typeof item === 'string')
+        : [],
+      researchAreas: Array.isArray(parsed.researchAreas)
+        ? parsed.researchAreas.filter((area): area is string => typeof area === 'string')
+        : [],
+      studyAbroadOptions: Array.isArray(parsed.studyAbroadOptions)
+        ? parsed.studyAbroadOptions.filter((option): option is string => typeof option === 'string')
+        : [],
+      clubs: Array.isArray(parsed.clubs)
+        ? parsed.clubs.filter((club): club is string => typeof club === 'string')
+        : [],
+      relatedMajors: Array.isArray(parsed.relatedMajors)
+        ? parsed.relatedMajors.filter((major): major is string => typeof major === 'string')
+        : [],
+      commonMinors: Array.isArray(parsed.commonMinors)
+        ? parsed.commonMinors.filter((minor): minor is string => typeof minor === 'string')
+        : [],
+      dualDegreeOptions: Array.isArray(parsed.dualDegreeOptions)
+        ? parsed.dualDegreeOptions.filter((option): option is string => typeof option === 'string')
+        : [],
+      departmentWebsite: typeof parsed.departmentWebsite === 'string' ? parsed.departmentWebsite : undefined,
+      advisingContact: typeof parsed.advisingContact === 'string' ? parsed.advisingContact : undefined,
+      links: Array.isArray(parsed.links)
+        ? parsed.links
+            .filter((link): link is { label?: string; url?: string } => !!link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() !== '')
+            .map((link, index) => ({
+              label: typeof link.label === 'string' && link.label.trim() !== '' ? link.label : `Resource ${index + 1}`,
+              url: link.url!,
+            }))
+        : []
     };
 
     return {

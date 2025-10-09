@@ -13,10 +13,33 @@ export const VALIDATION_OPTIONS = {
 // ============================================================================
 
 export const transcriptParsedEventSchema = yup.object({
-  user_id: yup.string().required('User ID is required'),
-  document_id: yup.string().required('Document ID is required'),
-  courses_count: yup.number().min(0).required('Courses count is required'),
-  status: yup.string().oneOf(['parsed', 'failed']).required('Status is required'),
+  type: yup
+    .string()
+    .oneOf(['user.transcript.parsed'])
+    .required('Event type is required'),
+  status: yup
+    .string()
+    .oneOf(['parsed', 'failed'])
+    .default('parsed')
+    .optional(),
+  userId: yup.string().required('User ID is required'),
+  documentId: yup.string().required('Document ID is required'),
+  coursesCount: yup.number().min(0).optional(),
+  courses: yup
+    .array()
+    .of(
+      yup.object({
+        term: yup.string().required('Course term is required'),
+        subject: yup.string().required('Course subject is required'),
+        number: yup.string().required('Course number is required'),
+        title: yup.string().required('Course title is required'),
+        credits: yup.number().min(0).required('Course credits are required'),
+        grade: yup.string().optional().nullable(),
+        confidence: yup.number().min(0).max(1).optional().nullable(),
+      })
+    )
+    .min(1, 'At least one course is required')
+    .required('Courses are required'),
 });
 
 export type TranscriptParsedEventInput = yup.InferType<typeof transcriptParsedEventSchema>;
@@ -55,11 +78,13 @@ export type ChatCompletionInput = yup.InferType<typeof chatCompletionSchema>;
 // ============================================================================
 
 export const sendEmailSchema = yup.object({
-  to: yup.string().email('Must be a valid email').required('Recipient email is required'),
-  subject: yup.string().required('Subject is required'),
-  html: yup.string().required('Email body (HTML) is required'),
-  from: yup.string().email('Must be a valid email').optional(),
-  replyTo: yup.string().email('Must be a valid email').optional(),
+  firstName: yup.string().required('First name is required'),
+  lastName: yup.string().required('Last name is required'),
+  email: yup.string().email('Must be a valid email').required('Email is required'),
+  university: yup.string().required('University is required'),
+  major: yup.string().required('Major is required'),
+  secondMajor: yup.string().optional().nullable(),
+  minors: yup.array().of(yup.string()).optional().default([]),
 });
 
 export type SendEmailInput = yup.InferType<typeof sendEmailSchema>;
