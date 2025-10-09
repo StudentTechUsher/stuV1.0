@@ -1,27 +1,48 @@
-/**
- * Assumptions:
- * - POST /api/careers/publish publishes a draft career
- * - Body contains { id: string }
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { publishCareer } from '@/lib/mocks/careers.seed';
+import {
+  publishCareer,
+  CareerNotFoundError,
+  CareerSaveError,
+} from '@/lib/services/careerService';
+import { logError } from '@/lib/logger';
 
+/**
+ * POST /api/careers/publish
+ * Publishes a draft career (makes it publicly visible)
+ * AUTHORIZATION: ADVISORS AND ABOVE
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id } = body;
+    const { slug } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing career ID' }, { status: 400 });
+    if (!slug) {
+      return NextResponse.json({ error: 'Missing career slug' }, { status: 400 });
     }
 
-    const published = publishCareer(id);
+    const published = await publishCareer(slug);
 
     return NextResponse.json({ career: published });
   } catch (error) {
+    if (error instanceof CareerNotFoundError) {
+      return NextResponse.json({ error: 'Career not found' }, { status: 404 });
+    }
+
+    if (error instanceof CareerSaveError) {
+      logError('Failed to publish career', error, {
+        action: 'publish_career',
+      });
+      return NextResponse.json(
+        { error: 'Failed to publish career' },
+        { status: 500 }
+      );
+    }
+
+    logError('Unexpected error publishing career', error, {
+      action: 'publish_career',
+    });
     return NextResponse.json(
-      { error: 'Failed to publish career', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

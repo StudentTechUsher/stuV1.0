@@ -1,13 +1,13 @@
-/**
- * Assumptions:
- * - POST /api/careers/save-draft saves a career as draft
- * - Returns the updated career
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { saveCareerDraft } from '@/lib/mocks/careers.seed';
+import { saveCareerDraft, CareerSaveError } from '@/lib/services/careerService';
+import { logError } from '@/lib/logger';
 import type { Career } from '@/types/career';
 
+/**
+ * POST /api/careers/save-draft
+ * Saves a career as a draft
+ * AUTHORIZATION: ADVISORS AND ABOVE
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -20,12 +20,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const saved = saveCareerDraft(career);
+    const saved = await saveCareerDraft(career);
 
     return NextResponse.json({ career: saved });
   } catch (error) {
+    if (error instanceof CareerSaveError) {
+      logError('Failed to save career draft', error, {
+        action: 'save_career_draft',
+      });
+      return NextResponse.json(
+        { error: 'Failed to save draft' },
+        { status: 500 }
+      );
+    }
+
+    logError('Unexpected error saving career draft', error, {
+      action: 'save_career_draft',
+    });
     return NextResponse.json(
-      { error: 'Failed to save draft', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
