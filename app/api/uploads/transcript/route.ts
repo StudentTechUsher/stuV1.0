@@ -88,8 +88,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 8. Parse transcript using OpenAI (synchronous for now)
+    // 8. Parse transcript using Python parser (or fallback to OpenAI)
     let coursesCount = 0;
+    const USE_PYTHON_PARSER = process.env.USE_PYTHON_PARSER !== 'false'; // Default to true
+
     try {
       // Update status to 'parsing'
       await supabase
@@ -97,66 +99,105 @@ export async function POST(request: NextRequest) {
         .update({ status: 'parsing' })
         .eq('id', document.id);
 
-      // Create admin client to download the file we just uploaded
-      const admin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
+      if (USE_PYTHON_PARSER) {
+        // Use Python FastAPI parser
+        const parserUrl = process.env.TRANSCRIPT_PARSER_URL || 'http://localhost:8787';
+
+        try {
+          const parseResponse = await fetch(`${parserUrl}/parse`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bucket: 'transcripts',
+              path: storagePath,
+              user_id: user.id,
+            }),
+          });
+
+          if (!parseResponse.ok) {
+            const errorText = await parseResponse.text();
+            console.error('[Transcript Upload] Python parser error:', errorText);
+            throw new Error(`Python parser failed: ${errorText}`);
+          }
+
+          const parseReport = await parseResponse.json();
+          console.log('[Transcript Upload] Python parser report:', parseReport);
+
+          coursesCount = parseReport.courses_upserted || 0;
+
+          // Update document status to 'parsed'
+          await supabase
+            .from('documents')
+            .update({ status: 'parsed' })
+            .eq('id', document.id);
+
+        } catch (pythonError) {
+          console.error('[Transcript Upload] Python parser failed, falling back to OpenAI:', pythonError);
+          // Fall through to OpenAI parsing
+          throw pythonError;
         }
-      );
-
-      // Download PDF bytes from storage
-      const { data: downloadData, error: downloadError } = await admin.storage
-        .from('transcripts')
-        .download(storagePath);
-
-      if (downloadError || !downloadData) {
-        throw new Error(`Failed to download PDF: ${downloadError?.message || 'No data'}`);
-      }
-
-      const pdfBytes = Buffer.from(await downloadData.arrayBuffer());
-
-      // Upload PDF to OpenAI
-      const fileId = await uploadPdfToOpenAI(pdfBytes, `${document.id}.pdf`);
-      console.log('[Transcript Upload] OpenAI file_id:', fileId);
-
-      // Extract courses using OpenAI
-      const courses = await extractCoursesWithOpenAI(fileId);
-      console.log('[Transcript Upload] Extracted', courses.length, 'courses');
-
-      // Upsert courses into user_courses table
-      for (const course of courses) {
-        const { error: upsertError } = await admin.from('user_courses').upsert(
+      } else {
+        // Use OpenAI parser (original implementation)
+        const admin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
           {
-            user_id: user.id,
-            term: course.term ?? null,
-            subject: course.subject,
-            number: course.number,
-            title: course.title ?? null,
-            credits: course.credits ?? null,
-            grade: course.grade ?? null,
-            confidence: course.confidence ?? null,
-            source_document: document.id,
-          },
-          { onConflict: 'user_id,subject,number,term' }
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          }
         );
-        if (upsertError) {
-          console.error('[Transcript Upload] Upsert error:', upsertError);
-          throw upsertError;
+
+        // Download PDF bytes from storage
+        const { data: downloadData, error: downloadError } = await admin.storage
+          .from('transcripts')
+          .download(storagePath);
+
+        if (downloadError || !downloadData) {
+          throw new Error(`Failed to download PDF: ${downloadError?.message || 'No data'}`);
         }
+
+        const pdfBytes = Buffer.from(await downloadData.arrayBuffer());
+
+        // Upload PDF to OpenAI
+        const fileId = await uploadPdfToOpenAI(pdfBytes, `${document.id}.pdf`);
+        console.log('[Transcript Upload] OpenAI file_id:', fileId);
+
+        // Extract courses using OpenAI
+        const courses = await extractCoursesWithOpenAI(fileId);
+        console.log('[Transcript Upload] Extracted', courses.length, 'courses');
+
+        // Upsert courses into user_courses table
+        for (const course of courses) {
+          const { error: upsertError } = await admin.from('user_courses').upsert(
+            {
+              user_id: user.id,
+              term: course.term ?? null,
+              subject: course.subject,
+              number: course.number,
+              title: course.title ?? null,
+              credits: course.credits ?? null,
+              grade: course.grade ?? null,
+              confidence: course.confidence ?? null,
+              source_document: document.id,
+            },
+            { onConflict: 'user_id,subject,number,term' }
+          );
+          if (upsertError) {
+            console.error('[Transcript Upload] Upsert error:', upsertError);
+            throw upsertError;
+          }
+        }
+
+        // Update document status to 'parsed'
+        await admin
+          .from('documents')
+          .update({ status: 'parsed' })
+          .eq('id', document.id);
+
+        coursesCount = courses.length;
       }
-
-      // Update document status to 'parsed'
-      await admin
-        .from('documents')
-        .update({ status: 'parsed' })
-        .eq('id', document.id);
-
-      coursesCount = courses.length;
     } catch (parseError: any) {
       // Mark document as failed
       await supabase
