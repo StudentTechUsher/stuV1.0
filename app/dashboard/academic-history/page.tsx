@@ -42,6 +42,8 @@ export default function AcademicHistoryPage() {
 	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
 	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 	const [parsedCoursesCount, setParsedCoursesCount] = useState(0);
+	const [refreshTrigger, setRefreshTrigger] = useState(0);
+	const [parseReport, setParseReport] = useState<{coursesFound: number; lowConfidence: number} | null>(null);
 	const [availableCourses, setAvailableCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
 
 	// Optimistic immediate sample (only if everything truly empty at mount)
@@ -230,7 +232,7 @@ export default function AcademicHistoryPage() {
 				const match = course.code.match(/^([A-Z]+)\s*(\d+)$/i);
 				if (!match) continue;
 
-				const [_, subject, number] = match;
+				const [, subject, number] = match;
 
 				await supabase.from('user_courses').upsert({
 					user_id: userId,
@@ -259,7 +261,7 @@ export default function AcademicHistoryPage() {
 	const renderCourseRow = (col: keyof ColumnState, course: CourseEntry) => {
 		const editing = !!course.editing;
 		return (
-			<Box key={course.id} sx={{ display: 'grid', gridTemplateColumns: '110px 1fr 80px 120px 36px 36px', gap: 1, alignItems: 'center', mb: 1 }}>
+			<Box key={course.id} sx={{ display: 'grid', gridTemplateColumns: '90px 1fr 60px 100px 32px 32px', gap: 0.5, alignItems: 'center', mb: 0.5 }}>
 				{editing ? (
 					<Autocomplete
 						size="small"
@@ -280,30 +282,30 @@ export default function AcademicHistoryPage() {
 						renderInput={(params) => <TextField {...params} placeholder="CODE" />}
 					/>
 				) : (
-					<Typography variant="body2" fontWeight={600}>{course.code || '—'}</Typography>
+					<Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.75rem' }}>{course.code || '—'}</Typography>
 				)}
 				{editing ? (
-					<TextField size="small" placeholder="Title" value={course.title} onChange={e => updateCourse(col, course.id, { title: e.target.value })} />
+					<TextField size="small" placeholder="Title" value={course.title} onChange={e => updateCourse(col, course.id, { title: e.target.value })} sx={{ '& input': { fontSize: '0.75rem', py: 0.5 } }} />
 				) : (
-					<Typography variant="body2">{course.title || 'Untitled'}</Typography>
+					<Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{course.title || 'Untitled'}</Typography>
 				)}
 				{editing ? (
-					<TextField size="small" placeholder="Cr" type="number" value={course.credits ?? ''} onChange={e => updateCourse(col, course.id, { credits: e.target.value === '' ? null : Number(e.target.value) })} />
+					<TextField size="small" placeholder="Cr" type="number" value={course.credits ?? ''} onChange={e => updateCourse(col, course.id, { credits: e.target.value === '' ? null : Number(e.target.value) })} sx={{ '& input': { fontSize: '0.75rem', py: 0.5 } }} />
 				) : (
-					<Typography variant="body2" textAlign="center">{course.credits ?? '—'}</Typography>
+					<Typography variant="body2" textAlign="center" sx={{ fontSize: '0.75rem' }}>{course.credits ?? '—'}</Typography>
 				)}
 				{editing ? (
-					<TextField size="small" placeholder="Requirement" value={course.requirement || ''} onChange={e => updateCourse(col, course.id, { requirement: e.target.value })} />
+					<TextField size="small" placeholder="Requirement" value={course.requirement || ''} onChange={e => updateCourse(col, course.id, { requirement: e.target.value })} sx={{ '& input': { fontSize: '0.7rem', py: 0.5 } }} />
 				) : (
-					<Box sx={{ display: 'inline-flex', px: 1, py: 0.25, borderRadius: 1, bgcolor: 'var(--primary-15)', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: 600, justifySelf: 'start' }}>
+					<Box sx={{ display: 'inline-flex', px: 0.75, py: 0.15, borderRadius: 0.75, bgcolor: 'var(--primary-15)', color: 'var(--primary)', fontSize: '0.6rem', fontWeight: 600, justifySelf: 'start', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
 						{course.requirement || '—'}
 					</Box>
 				)}
-				<IconButton size="small" onClick={() => updateCourse(col, course.id, { editing: !editing })} aria-label={editing ? 'Save' : 'Edit'}>
-					{editing ? <Save fontSize="small" /> : <Edit fontSize="small" />}
+				<IconButton size="small" onClick={() => updateCourse(col, course.id, { editing: !editing })} aria-label={editing ? 'Save' : 'Edit'} sx={{ p: 0.5 }}>
+					{editing ? <Save sx={{ fontSize: '1rem' }} /> : <Edit sx={{ fontSize: '1rem' }} />}
 				</IconButton>
-				<IconButton size="small" onClick={() => deleteCourse(col, course.id)} aria-label="Delete">
-					<Delete fontSize="small" />
+				<IconButton size="small" onClick={() => deleteCourse(col, course.id)} aria-label="Delete" sx={{ p: 0.5 }}>
+					<Delete sx={{ fontSize: '1rem' }} />
 				</IconButton>
 			</Box>
 		);
@@ -324,60 +326,73 @@ export default function AcademicHistoryPage() {
 	]), []);
 
 	const renderColumn = (col: keyof ColumnState, title: string, description: string, idx: number) => (
-		<Paper elevation={2} sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 0.75 }}>
-				<ProgressCircle value={progressMeta[idx]?.value ?? 0} max={100} radius={22} strokeWidth={6} variant={progressMeta[idx]?.variant}>
-					<Typography variant='caption' sx={{ fontWeight: 600, fontSize: '0.65rem' }}>{progressMeta[idx]?.value ?? 0}%</Typography>
+		<Paper elevation={2} sx={{ p: 1.5, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+				<ProgressCircle value={progressMeta[idx]?.value ?? 0} max={100} radius={18} strokeWidth={5} variant={progressMeta[idx]?.variant}>
+					<Typography variant='caption' sx={{ fontWeight: 600, fontSize: '0.6rem' }}>{progressMeta[idx]?.value ?? 0}%</Typography>
 				</ProgressCircle>
-				<Box>
-					<Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1 }}>{title}</Typography>
-					<Typography variant="caption" color="text.secondary">{description}</Typography>
+				<Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+					<Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1, fontSize: '0.875rem' }}>{title}</Typography>
+					<Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</Typography>
 				</Box>
 			</Box>
-			<Divider sx={{ mb: 1 }} />
-			<Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
+			<Divider sx={{ mb: 0.5 }} />
+			<Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5, minHeight: 0 }}>
 				{data[col].length === 0 && (
-					<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>No courses added yet.</Typography>
+					<Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem' }}>No courses added yet.</Typography>
 				)}
 				{data[col].map(c => renderCourseRow(col, c))}
 			</Box>
-			<Button startIcon={<Add />} size="small" onClick={() => addCourse(col)} sx={{ mt: 1 }}>
+			<Button startIcon={<Add />} size="small" onClick={() => addCourse(col)} sx={{ mt: 0.5, fontSize: '0.75rem', py: 0.5 }}>
 				Add Course
 			</Button>
-			<Divider sx={{ my: 1 }} />
-			<Typography variant="caption" color="text.secondary">Total Credits: {totalCredits(col)}</Typography>
+			<Divider sx={{ my: 0.5 }} />
+			<Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>Total Credits: {totalCredits(col)}</Typography>
 		</Paper>
 	);
 
 	return (
-		<Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
-			<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-				<Box>
+		<Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+			<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2, width: '100%' }}>
+				<Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
 					<Typography variant="h4" sx={{ fontWeight: 'bold' }}>Academic History</Typography>
 					<Typography variant="body2" color="text.secondary">Track previously completed coursework across your curriculum.</Typography>
 				</Box>
-				<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+				<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: '0 1 auto', justifyContent: 'flex-end' }}>
 					<Tooltip title="Save courses to your profile">
-						<Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase} color="primary">
-							Save to Profile
+						<Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase} color="primary" sx={{ minWidth: 'auto' }}>
+							Save
 						</Button>
 					</Tooltip>
 					<Tooltip title="Upload transcript PDF">
-						<Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
-							Upload Transcript
+						<Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)} sx={{ minWidth: 'auto' }}>
+							Upload
 						</Button>
 					</Tooltip>
 					<Tooltip title="Copy JSON to clipboard">
-						<Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson}>{copyStatus === 'copied' ? 'Copied!' : 'Export JSON'}</Button>
+						<Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson} sx={{ minWidth: 'auto' }}>{copyStatus === 'copied' ? 'Copied!' : 'Export'}</Button>
 					</Tooltip>
 					<Tooltip title="Clear all entries (local)" >
-						<Button variant="outlined" size="small" color="error" startIcon={<Refresh />} onClick={clearAll}>
-							Clear All
+						<Button variant="outlined" size="small" color="error" startIcon={<Refresh />} onClick={clearAll} sx={{ minWidth: 'auto' }}>
+							Clear
 						</Button>
 					</Tooltip>
 				</Box>
 			</Box>
-			<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, flex: 1, alignItems: 'stretch', '@media (max-width: 1200px)': { gridTemplateColumns: 'repeat(2, 1fr)' }, '@media (max-width: 768px)': { gridTemplateColumns: '1fr' } }}>
+			<Box sx={{
+				display: 'grid',
+				gridTemplateColumns: {
+					xs: '1fr',
+					sm: 'repeat(2, 1fr)',
+					lg: 'repeat(3, 1fr)'
+				},
+				gap: 2,
+				flex: 1,
+				alignItems: 'stretch',
+				width: '100%',
+				maxWidth: '100%',
+				overflow: 'hidden'
+			}}>
 				{renderColumn('general', 'General Education', 'Core / general education / foundational courses already completed.', 0)}
 				{renderColumn('program', 'Major Requirements', 'Major / program-specific requirement courses completed.', 1)}
 				{renderColumn('minor', 'Minor Requirements', 'Minor program courses completed.', 2)}
@@ -389,20 +404,35 @@ export default function AcademicHistoryPage() {
 			</Box>
 
 			{/* Parsed Transcript Courses Section */}
-			{parsedCoursesCount > 0 && (
-				<Box sx={{ mt: 4 }}>
-					<Divider sx={{ mb: 3 }} />
-					<Box sx={{ mb: 2 }}>
-						<Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-							Transcript Courses
-						</Typography>
+			<Box sx={{ mt: 4 }}>
+				<Divider sx={{ mb: 3 }} />
+				<Box sx={{ mb: 2 }}>
+					<Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+						Parsed Transcript Courses
+					</Typography>
+					{parsedCoursesCount > 0 ? (
+						<>
+							<Typography variant="body2" color="text.secondary">
+								{parsedCoursesCount} course{parsedCoursesCount !== 1 ? 's' : ''} from uploaded transcripts
+							</Typography>
+							{parseReport && parseReport.lowConfidence > 0 && (
+								<Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
+									⚠️ {parseReport.lowConfidence} course{parseReport.lowConfidence !== 1 ? 's' : ''} flagged for review (low confidence)
+								</Typography>
+							)}
+						</>
+					) : (
 						<Typography variant="body2" color="text.secondary">
-							{parsedCoursesCount} course{parsedCoursesCount !== 1 ? 's' : ''} parsed from uploaded transcripts
+							Upload a transcript above to see parsed courses here
 						</Typography>
-					</Box>
-					<ParsedCoursesCards userId={userId} onCoursesLoaded={setParsedCoursesCount} />
+					)}
 				</Box>
-			)}
+				<ParsedCoursesCards
+					userId={userId}
+					onCoursesLoaded={setParsedCoursesCount}
+					refreshTrigger={refreshTrigger}
+				/>
+			</Box>
 
 			{/* Upload Transcript Dialog */}
 			<Dialog
@@ -413,10 +443,20 @@ export default function AcademicHistoryPage() {
 			>
 				<DialogContent sx={{ p: 3 }}>
 					<TranscriptUpload
-						onUploadSuccess={() => {
-							setUploadDialogOpen(false);
+						onUploadSuccess={(report) => {
+							// Update parse report stats
+							if (report) {
+								setParseReport({
+									coursesFound: report.courses_found || report.courses_upserted || 0,
+									lowConfidence: report.confidence_stats?.low_confidence_count || 0,
+								});
+							}
 							// Trigger reload of parsed courses
-							setParsedCoursesCount(prev => prev + 1);
+							setRefreshTrigger(prev => prev + 1);
+							// Close dialog after a delay to show success message
+							setTimeout(() => {
+								setUploadDialogOpen(false);
+							}, 3000);
 						}}
 					/>
 				</DialogContent>

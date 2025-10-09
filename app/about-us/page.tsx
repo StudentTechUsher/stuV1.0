@@ -186,7 +186,7 @@ export default function AboutUsPage() {
                 Aim
               </h3>
               <p className="text-[var(--foreground)] leading-relaxed">
-                Seamless, direct integration with any institution's existing scheduling software.
+                Seamless, direct integration with any institution&apos;s existing scheduling software.
                 This will drive down adoption costs.
               </p>
             </div>
@@ -295,7 +295,7 @@ export default function AboutUsPage() {
             </div>
 
             <p className="text-center text-[var(--muted-foreground)] text-lg">
-              We're currently part of the Sandbox SB05 cohort, building Stu full-time.
+              We&apos;re currently part of the Sandbox SB05 cohort, building Stu full-time.
             </p>
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function AboutUsPage() {
               </h2>
 
               <p className="text-lg text-[var(--foreground)] leading-relaxed mb-8">
-                We're inviting a small group of universities and colleges to join as Design
+                We&apos;re inviting a small group of universities and colleges to join as Design
                 Partners. In exchange for preferred pricing in perpetuity, partners let us integrate
                 with their systems and use anonymized operational data and workflows to refine our
                 models.
@@ -339,7 +339,7 @@ export default function AboutUsPage() {
               </ul>
 
               <p className="text-lg text-[var(--foreground)] leading-relaxed">
-                If you're interested in piloting Stu at your institution, we'd love to talk.
+                If you&apos;re interested in piloting Stu at your institution, we&apos;d love to talk.
               </p>
             </div>
           </div>

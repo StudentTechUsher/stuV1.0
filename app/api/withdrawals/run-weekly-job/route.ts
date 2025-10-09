@@ -1,12 +1,15 @@
-/**
- * Assumptions:
- * - App Router API route
- * - Body params: startISO, endISO
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { runWeeklyDigest } from '@/lib/jobs/withdrawalDigest';
+import {
+  runWeeklyWithdrawalDigest,
+  WithdrawalFetchError,
+} from '@/lib/services/withdrawalService';
+import { logError, logInfo } from '@/lib/logger';
 
+/**
+ * POST /api/withdrawals/run-weekly-job
+ * Triggers the weekly withdrawal digest job
+ * AUTHORIZATION: SYSTEM/CRON ONLY
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -19,16 +22,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const digests = await runWeeklyDigest(startISO, endISO);
+    const result = await runWeeklyWithdrawalDigest();
+
+    logInfo('Weekly withdrawal digest completed', {
+      action: 'weekly_withdrawal_digest',
+      startDate: startISO,
+      endDate: endISO,
+    });
 
     return NextResponse.json({
       success: true,
-      digestsGenerated: digests.length,
-      message: `Generated ${digests.length} advisor digest(s)`,
+      message: result.message,
     });
   } catch (error) {
+    if (error instanceof WithdrawalFetchError) {
+      logError('Failed to run weekly withdrawal digest', error, {
+        action: 'run_weekly_digest',
+      });
+      return NextResponse.json(
+        { error: 'Failed to run weekly job' },
+        { status: 500 }
+      );
+    }
+
+    logError('Unexpected error running weekly digest', error, {
+      action: 'run_weekly_digest',
+    });
     return NextResponse.json(
-      { error: 'Failed to run weekly job', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

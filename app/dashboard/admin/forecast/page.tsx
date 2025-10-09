@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -174,7 +174,7 @@ export default function ForecastPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchForecast = async () => {
+  const fetchForecast = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -197,11 +197,11 @@ export default function ForecastPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [minDemand, search, semestersAhead, subject]);
 
   useEffect(() => {
     fetchForecast();
-  }, [semestersAhead]);
+  }, [fetchForecast]);
 
   return (
     <Box sx={{ p: 3 }}>

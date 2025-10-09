@@ -7,12 +7,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/ui/toast';
 import AdjacentCareerForm, { AdjacentCareerFormValues } from '@/components/pathfinder/adjacent-career-form';
 import MajorOverlapDialog from '@/components/pathfinder/program-overlap-dialog';
-import { fetchMajorByName, fetchMinorByName } from './major-actions';
+import { fetchMinorByName } from './major-actions';
 import { useRouter } from 'next/navigation';
 import CareerInfoModal from '@/components/pathfinder/CareerInfoModal';
 import type { Career } from '@/types/career';
 import MajorInfoModal from '@/components/pathfinder/MajorInfoModal';
 import type { MajorInfo } from '@/types/major';
+
+type GlobalWithUniversity = typeof globalThis & { __UNIVERSITY_ID__?: unknown };
+
+const getGlobalUniversityId = (): number | undefined => {
+  const candidate = (globalThis as GlobalWithUniversity).__UNIVERSITY_ID__;
+  return typeof candidate === 'number' ? candidate : undefined;
+};
 
 export default function PathfinderPage() {
   // Fake course history data (replace with real query later)
@@ -351,7 +358,7 @@ export default function PathfinderPage() {
             selectedCareerTitle: careerTitle,
             form: values,
             completedCourses: courses.map(c => ({ code: c.code, title: c.title, credits: c.credits, grade: c.grade, tags: c.tags })),
-            universityId: (globalThis as any).__UNIVERSITY_ID__ || 1,
+            universityId: getGlobalUniversityId() ?? 1,
         });
         if (!result.success || !result.majors) {
           setSuggestionError(result.message || 'Failed to load majors');
@@ -399,8 +406,6 @@ export default function PathfinderPage() {
     if (!chosen) return;
     // debug marker
     setClickedCareerId(id);
-    // eslint-disable-next-line no-console
-    console.log('[Pathfinder] Career clicked:', id, chosen.title);
 
     // Show loading state
     setLoadingCareer(true);
@@ -442,7 +447,7 @@ export default function PathfinderPage() {
     setLoadingMajors(true);
     try {
       // Derive a university id (placeholder until integrated with real profile context). If none, omit to allow broader model reasoning.
-      const derivedUniversityId: number | undefined = (globalThis as any).__UNIVERSITY_ID__ || undefined;
+      const derivedUniversityId = getGlobalUniversityId();
       const result = await fetchMajorsForCareerSelection({
         currentMajor,
         selectedCareerId: careerId,

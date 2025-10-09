@@ -10,6 +10,7 @@ import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateG
 import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { Course, Term } from '@/components/grad-planner/types';
 
 interface GradPlanDetails {
   id: string;
@@ -29,6 +30,40 @@ const ROLE_MAP: Record<string, Role> = {
   3: "student",
 };
 
+type CourseLike = Partial<Course> & { name?: string };
+
+type TermLike = {
+  term?: string;
+  courses?: CourseLike[];
+  [key: string]: unknown;
+};
+
+const isTermArray = (value: unknown): value is Term[] => {
+  return Array.isArray(value) && value.every(item => {
+    if (typeof item !== 'object' || item === null) return false;
+    const termValue = (item as { term?: unknown }).term;
+    return typeof termValue === 'string';
+  });
+};
+
+const extractTermsFromPlanDetails = (details: unknown): Term[] => {
+  if (isTermArray(details)) {
+    return details;
+  }
+
+  if (typeof details === 'object' && details !== null) {
+    const candidate = details as Record<string, unknown>;
+    for (const key of ['plan', 'semesters', 'terms'] as const) {
+      const maybeTerms = candidate[key];
+      if (isTermArray(maybeTerms)) {
+        return maybeTerms;
+      }
+    }
+  }
+
+  return [];
+};
+
 export default function ApproveGradPlanPage() {
   const router = useRouter();
   const params = useParams();
@@ -39,7 +74,7 @@ export default function ApproveGradPlanPage() {
   const [suggestions, setSuggestions] = React.useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [editablePlan, setEditablePlan] = React.useState<any[] | null>(null); // normalized array of terms
+  const [editablePlan, setEditablePlan] = React.useState<Term[] | null>(null); // normalized array of terms
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
   const [snackbar, setSnackbar] = React.useState<{
@@ -181,16 +216,14 @@ export default function ApproveGradPlanPage() {
         if (!planData) {
           throw new Error('Graduation plan not found or no longer pending approval');
         }
-        
-  setGradPlan(planData);
-  // Normalize plan_details into array of terms (looking for plan/semesters/terms) and store editable copy
-  const raw = planData.plan_details as any;
-  let terms: any[] = [];
-  if (Array.isArray(raw)) terms = raw;
-  else if (raw?.plan && Array.isArray(raw.plan)) terms = raw.plan;
-  else if (raw?.semesters && Array.isArray(raw.semesters)) terms = raw.semesters;
-  else if (raw?.terms && Array.isArray(raw.terms)) terms = raw.terms;
-  setEditablePlan(JSON.parse(JSON.stringify(terms)));
+
+        setGradPlan(planData);
+        const terms = extractTermsFromPlanDetails(planData.plan_details);
+        const clonedTerms = terms.map((term) => ({
+          ...term,
+          courses: term.courses?.map(course => ({ ...course })),
+        }));
+        setEditablePlan(clonedTerms);
 
       } catch (e: unknown) {
         if (!active) return;
@@ -213,49 +246,38 @@ export default function ApproveGradPlanPage() {
     router.push('/dashboard/approve-grad-plans');
   };
 
-  const moveCourse = (fromTermIdx: number, courseIdx: number, toTermNumber: number) => {
-    if (!editablePlan) return;
-    const toIdx = toTermNumber - 1;
-    if (toIdx === fromTermIdx || toIdx < 0 || toIdx >= editablePlan.length) return;
-    setEditablePlan(prev => {
-      if (!prev) return prev;
-      const copy = prev.map(t => ({ ...t, courses: t.courses ? [...t.courses] : [] }));
-      const course = copy[fromTermIdx].courses?.[courseIdx];
-      if (!course) return prev;
-      copy[fromTermIdx].courses!.splice(courseIdx, 1);
-      copy[toIdx].courses = copy[toIdx].courses || [];
-      copy[toIdx].courses!.push(course);
-      setUnsavedChanges(true);
-      return copy;
-    });
-  };
-
   // Helper to detect moved courses between original and edited plans
-  const detectMovedCourses = (originalTerms: any[], editedTerms: any[]) => {
+  const detectMovedCourses = (originalTerms: TermLike[], editedTerms: TermLike[]) => {
     const movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }> = [];
 
     // Build a map of course locations in original plan
     const originalCourseMap = new Map<string, number>();
     originalTerms.forEach((term, termIdx) => {
-      const courses = term.courses || [];
-      courses.forEach((course: any) => {
-        const key = course.code || course.name || JSON.stringify(course);
+      const courses = Array.isArray(term.courses) ? term.courses : [];
+      courses.forEach((course) => {
+        const code = typeof course.code === 'string' && course.code.trim() !== '' ? course.code.trim() : undefined;
+        const title = typeof course.title === 'string' && course.title.trim() !== '' ? course.title.trim() : undefined;
+        const name = typeof course.name === 'string' && course.name.trim() !== '' ? course.name.trim() : undefined;
+        const key = code ?? title ?? name ?? JSON.stringify(course);
         originalCourseMap.set(key, termIdx + 1); // 1-indexed term numbers
       });
     });
 
     // Check each course in edited plan
     editedTerms.forEach((term, termIdx) => {
-      const courses = term.courses || [];
-      courses.forEach((course: any) => {
-        const key = course.code || course.name || JSON.stringify(course);
+      const courses = Array.isArray(term.courses) ? term.courses : [];
+      courses.forEach((course) => {
+        const code = typeof course.code === 'string' && course.code.trim() !== '' ? course.code.trim() : undefined;
+        const title = typeof course.title === 'string' && course.title.trim() !== '' ? course.title.trim() : undefined;
+        const name = typeof course.name === 'string' && course.name.trim() !== '' ? course.name.trim() : undefined;
+        const key = code ?? title ?? name ?? JSON.stringify(course);
         const originalTermNum = originalCourseMap.get(key);
         const currentTermNum = termIdx + 1;
 
         if (originalTermNum && originalTermNum !== currentTermNum) {
           movedCourses.push({
-            courseName: course.name || course.code || 'Unknown Course',
-            courseCode: course.code || '',
+            courseName: title ?? name ?? code ?? 'Unknown Course',
+            courseCode: code ?? '',
             fromTerm: originalTermNum,
             toTerm: currentTermNum
           });
@@ -266,28 +288,58 @@ export default function ApproveGradPlanPage() {
     return movedCourses;
   };
 
+  const normalizeTermsForComparison = (terms: Term[]): TermLike[] => {
+    return terms.map((term) => ({
+      ...term,
+      courses: Array.isArray(term.courses)
+        ? term.courses.map((course): CourseLike => ({ ...course }))
+        : []
+    }));
+  };
+
+  const isObjectLike = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+  const buildUpdatedPlanPayload = (originalDetails: unknown, updatedTerms: Term[]): unknown => {
+    if (Array.isArray(originalDetails)) {
+      return updatedTerms;
+    }
+
+    if (isObjectLike(originalDetails)) {
+      if (Array.isArray(originalDetails.plan)) {
+        return { ...originalDetails, plan: updatedTerms };
+      }
+
+      if (Array.isArray(originalDetails.semesters)) {
+        return { ...originalDetails, semesters: updatedTerms };
+      }
+
+      if (Array.isArray(originalDetails.terms)) {
+        return { ...originalDetails, terms: updatedTerms };
+      }
+
+      return { ...originalDetails, plan: updatedTerms };
+    }
+
+    return { plan: updatedTerms };
+  };
+
   const handleSave = async () => {
     if (!gradPlan || !editablePlan) return;
     setIsSaving(true);
     try {
-      const original = gradPlan.plan_details as any;
+      const originalDetails = gradPlan.plan_details;
 
       // Extract original terms for comparison
-      let originalTerms: any[] = [];
-      if (Array.isArray(original)) originalTerms = original;
-      else if (original?.plan && Array.isArray(original.plan)) originalTerms = original.plan;
-      else if (original?.semesters && Array.isArray(original.semesters)) originalTerms = original.semesters;
-      else if (original?.terms && Array.isArray(original.terms)) originalTerms = original.terms;
+      const originalTerms = extractTermsFromPlanDetails(originalDetails);
 
       // Detect moved courses
-      const movedCourses = detectMovedCourses(originalTerms, editablePlan);
+      const movedCourses = detectMovedCourses(
+        normalizeTermsForComparison(originalTerms),
+        normalizeTermsForComparison(editablePlan)
+      );
 
-      let payload: any;
-      if (Array.isArray(original)) payload = editablePlan;
-      else if (original?.plan) payload = { ...original, plan: editablePlan };
-      else if (original?.semesters) payload = { ...original, semesters: editablePlan };
-      else if (original?.terms) payload = { ...original, terms: editablePlan };
-      else payload = { plan: editablePlan };
+      const payload = buildUpdatedPlanPayload(originalDetails, editablePlan);
       const advisorNotes = formatSuggestionsForAdvisorNotes(suggestions);
       const result = await updateGradPlanDetailsAndAdvisorNotesAction(gradPlan.id, payload, advisorNotes);
       if (result.success) {
@@ -494,11 +546,11 @@ export default function ApproveGradPlanPage() {
           </Box>
         </Box>
         <GraduationPlanner
-          plan={editablePlan || (gradPlan.plan_details as any)}
+          plan={editablePlan ?? (gradPlan.plan_details as (Record<string, unknown> | Term[] | undefined))}
           isEditMode
           initialSpaceView
           editorRole="advisor"
-          onPlanUpdate={(updated) => { setEditablePlan(updated as any[]); setUnsavedChanges(true); }}
+          onPlanUpdate={(updated) => { setEditablePlan(updated); setUnsavedChanges(true); }}
         />
         {/* Advisor Suggestions UI */}
         <Box sx={{ mt:3 }}>

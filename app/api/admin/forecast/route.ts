@@ -75,7 +75,16 @@ export async function GET(request: NextRequest) {
     const termCodes = expandFutureTerms(semestersAhead);
 
     // Try to fetch real data from demand_aggregate view
-    const { data: realData, error: viewError } = await supabase
+    type DemandAggregateRow = {
+      course_id: string;
+      subject: string;
+      number: string;
+      title: string;
+      credits: number;
+      demand_count: number;
+    };
+
+    const { data: realData, error: demandAggregateError } = await supabase
       .from('demand_aggregate')
       .select('*')
       .eq('institution_id', institutionId)
@@ -83,6 +92,10 @@ export async function GET(request: NextRequest) {
 
     let rows: ForecastRow[] = [];
     let isMock = false;
+
+    if (demandAggregateError) {
+      console.error('Error loading demand_aggregate data:', demandAggregateError);
+    }
 
     if (!realData || realData.length === 0) {
       // No real data - generate mock
@@ -137,7 +150,8 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Use real data (future implementation when plan_courses exists)
-      rows = realData.map((row: any) => ({
+      const typedRealData = (realData ?? []) as DemandAggregateRow[];
+      rows = typedRealData.map((row): ForecastRow => ({
         course_id: row.course_id,
         subject: row.subject,
         number: row.number,
