@@ -24,6 +24,52 @@ interface OpenAIJsonResult {
   requestId?: string | null;
 }
 
+// Typed structures for parsed AI responses
+interface CoursesDataInput {
+  programs?: unknown;
+  generalEducation?: unknown;
+  selectionMode?: 'AUTO' | 'MANUAL' | 'CHOICE';
+  selectedPrograms?: Array<string | number>;
+}
+
+interface CareerOption {
+  id: string;
+  title: string;
+  rationale: string;
+}
+
+interface CareerSuggestionsResponse {
+  options: CareerOption[];
+  message?: string;
+}
+
+interface MajorRecommendation {
+  code: string;
+  name: string;
+  rationale: string;
+}
+
+interface MajorRecommendationsResponse {
+  majors: MajorRecommendation[];
+  message?: string;
+}
+
+interface MinorAuditResult {
+  id: string;
+  name: string;
+  reason: string;
+}
+
+interface MinorAuditResponse {
+  minors: MinorAuditResult[];
+  message?: string;
+}
+
+interface ChatbotResponse {
+  reply: string;
+  category?: 'student' | 'non-student';
+}
+
 /**
  * Generic helper to execute a JSON-style prompt against OpenAI Responses API.
  * Encapsulates payload construction, network call, error handling, text extraction, and JSON parsing.
@@ -157,7 +203,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     }
 
     // Basic shape check: expect programs & generalEducation collections
-    const cd: any = coursesData;
+    const cd = coursesData as CoursesDataInput;
     if (!cd.programs || !cd.generalEducation) {
       return {
         success: false,
@@ -455,7 +501,7 @@ ${reRequest ? '- Provide NEW options not overlapping prior ids: ' + priorIds.joi
       return { success: false, message: aiResult.message, rawText: aiResult.rawText, requestId: reqId };
     }
 
-    const parsed = aiResult.parsedJson as any;
+    const parsed = aiResult.parsedJson as CareerSuggestionsResponse;
     if (!parsed || !Array.isArray(parsed.options)) {
       const reqId = aiResult.requestId ?? undefined;
       return { success: false, message: 'Model returned unexpected shape', rawText: aiResult.rawText, requestId: reqId };
@@ -464,7 +510,7 @@ ${reRequest ? '- Provide NEW options not overlapping prior ids: ' + priorIds.joi
     // Simple post-validate and normalize
     const options = parsed.options
       .slice(0, 5)
-      .map((o: any) => {
+      .map((o) => {
         let id: string;
         if (typeof o.id === 'string') {
           id = o.id;
@@ -544,12 +590,12 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
     if (!aiResult.success) {
       return { success: false, message: aiResult.message, rawText: aiResult.rawText, requestId: aiResult.requestId ?? undefined };
     }
-    const parsed = aiResult.parsedJson as any;
+    const parsed = aiResult.parsedJson as CareerSuggestionsResponse;
     if (!parsed || !Array.isArray(parsed.options)) {
       return { success: false, message: 'Model returned unexpected shape', rawText: aiResult.rawText, requestId: aiResult.requestId ?? undefined };
     }
 
-    const options = parsed.options.slice(0,5).map((o: any) => {
+    const options = parsed.options.slice(0,5).map((o) => {
       const title = String(o.title ?? 'Untitled Option');
       let id: string = typeof o.id === 'string' ? o.id : title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
       if (!id) id = 'option';
@@ -730,7 +776,22 @@ Return JSON now.`;
       };
     }
 
-    const parsed = aiResult.parsedJson as any;
+    interface EnrichCareerResponse {
+      education?: { typicalLevel?: string; certifications?: string[] };
+      bestMajors?: Array<{ id?: string; name?: string }>;
+      locationHubs?: string[];
+      salaryUSD?: { entry?: number; median?: number; p90?: number; source?: string };
+      outlook?: { growthLabel?: string; notes?: string; source?: string };
+      topSkills?: string[];
+      dayToDay?: string[];
+      recommendedCourses?: string[];
+      internships?: string[];
+      clubs?: string[];
+      relatedCareers?: string[];
+      links?: Array<{ label?: string; url?: string }>;
+    }
+
+    const parsed = aiResult.parsedJson as EnrichCareerResponse;
     if (!parsed || typeof parsed !== 'object') {
       return {
         success: false,
@@ -999,7 +1060,35 @@ Return JSON now.`;
       };
     }
 
-    const parsed = aiResult.parsedJson as any;
+    interface EnrichMajorResponse {
+      degreeType?: string;
+      shortOverview?: string;
+      overview?: string;
+      topCareers?: Array<{ slug?: string; title?: string }>;
+      careerOutlook?: string;
+      totalCredits?: number;
+      typicalDuration?: string;
+      coreCourses?: string[];
+      electiveCourses?: string[];
+      courseEquivalencies?: Array<{ institutionCourse?: string; equivalentCourses?: string[]; notes?: string }>;
+      prerequisites?: string[];
+      mathRequirements?: string;
+      otherRequirements?: string;
+      topSkills?: string[];
+      learningOutcomes?: string[];
+      internshipOpportunities?: string[];
+      researchAreas?: string[];
+      studyAbroadOptions?: string[];
+      clubs?: string[];
+      relatedMajors?: string[];
+      commonMinors?: string[];
+      dualDegreeOptions?: string[];
+      departmentWebsite?: string;
+      advisingContact?: string;
+      links?: Array<{ label?: string; url?: string }>;
+    }
+
+    const parsed = aiResult.parsedJson as EnrichMajorResponse;
     if (!parsed || typeof parsed !== 'object') {
       return {
         success: false,
@@ -1084,8 +1173,13 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
       const majorsData = await GetMajorsForUniversity(effectiveUniversityId);
       if (majorsData && majorsData.length) {
         const names = majorsData
-          .map((m: any) => m.name?.trim())
-          .filter(Boolean)
+          .map((m) => {
+            if (m && typeof m === 'object' && 'name' in m && typeof m.name === 'string') {
+              return m.name.trim();
+            }
+            return undefined;
+          })
+          .filter((name): name is string => Boolean(name))
           .slice(0, 400);
         if (names.length) {
           majorsCatalogSnippet = `ALLOWED_MAJORS_LIST (choose only from these; prefer closest alignment):\n- ${names.join('\n- ')}`;
@@ -1124,12 +1218,12 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
       return { success: false, message: aiResult.message, rawText: aiResult.rawText, requestId: aiResult.requestId ?? undefined };
     }
 
-    const parsed = aiResult.parsedJson as any;
+    const parsed = aiResult.parsedJson as MajorRecommendationsResponse;
     if (!parsed || !Array.isArray(parsed.majors)) {
       return { success: false, message: 'Model returned unexpected shape (majors missing)', rawText: aiResult.rawText, requestId: aiResult.requestId ?? undefined };
     }
 
-    const majors = parsed.majors.slice(0, 3).map((m: any) => {
+    const majors = parsed.majors.slice(0, 3).map((m) => {
       const name = String(m.name ?? 'Unnamed Major');
       const code = typeof m.code === 'string' && m.code.trim()
         ? m.code.trim().toLowerCase()
@@ -1201,9 +1295,9 @@ JSON Shape:
     if (!aiResult.success) {
       return { success: false, message: aiResult.message, rawText: aiResult.rawText ?? undefined, requestId: aiResult.requestId ?? undefined };
     }
-    const parsed = aiResult.parsedJson as any;
+    const parsed = aiResult.parsedJson as MinorAuditResponse;
     const outMinors: Array<{ id: string; name: string; reason: string }> = Array.isArray(parsed?.minors)
-      ? parsed.minors.map((m: any) => {
+      ? parsed.minors.map((m) => {
           let idCandidate: string | undefined;
           if (typeof m.id === 'string' && m.id.trim()) {
             idCandidate = m.id.trim();
@@ -1261,8 +1355,9 @@ Return valid JSON only with shape: { "reply": string, "category": "student" | "n
     const aiResult = await executeJsonPrompt({ prompt_name: 'chatbot_message', prompt, model: args.model || 'gpt-5-mini', max_output_tokens: 1200 });
 
     const fallback = 'I can help with academic, career, or student life questions. For other topics, please reach out to your advisor or campus support resources.';
-    const reply = aiResult.success && aiResult.parsedJson && typeof (aiResult.parsedJson as any).reply === 'string'
-      ? String((aiResult.parsedJson as any).reply)
+    const parsedResponse = aiResult.parsedJson as ChatbotResponse;
+    const reply = aiResult.success && parsedResponse && typeof parsedResponse.reply === 'string'
+      ? String(parsedResponse.reply)
       : (aiResult.rawText || fallback);
 
     // Log to ai_responses with session_id
