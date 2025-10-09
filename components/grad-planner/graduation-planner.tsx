@@ -80,7 +80,7 @@ export default function GraduationPlanner({
   const [events, setEvents] = useState<Event[]>([]);
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [newEventType, setNewEventType] = useState<'Major/Minor Application' | 'Internship'>('Major/Minor Application');
+  const [newEventType, setNewEventType] = useState<'Major/Minor Application' | 'Internship' | 'Study Abroad'>('Major/Minor Application');
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventAfterTerm, setNewEventAfterTerm] = useState<number>(1);
 
@@ -326,8 +326,9 @@ export default function GraduationPlanner({
       degree,
       gradSemester,
       terms,
+      events,
     };
-  }, [plan, currentPlanData]);
+  }, [plan, currentPlanData, events]);
 
   if (!planData || planData.length === 0) {
     return (
@@ -415,7 +416,16 @@ export default function GraduationPlanner({
 
             {/* Display terms with events between them */}
             {isSpaceView ? (
-              <SpaceView plan={spaceViewData} />
+              <SpaceView
+                plan={spaceViewData}
+                isEditMode={isEditMode}
+                onEditEvent={handleOpenEventDialog}
+                onDeleteEvent={handleDeleteEvent}
+                currentPlanData={currentPlanData}
+                modifiedTerms={modifiedTerms}
+                movedCourses={movedCourses}
+                onMoveCourse={moveCourse}
+              />
             ) : (
               <DetailView
                 currentPlanData={currentPlanData}

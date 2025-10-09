@@ -8,10 +8,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EventIcon from '@mui/icons-material/Event';
 import WorkIcon from '@mui/icons-material/Work';
+import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 
 interface Event {
   id: string;
-  type: 'Major/Minor Application' | 'Internship';
+  type: 'Major/Minor Application' | 'Internship' | 'Study Abroad';
   title: string;
   afterTerm: number;
 }
@@ -31,8 +32,14 @@ export function EventCard({
   onEdit,
   onDelete,
 }: EventCardProps) {
-  const eventColor = event.type === 'Internship' ? '#9C27B0' : '#ff9800';
-  const EventIconComponent = event.type === 'Internship' ? WorkIcon : EventIcon;
+  const eventColor =
+    event.type === 'Internship' ? '#9C27B0' :
+    event.type === 'Study Abroad' ? '#2196F3' :
+    '#ff9800';
+  const EventIconComponent =
+    event.type === 'Internship' ? WorkIcon :
+    event.type === 'Study Abroad' ? FlightTakeoffIcon :
+    EventIcon;
 
   if (variant === 'grid') {
     return (

@@ -29,7 +29,7 @@ interface Course {
 
 interface Event {
   id: string;
-  type: 'Major/Minor Application' | 'Internship';
+  type: 'Major/Minor Application' | 'Internship' | 'Study Abroad';
   title: string;
   afterTerm: number;
 }
@@ -37,13 +37,13 @@ interface Event {
 interface EventDialogProps {
   open: boolean;
   editingEvent: Event | null;
-  eventType: 'Major/Minor Application' | 'Internship';
+  eventType: 'Major/Minor Application' | 'Internship' | 'Study Abroad';
   eventTitle: string;
   eventAfterTerm: number;
   planData: Term[];
   onClose: () => void;
   onSave: () => void;
-  onTypeChange: (type: 'Major/Minor Application' | 'Internship') => void;
+  onTypeChange: (type: 'Major/Minor Application' | 'Internship' | 'Study Abroad') => void;
   onTitleChange: (title: string) => void;
   onAfterTermChange: (afterTerm: number) => void;
 }
@@ -82,7 +82,7 @@ export function EventDialog({
             <Select
               value={eventType}
               label="Event Type"
-              onChange={(e) => onTypeChange(e.target.value as 'Major/Minor Application' | 'Internship')}
+              onChange={(e) => onTypeChange(e.target.value as 'Major/Minor Application' | 'Internship' | 'Study Abroad')}
               className="font-body"
               sx={{
                 '& .MuiOutlinedInput-notchedOutline': {
@@ -101,6 +101,9 @@ export function EventDialog({
               </MenuItem>
               <MenuItem value="Internship" className="font-body">
                 Internship
+              </MenuItem>
+              <MenuItem value="Study Abroad" className="font-body">
+                Study Abroad
               </MenuItem>
             </Select>
           </FormControl>

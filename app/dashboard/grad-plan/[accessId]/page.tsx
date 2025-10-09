@@ -377,7 +377,7 @@ export default function EditGradPlanPage() {
   const isStudent = userRole === "student";
 
   return (
-    <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
+    <Box sx={{ p: 3, maxWidth: '1600px', mx: 'auto' }}>
       {/* Header with back button */}
       <Box sx={{ mb: 4 }}>
         <Button

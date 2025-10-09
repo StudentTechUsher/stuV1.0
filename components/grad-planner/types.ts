@@ -7,7 +7,7 @@ export interface Course {
 
 export interface Event {
   id: string;
-  type: 'Major/Minor Application' | 'Internship';
+  type: 'Major/Minor Application' | 'Internship' | 'Study Abroad';
   title: string;
   afterTerm: number;
 }

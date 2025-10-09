@@ -9,6 +9,8 @@ import majors from "@/data/majors.json"; // Import majors JSON
 import minors from "@/data/minors.json"; // Import minors JSON
 import { Snackbar, Alert, Button, FormControlLabel, Radio, RadioGroup } from "@mui/material";
 import { Geist_Mono } from "next/font/google";
+import { X } from "lucide-react";
+import Image from "next/image";
 
 // Validation Schema
 const schema = yup.object().shape({
@@ -38,6 +40,7 @@ export function SubmitEmailForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [showSecondMajor, setShowSecondMajor] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Watch values for dynamic fields
   const numberOfMinors = watch("numberOfMinors");
@@ -64,7 +67,7 @@ export function SubmitEmailForm() {
       const responseData = await response.json();
       if (!response.ok) throw new Error(responseData.error || "Failed to send email.");
 
-      showSnackbar("Your request has been sent successfully!", "success");
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Error submitting form:", error);
       showSnackbar("Something went wrong. Please try again.", "error");
@@ -178,12 +181,59 @@ export function SubmitEmailForm() {
         </button>
       </form>
 
-      {/* Snackbar Component */}
+      {/* Snackbar Component for Errors */}
       <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={handleCloseSnackbar}>
         <Alert onClose={handleCloseSnackbar} severity={snackbar.severity as "success" | "error"} sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-300">
+            {/* Close button */}
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Content */}
+            <div className="flex flex-col items-center text-center space-y-4">
+              {/* Icon */}
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+                <Image
+                  src="/stu_icon_black.png"
+                  alt="stu. logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
+              </div>
+
+              {/* Message */}
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  You just joined the stu. V1 Waitlist!
+                </h2>
+                <p className="text-gray-600">
+                  We'll be in touch soon with updates on your access.
+                </p>
+              </div>
+
+              {/* Close button */}
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="mt-4 w-full bg-primary hover:bg-primary-hover text-zinc-900 font-medium py-2.5 rounded-md transition-all"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
