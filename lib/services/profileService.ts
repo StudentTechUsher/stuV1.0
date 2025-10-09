@@ -1,3 +1,21 @@
+/**
+ * CLIENT-SIDE Profile Service
+ *
+ * This module contains client-side functions that use the browser-based Supabase client.
+ * These functions rely on Row Level Security (RLS) for authorization.
+ *
+ * WHEN TO USE:
+ * - Import these functions in Client Components (components with "use client")
+ * - Use when you need to interact with Supabase from the browser
+ * - User authentication is handled via browser session
+ *
+ * DO NOT USE:
+ * - In Server Components or Server Actions
+ * - For that, use @/lib/services/profileService.server.ts instead
+ *
+ * @see profileService.server.ts - Server-side equivalent
+ */
+
 import { supabase } from '@/lib/supabaseClient';
 
 export async function getUserUniversityId(userId: string): Promise<number> {

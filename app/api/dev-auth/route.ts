@@ -24,8 +24,12 @@ export async function POST(req: NextRequest) {
     }
     // Decode payload (no signature verification in dev!)
     const payloadJson = Buffer.from(parts[1], 'base64').toString('utf8')
-    let payload: any
-    try { payload = JSON.parse(payloadJson) } catch { return NextResponse.json({ error: 'Invalid JWT payload' }, { status: 400 }) }
+    let payload: { sub?: string; email?: string } | null = null
+    try {
+      payload = JSON.parse(payloadJson) as { sub?: string; email?: string }
+    } catch {
+      return NextResponse.json({ error: 'Invalid JWT payload' }, { status: 400 })
+    }
     if (!payload?.sub) {
       return NextResponse.json({ error: 'Missing sub claim' }, { status: 400 })
     }
@@ -33,8 +37,9 @@ export async function POST(req: NextRequest) {
     // HttpOnly so client code cannot accidentally leak it; path root; session-scoped
     res.cookies.set('DEV_BYPASS_JWT', token, { httpOnly: true, sameSite: 'lax', path: '/', secure: false })
     return res
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

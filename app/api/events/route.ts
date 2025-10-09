@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ValidationError } from 'yup';
 import { createClient } from '@supabase/supabase-js';
+import {
+  VALIDATION_OPTIONS,
+  transcriptParsedEventSchema,
+  type TranscriptParsedEventInput,
+} from '@/lib/validation/schemas';
 
 // Service role client to bypass RLS for trusted webhook data
 function createServiceRoleClient() {
@@ -17,23 +23,6 @@ function createServiceRoleClient() {
     },
   });
 }
-
-type ParsedCourse = {
-  term: string;
-  subject: string;
-  number: string;
-  title: string;
-  credits: number;
-  grade?: string;
-  confidence?: number;
-};
-
-type TranscriptParsedEvent = {
-  type: 'user.transcript.parsed';
-  userId: string;
-  documentId: string;
-  courses: ParsedCourse[];
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +47,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Parse event payload
-    const event = (await request.json()) as TranscriptParsedEvent;
+    const rawEvent = await request.json();
+    let event: TranscriptParsedEventInput;
+    try {
+      event = await transcriptParsedEventSchema.validate(rawEvent, VALIDATION_OPTIONS);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return NextResponse.json(
+          { error: 'Invalid webhook payload', details: error.errors },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
 
     // 3. Validate event type
     if (event.type !== 'user.transcript.parsed') {

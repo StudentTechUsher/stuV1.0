@@ -1,4 +1,29 @@
 "use server";
+
+/**
+ * SERVER-SIDE Profile Service
+ *
+ * This module contains server-side functions that run only on the server.
+ * These functions use the server-based Supabase client with cookie-based authentication.
+ *
+ * WHEN TO USE:
+ * - Call these functions in React Server Components
+ * - Use in Server Actions
+ * - When you need server-side data fetching with direct server access
+ * - Can bypass RLS if needed (though not recommended without authorization checks)
+ *
+ * DO NOT USE:
+ * - In Client Components (components with "use client")
+ * - For that, use @/lib/services/profileService.ts instead
+ *
+ * WHY SEPARATE FILES:
+ * - Next.js App Router requires strict separation between client and server code
+ * - The "use server" directive cannot be mixed with client-side imports
+ * - Prevents bundling server-only code (like next/headers) into client bundles
+ *
+ * @see profileService.ts - Client-side equivalent
+ */
+
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import type { AdvisorStudentRow } from './profileService';
 

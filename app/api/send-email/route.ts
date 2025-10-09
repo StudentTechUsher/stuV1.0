@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { ValidationError } from 'yup';
+import {
+  VALIDATION_OPTIONS,
+  sendEmailSchema,
+  type SendEmailInput,
+} from '@/lib/validation/schemas';
+import { logError } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +18,18 @@ export async function POST(req: NextRequest) {
     
     const resend = new Resend(apiKey);
     
-    const { firstName, lastName, email, university, major, secondMajor, minors } = await req.json();
+    const body = await req.json();
+    let data: SendEmailInput;
+    try {
+      data = await sendEmailSchema.validate(body, VALIDATION_OPTIONS);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return NextResponse.json({ error: "Invalid request payload", details: error.errors }, { status: 400 });
+      }
+      throw error;
+    }
+
+    const { firstName, lastName, email, university, major, secondMajor, minors } = data;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !university || !major) {
@@ -47,7 +65,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: "Email sent successfully!" }, { status: 200 });
 
   } catch (error) {
-    console.error("Error sending email:", error);
+    // CRITICAL: Do NOT log error object - may contain email body with PII (names, emails, majors)
+    logError("Email sending failed", error, {
+      action: 'send_email',
+    });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
