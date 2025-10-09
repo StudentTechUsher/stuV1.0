@@ -46,8 +46,93 @@ type Role = "student" | "advisor" | "admin";
 
 const ROLE_MAP: Record<string, Role> = {
   1: "admin",
-  2: "advisor", 
+  2: "advisor",
   3: "student",
+};
+
+const isTermArray = (value: unknown): value is Term[] => {
+  return Array.isArray(value) && value.every((item) => {
+    if (typeof item !== 'object' || item === null) return false;
+    const termValue = (item as { term?: unknown }).term;
+    return typeof termValue === 'string';
+  });
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const extractPlanArray = (details: unknown): Term[] | null => {
+  let rawDetails: unknown = details;
+
+  if (typeof rawDetails === 'string') {
+    try {
+      rawDetails = JSON.parse(rawDetails);
+    } catch {
+      rawDetails = null;
+    }
+  }
+
+  if (isTermArray(rawDetails)) {
+    return rawDetails;
+  }
+
+  if (isRecord(rawDetails)) {
+    const candidate = rawDetails;
+    const candidateKeys: Array<keyof typeof candidate> = ['plan', 'semesters', 'terms'];
+    for (const key of candidateKeys) {
+      if (isTermArray(candidate[key])) {
+        return candidate[key] as Term[];
+      }
+    }
+    const nested = candidate.plan_details;
+    if (isRecord(nested) && isTermArray(nested.plan)) {
+      return nested.plan;
+    }
+  }
+
+  return null;
+};
+
+const normalizePlanDetails = (
+  details: unknown,
+  options: { est_grad_sem?: string; est_grad_date?: string } = {}
+): Record<string, unknown> => {
+  let normalized: unknown = details;
+
+  if (typeof normalized === 'string') {
+    try {
+      normalized = JSON.parse(normalized);
+    } catch {
+      normalized = {};
+    }
+  }
+
+  if (Array.isArray(normalized)) {
+    normalized = { plan: normalized };
+  }
+
+  if (isRecord(normalized)) {
+    const result = { ...normalized };
+    if (Array.isArray(result.plan)) {
+      // already in expected shape
+    } else if (Array.isArray(result.semesters)) {
+      result.plan = result.semesters;
+    } else if (Array.isArray(result.terms)) {
+      result.plan = result.terms;
+    } else if (isRecord(result.plan_details) && Array.isArray(result.plan_details.plan)) {
+      result.plan = result.plan_details.plan;
+    } else if (!result.plan) {
+      result.plan = [];
+    }
+    if (options.est_grad_sem) result.est_grad_sem = options.est_grad_sem;
+    if (options.est_grad_date) result.est_grad_date = options.est_grad_date;
+    return result;
+  }
+
+  return {
+    plan: [],
+    ...options,
+  };
 };
 
 export default function EditGradPlanPage() {
@@ -57,7 +142,6 @@ export default function EditGradPlanPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPlanData, setCurrentPlanData] = React.useState<Term[] | null>(null);
-  const [currentEvents, setCurrentEvents] = React.useState<Event[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = React.useState(true);
   const [userRole, setUserRole] = React.useState<Role | null>(null);
@@ -108,9 +192,12 @@ export default function EditGradPlanPage() {
 
   const handleSave = (updatedPlan: Term[], events: Event[]) => {
     setCurrentPlanData(updatedPlan);
-    setCurrentEvents(events);
-    showSnackbar('Plan saved! Events are saved locally.', 'success');
-    // TODO: In the future, save events to database
+    const eventCount = events.length;
+    const eventMessage = eventCount > 0
+      ? `Plan saved! ${eventCount} event${eventCount === 1 ? '' : 's'} stored locally for now.`
+      : 'Plan saved!';
+    showSnackbar(eventMessage, 'success');
+    // TODO: In the future, persist events to database
   };
 
   // Check if user has access to this graduation plan
@@ -176,18 +263,7 @@ export default function EditGradPlanPage() {
         setGradPlan(planData);
 
         // Initialize currentPlanData with the fetched plan so Submit is enabled for new plans
-        let raw: any = planData.plan_details;
-        if (typeof raw === 'string') {
-          try { raw = JSON.parse(raw); } catch {/* leave as-is */}
-        }
-        // Extract the plan array from various possible shapes
-        let planArray: Term[] | null = null;
-        if (raw && typeof raw === 'object') {
-          if (Array.isArray(raw.plan)) planArray = raw.plan;
-          else if (Array.isArray(raw.semesters)) planArray = raw.semesters;
-          else if (Array.isArray(raw.terms)) planArray = raw.terms;
-          else if (Array.isArray(raw.plan_details?.plan)) planArray = raw.plan_details.plan;
-        }
+        const planArray = extractPlanArray(planData.plan_details);
         if (planArray) {
           setCurrentPlanData(planArray);
         }
@@ -432,31 +508,13 @@ export default function EditGradPlanPage() {
       {/* Plan Details */}
       <Paper elevation={0} sx={{ p: 4, mb: 4, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
         {(() => {
-          // Normalize various possible stored shapes of plan_details
-          let raw: any = gradPlan.plan_details;
-
-          // If stored as raw JSON string (legacy), parse it
-            if (typeof raw === 'string') {
-            try { raw = JSON.parse(raw); } catch {/* leave raw as-is */}
-          }
-
-          // If raw is directly an array, wrap it in an object
-          if (Array.isArray(raw)) {
-            raw = { plan: raw };
-          }
-          // Unwrap if root contains known keys
-          else if (raw && typeof raw === 'object') {
-            if (Array.isArray(raw.plan)) raw = { ...raw, plan: raw.plan }; // keep existing data
-            else if (Array.isArray(raw.semesters)) raw = { ...raw, plan: raw.semesters };
-            else if (Array.isArray(raw.terms)) raw = { ...raw, plan: raw.terms };
-            else if (Array.isArray(raw.plan_details?.plan)) raw = { ...raw, plan: raw.plan_details.plan };
-          }
-
-          // Add graduation timeline from the gradPlan object
-          raw = { ...raw, est_grad_sem: gradPlan.est_grad_sem, est_grad_date: gradPlan.est_grad_date };
+          const raw = normalizePlanDetails(gradPlan.plan_details, {
+            est_grad_sem: gradPlan.est_grad_sem,
+            est_grad_date: gradPlan.est_grad_date,
+          });
           return (
             <GraduationPlanner
-              plan={raw as Record<string, unknown>}
+              plan={raw}
               isEditMode={isEditMode}
               onPlanUpdate={handlePlanUpdate}
               onSave={handleSave}

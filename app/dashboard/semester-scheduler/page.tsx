@@ -10,7 +10,7 @@ type GradPlanRecord = {
   id: string;
   plan_name?: string;
   is_active?: boolean;
-  plan_details?: any;
+  plan_details?: unknown;
   [key: string]: unknown;
 };
 
