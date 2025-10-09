@@ -80,6 +80,9 @@ export default function StudentPage() {
             <Link href="#faq" className="text-base font-medium hover:text-primary transition-colors">
               FAQ
             </Link>
+            <Link href="/about-us" className="text-base font-medium hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-md px-2 py-1">
+              About Us
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-6">
@@ -129,6 +132,13 @@ export default function StudentPage() {
               >
                 Student Stories
               </Link>
+              <Link
+                href="/about-us"
+                className="text-base font-medium hover:text-primary"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                About Us
+              </Link>
               <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
                 <Link
                   href="/"
@@ -164,8 +174,8 @@ export default function StudentPage() {
                 <div className="flex flex-col justify-center space-y-5 max-w-full">
                   <div className="space-y-2 max-w-full">
                     {/* First heading */}
-                    <h1 className="text-black text-[clamp(2rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
-                      <div className="whitespace-nowrap">Your Degree, Your Schedule</div>
+                    <h1 className="text-black text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
+                      <div className="sm:whitespace-nowrap">Your Degree, Your Schedule</div>
                       <div className="flex items-center gap-2 whitespace-nowrap">
                         Seamless with
                         <Image
@@ -192,7 +202,7 @@ export default function StudentPage() {
 
                   {/* CTA Button */}
                   <div className="flex flex-col gap-2 min-[400px]:flex-row mt-4">
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-semibold px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-semibold px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                       <Link href="#cta" className="flex items-center">
                         Try{" "}
                         <Image
@@ -335,11 +345,11 @@ export default function StudentPage() {
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
                   Ready to Simplify Your Academic Journey?
                 </h2>
-               <p className="text-zinc-600 text-center whitespace-normal md:whitespace-nowrap">
+               <p className="text-zinc-600 text-center px-4">
                   Join students across the country who are already using stu to plan their perfect semester.
                 </p>
               </div>
-              <div className="w-full max-w-md space-y-4">
+              <div className="w-full max-w-md space-y-4 px-4">
                 <SubmitEmailForm />
                 <p className="text-xs text-center text-zinc-500">
                   By joining, you agree to our{" "}
