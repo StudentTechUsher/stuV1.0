@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from 'react';
-import TranscriptUpload from './TranscriptUpload';
+import TranscriptUpload, { type ParseTranscriptReport } from './TranscriptUpload';
 import ParsedCoursesTable from './ParsedCoursesTable';
 
 export default function TranscriptUploadSection() {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [showParsedCourses, setShowParsedCourses] = useState(false);
 
-  const handleUploadSuccess = (report: any) => {
-    const docId = report?.documentId ?? report?.document_id ?? null;
+  const handleUploadSuccess = (report: ParseTranscriptReport) => {
+    const docId = (typeof report?.documentId === 'string'
+      ? report.documentId
+      : typeof report?.document_id === 'string'
+        ? report.document_id
+        : null);
     if (docId) {
       setDocumentId(docId);
       setShowParsedCourses(true);

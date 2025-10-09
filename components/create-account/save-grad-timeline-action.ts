@@ -48,8 +48,9 @@ export async function saveGradTimeline(payload: GradTimelinePayload): Promise<{ 
 
     console.log("Successfully saved grad timeline");
     return { ok: true };
-  } catch (e: any) {
-    console.error("Unexpected error:", e);
-    return { ok: false, error: e?.message || "Unexpected error" };
+  } catch (error: unknown) {
+    console.error("Unexpected error:", error);
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    return { ok: false, error: message };
   }
 }

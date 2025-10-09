@@ -4,35 +4,13 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Menu, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { SubmitEmailForm } from '@/components/ui/submit-email-form'  // Changed to named import
-import type { ProgramRow } from '@/types/program'
 import { useUniversityTheme } from "@/contexts/university-theme-context"
 
 export default function StudentPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  // List of minor programs (filtered from program table)
-  const [minors, setMinors] = useState<ProgramRow[]>([])
   const { university } = useUniversityTheme()
-
-  useEffect(() => {
-    const fetchMinors = async () => {
-      try {
-        // Attempt to include university filter if stored locally
-        const storedUniversityId = typeof window !== 'undefined' ? localStorage.getItem('universityId') : null
-        const params = new URLSearchParams()
-        params.set('type', 'minor')
-        if (storedUniversityId) params.set('universityId', storedUniversityId)
-        const response = await fetch(`/api/programs?${params.toString()}`)
-        if (!response.ok) throw new Error('Failed to load minors')
-        const data: ProgramRow[] = await response.json()
-        setMinors(data)
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    fetchMinors()
-  }, [])
 
   return (
     <div className="flex min-h-screen flex-col">

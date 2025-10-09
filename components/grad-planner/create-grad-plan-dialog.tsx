@@ -21,13 +21,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
 import AddIcon from '@mui/icons-material/Add';
-import SchoolIcon from '@mui/icons-material/School';
-import BalanceIcon from '@mui/icons-material/Scale';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { ProgramRow } from '@/types/program';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
-import { type SelectionMode } from '@/lib/selectionMode';
 import {
   parseRequirementsFromGenEd,
   parseProgramRequirements,
@@ -164,7 +159,6 @@ const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string
 const [electiveError, setElectiveError] = useState<string | null>(null);
 
 // GenEd sequencing strategy: use passed-in value
-type GenEdStrategy = 'early' | 'balanced';
 const genEdStrategy = initialGenEdStrategy;
 
 const resetElectiveDraft = () => {
@@ -207,7 +201,7 @@ const handleRemoveElective = (id: string) => {
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
-  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms, selectedProgramIds]);
+  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms]);
 
   // course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
@@ -216,7 +210,7 @@ const handleRemoveElective = (id: string) => {
       map[req.subtitle] = collectCourses(req.blocks);
     }
     return map;
-  }, [collectCourses, requirements]);
+  }, [requirements]);
 
   // ensure state array length matches dropdown count for each requirement
   const ensureSlots = useCallback((subtitle: string, count: number) => {
@@ -302,7 +296,7 @@ const handleRemoveElective = (id: string) => {
     }, 500); // 500ms delay
 
     return () => clearTimeout(timer);
-  }, [open, requirements, requirementCoursesMap, getDropdownCount]);
+  }, [open, requirements, requirementCoursesMap]);
 
   // Auto-population effect for program requirements (runs when programs are selected/changed)
   useEffect(() => {
@@ -345,7 +339,7 @@ const handleRemoveElective = (id: string) => {
     }, 300); // 300ms delay for program selection changes
 
     return () => clearTimeout(timer);
-  }, [open, selectedPrograms, programRequirements, selectedProgramIds]);
+  }, [open, selectedPrograms, programRequirements]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -560,7 +554,7 @@ const handleRemoveElective = (id: string) => {
     }
 
     return selectedClasses;
-  }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap]);
+  }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap, genEdProgramIds, genEdStrategy, userElectives]);
 
   // Handle plan creation
   const handleCreatePlan = async () => {
@@ -574,12 +568,6 @@ const handleRemoveElective = (id: string) => {
     setPlanCreationError(null);
 
     try {
-      // Attach the effective mode to the payload
-      const payloadWithMode = {
-        ...generateSelectedClassesJson,
-        selectionMode: effectiveMode
-      };
-
       // Step 1: Send the course data to AI for semester organization
       // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
       const strategyText = genEdStrategy === 'early'
@@ -800,7 +788,7 @@ const handleRemoveElective = (id: string) => {
             <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary' }}>
               {loadingMessage.subtitle}
               <br />
-              This may take a moment. Please don't close this window.
+              This may take a moment. Please don&apos;t close this window.
             </Typography>
           </Box>
         )}

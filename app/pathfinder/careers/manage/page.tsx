@@ -24,7 +24,8 @@ export default function ManageCareersPage() {
     try {
       await publishCareer(id);
       window.location.reload(); // Simple refresh for PoC
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       alert('Failed to publish career');
     }
   };

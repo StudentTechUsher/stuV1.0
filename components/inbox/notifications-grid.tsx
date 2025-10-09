@@ -6,13 +6,19 @@ import { Box } from '@mui/material';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
+type NotificationContext = {
+  movedCourses?: unknown[];
+  hasSuggestions?: boolean;
+  [key: string]: unknown;
+};
+
 export type NotificationRow = {
   id: string;
   message: string;
   url: string | null;
   created_utc: string;
   type: string;
-  context_json?: any;
+  context_json?: NotificationContext;
 };
 
 interface NotificationsGridProps {
@@ -41,15 +47,15 @@ export function NotificationsGrid({ rows }: NotificationsGridProps) {
         .from('notifications')
         .update({ is_read: true, read_utc: new Date().toISOString() })
         .eq('id', row.id);
-    } catch (e) {
-      console.error('Failed to mark notification read', e);
+    } catch (error) {
+      console.error('Failed to mark notification read', error);
     } finally {
       if (row?.url) {
         // Store notification context in localStorage for grad plan edits
         if (row.type === 'edit grad plan' && row.context_json) {
           const changeData = {
-            movedCourses: row.context_json.movedCourses || [],
-            hasSuggestions: row.context_json.hasSuggestions || false
+            movedCourses: Array.isArray(row.context_json.movedCourses) ? row.context_json.movedCourses : [],
+            hasSuggestions: Boolean(row.context_json.hasSuggestions)
           };
           localStorage.setItem('advisorChanges', JSON.stringify(changeData));
         }

@@ -21,8 +21,19 @@ export function SavePlanDialog({ open, onOpenChange }: SavePlanDialogProps) {
   const semesters = usePlanStore((state) => state.semesters)
   const [downloading, setDownloading] = React.useState(false)
 
-  const generatePlanData = () => {
-    const plan: Record<string, any> = {}
+  type PlanCourse = {
+    code: string
+    name: string
+    credits: number
+  }
+
+  type PlanSummary = {
+    courses: PlanCourse[]
+    totalCredits: number
+  }
+
+  const generatePlanData = (): Record<string, PlanSummary> => {
+    const plan: Record<string, PlanSummary> = {}
     semesters.forEach((semester) => {
       plan[semester.term] = {
         courses: semester.courses.map((c) => ({
@@ -30,13 +41,13 @@ export function SavePlanDialog({ open, onOpenChange }: SavePlanDialogProps) {
           name: c.title,
           credits: c.credits,
         })),
-        "total credits": semester.courses.reduce((sum, c) => sum + c.credits, 0),
+        totalCredits: semester.courses.reduce((sum, c) => sum + c.credits, 0),
       }
     })
     return plan
   }
 
-  const generatePdf = (planData: Record<string, any>) => {
+  const generatePdf = (planData: Record<string, PlanSummary>) => {
     const doc = new jsPDF()
     const marginTop = 20
     const marginLeft = 20
@@ -48,7 +59,7 @@ export function SavePlanDialog({ open, onOpenChange }: SavePlanDialogProps) {
     doc.text("Four Year Plan", marginLeft, y)
     y += 10
   
-    Object.entries(planData).forEach(([term, data]: any) => {
+    Object.entries(planData).forEach(([term, data]) => {
       if (y + 10 > pageHeight) {
         doc.addPage()
         y = marginTop
@@ -58,7 +69,7 @@ export function SavePlanDialog({ open, onOpenChange }: SavePlanDialogProps) {
       doc.text(`${term}`, marginLeft, y)
       y += lineHeight + 2
   
-      data.courses.forEach((course: any) => {
+      data.courses.forEach((course) => {
         if (y + lineHeight > pageHeight) {
           doc.addPage()
           y = marginTop
@@ -74,7 +85,7 @@ export function SavePlanDialog({ open, onOpenChange }: SavePlanDialogProps) {
         y = marginTop
       }
   
-      doc.text(`Total Credits: ${data["total credits"]}`, marginLeft + 5, y)
+      doc.text(`Total Credits: ${data.totalCredits}`, marginLeft + 5, y)
       y += lineHeight + 4
     })
   

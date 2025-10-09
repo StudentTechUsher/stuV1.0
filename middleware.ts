@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedPath && !session) {
     const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
+    redirectUrl.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search)
     return NextResponse.redirect(redirectUrl)
   }
 
@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
   const isAuthPath = authPaths.includes(request.nextUrl.pathname)
 
   if (isAuthPath && session) {
-    const redirectTo = request.nextUrl.searchParams.get('redirect') || '/dashboard'
+    const redirectTo = request.nextUrl.searchParams.get('next') || '/dashboard'
     return NextResponse.redirect(new URL(redirectTo, request.url))
   }
 

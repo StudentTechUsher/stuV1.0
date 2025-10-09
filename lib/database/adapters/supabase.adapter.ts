@@ -22,46 +22,47 @@ import type {
 /**
  * Wraps Supabase's query builder to match our interface
  */
-class SupabaseQueryBuilder<T = any> implements QueryBuilder<T> {
+class SupabaseQueryBuilder<T = Record<string, unknown>> implements QueryBuilder<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private supabaseQuery: any) {}
 
   select(columns?: string): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.select(columns));
   }
 
-  insert(data: any | any[]): QueryBuilder<T> {
-    return new SupabaseQueryBuilder(this.supabaseQuery.insert(data));
+  insert(data: Partial<T> | Partial<T>[]): QueryBuilder<T> {
+    return new SupabaseQueryBuilder(this.supabaseQuery.insert(data as Record<string, unknown> | Record<string, unknown>[]));
   }
 
-  update(data: any): QueryBuilder<T> {
-    return new SupabaseQueryBuilder(this.supabaseQuery.update(data));
+  update(data: Partial<T>): QueryBuilder<T> {
+    return new SupabaseQueryBuilder(this.supabaseQuery.update(data as Record<string, unknown>));
   }
 
   delete(): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.delete());
   }
 
-  eq(column: string, value: any): QueryBuilder<T> {
+  eq(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.eq(column, value));
   }
 
-  neq(column: string, value: any): QueryBuilder<T> {
+  neq(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.neq(column, value));
   }
 
-  gt(column: string, value: any): QueryBuilder<T> {
+  gt(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.gt(column, value));
   }
 
-  gte(column: string, value: any): QueryBuilder<T> {
+  gte(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.gte(column, value));
   }
 
-  lt(column: string, value: any): QueryBuilder<T> {
+  lt(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.lt(column, value));
   }
 
-  lte(column: string, value: any): QueryBuilder<T> {
+  lte(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.lte(column, value));
   }
 
@@ -73,7 +74,7 @@ class SupabaseQueryBuilder<T = any> implements QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.ilike(column, pattern));
   }
 
-  in(column: string, values: any[]): QueryBuilder<T> {
+  in(column: string, values: unknown[]): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.in(column, values));
   }
 
@@ -81,7 +82,7 @@ class SupabaseQueryBuilder<T = any> implements QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.is(column, value));
   }
 
-  contains(column: string, value: any): QueryBuilder<T> {
+  contains(column: string, value: unknown): QueryBuilder<T> {
     return new SupabaseQueryBuilder(this.supabaseQuery.contains(column, value));
   }
 
@@ -115,7 +116,7 @@ class SupabaseQueryBuilder<T = any> implements QueryBuilder<T> {
 
   async then<TResult1 = DatabaseResponse<T[]>, TResult2 = never>(
     onfulfilled?: ((value: DatabaseResponse<T[]>) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
     try {
       const result = await this.supabaseQuery;
@@ -123,13 +124,13 @@ class SupabaseQueryBuilder<T = any> implements QueryBuilder<T> {
         data: result.data,
         error: result.error ? this.mapError(result.error) : null,
       };
-      return onfulfilled ? onfulfilled(response) : (response as any);
+      return onfulfilled ? onfulfilled(response) : (response as TResult1);
     } catch (error) {
       return onrejected ? onrejected(error) : Promise.reject(error);
     }
   }
 
-  private mapError(error: any): DatabaseError {
+  private mapError(error: { message?: string; code?: string; details?: string; hint?: string }): DatabaseError {
     return {
       message: error.message || 'Database error',
       code: error.code,
@@ -143,13 +144,13 @@ class SupabaseQueryBuilder<T = any> implements QueryBuilder<T> {
  * Wraps Supabase's auth to match our interface
  */
 class SupabaseAuth implements DatabaseAuth {
-  constructor(private supabaseAuth: any) {}
+  constructor(private supabaseAuth: SupabaseClient['auth']) {}
 
   async getUser() {
     const result = await this.supabaseAuth.getUser();
     return {
       data: {
-        user: result.data.user ? this.mapUser(result.data.user) : null,
+        user: result.data.user ? this.mapUser(result.data.user as unknown as { id: string; email?: string; [key: string]: unknown }) : null,
       },
       error: result.error ? this.mapError(result.error) : null,
     };
@@ -158,7 +159,7 @@ class SupabaseAuth implements DatabaseAuth {
   async signIn(credentials: { email: string; password: string }): Promise<AuthResponse> {
     const result = await this.supabaseAuth.signInWithPassword(credentials);
     return {
-      user: result.data.user ? this.mapUser(result.data.user) : null,
+      user: result.data.user ? this.mapUser(result.data.user as unknown as { id: string; email?: string; [key: string]: unknown }) : null,
       error: result.error ? this.mapError(result.error) : null,
     };
   }
@@ -172,8 +173,8 @@ class SupabaseAuth implements DatabaseAuth {
 
   onAuthStateChange(callback: (user: DatabaseUser | null) => void) {
     const { data } = this.supabaseAuth.onAuthStateChange(
-      (_event: string, session: any) => {
-        callback(session?.user ? this.mapUser(session.user) : null);
+      (_event, session) => {
+        callback(session?.user ? this.mapUser(session.user as unknown as { id: string; email?: string; [key: string]: unknown }) : null);
       }
     );
     return {
@@ -181,15 +182,15 @@ class SupabaseAuth implements DatabaseAuth {
     };
   }
 
-  private mapUser(user: any): DatabaseUser {
+  private mapUser(user: { id: string; email?: string; [key: string]: unknown }): DatabaseUser {
     return {
+      ...user,
       id: user.id,
       email: user.email,
-      ...user,
     };
   }
 
-  private mapError(error: any): DatabaseError {
+  private mapError(error: { message?: string; code?: string; details?: string; hint?: string }): DatabaseError {
     return {
       message: error.message || 'Auth error',
       code: error.code,
@@ -209,11 +210,11 @@ export class SupabaseDatabaseAdapter implements DatabaseClient {
     this.auth = new SupabaseAuth(supabase.auth);
   }
 
-  from<T = any>(table: string): QueryBuilder<T> {
+  from<T = Record<string, unknown>>(table: string): QueryBuilder<T> {
     return new SupabaseQueryBuilder<T>(this.supabase.from(table));
   }
 
-  async rpc(functionName: string, params?: any): Promise<DatabaseResponse<any>> {
+  async rpc<T = unknown>(functionName: string, params?: Record<string, unknown>): Promise<DatabaseResponse<T>> {
     const result = await this.supabase.rpc(functionName, params);
     return {
       data: result.data,
@@ -221,7 +222,7 @@ export class SupabaseDatabaseAdapter implements DatabaseClient {
     };
   }
 
-  private mapError(error: any): DatabaseError {
+  private mapError(error: { message?: string; code?: string; details?: string; hint?: string }): DatabaseError {
     return {
       message: error.message || 'Database error',
       code: error.code,

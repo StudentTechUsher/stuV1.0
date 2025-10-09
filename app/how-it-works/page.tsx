@@ -134,7 +134,13 @@ export default function StudentPage() {
                     </div>
                     <h3 className="text-xl font-bold">{step.title}</h3>
                     <p className="text-zinc-600">{step.description}</p>
-                    <img src={step.image}/>
+                    <Image
+                      src={step.image}
+                      alt={`${step.title} illustration`}
+                      width={320}
+                      height={240}
+                      className="h-40 w-auto object-contain"
+                    />
                   </div>
                 ))}
               </div>

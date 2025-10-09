@@ -26,7 +26,7 @@ const createMockSupabaseClient = (): SupabaseClient => {
       }),
     },
     rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-  } as any;
+  } as unknown as SupabaseClient;
 };
 
 describe('SupabaseDatabaseAdapter', () => {
@@ -46,8 +46,8 @@ describe('SupabaseDatabaseAdapter', () => {
     });
 
     it('should chain select() method', async () => {
-      const mockQuery = (mockSupabase.from as any)();
-      mockQuery.then.mockImplementation((resolve: any) =>
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
+      mockQuery.then.mockImplementation((resolve: (value: unknown) => unknown) =>
         Promise.resolve({ data: [{ id: 1 }], error: null }).then(resolve)
       );
 
@@ -59,7 +59,7 @@ describe('SupabaseDatabaseAdapter', () => {
     });
 
     it('should chain multiple methods', async () => {
-      const mockQuery = (mockSupabase.from as any)();
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
 
       adapter.from('program').select('*').eq('id', 1).order('created_at');
 
@@ -69,9 +69,9 @@ describe('SupabaseDatabaseAdapter', () => {
     });
 
     it('should handle errors in queries', async () => {
-      const mockQuery = (mockSupabase.from as any)();
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
       const mockError = { message: 'Test error', code: '500' };
-      mockQuery.then.mockImplementation((resolve: any) =>
+      mockQuery.then.mockImplementation((resolve: (value: unknown) => unknown) =>
         Promise.resolve({ data: null, error: mockError }).then(resolve)
       );
 
@@ -90,7 +90,7 @@ describe('SupabaseDatabaseAdapter', () => {
   describe('auth - Authentication', () => {
     it('should get current user', async () => {
       const mockUser = { id: '123', email: 'test@example.com' };
-      (mockSupabase.auth.getUser as any).mockResolvedValue({
+      (mockSupabase.auth.getUser as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { user: mockUser },
         error: null,
       });
@@ -103,7 +103,7 @@ describe('SupabaseDatabaseAdapter', () => {
 
     it('should handle sign in', async () => {
       const mockUser = { id: '123', email: 'test@example.com' };
-      (mockSupabase.auth.signInWithPassword as any).mockResolvedValue({
+      (mockSupabase.auth.signInWithPassword as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { user: mockUser },
         error: null,
       });
@@ -129,7 +129,7 @@ describe('SupabaseDatabaseAdapter', () => {
 
     it('should handle auth errors', async () => {
       const mockError = { message: 'Invalid credentials', code: 'auth_error' };
-      (mockSupabase.auth.getUser as any).mockResolvedValue({
+      (mockSupabase.auth.getUser as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { user: null },
         error: mockError,
       });
@@ -149,7 +149,7 @@ describe('SupabaseDatabaseAdapter', () => {
   describe('rpc() - Remote Procedure Calls', () => {
     it('should call RPC function', async () => {
       const mockResult = { count: 10 };
-      (mockSupabase.rpc as any).mockResolvedValue({
+      (mockSupabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: mockResult,
         error: null,
       });
@@ -165,7 +165,7 @@ describe('SupabaseDatabaseAdapter', () => {
 
     it('should handle RPC errors', async () => {
       const mockError = { message: 'Function not found', code: 'P0001' };
-      (mockSupabase.rpc as any).mockResolvedValue({
+      (mockSupabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: null,
         error: mockError,
       });
@@ -184,7 +184,7 @@ describe('SupabaseDatabaseAdapter', () => {
 
   describe('Query Builder Methods', () => {
     it('should support insert()', () => {
-      const mockQuery = (mockSupabase.from as any)();
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
       const data = { name: 'Computer Science', university_id: 1 };
 
       adapter.from('program').insert(data);
@@ -193,7 +193,7 @@ describe('SupabaseDatabaseAdapter', () => {
     });
 
     it('should support update()', () => {
-      const mockQuery = (mockSupabase.from as any)();
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
       const updates = { name: 'Updated Name' };
 
       adapter.from('program').update(updates);
@@ -202,7 +202,7 @@ describe('SupabaseDatabaseAdapter', () => {
     });
 
     it('should support delete()', () => {
-      const mockQuery = (mockSupabase.from as any)();
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
 
       adapter.from('program').delete();
 
@@ -210,7 +210,7 @@ describe('SupabaseDatabaseAdapter', () => {
     });
 
     it('should support single()', async () => {
-      const mockQuery = (mockSupabase.from as any)();
+      const mockQuery = (mockSupabase.from as ReturnType<typeof vi.fn>)();
       const mockData = { id: 1, name: 'Test' };
       mockQuery.single.mockResolvedValue({ data: mockData, error: null });
 

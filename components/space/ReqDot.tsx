@@ -1,5 +1,3 @@
-import { cn } from '@/lib/utils';
-
 // Helper function to get color for a requirement type (matches graduation-planner.tsx logic)
 function getRequirementColor(requirement: string): string {
   const req = requirement.toLowerCase().trim();

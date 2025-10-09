@@ -86,7 +86,7 @@ export function MajorPivotForm({ currentMajor, onSubmit, onCancel, className, ma
       </div>
 
       <div>
-        <label htmlFor="notWorking" className="block text-xs font-medium text-gray-600 mb-1">What isn't working for you?</label>
+        <label htmlFor="notWorking" className="block text-xs font-medium text-gray-600 mb-1">What isn&apos;t working for you?</label>
         <textarea
           id="notWorking"
           value={values.notWorking}

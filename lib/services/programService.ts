@@ -18,7 +18,7 @@ export async function fetchProgramsByUniversity(universityId: number): Promise<P
     return (data ?? []) as ProgramRow[];
 }
 
-export default async function GetProgramsForUniversity(university_id: number) {
+export default async function GetProgramsForUniversity(university_id: number): Promise<ProgramRow[]> {
 
     const { data, error } = await db
       .from('program')
@@ -31,10 +31,10 @@ export default async function GetProgramsForUniversity(university_id: number) {
       return [];
     }
 
-    return data || [];
+    return (data || []) as ProgramRow[];
 }
 
-export async function GetMajorsForUniversity(university_id: number) {
+export async function GetMajorsForUniversity(university_id: number): Promise<ProgramRow[]> {
   const { data, error } = await db
     .from('program')
     .select('*')
@@ -47,10 +47,10 @@ export async function GetMajorsForUniversity(university_id: number) {
     return [];
   }
 
-  return data || [];
+  return (data || []) as ProgramRow[];
 }
 
-export async function GetGenEdsForUniversity(university_id: number) {
+export async function GetGenEdsForUniversity(university_id: number): Promise<ProgramRow[]> {
     const { data, error } = await db
       .from('program')
       .select('*')
@@ -62,7 +62,7 @@ export async function GetGenEdsForUniversity(university_id: number) {
       return [];
     }
 
-    return data || [];
+    return (data || []) as ProgramRow[];
 }
 
 /**
@@ -136,7 +136,7 @@ export async function createProgram(programData: Omit<ProgramRow, 'id' | 'create
   return data as ProgramRow;
 }
 
-export async function GetMinorsForUniversity(university_id: number) {
+export async function GetMinorsForUniversity(university_id: number): Promise<ProgramRow[]> {
   const { data, error } = await db
     .from('program')
     .select('*')
@@ -148,5 +148,5 @@ export async function GetMinorsForUniversity(university_id: number) {
     console.error('❌ Error fetching minors:', error);
     return [];
   }
-  return data || [];
+  return (data || []) as ProgramRow[];
 }

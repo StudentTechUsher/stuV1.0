@@ -102,27 +102,23 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
     return [];
   };
 
-  // Parse the plan details
-  const parsePlanData = (): Term[] => {
+  const parsed = React.useMemo(() => {
     if (!planDetails) return [];
-    
-    // Handle different possible formats
+
     if (Array.isArray(planDetails)) {
       return planDetails as Term[];
     }
-    
+
     if (typeof planDetails === 'object' && planDetails !== null) {
       return parseObjectData(planDetails as Record<string, unknown>);
     }
-    
+
     if (typeof planDetails === 'string') {
       return parseStringData(planDetails);
     }
-    
-    return [];
-  };
 
-  const parsed = React.useMemo(() => parsePlanData(), [planDetails]);
+    return [];
+  }, [planDetails]);
   const planData = planOverride ?? parsed;
 
   const handleMoveCourse = (fromTermIdx: number, courseIdx: number, toTermIdx: number) => {
@@ -165,6 +161,11 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
   if (!planData || planData.length === 0) {
     return (
       <Box>
+        {studentName && (
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            Graduation Plan Preview for {studentName}
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           No graduation plan data to display, or the data format is not recognized.
         </Typography>
@@ -189,6 +190,11 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
 
   return (
     <Box>  
+      {studentName && (
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          Graduation Plan Preview for {studentName}
+        </Typography>
+      )}
       {/* Programs List */}
       {programs && programs.length > 0 && (
         <Box sx={{ mb: 3 }}>

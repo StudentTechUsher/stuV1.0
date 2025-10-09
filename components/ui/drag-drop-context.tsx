@@ -9,6 +9,8 @@ import {
   useSensor,
   useSensors,
   DragOverEvent,
+  DragStartEvent,
+  DragEndEvent,
   CollisionDetection,
   pointerWithin,
   rectIntersection,
@@ -34,7 +36,6 @@ interface DragDropContextProps {
 }
 
 export function DragDropContext({ children }: DragDropContextProps) {
-  const [activeDroppable, setActiveDroppable] = React.useState<string | null>(null)
   const { 
     activeCourseId, 
     setActiveCourseId, 
@@ -58,27 +59,27 @@ export function DragDropContext({ children }: DragDropContextProps) {
   )
 
   // DnD handlers
-  const handleDragStart = (event: any) => {
-    setActiveCourseId(event.active.id)
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveCourseId(String(event.active.id))
   }
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event
-    setActiveDroppable(over?.id as string ?? null)
   }
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    setActiveDroppable(null)
 
     if (!over) return
 
-    const activeCourse = getCourse(active.id)
+    const activeId = String(active.id)
+    const activeCourse = getCourse(activeId)
     if (!activeCourse || !activeCourse.semesterTerm) return
 
     // Get the semester term from the over ID (either a course or semester)
-    const overCourse = getCourse(over.id)
-    const overSemesterTerm = overCourse?.semesterTerm ?? over.id
+    const overId = String(over.id)
+    const overCourse = getCourse(overId)
+    const overSemesterTerm = overCourse?.semesterTerm ?? overId
 
     // If dropping into a different semester or reordering within the same semester
     if (overCourse) {
@@ -87,7 +88,7 @@ export function DragDropContext({ children }: DragDropContextProps) {
       const overIndex = semester?.courses.findIndex(c => c.code === over.id) ?? -1
       
       moveCourse(
-        active.id,
+        activeId,
         activeCourse.semesterTerm,
         overSemesterTerm,
         overIndex
@@ -95,7 +96,7 @@ export function DragDropContext({ children }: DragDropContextProps) {
     } else {
       // Dropping directly onto a semester
       moveCourse(
-        active.id,
+        activeId,
         activeCourse.semesterTerm,
         overSemesterTerm
       )

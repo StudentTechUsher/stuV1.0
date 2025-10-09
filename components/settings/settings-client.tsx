@@ -9,11 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Loader2, User as UserIcon } from 'lucide-react';
 
-interface Profile {
+type Profile = {
   id: string;
   role_id: string;
-  [key: string]: any;
-}
+} & Record<string, unknown>;
 
 interface SettingsClientProps {
   user: User;

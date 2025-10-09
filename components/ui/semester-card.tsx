@@ -20,6 +20,18 @@ interface SemesterCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
 }
 
+interface CourseChildProps {
+  courseCode: string
+}
+
+function isCourseElement(child: React.ReactNode): child is React.ReactElement<CourseChildProps> {
+  if (!React.isValidElement(child)) {
+    return false
+  }
+  const props = child.props as Record<string, unknown>
+  return typeof props.courseCode === "string"
+}
+
 export function SemesterCard({
   term,
   children,
@@ -31,7 +43,7 @@ export function SemesterCard({
   const isOverLimit = isSemesterOverLimit(term)
 
   // Set up droppable area
-  const { setNodeRef, isOver, active } = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: term,
     data: {
       type: 'semester',
@@ -41,9 +53,9 @@ export function SemesterCard({
   })
 
   // Get course IDs for the sortable context
-  const courseIds = React.Children.toArray(children).map(
-    (child) => (child as any).props.courseCode
-  )
+  const courseIds = React.Children.toArray(children)
+    .filter(isCourseElement)
+    .map((child) => child.props.courseCode)
 
   return (
     <Card

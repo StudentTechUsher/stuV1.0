@@ -1,26 +1,29 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import majors from "@/data/majors.json"; // Import majors JSON
 import minors from "@/data/minors.json"; // Import minors JSON
-import { Snackbar, Alert, Button, FormControlLabel, Radio, RadioGroup } from "@mui/material";
-import { Geist_Mono } from "next/font/google";
+import { Snackbar, Alert, Button } from "@mui/material";
 
 // Validation Schema
-const schema = yup.object().shape({
-  firstName: yup.string().required("First Name is required"),
-  lastName: yup.string().required("Last Name is required"),
-  university: yup.string().required("University Name is required"),
-  email: yup.string().email("Invalid email").required("University Email is required"),
-  major: yup.string().required("Desired Major is required"),
-  secondMajor: yup.string().notRequired(),
-  numberOfMinors: yup.number().min(0).max(3).required(),
-  minors: yup.array().of(yup.string()).max(3, "You can select up to 3 minors"),
-});
+const schema = yup
+  .object({
+    firstName: yup.string().required("First Name is required"),
+    lastName: yup.string().required("Last Name is required"),
+    university: yup.string().required("University Name is required"),
+    email: yup.string().email("Invalid email").required("University Email is required"),
+    major: yup.string().required("Desired Major is required"),
+    secondMajor: yup.string().optional().default(""),
+    numberOfMinors: yup.number().min(0).max(3).required().default(0),
+    minors: yup.array().of(yup.string().required()).max(3, "You can select up to 3 minors").default([]),
+  })
+  .required();
+
+type FormValues = yup.InferType<typeof schema>;
 
 export function SubmitEmailForm() {
   const {
@@ -28,10 +31,12 @@ export function SubmitEmailForm() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm({
+  } = useForm<FormValues>({
     resolver: yupResolver(schema),
     defaultValues: {
       minors: [],
+      secondMajor: "",
+      numberOfMinors: 0,
     },
   });
 
@@ -40,7 +45,11 @@ export function SubmitEmailForm() {
   const [showSecondMajor, setShowSecondMajor] = useState(false);
 
   // Watch values for dynamic fields
-  const numberOfMinors = watch("numberOfMinors");
+  const rawNumberOfMinors = watch("numberOfMinors");
+  const numberOfMinors =
+    typeof rawNumberOfMinors === "number" && Number.isFinite(rawNumberOfMinors)
+      ? Math.max(0, rawNumberOfMinors)
+      : 0;
 
   const showSnackbar = (message: string, severity: "success" | "error") => {
     setSnackbar({ open: true, message, severity });
@@ -50,7 +59,7 @@ export function SubmitEmailForm() {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     console.log("Submitting form data:", JSON.stringify(data, null, 2));
 
@@ -145,7 +154,7 @@ export function SubmitEmailForm() {
 
         {/* Ask how many minors the user wants */}
         <div>
-          <select {...register("numberOfMinors")} className="w-full border border-gray-300 p-2 rounded-md">
+          <select {...register("numberOfMinors", { valueAsNumber: true })} className="w-full border border-gray-300 p-2 rounded-md">
             <option value="">Select Number of Minors</option>
             <option value="0">0</option>
             <option value="1">1</option>

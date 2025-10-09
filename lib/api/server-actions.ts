@@ -27,9 +27,9 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
 
   try {
     // Get the current user from session
-    let t0 = t("start");
+    t("start");
     const user = await getVerifiedUser();
-    t0 = t("getVerifiedUser", t0);
+    t("getVerifiedUser");
     if (!user) {
       console.error("❌ Auth error: user not authenticated");
       throw new Error("User not authenticated");

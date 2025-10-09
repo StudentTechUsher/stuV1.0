@@ -56,6 +56,13 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/login", origin));
   }
 
+  // Ensure profile exists (safe operation - won't overwrite existing profiles)
+  // This is needed for magic link and new OAuth users
+  if (user.email) {
+    const { ensureProfileExists } = await import('@/lib/services/profileService.server');
+    await ensureProfileExists(user.id, user.email);
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("onboarded, authorization_agreed")

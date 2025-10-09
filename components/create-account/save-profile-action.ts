@@ -92,8 +92,9 @@ export async function saveProfileAndPreferences(payload: SavePayload): Promise<S
     }
 
     return { ok: true };
-  } catch (e: any) {
-    console.error("[saveProfileAndPreferences] unexpected", e);
-    return { ok: false, error: e?.message || "Unexpected error" };
+  } catch (error: unknown) {
+    console.error("[saveProfileAndPreferences] unexpected", error);
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    return { ok: false, error: message };
   }
 }

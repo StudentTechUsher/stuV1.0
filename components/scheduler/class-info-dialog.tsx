@@ -15,7 +15,7 @@ import {
   InputLabel,
   Divider,
 } from "@mui/material";
-import { X, BookOpen, User, MapPin, Clock, CreditCard, RefreshCw, Zap } from "lucide-react";
+import { X, User, MapPin, Clock, CreditCard, RefreshCw, Zap } from "lucide-react";
 import type { SchedulerEvent } from "./scheduler-calendar";
 import type { Course } from "./schedule-generator";
 import { useState } from "react";
@@ -124,25 +124,6 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
       onClose();
     }
   };
-
-  const getRequirementColor = (requirement: string) => {
-    switch (requirement?.toUpperCase()) {
-      case "MAJOR":
-        return { bg: "var(--primary-15)", text: "var(--primary)", border: "var(--primary)" };
-      case "MINOR":
-        return { bg: "var(--action-info)", text: "white", border: "var(--action-info)" };
-      case "GE":
-        return { bg: "var(--action-edit)", text: "white", border: "var(--action-edit)" };
-      case "ELECTIVE":
-        return { bg: "var(--muted)", text: "var(--foreground)", border: "var(--border)" };
-      case "REL":
-        return { bg: "var(--action-cancel)", text: "white", border: "var(--action-cancel)" };
-      default:
-        return { bg: "var(--muted)", text: "var(--foreground)", border: "var(--border)" };
-    }
-  };
-
-  const requirementStyle = getRequirementColor(event.professor || ""); // Using professor field for requirement since it's available
 
   return (
     <Dialog

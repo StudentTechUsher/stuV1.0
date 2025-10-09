@@ -5,8 +5,18 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type UploadStatus = "idle" | "uploading" | "parsing" | "parsed" | "failed";
 
+export interface ParseTranscriptReport {
+  courses_found?: number;
+  courses_upserted?: number;
+  confidence_stats?: {
+    low_confidence_count?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 interface TranscriptUploadProps {
-  onUploadSuccess?: (report: any) => void;
+  onUploadSuccess?: (report: ParseTranscriptReport) => void;
 }
 
 export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadProps) {
@@ -14,7 +24,7 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [parseReport, setParseReport] = useState<any | null>(null);
+  const [parseReport, setParseReport] = useState<ParseTranscriptReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (file: File) => {
@@ -139,9 +149,9 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
               <p className="text-sm text-muted-foreground">
                 {parseReport.courses_found || parseReport.courses_upserted} courses added
               </p>
-              {parseReport.confidence_stats?.low_confidence_count > 0 && (
+              {(parseReport.confidence_stats?.low_confidence_count ?? 0) > 0 && (
                 <p className="text-sm text-orange-600 mt-1">
-                  ⚠️ {parseReport.confidence_stats.low_confidence_count} courses need review
+                  ⚠️ {parseReport.confidence_stats?.low_confidence_count ?? 0} courses need review
                 </p>
               )}
               <button

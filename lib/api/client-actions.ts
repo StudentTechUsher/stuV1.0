@@ -82,8 +82,8 @@ export async function createGraduationPlan(planData?: unknown): Promise<{ succes
 }
 
 export async function submitGradPlanForApproval(
-    studentId: number,
-    gradPlanData: unknown
+    _studentId: number,
+    _gradPlanData: unknown
 ): Promise<{ success: boolean; message: string }> {
     
     try {

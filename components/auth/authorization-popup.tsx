@@ -28,6 +28,7 @@ export default function AuthorizationPopup({
   const handleGoBack = () => {
     setShowError(true);
     setTimeout(() => setShowError(false), 3000);
+    onGoBack();
   };
 
   return (
@@ -76,7 +77,7 @@ export default function AuthorizationPopup({
             </ul>
 
             <p className="mt-6">
-              By clicking "Agree," I acknowledge that I have read and understood this authorization and
+              By clicking &quot;Agree,&quot; I acknowledge that I have read and understood this authorization and
               voluntarily give STU LLC permission to access and use my academic records as described.
             </p>
           </div>

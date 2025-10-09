@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Palette, Upload, Check, RotateCcw, ExternalLink } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 export default function UniversityEditor() {
   const [universities, setUniversities] = useState<University[]>([]);
@@ -34,7 +33,6 @@ export default function UniversityEditor() {
   });
 
   const { updateUniversityTheme, resetToDefault } = useUniversityTheme();
-  const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
   const [toastMessage, setToastMessage] = useState<{
@@ -198,7 +196,7 @@ export default function UniversityEditor() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${selectedUniversity.subdomain}-logo-${Date.now()}.${fileExt}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('university-logos')
         .upload(fileName, file);
 
@@ -240,9 +238,7 @@ export default function UniversityEditor() {
     setIsExtractingFromUrl(true);
     try {
       // Use a simple regex to find hex colors in the webpage
-      const response = await fetch(brandUrl, { mode: 'no-cors' });
-
-      // Since we can't read the response with no-cors, we'll use a proxy or fallback
+      // Since we can&apos;t read the response with no-cors, we&apos;ll use a proxy or fallback
       // For now, let's create a simple API route to fetch and parse
       const apiResponse = await fetch('/api/extract-colors', {
         method: 'POST',
@@ -287,7 +283,7 @@ export default function UniversityEditor() {
     }));
     showToast({
       title: "Color Assigned",
-      description: `${color} assigned to ${field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+          description: `${color} assigned to ${field.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}`,
     });
   };
 
@@ -386,7 +382,7 @@ export default function UniversityEditor() {
           <span className="text-sm font-normal text-muted-foreground">(Dev Only)</span>
         </CardTitle>
         <CardDescription>
-          Select and customize university themes. Changes affect the entire university's branding.
+          Select and customize university themes. Changes affect the entire university&apos;s branding.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -421,7 +417,7 @@ export default function UniversityEditor() {
                 </Label>
               </div>
               <p className="text-sm text-blue-700">
-                Paste a link to your university's brand guidelines page, and we'll automatically extract the main colors.
+                Paste a link to your university&apos;s brand guidelines page, and we&apos;ll automatically extract the main colors.
               </p>
               <div className="flex gap-2">
                 <Input

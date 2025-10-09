@@ -10,6 +10,8 @@ export default function DevAuthToggle() {
   const [token, setToken] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const toErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : String(error || 'Unknown error')
 
   if (!isDev) return null
 
@@ -21,8 +23,8 @@ export default function DevAuthToggle() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
       setStatus(`Impersonating ${data.email || data.userId}`)
-    } catch (e: any) {
-      setStatus('Error: ' + e.message)
+    } catch (error: unknown) {
+      setStatus('Error: ' + toErrorMessage(error))
     } finally {
       setLoading(false)
     }
@@ -34,8 +36,8 @@ export default function DevAuthToggle() {
     try {
       await fetch('/api/dev-auth', { method: 'DELETE' })
       setStatus('Bypass cleared')
-    } catch (e: any) {
-      setStatus('Error: ' + e.message)
+    } catch (error: unknown) {
+      setStatus('Error: ' + toErrorMessage(error))
     } finally {
       setLoading(false)
     }

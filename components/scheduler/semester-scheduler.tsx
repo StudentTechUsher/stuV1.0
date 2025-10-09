@@ -32,7 +32,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isGenerating] = useState(false);
 
   const getEventColor = (event: SchedulerEvent) => {
     if (event.type === "personal") {
@@ -96,19 +95,26 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
         const savedPersonalEvents = localStorage.getItem('scheduler-personal-events');
         if (savedPersonalEvents) {
           try {
-            const parsed = JSON.parse(savedPersonalEvents);
-            // Validate that events have the new format
-            const validEvents = parsed.filter((event: any) =>
-              event.dayOfWeek && event.startTime && event.endTime
-            );
-            setPersonalEvents(validEvents);
-          } catch (e) {
-            console.warn('Invalid personal events in localStorage, clearing...');
+            const parsed: unknown = JSON.parse(savedPersonalEvents);
+            if (Array.isArray(parsed)) {
+              const validEvents = parsed.filter((event): event is SchedulerEvent => {
+                if (!event || typeof event !== 'object') return false;
+                const candidate = event as Partial<SchedulerEvent>;
+                return typeof candidate.dayOfWeek === 'number'
+                  && typeof candidate.startTime === 'string'
+                  && typeof candidate.endTime === 'string';
+              });
+              setPersonalEvents(validEvents);
+            } else {
+              setPersonalEvents([]);
+            }
+          } catch (parseError) {
+            console.warn('Invalid personal events in localStorage, clearing...', parseError);
             localStorage.removeItem('scheduler-personal-events');
           }
         }
-      } catch (err) {
-        console.error('Error loading courses:', err);
+    } catch (err) {
+      console.error('Error loading courses:', err);
         setError('Failed to load course data. Please refresh the page.');
       } finally {
         setIsLoading(false);
@@ -350,7 +356,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
             blockedEvents={personalEvents}
             onScheduleGenerated={handleScheduleGenerated}
             onScheduleSaved={handleScheduleSaved}
-            isGenerating={isGenerating}
           />
 
           <Paper elevation={0} sx={{ p: 2, borderRadius: 3 }}>
@@ -476,7 +481,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
             onClassEventClick={handleClassEventClick}
             onEventDrop={handleEventDrop}
             onSlotSelect={handleSlotSelect}
-            isGenerating={isGenerating}
             slotMinTime="08:00:00"
             slotMaxTime="20:00:00"
           />

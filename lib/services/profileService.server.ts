@@ -27,6 +27,56 @@
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import type { AdvisorStudentRow } from './profileService';
 
+/**
+ * AUTHORIZATION: SYSTEM ONLY (called from auth callback)
+ * Ensures a profile exists for a user. Creates one if it doesn't exist.
+ * This is a safe operation that won't overwrite existing profiles.
+ *
+ * @param userId - The auth user ID
+ * @param email - The user's email address
+ * @returns true if profile exists or was created, false on error
+ */
+export async function ensureProfileExists(userId: string, email: string): Promise<boolean> {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    // First check if profile already exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // Profile already exists, nothing to do
+    if (existingProfile) {
+      return true;
+    }
+
+    // Create new profile with minimal required fields
+    // Default role_id is 3 (student) - can be changed later by admins
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert({
+        id: userId,
+        email: email,
+        role_id: 3, // Default to student role
+        onboarded: false,
+        authorization_agreed: false
+      });
+
+    if (insertError) {
+      console.error('Error creating profile:', insertError);
+      return false;
+    }
+
+    console.log('✅ Created new profile for user:', userId);
+    return true;
+  } catch (error) {
+    console.error('Error in ensureProfileExists:', error);
+    return false;
+  }
+}
+
 /** Server-side variant to be called in RSC pages (avoids exposing multiple round trips client-side). */
 export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow[]> {
   try {
