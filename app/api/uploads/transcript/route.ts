@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadPdfToOpenAI, extractCoursesWithOpenAI } from '@/lib/openaiTranscript';
+import { logError, logInfo } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +60,10 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      logError('Storage upload failed', uploadError, {
+        userId: user.id,
+        action: 'storage_upload',
+      });
       return NextResponse.json(
         { error: 'Failed to upload file' },
         { status: 500 }
@@ -79,7 +83,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (dbError) {
-      console.error('Database insert error:', dbError);
+      logError('Database insert failed', dbError, {
+        userId: user.id,
+        action: 'document_insert',
+      });
       // Cleanup: delete uploaded file
       await supabase.storage.from('transcripts').remove([storagePath]);
       return NextResponse.json(
@@ -121,7 +128,11 @@ export async function POST(request: NextRequest) {
           }
 
           const parseReport = await parseResponse.json();
-          console.log('[Transcript Upload] Python parser report:', parseReport);
+          logInfo('Python parser completed', {
+            userId: user.id,
+            action: 'transcript_parse_python',
+            count: parseReport.courses_upserted || 0,
+          });
 
           coursesCount = parseReport.courses_upserted || 0;
 
@@ -162,11 +173,15 @@ export async function POST(request: NextRequest) {
 
         // Upload PDF to OpenAI
         const fileId = await uploadPdfToOpenAI(pdfBytes, `${document.id}.pdf`);
-        console.log('[Transcript Upload] OpenAI file_id:', fileId);
+        // Do NOT log fileId - it creates linkage between user and OpenAI
 
         // Extract courses using OpenAI
         const courses = await extractCoursesWithOpenAI(fileId);
-        console.log('[Transcript Upload] Extracted', courses.length, 'courses');
+        logInfo('Transcript parsing completed', {
+          userId: user.id,
+          action: 'transcript_parse',
+          count: courses.length,
+        });
 
         // Upsert courses into user_courses table
         for (const course of courses) {
@@ -185,7 +200,11 @@ export async function POST(request: NextRequest) {
             { onConflict: 'user_id,subject,number,term' }
           );
           if (upsertError) {
-            console.error('[Transcript Upload] Upsert error:', upsertError);
+            // CRITICAL: Do NOT log upsertError details - may contain course data (subject, number, grade)
+            logError('Course upsert failed', upsertError, {
+              userId: user.id,
+              action: 'course_upsert',
+            });
             throw upsertError;
           }
         }
@@ -198,13 +217,16 @@ export async function POST(request: NextRequest) {
 
         coursesCount = courses.length;
       }
-    } catch (parseError: any) {
+    } catch (parseError: unknown) {
       // Mark document as failed
       await supabase
         .from('documents')
         .update({ status: 'failed' })
         .eq('id', document.id);
-      console.error('[Transcript Upload] Parse failed:', parseError?.message || parseError);
+      logError('Transcript parsing failed', parseError, {
+        userId: user.id,
+        action: 'transcript_parse_failure',
+      });
 
       // Return failure status to client
       return NextResponse.json({
@@ -222,7 +244,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Transcript upload error:', error);
+    logError('Transcript upload error', error, {
+      action: 'transcript_upload',
+    });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

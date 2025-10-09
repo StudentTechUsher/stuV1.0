@@ -1,6 +1,8 @@
 // lib/openaiTranscript.ts
 // Server-side OpenAI integration for parsing transcript PDFs
 
+import { logError, logInfo } from './logger';
+
 export type ParsedCourse = {
   term: string | null;
   subject: string;
@@ -41,8 +43,11 @@ export async function uploadPdfToOpenAI(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    console.error('[OpenAI Files] Upload failed:', error);
+    await response.text(); // Consume response body
+    logError('OpenAI file upload failed', new Error('Upload failed'), {
+      httpStatus: response.status,
+      action: 'openai_file_upload',
+    });
     throw new Error(`OpenAI file upload failed: ${response.status}`);
   }
 
@@ -84,8 +89,11 @@ export async function extractCoursesWithOpenAI(
   });
 
   if (!assistantResponse.ok) {
-    const error = await assistantResponse.text();
-    console.error('[OpenAI] Assistant creation failed:', error);
+    await assistantResponse.text(); // Consume response body
+    logError('OpenAI assistant creation failed', new Error('Assistant creation failed'), {
+      httpStatus: assistantResponse.status,
+      action: 'openai_create_assistant',
+    });
     throw new Error(`Failed to create assistant: ${assistantResponse.status}`);
   }
 
@@ -114,8 +122,11 @@ export async function extractCoursesWithOpenAI(
     });
 
     if (!threadResponse.ok) {
-      const error = await threadResponse.text();
-      console.error('[OpenAI] Thread creation failed:', error);
+      await threadResponse.text(); // Consume response body
+      logError('OpenAI thread creation failed', new Error('Thread creation failed'), {
+        httpStatus: threadResponse.status,
+        action: 'openai_create_thread',
+      });
       throw new Error(`Failed to create thread: ${threadResponse.status}`);
     }
 
@@ -132,8 +143,11 @@ export async function extractCoursesWithOpenAI(
     });
 
     if (!runResponse.ok) {
-      const error = await runResponse.text();
-      console.error('[OpenAI] Run creation failed:', error);
+      await runResponse.text(); // Consume response body
+      logError('OpenAI run creation failed', new Error('Run creation failed'), {
+        httpStatus: runResponse.status,
+        action: 'openai_create_run',
+      });
       throw new Error(`Failed to create run: ${runResponse.status}`);
     }
 
@@ -189,7 +203,10 @@ export async function extractCoursesWithOpenAI(
       const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       parsed = JSON.parse(jsonStr);
     } catch (e) {
-      console.error('[OpenAI] Failed to parse response:', content);
+      // CRITICAL: Do NOT log 'content' - it contains PII from transcript (student names, grades, courses)
+      logError('Failed to parse OpenAI JSON response', e, {
+        action: 'openai_parse_json',
+      });
       throw new Error('Failed to parse OpenAI JSON response');
     }
 
@@ -199,6 +216,8 @@ export async function extractCoursesWithOpenAI(
     await fetch(`https://platform.openai.com/v1/assistants/${assistantId}`, {
       method: 'DELETE',
       headers,
-    }).catch(err => console.error('[OpenAI] Failed to delete assistant:', err));
+    }).catch(err => logError('Failed to delete OpenAI assistant', err, {
+      action: 'openai_delete_assistant',
+    }));
   }
 }

@@ -1,8 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ValidationError } from 'yup';
+import {
+  VALIDATION_OPTIONS,
+  extractColorsSchema,
+  type ExtractColorsInput,
+} from '@/lib/validation/schemas';
 
 export async function POST(request: NextRequest) {
   try {
-    const { url } = await request.json();
+    const body = await request.json();
+    let parsed: ExtractColorsInput;
+    try {
+      parsed = await extractColorsSchema.validate(body, VALIDATION_OPTIONS);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return NextResponse.json(
+          { error: 'Invalid URL payload', details: error.errors },
+          { status: 400 },
+        );
+      }
+      throw error;
+    }
+
+    const url = parsed.url;
 
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });

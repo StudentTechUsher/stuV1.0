@@ -10,6 +10,7 @@ import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateG
 import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { Term } from '@/components/grad-planner/types';
 
 interface GradPlanDetails {
   id: string;
@@ -29,6 +30,32 @@ const ROLE_MAP: Record<string, Role> = {
   3: "student",
 };
 
+const isTermArray = (value: unknown): value is Term[] => {
+  return Array.isArray(value) && value.every(item => {
+    if (typeof item !== 'object' || item === null) return false;
+    const termValue = (item as { term?: unknown }).term;
+    return typeof termValue === 'string';
+  });
+};
+
+const extractTermsFromPlanDetails = (details: unknown): Term[] => {
+  if (isTermArray(details)) {
+    return details;
+  }
+
+  if (typeof details === 'object' && details !== null) {
+    const candidate = details as Record<string, unknown>;
+    for (const key of ['plan', 'semesters', 'terms'] as const) {
+      const maybeTerms = candidate[key];
+      if (isTermArray(maybeTerms)) {
+        return maybeTerms;
+      }
+    }
+  }
+
+  return [];
+};
+
 export default function ApproveGradPlanPage() {
   const router = useRouter();
   const params = useParams();
@@ -39,7 +66,7 @@ export default function ApproveGradPlanPage() {
   const [suggestions, setSuggestions] = React.useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [editablePlan, setEditablePlan] = React.useState<any[] | null>(null); // normalized array of terms
+  const [editablePlan, setEditablePlan] = React.useState<Term[] | null>(null); // normalized array of terms
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
   const [snackbar, setSnackbar] = React.useState<{
@@ -181,16 +208,14 @@ export default function ApproveGradPlanPage() {
         if (!planData) {
           throw new Error('Graduation plan not found or no longer pending approval');
         }
-        
-  setGradPlan(planData);
-  // Normalize plan_details into array of terms (looking for plan/semesters/terms) and store editable copy
-  const raw = planData.plan_details as any;
-  let terms: any[] = [];
-  if (Array.isArray(raw)) terms = raw;
-  else if (raw?.plan && Array.isArray(raw.plan)) terms = raw.plan;
-  else if (raw?.semesters && Array.isArray(raw.semesters)) terms = raw.semesters;
-  else if (raw?.terms && Array.isArray(raw.terms)) terms = raw.terms;
-  setEditablePlan(JSON.parse(JSON.stringify(terms)));
+
+        setGradPlan(planData);
+        const terms = extractTermsFromPlanDetails(planData.plan_details);
+        const clonedTerms = terms.map((term) => ({
+          ...term,
+          courses: term.courses?.map(course => ({ ...course })),
+        }));
+        setEditablePlan(clonedTerms);
 
       } catch (e: unknown) {
         if (!active) return;

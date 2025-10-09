@@ -2,9 +2,16 @@
 
 // Centralized async server action wrappers. Each export must be an async function (Next.js requirement).
 
+import { ValidationError } from 'yup';
 import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
+import {
+    VALIDATION_OPTIONS,
+    courseSelectionPayloadSchema,
+    graduationPlanPayloadSchema,
+    organizePromptInputSchema,
+} from '@/lib/validation/schemas';
 import {
     fetchGradPlanForEditing as _fetchGradPlanForEditing,
     fetchGradPlanById as _fetchGradPlanById,
@@ -22,8 +29,22 @@ import {
 } from './programService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
-export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: any) {
-    return await OrganizeCoursesIntoSemesters_ServerAction(coursesData, prompt);
+export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: unknown) {
+    try {
+        const [validatedCourses, validatedPrompt] = await Promise.all([
+            courseSelectionPayloadSchema.validate(coursesData, VALIDATION_OPTIONS),
+            organizePromptInputSchema.validate(prompt, VALIDATION_OPTIONS),
+        ]);
+        return await OrganizeCoursesIntoSemesters_ServerAction(validatedCourses, validatedPrompt);
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return {
+                success: false,
+                message: `Invalid planner request: ${error.errors.join('; ')}`,
+            };
+        }
+        throw error;
+    }
 }
 
 // Decode access ID
@@ -95,12 +116,20 @@ export async function approveGradPlan(gradPlanId: string) {
     return await _approveGradPlan(gradPlanId);
 }
 
-export async function submitGradPlanForApproval(userId: string, planData: any, programIds: number[]) {
-    return await _submitGradPlanForApproval(userId, planData, programIds);
+export async function submitGradPlanForApproval(userId: string, planData: unknown, programIds: number[]) {
+    try {
+        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planData, VALIDATION_OPTIONS);
+        return await _submitGradPlanForApproval(userId, sanitizedPlan, programIds);
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return { success: false, message: error.errors.join('; ') };
+        }
+        throw error;
+    }
 }
 
 // Save (non-approval) plan edits
-export async function updateGradPlanDetailsAction(gradPlanId: string, planDetails: any) {
+export async function updateGradPlanDetailsAction(gradPlanId: string, planDetails: unknown) {
     // Advisor-only safeguard
     try {
         const supabaseSrv = await createSupabaseServerComponentClient();
@@ -119,11 +148,19 @@ export async function updateGradPlanDetailsAction(gradPlanId: string, planDetail
     } catch (e) {
         return { success: false, error: 'Authorization check failed' };
     }
-    return await _updateGradPlanDetails(gradPlanId, planDetails);
+    try {
+        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planDetails, VALIDATION_OPTIONS);
+        return await _updateGradPlanDetails(gradPlanId, sanitizedPlan);
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return { success: false, error: error.errors.join('; ') };
+        }
+        throw error;
+    }
 }
 
 // Save plan edits + advisor notes (suggestions) together
-export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: string, planDetails: any, advisorNotes: string) {
+export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: string, planDetails: unknown, advisorNotes: string) {
     // Enforce advisor-only access on server (most critical: suggestions/notes)
     try {
         const supabaseSrv = await createSupabaseServerComponentClient();
@@ -142,7 +179,19 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
     } catch (e) {
         return { success: false, error: 'Authorization check failed' };
     }
-    return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, planDetails, advisorNotes);
+    const trimmedNotes = advisorNotes?.trim() ?? '';
+    if (trimmedNotes.length > 4000) {
+        return { success: false, error: 'Advisor notes exceed 4000 characters' };
+    }
+    try {
+        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planDetails, VALIDATION_OPTIONS);
+        return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, sanitizedPlan, trimmedNotes);
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return { success: false, error: error.errors.join('; ') };
+        }
+        throw error;
+    }
 }
 
 // Program related

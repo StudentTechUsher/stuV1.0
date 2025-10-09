@@ -232,7 +232,7 @@ export default function AcademicHistoryPage() {
 				const match = course.code.match(/^([A-Z]+)\s*(\d+)$/i);
 				if (!match) continue;
 
-				const [_, subject, number] = match;
+				const [, subject, number] = match;
 
 				await supabase.from('user_courses').upsert({
 					user_id: userId,

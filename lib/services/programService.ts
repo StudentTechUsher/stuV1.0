@@ -1,5 +1,5 @@
 import { ProgramRow } from "@/types/program";
-import { supabase } from "../supabase";
+import { db } from "@/lib/database";
 
 /**
  * AUTHORIZED FOR ANONYMOUS USERS AND ABOVE
@@ -8,7 +8,7 @@ import { supabase } from "../supabase";
  * @returns 
  */
 export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
-    const { data, error } = await supabase
+    const { data, error } = await db
     .from('program')
     .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
     .eq('university_id', universityId)
@@ -19,8 +19,8 @@ export async function fetchProgramsByUniversity(universityId: number): Promise<P
 }
 
 export default async function GetProgramsForUniversity(university_id: number) {
-    
-    const { data, error } = await supabase
+
+    const { data, error } = await db
       .from('program')
       .select('*')
       .eq('university_id', university_id)
@@ -35,7 +35,7 @@ export default async function GetProgramsForUniversity(university_id: number) {
 }
 
 export async function GetMajorsForUniversity(university_id: number) {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('program')
     .select('*')
     .eq('university_id', university_id)
@@ -51,7 +51,7 @@ export async function GetMajorsForUniversity(university_id: number) {
 }
 
 export async function GetGenEdsForUniversity(university_id: number) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('program')
       .select('*')
       .eq('university_id', university_id)
@@ -70,7 +70,7 @@ export async function GetGenEdsForUniversity(university_id: number) {
  * Deletes a program by its ID
  */
 export async function deleteProgram(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await db
         .from('program')
         .delete()
         .eq('id', id);
@@ -83,7 +83,7 @@ export async function deleteProgram(id: string): Promise<void> {
  * Update ONLY the requirements blob for a program (does not touch other metadata)
  */
 export async function updateProgramRequirements(id: string, requirements: unknown): Promise<ProgramRow> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('program')
     .update({ requirements })
     .eq('id', id)
@@ -104,7 +104,7 @@ export async function updateProgram(id: string, updates: Partial<Omit<ProgramRow
     modified_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('program')
     .update(updateData)
     .eq('id', id)
@@ -126,7 +126,7 @@ export async function createProgram(programData: Omit<ProgramRow, 'id' | 'create
     modified_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('program')
     .insert(createData)
     .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
@@ -137,7 +137,7 @@ export async function createProgram(programData: Omit<ProgramRow, 'id' | 'create
 }
 
 export async function GetMinorsForUniversity(university_id: number) {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('program')
     .select('*')
     .eq('university_id', university_id)
