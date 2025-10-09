@@ -17,8 +17,7 @@ interface ParseRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: ParseRequest = await request.json();
-    const { path, userId: requestUserId } = body;
-    let userId = requestUserId;
+    let { path, userId } = body;
 
     if (!path) {
       return NextResponse.json(
