@@ -14,6 +14,74 @@ interface ParseRequest {
   userId?: string;
 }
 
+/**
+ * Handles fetch errors and returns appropriate error responses
+ */
+function handleFetchError(fetchError: unknown): NextResponse {
+  if (!(fetchError instanceof Error)) {
+    return NextResponse.json(
+      {
+        error: 'Failed to connect to transcript parser',
+        details: 'Unknown connection error',
+      },
+      { status: 503 }
+    );
+  }
+
+  const errorMessage = fetchError.message.toLowerCase();
+
+  if (errorMessage.includes('econnrefused') || errorMessage.includes('fetch failed')) {
+    console.error('❌ Transcript parser service is not running');
+    return NextResponse.json(
+      {
+        error: 'Transcript parsing service unavailable',
+        details: 'The transcript parser service is currently not running. Please ensure the FastAPI worker is started.',
+        suggestion: 'Start the parser: cd transcript-parser && uvicorn app.main:app --reload --port 8787',
+      },
+      { status: 503 }
+    );
+  }
+
+  if (errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
+    console.error('❌ Transcript parser service timed out');
+    return NextResponse.json(
+      {
+        error: 'Transcript parsing timed out',
+        details: 'The transcript parser took too long to respond. The file may be too large or the service may be overloaded.',
+        suggestion: 'Try again with a smaller file or wait a moment and retry.',
+      },
+      { status: 504 }
+    );
+  }
+
+  console.error('❌ Worker fetch error:', fetchError);
+  return NextResponse.json(
+    {
+      error: 'Failed to connect to transcript parser',
+      details: fetchError.message,
+    },
+    { status: 503 }
+  );
+}
+
+/**
+ * Calls the FastAPI worker to parse the transcript
+ */
+async function callWorkerService(path: string, userId: string): Promise<Response> {
+  return fetch(`${WORKER_URL}/parse`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      bucket: 'transcripts',
+      path,
+      user_id: userId,
+    }),
+    signal: AbortSignal.timeout(30000), // 30 second timeout
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: ParseRequest = await request.json();
@@ -52,19 +120,15 @@ export async function POST(request: NextRequest) {
 
     console.log('🧠 Parsing transcript for user:', targetUserId);
     console.log('📄 Full file path:', path);
+    console.log('🔗 Worker URL:', WORKER_URL);
 
-    // 🔹 Call your FastAPI worker
-    const workerResponse = await fetch(`${WORKER_URL}/parse`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        bucket: 'transcripts',
-        path,
-        user_id: targetUserId,
-      }),
-    });
+    // 🔹 Call your FastAPI worker with timeout
+    let workerResponse: Response;
+    try {
+      workerResponse = await callWorkerService(path, targetUserId);
+    } catch (fetchError) {
+      return handleFetchError(fetchError);
+    }
 
     if (!workerResponse.ok) {
       const errorText = await workerResponse.text();

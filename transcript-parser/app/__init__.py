@@ -1,1 +1,0 @@
-# FastAPI transcript parser service

@@ -83,7 +83,8 @@ export async function createGraduationPlan(planData?: unknown): Promise<{ succes
 
 export async function submitGradPlanForApproval(
     _studentId: number,
-    _gradPlanData: unknown
+    _gradPlanData: unknown,
+    _planName?: string
 ): Promise<{ success: boolean; message: string }> {
     
     try {

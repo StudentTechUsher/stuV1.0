@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper } from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper, TextField } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/services/server-actions';
+import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction, updateGradPlanNameAction } from '@/lib/services/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -21,6 +21,7 @@ interface GradPlanDetails {
   est_grad_sem?: string;
   est_grad_date?: string;
   advisor_notes: string | null;
+  plan_name: string | null;
 }
 
 interface Event {
@@ -149,6 +150,8 @@ export default function EditGradPlanPage() {
     movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
     hasSuggestions: boolean;
   } | null>(null);
+  const [planNameInput, setPlanNameInput] = React.useState('');
+  const [planNameError, setPlanNameError] = React.useState<string | null>(null);
 
   const isEditMode = true; // Always in edit mode for this page
 
@@ -259,8 +262,9 @@ export default function EditGradPlanPage() {
             return;
           }
         }
-
         setGradPlan(planData);
+        setPlanNameInput(planData.plan_name?.trim() ?? '');
+        setPlanNameError(null);
 
         // Initialize currentPlanData with the fetched plan so Submit is enabled for new plans
         const planArray = extractPlanArray(planData.plan_details);
@@ -296,6 +300,20 @@ export default function EditGradPlanPage() {
   const handleSaveChanges = async () => {
     if (!gradPlan || !currentPlanData) return;
 
+    const existingPlanName = typeof gradPlan.plan_name === 'string' ? gradPlan.plan_name.trim() : '';
+    const requiresPlanName = existingPlanName.length === 0;
+    const trimmedPlanName = planNameInput.trim();
+
+    if (requiresPlanName && trimmedPlanName.length === 0) {
+      setPlanNameError('Please provide a name for this graduation plan before submitting.');
+      showSnackbar('Please name your graduation plan before submitting.', 'error');
+      return;
+    }
+
+    if (requiresPlanName) {
+      setPlanNameError(null);
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -309,10 +327,29 @@ export default function EditGradPlanPage() {
         throw new Error('User session not found');
       }
 
-      const result = await submitGradPlanForApproval(session.user.id, currentPlanData, programIds);
+      const planNameToUse = existingPlanName || trimmedPlanName;
+
+      if (requiresPlanName) {
+        const nameResult = await updateGradPlanNameAction(gradPlan.id, planNameToUse);
+        if (!nameResult.success) {
+          const errorMessage = nameResult.error ?? 'Failed to update plan name.';
+          setPlanNameError(errorMessage);
+          showSnackbar(errorMessage, 'error');
+          setIsSubmitting(false);
+          return;
+        }
+        setGradPlan(prev => (prev ? { ...prev, plan_name: planNameToUse } : prev));
+        setPlanNameInput(planNameToUse);
+      }
+
+      const result = await submitGradPlanForApproval(session.user.id, currentPlanData, programIds, planNameToUse);
 
       if (result.success) {
         showSnackbar('Changes submitted for approval successfully!', 'success');
+        if (requiresPlanName && planNameToUse) {
+          setGradPlan(prev => (prev ? { ...prev, plan_name: planNameToUse } : prev));
+          setPlanNameInput(planNameToUse);
+        }
         // Optionally redirect back after a delay
         setTimeout(() => handleBack(), 2000);
       } else {
@@ -375,6 +412,13 @@ export default function EditGradPlanPage() {
 
   const studentName = `${gradPlan.student_first_name} ${gradPlan.student_last_name}`;
   const isStudent = userRole === "student";
+  const existingPlanName = typeof gradPlan.plan_name === 'string' ? gradPlan.plan_name.trim() : '';
+  const requiresPlanName = existingPlanName.length === 0;
+  const isPlanNameValid = !requiresPlanName || planNameInput.trim().length > 0;
+  const headerTitle = existingPlanName
+    ? `Edit ${existingPlanName}`
+    : 'Edit Graduation Plan';
+  const pageTitle = isStudent ? headerTitle : `Graduation Plan for ${studentName}`;
 
   return (
     <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
@@ -397,13 +441,16 @@ export default function EditGradPlanPage() {
         </Button>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h4" sx={{
-            fontFamily: '"Red Hat Display", sans-serif',
-            fontWeight: 800,
-            color: 'black',
-            fontSize: '2rem'
-          }}>
-            {isStudent ? 'Edit Graduation Plan' : `Graduation Plan for ${studentName}`}
+          <Typography
+            variant="h4"
+            sx={{
+              fontFamily: '"Red Hat Display", sans-serif',
+              fontWeight: 800,
+              color: 'black',
+              fontSize: '2rem'
+            }}
+          >
+            {pageTitle}
           </Typography>
           
           {isStudent && (
@@ -412,7 +459,7 @@ export default function EditGradPlanPage() {
                 variant="contained"
                 startIcon={<Save />}
                 onClick={handleSaveChanges}
-                disabled={isSubmitting || !currentPlanData}
+                disabled={isSubmitting || !currentPlanData || !isPlanNameValid}
                 sx={{
                   px: 3,
                   backgroundColor: 'var(--primary)',
@@ -462,6 +509,24 @@ export default function EditGradPlanPage() {
             </Box>
           )}
         </Box>
+
+        {isStudent && requiresPlanName && (
+          <TextField
+            label="Plan Name"
+            value={planNameInput}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+              setPlanNameInput(event.target.value);
+              if (planNameError) {
+                setPlanNameError(null);
+              }
+            }}
+            required
+            error={Boolean(planNameError)}
+            helperText={planNameError ?? 'Provide a name for this plan before submitting.'}
+            sx={{ maxWidth: 360, mt: 2 }}
+            inputProps={{ maxLength: 100 }}
+          />
+        )}
         
         <Typography variant="body2" color="text.secondary">
           Created: {new Date(gradPlan.created_at).toLocaleDateString('en-US', {

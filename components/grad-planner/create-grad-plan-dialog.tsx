@@ -22,6 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
 import AddIcon from '@mui/icons-material/Add';
 import type { ProgramRow } from '@/types/program';
+import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
 import {
   parseRequirementsFromGenEd,
@@ -56,6 +57,33 @@ interface Course {
   credits: Credits | number | string;
   prerequisite?: string;
 }
+
+type SelectedCourseEntry = {
+  code: string;
+  title: string;
+  credits: number | string;
+  prerequisite?: string;
+};
+
+type SelectedClassesPayload = {
+  timestamp: string;
+  selectedPrograms: string[];
+  genEdPrograms: string[];
+  assumptions: { genEdStrategy: string };
+  selectionMode: 'AUTO' | 'MANUAL';
+  programs: Record<string, {
+    programId: string;
+    programName: string;
+    programType: string;
+    version?: string;
+    requirements: Record<string, {
+      description: string;
+      courses: SelectedCourseEntry[];
+    }>;
+  }>;
+  generalEducation: Record<string, SelectedCourseEntry[]>;
+  userAddedElectives: Array<{ code: string; title: string; credits: number }>;
+};
 
 // Types for program & requirement logic moved to helpers (imported above)
 
@@ -431,7 +459,7 @@ const handleRemoveElective = (id: string) => {
   }, [selectedCourses, selectedProgramCourses, selectedPrograms, requirements, programRequirements, effectiveMode]);
 
   // Generate selected classes JSON
-  const generateSelectedClassesJson = useMemo(() => {
+  const generateSelectedClassesJson = useMemo<SelectedClassesPayload | null>(() => {
     if (!areAllDropdownsFilled) return null;
 
     // Helper function to get course details
@@ -462,7 +490,7 @@ const handleRemoveElective = (id: string) => {
       };
     };
 
-    const selectedClasses = {
+    const selectedClasses: SelectedClassesPayload = {
       timestamp: new Date().toISOString(),
       selectedPrograms: Array.from(selectedPrograms),
       genEdPrograms: genEdProgramIds, // Include GenEd program IDs
@@ -471,18 +499,10 @@ const handleRemoveElective = (id: string) => {
           ? 'Student prefers to complete the majority of general education requirements in the earliest possible terms to free later terms for major-focused courses.'
           : 'Student prefers to distribute general education requirements evenly across terms for a balanced workload.'
       },
-      programs: {} as Record<string, {
-        programId: string;
-        programName: string;
-        programType: string; // major, minor, emphasis
-        version?: string;
-        requirements: Record<string, {
-          description: string;
-          courses: Array<{code: string, title: string, credits: string | number, prerequisite?: string}>;
-        }>;
-      }>,
-      generalEducation: {} as Record<string, Array<{code: string, title: string, credits: string | number, prerequisite?: string}>>,
-      userAddedElectives: [] as Array<{code: string; title: string; credits: number}>
+      selectionMode: effectiveMode,
+      programs: {} as SelectedClassesPayload['programs'],
+      generalEducation: {} as SelectedClassesPayload['generalEducation'],
+      userAddedElectives: [] as SelectedClassesPayload['userAddedElectives']
     };
 
     // Add GenEd courses with details
@@ -574,7 +594,15 @@ const handleRemoveElective = (id: string) => {
         ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
         : 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.';
       const augmentedPrompt = `${prompt}\n\nGenEd Sequencing Preference:\n${strategyText}`;
-      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson, augmentedPrompt);
+      const plannerPayload = generateSelectedClassesJson;
+      if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
+        setPlanCreationError('Course selection data is invalid. Please review your selections and try again.');
+        showSnackbar('Course selection data is invalid. Please review your selections and try again.', 'error');
+        return;
+      }
+
+      const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
+      const aiResult = await OrganizeCoursesIntoSemesters(plannerPayload, promptPayload);
       
       if (!aiResult.success) {
         setPlanCreationError(`AI Planning Error: ${aiResult.message}`);
