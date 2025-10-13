@@ -4,10 +4,12 @@ import { SELECTION_MODES, type SelectionMode } from '@/lib/selectionMode';
 import {
   fetchInstitutionSettings,
   updateInstitutionSettings,
+} from '@/lib/services/institutionService';
+import {
   InstitutionFetchError,
   InstitutionUpdateError,
   InstitutionUnauthorizedError,
-} from '@/lib/services/institutionService';
+} from '@/lib/services/errors/institutionErrors';
 import { logError } from '@/lib/logger';
 
 // GET /api/institutions/[universityId]/settings

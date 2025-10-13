@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabaseServer';
 import {
   updateStudentTargetedCareer,
-  ProfileUpdateError,
 } from '@/lib/services/profileService.server';
+import { ProfileUpdateError } from '@/lib/services/errors/profileErrors';
 import { logError } from '@/lib/logger';
 
 export async function POST(req: Request) {

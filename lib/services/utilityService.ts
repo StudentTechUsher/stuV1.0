@@ -6,13 +6,7 @@
  * Handles miscellaneous utility functions like color extraction
  */
 
-// Custom error types for better error handling
-export class ColorExtractionError extends Error {
-  constructor(message: string, public cause?: unknown) {
-    super(message);
-    this.name = 'ColorExtractionError';
-  }
-}
+import { ColorExtractionError } from './errors/utilityErrors';
 
 /**
  * AUTHORIZATION: PUBLIC

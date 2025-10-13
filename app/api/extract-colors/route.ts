@@ -5,7 +5,8 @@ import {
   extractColorsSchema,
   type ExtractColorsInput,
 } from '@/lib/validation/schemas';
-import { extractColorsFromUrl, ColorExtractionError } from '@/lib/services/utilityService';
+import { extractColorsFromUrl } from '@/lib/services/utilityService';
+import { ColorExtractionError } from '@/lib/services/errors/utilityErrors';
 import { logError } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {

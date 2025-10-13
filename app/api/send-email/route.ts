@@ -7,9 +7,8 @@ import {
 } from '@/lib/validation/schemas';
 import {
   sendStudentSubmissionEmail,
-  EmailConfigError,
-  EmailSendError,
 } from '@/lib/services/emailService';
+import { EmailConfigError, EmailSendError } from '@/lib/services/errors/emailErrors';
 import { logError } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {

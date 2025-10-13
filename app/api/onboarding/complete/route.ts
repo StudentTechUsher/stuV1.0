@@ -3,8 +3,8 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import {
   completeOnboarding,
-  ProfileUpdateError,
 } from '@/lib/services/profileService.server';
+import { ProfileUpdateError } from '@/lib/services/errors/profileErrors';
 import { logError } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {

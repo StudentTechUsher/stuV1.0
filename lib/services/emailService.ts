@@ -7,21 +7,7 @@
  */
 
 import { Resend } from 'resend';
-
-// Custom error types for better error handling
-export class EmailConfigError extends Error {
-  constructor(message = 'Email service not configured') {
-    super(message);
-    this.name = 'EmailConfigError';
-  }
-}
-
-export class EmailSendError extends Error {
-  constructor(message: string, public cause?: unknown) {
-    super(message);
-    this.name = 'EmailSendError';
-  }
-}
+import { EmailConfigError, EmailSendError } from './errors/emailErrors';
 
 export interface StudentSubmissionData {
   firstName: string;

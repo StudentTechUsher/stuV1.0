@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isValidSem } from '@/lib/gradDate';
 import {
   updateProfile,
-  ProfileUpdateError,
 } from '@/lib/services/profileService.server';
+import { ProfileUpdateError } from '@/lib/services/errors/profileErrors';
 import { logError } from '@/lib/logger';
 
 /**

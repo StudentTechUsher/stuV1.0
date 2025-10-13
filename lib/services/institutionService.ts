@@ -8,35 +8,7 @@
 
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { coerceSelectionMode, type SelectionMode } from '@/lib/selectionMode';
-
-// Custom error types for better error handling
-export class InstitutionNotFoundError extends Error {
-  constructor(message = 'Institution not found') {
-    super(message);
-    this.name = 'InstitutionNotFoundError';
-  }
-}
-
-export class InstitutionFetchError extends Error {
-  constructor(message: string, public cause?: unknown) {
-    super(message);
-    this.name = 'InstitutionFetchError';
-  }
-}
-
-export class InstitutionUpdateError extends Error {
-  constructor(message: string, public cause?: unknown) {
-    super(message);
-    this.name = 'InstitutionUpdateError';
-  }
-}
-
-export class InstitutionUnauthorizedError extends Error {
-  constructor(message = 'Forbidden: Admin access required') {
-    super(message);
-    this.name = 'InstitutionUnauthorizedError';
-  }
-}
+import { InstitutionNotFoundError, InstitutionFetchError, InstitutionUpdateError, InstitutionUnauthorizedError } from './errors/institutionErrors';
 
 /**
  * AUTHORIZATION: MEMBERS OF INSTITUTION
