@@ -7,6 +7,7 @@ import AcademicSummary from "@/components/dashboard/academic-summary";
 import AcademicProgressCard from "@/components/dashboard/academic-progress-card";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { AdvisorDashboard } from "@/components/dashboard/advisor-dashboard";
+import { OnboardingModalWrapper } from "@/components/onboarding/onboarding-modal-wrapper";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -59,7 +60,7 @@ export default async function DashboardPage() {
   // Least-privilege data fetch; RLS should enforce row ownership
   const { data: profile, error: profileErr } = await supabase
     .from("profiles")
-    .select("role_id")
+    .select("role_id, university_id, fname")
     .eq("id", userId)
     .maybeSingle();
 
@@ -67,6 +68,9 @@ export default async function DashboardPage() {
     // Optionally log to your observability tool
     console.error("profiles fetch error:", profileErr.message);
   }
+
+  // Check if user needs onboarding (no university selected)
+  const needsOnboarding = !profile?.university_id;
 
   // Fetch student data for academic summary
   const { data: studentData, error: studentErr } = await supabase
@@ -82,9 +86,12 @@ export default async function DashboardPage() {
   const role: Role = (profile?.role_id && ROLE_MAP[profile.role_id]) ?? "student";
 
   return (
-    <Box sx={{ p: 2 }}>
-      <RoleView role={role} userId={userId} studentData={studentData} />
-    </Box>
+    <>
+      {needsOnboarding && <OnboardingModalWrapper userName={profile?.fname} />}
+      <Box sx={{ p: 2 }}>
+        <RoleView role={role} userId={userId} studentData={studentData} />
+      </Box>
+    </>
   );
 }
 

@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 interface YearCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  yearNumber: number
   status: "current" | "upcoming" | "complete"
   label: string
   sublabel: string
@@ -13,7 +12,6 @@ interface YearCardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function YearCard({
-  yearNumber,
   status,
   label,
   sublabel,

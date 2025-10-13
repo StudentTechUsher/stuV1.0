@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import majors from "@/data/majors.json"
+import { cn } from "@/lib/utils"
 
 interface PlanHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   selectedMajor: string
@@ -32,7 +33,6 @@ export function PlanHeader({
   graduationTerm,
   onGraduationTermChange,
   className,
-  ...props
 }: PlanHeaderProps) {
   const terms = [
     "Fall 2024",
@@ -61,7 +61,7 @@ export function PlanHeader({
   };
 
   return (
-    <div className="flex items-center justify-center gap-6 flex-1">
+    <div className={cn("flex items-center justify-center gap-6 flex-1", className)}>
       <Input
         type="text"
         placeholder="Plan Name"

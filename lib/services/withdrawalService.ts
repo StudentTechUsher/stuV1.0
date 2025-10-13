@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { WithdrawalRow, Advisor } from '@/types/withdrawals';
+import type { WithdrawalRow } from '@/types/withdrawals';
 
 // Custom error types for better error handling
 export class WithdrawalFetchError extends Error {

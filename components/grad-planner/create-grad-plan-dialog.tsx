@@ -21,13 +21,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
 import AddIcon from '@mui/icons-material/Add';
-import SchoolIcon from '@mui/icons-material/School';
-import BalanceIcon from '@mui/icons-material/Scale';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import type { ProgramRow } from '@/types/program';
+import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
-import { type SelectionMode } from '@/lib/selectionMode';
 import {
   parseRequirementsFromGenEd,
   parseProgramRequirements,
@@ -61,6 +57,33 @@ interface Course {
   credits: Credits | number | string;
   prerequisite?: string;
 }
+
+type SelectedCourseEntry = {
+  code: string;
+  title: string;
+  credits: number | string;
+  prerequisite?: string;
+};
+
+type SelectedClassesPayload = {
+  timestamp: string;
+  selectedPrograms: string[];
+  genEdPrograms: string[];
+  assumptions: { genEdStrategy: string };
+  selectionMode: 'AUTO' | 'MANUAL';
+  programs: Record<string, {
+    programId: string;
+    programName: string;
+    programType: string;
+    version?: string;
+    requirements: Record<string, {
+      description: string;
+      courses: SelectedCourseEntry[];
+    }>;
+  }>;
+  generalEducation: Record<string, SelectedCourseEntry[]>;
+  userAddedElectives: Array<{ code: string; title: string; credits: number }>;
+};
 
 // Types for program & requirement logic moved to helpers (imported above)
 
@@ -164,7 +187,6 @@ const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string
 const [electiveError, setElectiveError] = useState<string | null>(null);
 
 // GenEd sequencing strategy: use passed-in value
-type GenEdStrategy = 'early' | 'balanced';
 const genEdStrategy = initialGenEdStrategy;
 
 const resetElectiveDraft = () => {
@@ -207,7 +229,7 @@ const handleRemoveElective = (id: string) => {
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
-  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms, selectedProgramIds]);
+  const programRequirements = useMemo(() => parseProgramRequirements(programsData, selectedPrograms), [programsData, selectedPrograms]);
 
   // course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
@@ -216,7 +238,7 @@ const handleRemoveElective = (id: string) => {
       map[req.subtitle] = collectCourses(req.blocks);
     }
     return map;
-  }, [collectCourses, requirements]);
+  }, [requirements]);
 
   // ensure state array length matches dropdown count for each requirement
   const ensureSlots = useCallback((subtitle: string, count: number) => {
@@ -302,7 +324,7 @@ const handleRemoveElective = (id: string) => {
     }, 500); // 500ms delay
 
     return () => clearTimeout(timer);
-  }, [open, requirements, requirementCoursesMap, getDropdownCount]);
+  }, [open, requirements, requirementCoursesMap]);
 
   // Auto-population effect for program requirements (runs when programs are selected/changed)
   useEffect(() => {
@@ -345,7 +367,7 @@ const handleRemoveElective = (id: string) => {
     }, 300); // 300ms delay for program selection changes
 
     return () => clearTimeout(timer);
-  }, [open, selectedPrograms, programRequirements, selectedProgramIds]);
+  }, [open, selectedPrograms, programRequirements]);
 
   // Clear error when selections change
   useEffect(() => {
@@ -437,7 +459,7 @@ const handleRemoveElective = (id: string) => {
   }, [selectedCourses, selectedProgramCourses, selectedPrograms, requirements, programRequirements, effectiveMode]);
 
   // Generate selected classes JSON
-  const generateSelectedClassesJson = useMemo(() => {
+  const generateSelectedClassesJson = useMemo<SelectedClassesPayload | null>(() => {
     if (!areAllDropdownsFilled) return null;
 
     // Helper function to get course details
@@ -468,7 +490,7 @@ const handleRemoveElective = (id: string) => {
       };
     };
 
-    const selectedClasses = {
+    const selectedClasses: SelectedClassesPayload = {
       timestamp: new Date().toISOString(),
       selectedPrograms: Array.from(selectedPrograms),
       genEdPrograms: genEdProgramIds, // Include GenEd program IDs
@@ -477,18 +499,10 @@ const handleRemoveElective = (id: string) => {
           ? 'Student prefers to complete the majority of general education requirements in the earliest possible terms to free later terms for major-focused courses.'
           : 'Student prefers to distribute general education requirements evenly across terms for a balanced workload.'
       },
-      programs: {} as Record<string, {
-        programId: string;
-        programName: string;
-        programType: string; // major, minor, emphasis
-        version?: string;
-        requirements: Record<string, {
-          description: string;
-          courses: Array<{code: string, title: string, credits: string | number, prerequisite?: string}>;
-        }>;
-      }>,
-      generalEducation: {} as Record<string, Array<{code: string, title: string, credits: string | number, prerequisite?: string}>>,
-      userAddedElectives: [] as Array<{code: string; title: string; credits: number}>
+      selectionMode: effectiveMode,
+      programs: {} as SelectedClassesPayload['programs'],
+      generalEducation: {} as SelectedClassesPayload['generalEducation'],
+      userAddedElectives: [] as SelectedClassesPayload['userAddedElectives']
     };
 
     // Add GenEd courses with details
@@ -560,7 +574,7 @@ const handleRemoveElective = (id: string) => {
     }
 
     return selectedClasses;
-  }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap]);
+  }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap, genEdProgramIds, genEdStrategy, userElectives, effectiveMode]);
 
   // Handle plan creation
   const handleCreatePlan = async () => {
@@ -574,19 +588,21 @@ const handleRemoveElective = (id: string) => {
     setPlanCreationError(null);
 
     try {
-      // Attach the effective mode to the payload
-      const payloadWithMode = {
-        ...generateSelectedClassesJson,
-        selectionMode: effectiveMode
-      };
-
       // Step 1: Send the course data to AI for semester organization
       // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
       const strategyText = genEdStrategy === 'early'
         ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
         : 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.';
       const augmentedPrompt = `${prompt}\n\nGenEd Sequencing Preference:\n${strategyText}`;
-      const aiResult = await OrganizeCoursesIntoSemesters(generateSelectedClassesJson, augmentedPrompt);
+      const plannerPayload = generateSelectedClassesJson;
+      if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
+        setPlanCreationError('Course selection data is invalid. Please review your selections and try again.');
+        showSnackbar('Course selection data is invalid. Please review your selections and try again.', 'error');
+        return;
+      }
+
+      const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
+      const aiResult = await OrganizeCoursesIntoSemesters(plannerPayload, promptPayload);
       
       if (!aiResult.success) {
         setPlanCreationError(`AI Planning Error: ${aiResult.message}`);
@@ -800,7 +816,7 @@ const handleRemoveElective = (id: string) => {
             <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary' }}>
               {loadingMessage.subtitle}
               <br />
-              This may take a moment. Please don't close this window.
+              This may take a moment. Please don&apos;t close this window.
             </Typography>
           </Box>
         )}

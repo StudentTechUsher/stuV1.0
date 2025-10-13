@@ -261,7 +261,7 @@ export default function MajorInfoModal({
           {major.topSkills.length > 0 && (
             <section>
               <h3 className="text-xl font-body-semi text-[var(--foreground)] mb-3 border-b border-[var(--border)] pb-2">
-                Skills You'll Develop
+                Skills You&apos;ll Develop
               </h3>
               <CareerSkillChips skills={major.topSkills} />
             </section>

@@ -21,6 +21,7 @@ import {
     submitGradPlanForApproval as _submitGradPlanForApproval,
     updateGradPlanDetails as _updateGradPlanDetails,
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
+    updateGradPlanName as _updateGradPlanName,
 } from './gradPlanService';
 import { ChatbotSendMessage_ServerAction as _chatbotSendMessage } from './openaiService';
 import {
@@ -88,7 +89,8 @@ export async function updateGradPlanWithAdvisorNotes(gradPlanId: string, advisor
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' };
     }
     return await _updateGradPlanWithAdvisorNotes(gradPlanId, advisorNotes);
@@ -110,16 +112,17 @@ export async function approveGradPlan(gradPlanId: string) {
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' } as { success: boolean; error?: string };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' } as { success: boolean; error?: string };
     }
     return await _approveGradPlan(gradPlanId);
 }
 
-export async function submitGradPlanForApproval(userId: string, planData: unknown, programIds: number[]) {
+export async function submitGradPlanForApproval(userId: string, planData: unknown, programIds: number[], planName?: string) {
     try {
         const sanitizedPlan = await graduationPlanPayloadSchema.validate(planData, VALIDATION_OPTIONS);
-        return await _submitGradPlanForApproval(userId, sanitizedPlan, programIds);
+        return await _submitGradPlanForApproval(userId, sanitizedPlan, programIds, planName);
     } catch (error) {
         if (error instanceof ValidationError) {
             return { success: false, message: error.errors.join('; ') };
@@ -145,7 +148,8 @@ export async function updateGradPlanDetailsAction(gradPlanId: string, planDetail
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' };
     }
     try {
@@ -176,7 +180,8 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' };
     }
     const trimmedNotes = advisorNotes?.trim() ?? '';
@@ -191,6 +196,59 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
             return { success: false, error: error.errors.join('; ') };
         }
         throw error;
+    }
+}
+
+// Update plan name (students can update their own; advisors/admins allowed)
+export async function updateGradPlanNameAction(gradPlanId: string, planName: string) {
+    const trimmedName = planName?.trim?.() ?? '';
+    if (!trimmedName) {
+        return { success: false, error: 'Plan name is required' };
+    }
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only rename their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to rename this plan' };
+            }
+        }
+
+        return await _updateGradPlanName(gradPlanId, trimmedName);
+    } catch (error) {
+        console.error('�?O Error updating plan name:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
 

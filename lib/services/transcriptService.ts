@@ -267,3 +267,85 @@ export async function fetchUserCourses(userId: string, documentId?: string): Pro
 
   return data || [];
 }
+
+export class CourseUpsertError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'CourseUpsertError';
+  }
+}
+
+export interface CourseInput {
+  id?: string; // Optional: if updating existing course
+  term: string;
+  subject: string;
+  number: string;
+  title: string;
+  credits: number;
+  grade?: string | null;
+  source_document?: string | null;
+  confidence?: number | null;
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ * Bulk upserts courses for a user
+ * @param userId - The user ID
+ * @param courses - Array of courses to upsert
+ * @returns Object containing success status and count of courses processed
+ */
+export async function bulkUpsertCourses(userId: string, courses: CourseInput[]) {
+  try {
+    if (!courses || courses.length === 0) {
+      throw new CourseUpsertError('No courses provided');
+    }
+
+    // Validate course data
+    for (const course of courses) {
+      if (!course.term || !course.subject || !course.number || !course.title) {
+        throw new CourseUpsertError('Missing required course fields');
+      }
+
+      if (typeof course.credits !== 'number' || course.credits <= 0) {
+        throw new CourseUpsertError('Invalid credits value');
+      }
+    }
+
+    // Prepare records for upsert
+    const records = courses.map((course) => ({
+      user_id: userId,
+      term: course.term,
+      subject: course.subject,
+      number: course.number,
+      title: course.title,
+      credits: course.credits,
+      grade: course.grade || null,
+      source_document: course.source_document || null,
+      confidence: course.confidence || null,
+    }));
+
+    // Bulk upsert courses
+    const { data, error: upsertError } = await supabase
+      .from('user_courses')
+      .upsert(records, {
+        onConflict: 'user_id,subject,number,term',
+        ignoreDuplicates: false,
+      })
+      .select();
+
+    if (upsertError) {
+      throw new CourseUpsertError('Failed to save courses', upsertError);
+    }
+
+    return {
+      success: true,
+      coursesProcessed: data?.length || 0,
+      courses: data,
+    };
+  } catch (error) {
+    if (error instanceof CourseUpsertError) {
+      throw error;
+    }
+    throw new CourseUpsertError('Unexpected error upserting courses', error);
+  }
+}

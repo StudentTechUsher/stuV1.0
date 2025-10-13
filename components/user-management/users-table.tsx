@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,11 +31,7 @@ export function UsersTable() {
   const [updating, setUpdating] = useState<string | null>(null)
   const supabase = createClientComponentClient()
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -63,13 +59,26 @@ export function UsersTable() {
       }
 
       console.log('Profiles data:', profiles) // Debug log
-      setUsers((profiles || []) as unknown as UserProfile[])
+
+      // Transform the data: Supabase returns university as an array, we need the first element
+      const transformedProfiles: UserProfile[] = (profiles || []).map((profile) => ({
+        ...profile,
+        university: Array.isArray(profile.university) && profile.university.length > 0
+          ? profile.university[0]
+          : null
+      }))
+
+      setUsers(transformedProfiles)
     } catch (error) {
       console.error('Error fetching users:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   const handleRoleChange = async (userId: string, newRoleId: string) => {
     try {

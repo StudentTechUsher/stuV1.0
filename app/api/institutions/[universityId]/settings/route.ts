@@ -1,11 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { coerceSelectionMode, SELECTION_MODES, type SelectionMode } from '@/lib/selectionMode';
+import { SELECTION_MODES, type SelectionMode } from '@/lib/selectionMode';
+import {
+  fetchInstitutionSettings,
+  updateInstitutionSettings,
+  InstitutionFetchError,
+  InstitutionUpdateError,
+  InstitutionUnauthorizedError,
+} from '@/lib/services/institutionService';
+import { logError } from '@/lib/logger';
 
 // GET /api/institutions/[universityId]/settings
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ universityId: string }> }
+) {
+  return handleGetInstitutionSettings(request, params);
+}
+
+// PATCH /api/institutions/[universityId]/settings
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ universityId: string }> }
+) {
+  return handleUpdateInstitutionSettings(request, params);
+}
+
+async function handleGetInstitutionSettings(
+  request: NextRequest,
+  params: Promise<{ universityId: string }>
 ) {
   try {
     const { universityId } = await params;
@@ -24,36 +47,28 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch settings (RLS will enforce membership check)
-    const { data: settings, error } = await supabase
-      .from('institution_settings')
-      .select('selection_mode')
-      .eq('university_id', universityIdNum)
-      .single();
+    // Fetch settings using service layer
+    const settings = await fetchInstitutionSettings(universityIdNum);
 
-    if (error) {
-      // If no settings exist, return default
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ selection_mode: 'MANUAL' }, { status: 200 });
-      }
-      console.error('Settings fetch error:', error);
+    return NextResponse.json(settings, { status: 200 });
+  } catch (error) {
+    if (error instanceof InstitutionFetchError) {
+      logError('Failed to fetch institution settings', error, {
+        action: 'fetch_institution_settings',
+      });
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      selection_mode: coerceSelectionMode(settings?.selection_mode)
-    }, { status: 200 });
-
-  } catch (error) {
-    console.error('GET /api/institutions/[universityId]/settings error:', error);
+    logError('Unexpected error fetching institution settings', error, {
+      action: 'fetch_institution_settings',
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// PATCH /api/institutions/[universityId]/settings
-export async function PATCH(
+async function handleUpdateInstitutionSettings(
   request: NextRequest,
-  { params }: { params: Promise<{ universityId: string }> }
+  params: Promise<{ universityId: string }>
 ) {
   try {
     const { universityId } = await params;
@@ -83,37 +98,29 @@ export async function PATCH(
       );
     }
 
-    // Upsert settings (RLS will enforce admin check)
-    const { data, error } = await supabase
-      .from('institution_settings')
-      .upsert(
-        {
-          university_id: universityIdNum,
-          selection_mode,
-          updated_at: new Date().toISOString(),
-          updated_by: user.id
-        },
-        { onConflict: 'university_id' }
-      )
-      .select()
-      .single();
+    // Update settings using service layer
+    const updatedSettings = await updateInstitutionSettings(
+      universityIdNum,
+      selection_mode,
+      user.id
+    );
 
-    if (error) {
-      console.error('Settings update error:', error);
-      // If it's a policy violation, the user is not an admin
-      if (error.code === '42501' || error.message?.includes('policy')) {
-        return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-      }
+    return NextResponse.json(updatedSettings, { status: 200 });
+  } catch (error) {
+    if (error instanceof InstitutionUnauthorizedError) {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+
+    if (error instanceof InstitutionUpdateError) {
+      logError('Failed to update institution settings', error, {
+        action: 'update_institution_settings',
+      });
       return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      selection_mode: data.selection_mode,
-      updated_at: data.updated_at
-    }, { status: 200 });
-
-  } catch (error) {
-    console.error('PATCH /api/institutions/[universityId]/settings error:', error);
+    logError('Unexpected error updating institution settings', error, {
+      action: 'update_institution_settings',
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

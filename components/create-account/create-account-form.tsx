@@ -8,7 +8,7 @@ import { saveGradTimeline } from "./save-grad-timeline-action";
 import { Option } from "@/types/option";
 import ChipsField from "@/helpers/chips-field";
 import SingleSelect from "@/helpers/single-select";
-import { TextField, Select, MenuItem, FormControl, InputLabel, FormHelperText, TextareaAutosize } from "@mui/material";
+import { TextField, Select, MenuItem, FormControl, InputLabel, FormHelperText } from "@mui/material";
 import TranscriptUploadSection from "@/components/transcript/TranscriptUploadSection";
 import { Term, termYearToDate, termYearToSem } from "@/lib/gradDate";
 

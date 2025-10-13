@@ -225,22 +225,35 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                 }}
               >
                 {allGradPlans.map((plan) => {
+                  const planName = typeof (plan as { plan_name?: unknown }).plan_name === 'string'
+                    ? ((plan as { plan_name?: string }).plan_name ?? '').trim()
+                    : '';
                   try {
                     const createdAt = plan.created_at 
                       ? new Date(plan.created_at as string).toLocaleString()
                       : 'Unknown Date';
+                    const label = planName.length > 0
+                      ? planName
+                      : `Plan made on ${createdAt}`;
                     return (
                       <MenuItem key={plan.id} value={plan.id} className="font-body">
-                        Plan made on {createdAt}
+                        {label}
                       </MenuItem>
                     );
                   } catch (error) {
                     console.error('Error accessing plan data:', error);
+                    const fallbackCreatedAt = plan.created_at
+                      ? (() => {
+                          try { return new Date(plan.created_at as string).toLocaleString(); }
+                          catch { return 'Unknown Date'; }
+                        })()
+                      : 'Unknown Date';
+                    const fallbackLabel = planName.length > 0
+                      ? planName
+                      : `Plan ${String(plan.id).slice(0, 8)} - ${fallbackCreatedAt}`;
                     return (
                       <MenuItem key={plan.id} value={plan.id} className="font-body">
-                        Plan {plan.id.slice(0, 8)} - {plan.created_at
-                          ? new Date(plan.created_at as string).toLocaleString()
-                          : 'Unknown Date'}
+                        {fallbackLabel}
                       </MenuItem>
                     );
                   }

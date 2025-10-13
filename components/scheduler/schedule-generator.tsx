@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, Box, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, LinearProgress } from "@mui/material";
-import { RefreshCw, Save, Calendar, Plus } from "lucide-react";
+import { RefreshCw, Save, Plus } from "lucide-react";
 import Link from "next/link";
 import type { SchedulerEvent } from "./scheduler-calendar";
 
@@ -36,7 +36,6 @@ type Props = {
   blockedEvents: SchedulerEvent[];
   onScheduleGenerated: (events: SchedulerEvent[]) => void;
   onScheduleSaved: (schedule: SchedulerEvent[]) => void;
-  isGenerating?: boolean;
 };
 
 export default function ScheduleGenerator({
@@ -45,7 +44,6 @@ export default function ScheduleGenerator({
   blockedEvents,
   onScheduleGenerated,
   onScheduleSaved,
-  isGenerating = false,
 }: Props) {
   const [selectedPlan, setSelectedPlan] = useState(
     gradPlans.find(p => p.isActive)?.id || gradPlans[0]?.id || ""
@@ -64,11 +62,6 @@ export default function ScheduleGenerator({
 
     const [daysPart, timePart] = parts;
     const [startTime, endTime] = timePart.split("-");
-
-    // Parse days (e.g., "MWF" -> ["M", "W", "F"])
-    const dayMap: Record<string, number> = {
-      "M": 1, "T": 2, "W": 3, "Th": 4, "F": 5, "S": 6
-    };
 
     const days: string[] = [];
     let i = 0;
@@ -196,7 +189,7 @@ export default function ScheduleGenerator({
               }
             }
           } catch (error) {
-            console.warn(`Could not parse schedule for ${course.course_code}: ${course.schedule}`);
+            console.warn(`Could not parse schedule for ${course.course_code}: ${course.schedule}`, error);
           }
         }
       };

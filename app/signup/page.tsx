@@ -5,6 +5,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabaseClient';
 import { Suspense } from 'react';
+import Image from 'next/image';
 
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
@@ -32,10 +33,13 @@ function SignupContent() {
           </a>
 
           <div className="flex justify-center mb-2">
-            <img 
+            <Image 
               src="/stu_icon_black.png" 
               alt="Stu logo" 
+              width={56}
+              height={56}
               className="w-14 h-14 object-contain"
+              priority
             />
           </div>
 
@@ -55,9 +59,11 @@ function SignupContent() {
           <div className="space-y-3">
             {/* School SSO */}
             <button className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <img 
+              <Image 
                 src="/stu_icon_black.png" 
                 alt="Stu logo" 
+                width={20}
+                height={20}
                 className="w-5 h-5 object-contain"
               />
               <span className="text-black font-body-medium">

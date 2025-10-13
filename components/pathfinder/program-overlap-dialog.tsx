@@ -10,7 +10,7 @@ export interface MajorProgramRequirementCourse {
 export interface MajorProgramData {
   id: number | string;
   name: string;
-  requirements: any; // raw JSON blob from program.requirements
+  requirements: unknown; // raw JSON blob from program.requirements
 }
 
 interface MajorOverlapDialogProps {
@@ -24,18 +24,19 @@ interface MajorOverlapDialogProps {
 }
 
 // Utility to walk an unknown requirements JSON tree and collect course codes (simple heuristic: look for objects with code or course_code keys or strings that look like codes)
-function extractRequirementCourseCodes(requirements: any): string[] {
+function extractRequirementCourseCodes(requirements: unknown): string[] {
   const out = new Set<string>();
-  const visit = (node: any) => {
+  const visit = (node: unknown) => {
     if (!node) return;
     if (Array.isArray(node)) { node.forEach(visit); return; }
     if (typeof node === 'object') {
-      const maybeCode = (node.code || node.course_code || node.courseCode);
+      const record = node as Record<string, unknown>;
+      const maybeCode = record.code || record.course_code || record.courseCode;
       if (typeof maybeCode === 'string') {
         out.add(maybeCode.trim().toUpperCase());
       }
       // also look for strings inside value/values arrays
-      Object.values(node).forEach(visit);
+      Object.values(record).forEach(visit);
       return;
     }
     if (typeof node === 'string') {

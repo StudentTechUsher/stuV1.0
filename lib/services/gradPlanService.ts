@@ -120,12 +120,13 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     est_grad_sem?: string;
     est_grad_date?: string;
     advisor_notes: string | null;
+    plan_name: string | null;
 }> {
     try {
         // 1. Base grad plan (no pending_approval filter so advisors/students can edit)
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes')
+            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes, plan_name')
             .eq('id', gradPlanId)
             .single();
 
@@ -186,7 +187,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             programs,
             est_grad_sem: profileData.est_grad_sem,
             est_grad_date: profileData.est_grad_date,
-            advisor_notes: gradPlanData.advisor_notes || null
+            advisor_notes: gradPlanData.advisor_notes || null,
+            plan_name: gradPlanData.plan_name ?? null
         };
     } catch (err) {
         // Pass through known structured errors; wrap unknowns
@@ -477,7 +479,8 @@ export async function approveGradPlan(
 export async function submitGradPlanForApproval(
     profileId: string,
     planDetails: unknown,
-    programIds: number[]
+    programIds: number[],
+    planName?: string
 ): Promise<{ success: boolean; message?: string; accessId?: string }> {
     try {
         // First, get the student_id (number) from the students table using the profile_id (UUID)
@@ -500,6 +503,7 @@ export async function submitGradPlanForApproval(
                 plan_details: planDetails,
                 programs_in_plan: programIds,
                 pending_approval: true,
+                plan_name: planName?.trim() ? planName.trim() : null,
             })
             .select('id')
             .single();
@@ -582,6 +586,31 @@ export async function updateGradPlanDetailsAndAdvisorNotes(
         return { success: true };
     } catch (err) {
         console.error('❌ Unexpected error updating plan & notes:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/** Updates the plan_name for a graduation plan */
+export async function updateGradPlanName(
+    gradPlanId: string,
+    planName: string
+): Promise<{ success: boolean; error?: string }> {
+    const trimmedName = planName.trim();
+    if (!trimmedName) {
+        return { success: false, error: 'Plan name is required' };
+    }
+    try {
+        const { error } = await supabase
+            .from('grad_plan')
+            .update({ plan_name: trimmedName })
+            .eq('id', gradPlanId);
+        if (error) {
+            console.error('�?O Error updating plan_name:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (err) {
+        console.error('�?O Unexpected error updating plan_name:', err);
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }

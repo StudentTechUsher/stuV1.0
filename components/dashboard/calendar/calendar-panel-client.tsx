@@ -98,8 +98,8 @@ export default function CalendarPanelClient({
         try {
           const parsedSchedule = JSON.parse(savedSchedule);
           schedulerEvents = [...schedulerEvents, ...parsedSchedule];
-        } catch (e) {
-          console.warn('Invalid scheduler schedule in localStorage');
+        } catch (error) {
+          console.warn('Invalid scheduler schedule in localStorage', error);
         }
       }
 
@@ -107,8 +107,8 @@ export default function CalendarPanelClient({
         try {
           const parsedPersonalEvents = JSON.parse(savedPersonalEvents);
           schedulerEvents = [...schedulerEvents, ...parsedPersonalEvents];
-        } catch (e) {
-          console.warn('Invalid personal events in localStorage');
+        } catch (error) {
+          console.warn('Invalid personal events in localStorage', error);
         }
       }
 

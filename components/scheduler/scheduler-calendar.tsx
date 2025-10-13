@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Card, CardContent, Box, Typography, Chip } from "@mui/material";
+import type { EventClickArg, EventChangeArg, DateSelectArg } from "@fullcalendar/core";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
 
@@ -47,7 +48,7 @@ export default function SchedulerCalendar({
   isGenerating = false,
 }: Props) {
 
-  const handleEventClick = (clickInfo: any) => {
+  const handleEventClick = (clickInfo: EventClickArg) => {
     const event = events.find(e => e.id === clickInfo.event.id);
     if (event) {
       if (event.type === "personal" && onPersonalEventClick) {
@@ -58,22 +59,25 @@ export default function SchedulerCalendar({
     }
   };
 
-  const handleEventChange = (changeInfo: any) => {
+  const handleEventChange = (changeInfo: EventChangeArg) => {
     const event = events.find(e => e.id === changeInfo.event.id);
     if (event && event.type === "personal" && onEventDrop) {
       // Convert changed position back to dayOfWeek and time
-      const changedDate = new Date(changeInfo.event.start);
+      const startValue = changeInfo.event.start ?? (changeInfo.event.startStr ? new Date(changeInfo.event.startStr) : null);
+      const endValue = changeInfo.event.end ?? (changeInfo.event.endStr ? new Date(changeInfo.event.endStr) : null);
+      if (!startValue || !endValue) return;
+      const changedDate = startValue instanceof Date ? startValue : new Date(startValue);
       const dayOfWeek = ((changedDate.getDay() + 6) % 7) + 1; // Convert Sunday=0 to Monday=1 format
 
       const startTime = changedDate.toTimeString().slice(0, 5); // HH:MM format
-      const endDate = new Date(changeInfo.event.end);
+      const endDate = endValue instanceof Date ? endValue : new Date(endValue);
       const endTime = endDate.toTimeString().slice(0, 5);
 
       onEventDrop(event.id, dayOfWeek, startTime, endTime);
     }
   };
 
-  const handleSlotSelect = (selectInfo: any) => {
+  const handleSlotSelect = (selectInfo: DateSelectArg) => {
     if (onSlotSelect) {
       const startDate = new Date(selectInfo.start);
       const endDate = new Date(selectInfo.end);

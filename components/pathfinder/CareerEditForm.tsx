@@ -201,8 +201,8 @@ export default function CareerEditForm({
             }
             className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           >
-            <option value="BACHELOR">Bachelor's Degree</option>
-            <option value="MASTER">Master's Degree</option>
+            <option value="BACHELOR">Bachelor&apos;s Degree</option>
+            <option value="MASTER">Master&apos;s Degree</option>
             <option value="PHD">PhD</option>
             <option value="VARIES">Varies</option>
           </select>

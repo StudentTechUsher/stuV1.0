@@ -380,22 +380,6 @@ export default function GraduationPlanner({
               fulfilledRequirements={fulfilledRequirements}
             />
 
-            {assumptions && assumptions.length > 0 && (
-              <Box
-                sx={{
-                  mb: 3,
-                  p: 2,
-                  backgroundColor: '#fff3e0',
-                  borderRadius: 1,
-                  border: '1px solid var(--action-edit)'
-                }}
-              >
-                <Typography variant="h6" className="font-header" gutterBottom>
-                  Plan Assumptions:
-                </Typography>
-                {/* render your assumptions list here */}
-              </Box>
-            )}
             <Button
               variant="outlined"
               onClick={() => setIsSpaceView(!isSpaceView)}

@@ -2,14 +2,13 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
-import { PlanHeader } from "@/components/ui/plan-header"
 import { SemesterCard } from "@/components/ui/semester-card"
 import { CourseCard } from "@/components/ui/course-card"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ResetIcon } from "@radix-ui/react-icons"
 import { SavePlanDialog } from "@/components/ui/save-plan-dialog"
-import { SaveIcon, UploadIcon } from "lucide-react"
+import { SaveIcon } from "lucide-react"
 import { UploadFile } from "@/components/ui/upload-file"
 import { useEffect } from 'react'
 import { usePlanStore, initializeStore } from '@/lib/store'
@@ -22,15 +21,10 @@ const DragDropContext = dynamic(
 
 export default function FourYearPlanSandbox() {
   const isLoading = usePlanStore((state) => state.isLoading)
-  const [selectedMajor, setSelectedMajor] = React.useState("")
-  const [useCreditLimit, setUseCreditLimit] = React.useState(false)
   const { 
-    creditLimit, 
-    setCreditLimit,
     semesters,
     resetToDefault
   } = usePlanStore()
-  const [graduationTerm, setGraduationTerm] = React.useState("")
   const [isSaveDialogOpen, setIsSaveDialogOpen] = React.useState(false)
 
   useEffect(() => {

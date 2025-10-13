@@ -10,22 +10,22 @@
 /**
  * Generic query builder interface that mimics Supabase's chainable API
  */
-export interface QueryBuilder<T = any> {
+export interface QueryBuilder<T = Record<string, unknown>> {
   select(columns?: string): QueryBuilder<T>;
-  insert(data: any | any[]): QueryBuilder<T>;
-  update(data: any): QueryBuilder<T>;
+  insert(data: Partial<T> | Partial<T>[]): QueryBuilder<T>;
+  update(data: Partial<T>): QueryBuilder<T>;
   delete(): QueryBuilder<T>;
-  eq(column: string, value: any): QueryBuilder<T>;
-  neq(column: string, value: any): QueryBuilder<T>;
-  gt(column: string, value: any): QueryBuilder<T>;
-  gte(column: string, value: any): QueryBuilder<T>;
-  lt(column: string, value: any): QueryBuilder<T>;
-  lte(column: string, value: any): QueryBuilder<T>;
+  eq(column: string, value: unknown): QueryBuilder<T>;
+  neq(column: string, value: unknown): QueryBuilder<T>;
+  gt(column: string, value: unknown): QueryBuilder<T>;
+  gte(column: string, value: unknown): QueryBuilder<T>;
+  lt(column: string, value: unknown): QueryBuilder<T>;
+  lte(column: string, value: unknown): QueryBuilder<T>;
   like(column: string, pattern: string): QueryBuilder<T>;
   ilike(column: string, pattern: string): QueryBuilder<T>;
-  in(column: string, values: any[]): QueryBuilder<T>;
+  in(column: string, values: unknown[]): QueryBuilder<T>;
   is(column: string, value: null | boolean): QueryBuilder<T>;
-  contains(column: string, value: any): QueryBuilder<T>;
+  contains(column: string, value: unknown): QueryBuilder<T>;
   order(column: string, options?: { ascending?: boolean }): QueryBuilder<T>;
   limit(count: number): QueryBuilder<T>;
   range(from: number, to: number): QueryBuilder<T>;
@@ -33,14 +33,14 @@ export interface QueryBuilder<T = any> {
   maybeSingle(): Promise<DatabaseResponse<T | null>>;
   then<TResult1 = DatabaseResponse<T[]>, TResult2 = never>(
     onfulfilled?: ((value: DatabaseResponse<T[]>) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2>;
 }
 
 /**
  * Standard database response format
  */
-export interface DatabaseResponse<T = any> {
+export interface DatabaseResponse<T = unknown> {
   data: T | null;
   error: DatabaseError | null;
 }
@@ -61,7 +61,7 @@ export interface DatabaseError {
 export interface DatabaseUser {
   id: string;
   email?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -86,9 +86,9 @@ export interface DatabaseAuth {
  * Main database client interface
  */
 export interface DatabaseClient {
-  from<T = any>(table: string): QueryBuilder<T>;
+  from<T = Record<string, unknown>>(table: string): QueryBuilder<T>;
   auth: DatabaseAuth;
-  rpc(functionName: string, params?: any): Promise<DatabaseResponse<any>>;
+  rpc<T = unknown>(functionName: string, params?: Record<string, unknown>): Promise<DatabaseResponse<T>>;
 }
 
 /**

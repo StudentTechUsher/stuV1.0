@@ -11,18 +11,19 @@ export type ParsedCourse = {
   confidence?: number | null;
 };
 
+// Raw course data from OpenAI response (before conversion to ParsedCourse)
+interface RawCourseData {
+  term?: string | null;
+  subject?: string;
+  number?: string;
+  title?: string | null;
+  credits?: string | number | null;
+  grade?: string | null;
+}
+
 // Regex to match course patterns like "CS 142 - Intro to Programming - 3 credits - A"
 // Using capture groups instead of named groups for ES2017 compatibility
 // Groups: 1=subject, 2=number, 3=title, 4=credits, 5=grade
-const COURSE_RE = /([A-Z]{2,4})\s*(\d{3,4})[\s\-–:]+([^-\n]+?)(?:[\s\-–:]+(\d+(?:\.\d+)?))?(?:[\s\-–:]+([A-F][+\-]?|P|NP|CR|NC|W))?/gi;
-
-function guessTerm(context: string): string | null {
-  const m = context.match(/(Fall|Spring|Summer|Winter)\s+20\d{2}/i);
-  if (!m) return null;
-
-  const [season, year] = m[0].split(/\s+/);
-  return `${season.charAt(0).toUpperCase()}${season.slice(1).toLowerCase()} ${year}`;
-}
 
 export async function extractTranscriptCourses(pdfBuffer: Buffer): Promise<ParsedCourse[]> {
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -78,18 +79,18 @@ export async function extractTranscriptCourses(pdfBuffer: Buffer): Promise<Parse
   const content = result.choices?.[0]?.message?.content || '[]';
 
   // Parse JSON response
-  let parsedCourses: any[];
+  let parsedCourses: RawCourseData[];
   try {
     // Remove markdown code blocks if present
     const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     parsedCourses = JSON.parse(jsonStr);
-  } catch (e) {
-    console.error('Failed to parse OpenAI response:', content);
+  } catch (error) {
+    console.error('Failed to parse OpenAI response:', content, error);
     throw new Error('Failed to parse course data from OpenAI');
   }
 
   // Convert to our format
-  const courses: ParsedCourse[] = parsedCourses.map((c: any) => ({
+  const courses: ParsedCourse[] = parsedCourses.map((c: RawCourseData) => ({
     term: c.term || null,
     subject: c.subject || '',
     number: c.number || '',

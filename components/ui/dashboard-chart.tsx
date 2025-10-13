@@ -20,7 +20,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 export interface ChartData {
   name: string
   value: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface DashboardChartProps {

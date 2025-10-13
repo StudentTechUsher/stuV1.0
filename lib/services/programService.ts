@@ -1,6 +1,21 @@
 import { ProgramRow } from "@/types/program";
 import { db } from "@/lib/database";
 
+// Custom error types for better error handling
+export class ProgramNotFoundError extends Error {
+  constructor(message = 'Program not found') {
+    super(message);
+    this.name = 'ProgramNotFoundError';
+  }
+}
+
+export class ProgramFetchError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'ProgramFetchError';
+  }
+}
+
 /**
  * AUTHORIZED FOR ANONYMOUS USERS AND ABOVE
  * Fetches all programs for a given university
@@ -18,7 +33,7 @@ export async function fetchProgramsByUniversity(universityId: number): Promise<P
     return (data ?? []) as ProgramRow[];
 }
 
-export default async function GetProgramsForUniversity(university_id: number) {
+export default async function GetProgramsForUniversity(university_id: number): Promise<ProgramRow[]> {
 
     const { data, error } = await db
       .from('program')
@@ -31,10 +46,10 @@ export default async function GetProgramsForUniversity(university_id: number) {
       return [];
     }
 
-    return data || [];
+    return (data || []) as ProgramRow[];
 }
 
-export async function GetMajorsForUniversity(university_id: number) {
+export async function GetMajorsForUniversity(university_id: number): Promise<ProgramRow[]> {
   const { data, error } = await db
     .from('program')
     .select('*')
@@ -47,10 +62,10 @@ export async function GetMajorsForUniversity(university_id: number) {
     return [];
   }
 
-  return data || [];
+  return (data || []) as ProgramRow[];
 }
 
-export async function GetGenEdsForUniversity(university_id: number) {
+export async function GetGenEdsForUniversity(university_id: number): Promise<ProgramRow[]> {
     const { data, error } = await db
       .from('program')
       .select('*')
@@ -62,7 +77,7 @@ export async function GetGenEdsForUniversity(university_id: number) {
       return [];
     }
 
-    return data || [];
+    return (data || []) as ProgramRow[];
 }
 
 /**
@@ -136,7 +151,7 @@ export async function createProgram(programData: Omit<ProgramRow, 'id' | 'create
   return data as ProgramRow;
 }
 
-export async function GetMinorsForUniversity(university_id: number) {
+export async function GetMinorsForUniversity(university_id: number): Promise<ProgramRow[]> {
   const { data, error } = await db
     .from('program')
     .select('*')
@@ -148,5 +163,79 @@ export async function GetMinorsForUniversity(university_id: number) {
     console.error('❌ Error fetching minors:', error);
     return [];
   }
-  return data || [];
+  return (data || []) as ProgramRow[];
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Fetches programs with optional filters for type and university
+ * @param options - Filter options (type, universityId)
+ * @returns Array of matching programs
+ */
+export async function fetchPrograms(options?: { type?: string; universityId?: number }) {
+  try {
+    let query = db
+      .from('program')
+      .select('id,name,university_id,program_type')
+      .order('name');
+
+    if (options?.type) {
+      query = query.eq('program_type', options.type);
+    }
+
+    if (options?.universityId) {
+      query = query.eq('university_id', options.universityId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new ProgramFetchError('Failed to fetch programs', error);
+    }
+
+    return data ?? [];
+  } catch (error) {
+    if (error instanceof ProgramFetchError) {
+      throw error;
+    }
+    throw new ProgramFetchError('Unexpected error fetching programs', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Fetches multiple programs by their IDs
+ * @param ids - Array of program IDs
+ * @param universityId - Optional university filter
+ * @returns Array of matching programs
+ */
+export async function fetchProgramsBatch(ids: string[], universityId?: number) {
+  try {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    let query = db
+      .from('program')
+      .select('id, name, university_id, program_type, version, created_at, modified_at, requirements, is_general_ed')
+      .in('id', ids)
+      .order('name');
+
+    if (universityId) {
+      query = query.eq('university_id', universityId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new ProgramFetchError('Failed to fetch programs batch', error);
+    }
+
+    return data ?? [];
+  } catch (error) {
+    if (error instanceof ProgramFetchError) {
+      throw error;
+    }
+    throw new ProgramFetchError('Unexpected error fetching programs batch', error);
+  }
 }

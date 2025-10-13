@@ -13,11 +13,6 @@ interface CoursePillProps {
 }
 
 export function CoursePill({ course }: CoursePillProps) {
-  const hasMultipleReqs = course.requirements && course.requirements.length > 1;
-  const hasMajorAndGE = hasMultipleReqs &&
-    course.requirements.some(r => r.toLowerCase().includes('major')) &&
-    course.requirements.some(r => r.toLowerCase().includes('gen'));
-
   return (
     <div
       className="grid grid-cols-[1fr_auto] items-center gap-2 px-2 py-1 rounded-lg bg-white border border-gray-200 shadow-sm"

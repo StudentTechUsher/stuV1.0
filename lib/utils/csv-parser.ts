@@ -17,8 +17,8 @@ export interface StudentKPIData {
 
 export function parseCSVData(csvContent: string): StudentKPIData[] {
   const lines = csvContent.trim().split('\n')
-  const headers = lines[0].split(',')
-
+  // Note: Using basic split instead of proper CSV parsing - consider upgrading for production
+  
   return lines.slice(1).map(line => {
     const values = line.split(',')
     return {

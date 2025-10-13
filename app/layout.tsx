@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next"
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import DevAuthToggle from '@/components/dev/dev-auth-toggle';
 import { UniversityThemeProvider } from "@/contexts/university-theme-context";
 
 const geistSans = Geist({
@@ -29,7 +28,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <UniversityThemeProvider>
           {children}
-          <DevAuthToggle />
         </UniversityThemeProvider>
         <Analytics />
       </body>

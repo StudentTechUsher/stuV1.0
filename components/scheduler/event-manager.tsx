@@ -21,7 +21,7 @@ import {
   FormControlLabel,
   FormGroup,
 } from "@mui/material";
-import { X, Clock, MapPin, User } from "lucide-react";
+import { X, MapPin, User } from "lucide-react";
 import type { SchedulerEvent } from "./scheduler-calendar";
 
 // Create a theme with green time picker
@@ -39,7 +39,7 @@ const greenTheme = createTheme({
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSave: (event: Omit<SchedulerEvent, "id"> | SchedulerEvent) => void;
+  onSave: (event: Omit<SchedulerEvent, "id"> | SchedulerEvent | Array<Omit<SchedulerEvent, "id">>) => void;
   onDelete?: (eventId: string) => void;
   event?: SchedulerEvent;
   selectedSlot?: { dayOfWeek: number; startTime: string; endTime: string };
@@ -150,7 +150,7 @@ export default function EventManager({
 
       console.log('Creating events for multiple days:', events);
       // Pass all events at once as an array
-      onSave(events as any);
+      onSave(events);
     }
 
     onClose();

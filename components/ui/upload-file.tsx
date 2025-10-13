@@ -1,32 +1,52 @@
-import { useState } from "react"
 import { UploadIcon } from "lucide-react"
 import { Button } from "./button"
 import { usePlanStore } from "@/lib/store"
 
 export const UploadFile: React.FC = () => {
-  const [fileName, setFileName] = useState<string | null>(null)
   const uploadPlan = usePlanStore(state => state.uploadPlan)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setFileName(file.name)
-
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
-        const raw = event.target?.result as string
-        const json = JSON.parse(raw)
+        const raw = event.target?.result
+        if (typeof raw !== "string") {
+          throw new Error("Unexpected file contents")
+        }
+        const parsed = JSON.parse(raw) as unknown
 
-        const semesters = Object.entries(json).map(([term, data]: any) => ({
-          term,
-          courses: data.courses.map((c: any) => ({
-            code: c.code,
-            title: c.name,
-            credits: c.credits,
-          })),
-        }))
+        if (typeof parsed !== "object" || parsed === null) {
+          throw new Error("Invalid plan format")
+        }
+
+        const semesters = Object.entries(parsed as Record<string, unknown>).map(([term, data]) => {
+          if (!data || typeof data !== "object") {
+            throw new Error("Invalid semester data")
+          }
+
+          const coursesRaw = (data as Record<string, unknown>).courses
+          if (!Array.isArray(coursesRaw)) {
+            throw new Error("Courses must be an array")
+          }
+
+          return {
+            term,
+            courses: coursesRaw.map((course) => {
+              if (!course || typeof course !== "object") {
+                throw new Error("Invalid course entry")
+              }
+              const item = course as Record<string, unknown>
+              return {
+                code: String(item.code ?? ""),
+                title: String(item.name ?? ""),
+                credits: Number(item.credits ?? 0),
+              }
+            }),
+          }
+        })
 
         uploadPlan(semesters)
         alert("✅ Plan uploaded and applied!")

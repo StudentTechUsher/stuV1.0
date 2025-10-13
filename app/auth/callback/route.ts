@@ -12,14 +12,15 @@ export async function GET(req: Request) {
   // Use request origin instead of NODE_ENV for reliable environment detection
   const origin = `${url.protocol}//${url.host}`;
 
-  // Debug logging to see what's happening
-  console.log('Auth callback debug:', {
-    origin,
-    host: url.host,
-    protocol: url.protocol,
-    next,
-    originalUrl: req.url
-  });
+  // Enhanced debug logging to see what's happening
+  console.log('=== Auth Callback Debug ===');
+  console.log('Origin:', origin);
+  console.log('Host:', url.host);
+  console.log('Protocol:', url.protocol);
+  console.log('Next param:', next);
+  console.log('Original URL:', req.url);
+  console.log('Code present:', !!code);
+  console.log('========================');
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", origin));
@@ -56,17 +57,22 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/login", origin));
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarded, authorization_agreed")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Ensure profile exists (safe operation - won't overwrite existing profiles)
+  // This is needed for magic link and new OAuth users
+  if (user.email) {
+    const { ensureProfileExists } = await import('@/lib/services/profileService.server');
+    await ensureProfileExists(user.id, user.email);
+  }
 
-  const dest = profile?.onboarded ? next : "/create-account";
-  
+  // Always redirect to dashboard - onboarding modal will handle first-time setup
+  const dest = next;
+
   // Debug the final redirect
   const finalUrl = new URL(dest, origin);
+  console.log('=== Final Redirect ===');
+  console.log('Destination:', dest);
   console.log('Final redirect URL:', finalUrl.toString());
-  
+  console.log('=====================');
+
   return NextResponse.redirect(finalUrl);
 }

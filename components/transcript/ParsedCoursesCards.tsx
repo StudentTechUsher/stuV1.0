@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Chip, IconButton, Tooltip, TextField, Button } from '@mui/material';
-import { Delete, School, CalendarToday, Grade, Edit, Save, Cancel } from '@mui/icons-material';
+import { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Paper, Chip, IconButton, Tooltip, TextField } from '@mui/material';
+import { Delete, School, Grade, Edit, Save, Cancel } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type ParsedCourse = {
@@ -34,11 +34,7 @@ export default function ParsedCoursesCards({
   const [editForm, setEditForm] = useState<Partial<ParsedCourse>>({});
   const supabase = createSupabaseBrowserClient();
 
-  useEffect(() => {
-    loadCourses();
-  }, [userId, refreshTrigger]); // Reload when refreshTrigger changes
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     if (!userId) {
       setLoading(false);
       return;
@@ -65,7 +61,11 @@ export default function ParsedCoursesCards({
     } finally {
       setLoading(false);
     }
-  };
+  }, [onCoursesLoaded, supabase, userId]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses, refreshTrigger]); // Reload when refreshTrigger changes
 
   const handleDelete = async (courseId: string | undefined) => {
     if (!courseId) return;

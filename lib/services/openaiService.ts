@@ -659,7 +659,7 @@ export async function EnrichCareerData_ServerAction(args: {
     const user = await getVerifiedUser();
     if (!user) return { success: false, message: 'User not authenticated' };
 
-    const { careerTitle, slug, rationale, studentContext } = args;
+    const { careerTitle, slug: _slug, rationale, studentContext } = args;
 
     const contextBlock = studentContext?.currentMajor
       ? `\nSTUDENT_CONTEXT:\n- Current Major: ${studentContext.currentMajor}\n- Completed Courses: ${studentContext.completedCourses?.map(c => c.code).join(', ') || 'N/A'}\n`
@@ -914,7 +914,7 @@ export async function EnrichMajorData_ServerAction(args: {
     const user = await getVerifiedUser();
     if (!user) return { success: false, message: 'User not authenticated' };
 
-    const { majorName, slug, rationale, studentContext, universityName } = args;
+    const { majorName, slug: _slug, rationale, studentContext, universityName } = args;
 
     const universityBlock = universityName ? `\nUNIVERSITY: ${universityName}\n` : '';
     const contextBlock = studentContext?.currentMajor
@@ -1442,5 +1442,71 @@ Return valid JSON only with shape: { "reply": string, "category": "student" | "n
     return { success: true, reply, sessionId, requestId: aiResult.requestId ?? undefined };
   } catch (err) {
     return { success: false, reply: '', sessionId: args.sessionId || '', error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+// Custom error types for chat completion
+export class OpenAIChatError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'OpenAIChatError';
+  }
+}
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Simple OpenAI chat completion for general chat functionality
+ * @param messages - Array of chat messages
+ * @param options - Optional parameters (max_tokens, temperature)
+ * @returns Chat completion response
+ */
+export async function chatCompletion(
+  messages: ChatMessage[],
+  options?: { max_tokens?: number; temperature?: number }
+) {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new OpenAIChatError('OpenAI API key not configured');
+    }
+
+    const { max_tokens: maxTokens = 500, temperature = 0.7 } = options || {};
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      await response.text(); // Consume response body
+      throw new OpenAIChatError(`OpenAI request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      content: data.choices[0]?.message?.content || 'No response generated',
+      usage: data.usage,
+    };
+  } catch (error) {
+    if (error instanceof OpenAIChatError) {
+      throw error;
+    }
+    throw new OpenAIChatError('Unexpected error in chat completion', error);
   }
 }

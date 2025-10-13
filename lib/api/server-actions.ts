@@ -27,9 +27,9 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
 
   try {
     // Get the current user from session
-    let t0 = t("start");
+    t("start");
     const user = await getVerifiedUser();
-    t0 = t("getVerifiedUser", t0);
+    t("getVerifiedUser");
     if (!user) {
       console.error("❌ Auth error: user not authenticated");
       throw new Error("User not authenticated");
@@ -302,7 +302,8 @@ export async function GetAiPrompt(prompt_name: string) {
 
 export async function submitGradPlanForApproval(
     profileId: string,
-    planDetails: unknown
+    planDetails: unknown,
+    planName?: string
 ): Promise<{ success: boolean; message: string; planId?: string }> {
     try {
         // First, get the student_id (number) from the students table using the profile_id (UUID)
@@ -324,6 +325,7 @@ export async function submitGradPlanForApproval(
                 is_active: false,
                 plan_details: planDetails,
                 pending_approval: true,
+                plan_name: planName?.trim() ? planName.trim() : null,
             })
             .select('id')
             .single();

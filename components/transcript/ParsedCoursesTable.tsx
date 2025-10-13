@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 type ParsedCourse = {
@@ -23,18 +23,13 @@ interface ParsedCoursesTableProps {
 export default function ParsedCoursesTable({
   documentId,
   onSaveComplete,
-}: ParsedCoursesTableProps) {
+}: Readonly<ParsedCoursesTableProps>) {
   const [courses, setCourses] = useState<ParsedCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadCourses();
-  }, [documentId]);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('user_courses')
@@ -57,7 +52,11 @@ export default function ParsedCoursesTable({
     } finally {
       setLoading(false);
     }
-  };
+  }, [documentId]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
 
   const handleSave = async () => {
     setSaving(true);

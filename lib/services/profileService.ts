@@ -76,7 +76,9 @@ export async function getStudentsWithPrograms(): Promise<AdvisorStudentRow[]> {
     const studentProgramsMap = new Map<string, number[]>(); // profile_id -> number[]
 
     students?.forEach(s => {
-        const list = Array.isArray(s.selected_programs) ? s.selected_programs.filter((x: any) => Number.isInteger(x)) : [];
+        const list = Array.isArray(s.selected_programs) 
+            ? s.selected_programs.filter((x: unknown): x is number => Number.isInteger(x)) 
+            : [];
         studentProgramsMap.set(s.profile_id, list);
         list.forEach(id => programIds.add(id));
     });

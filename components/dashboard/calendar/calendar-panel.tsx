@@ -2,7 +2,7 @@
 import CalendarPanelClient, { CalendarEvent } from "./calendar-panel-client";
 
 // Fake fetch for now — replace with your real function later.
-async function getUserWeekEventsFake(userId: string): Promise<CalendarEvent[]> {
+async function getUserWeekEventsFake(_userId: string): Promise<CalendarEvent[]> {
   await new Promise((r) => setTimeout(r, 3000)); // simulate latency
   return [
     { title: "M COM 320", start: "2025-01-06T09:00:00", end: "2025-01-06T09:45:00", status: "registered" },
