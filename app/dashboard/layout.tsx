@@ -197,7 +197,6 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/dashboard/academic-history",   segment: "academic-history",    label: "Academic History",     icon: "history" },
         { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
         { href: "/dashboard/pathfinder",         segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
-        { href: "/dashboard/meet-with-advisor",  segment: "calendar",           label: "Meet with Advisor",    icon: "meet" },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",              icon: "profile" },
       ];
 

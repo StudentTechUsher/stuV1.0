@@ -97,12 +97,14 @@ export default function ChatbotDrawer({
   }, [isScrollable, isNearBottom, messages]);
 
   const handleSend = async () => {
+    if (isTyping) return;
     const text = input.trim();
     if (!text) return;
-    
+
     try {
       // Add user message to the chat
       setMessages(prev => [...prev, { type: 'user', text, id: `user-${Date.now()}` }]);
+      setInput("");
       
       let currentSession = sessionId;
       if (!currentSession) {
@@ -111,23 +113,21 @@ export default function ChatbotDrawer({
         setSessionId(currentSession);
       }
 
-      if (onSend) {
-        await onSend(text, { role });
-      }
-
       // Call server action to get AI reply and persist exchange
       try {
         setIsTyping(true);
+        if (onSend) {
+          await onSend(text, { role });
+        }
         const result = await chatbotSendMessage(text, currentSession || undefined);
         const reply = result?.success && result.reply ? result.reply : "I'm having trouble right now. Please try again in a moment.";
         setMessages(prev => [...prev, { type: 'bot', text: reply, id: `bot-${Date.now()}` }]);
-        setIsTyping(false);
       } catch (aiErr) {
         console.error('AI send failed:', aiErr);
         setMessages(prev => [...prev, { type: 'bot', text: "I'm having trouble right now. Please try again in a moment.", id: `bot-${Date.now()}` }]);
+      } finally {
         setIsTyping(false);
       }
-      setInput("");
       inputRef.current?.focus();
     } catch (e) {
       console.error("Failed to send chat message:", e);
@@ -416,7 +416,13 @@ export default function ChatbotDrawer({
               }
             }}
           />
-          <Button variant="contained" color="success" onClick={handleSend} sx={{ alignSelf: "flex-end" }}>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSend}
+            sx={{ alignSelf: "flex-end" }}
+            disabled={isTyping || !input.trim()}
+          >
             Send
           </Button>
         </Stack>

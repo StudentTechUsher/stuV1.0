@@ -19,6 +19,8 @@ interface UniversityThemeProviderProps {
   initialUniversity?: University | null;
 }
 
+const DEFAULT_SUBDOMAIN = process.env.NEXT_PUBLIC_DEFAULT_UNIVERSITY_SUBDOMAIN || 'stu';
+
 export function UniversityThemeProvider({ children, initialUniversity }: UniversityThemeProviderProps) {
   const [university, setUniversity] = useState<University | null>(initialUniversity || null);
   const [theme, setTheme] = useState<UniversityTheme>(DEFAULT_THEME);
@@ -47,7 +49,7 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
             .from('university')
             .select('*')
             .eq('subdomain', subdomain)
-            .single();
+            .maybeSingle();
 
           if (error) {
             console.error('Error loading university:', error?.message || error);
@@ -58,6 +60,7 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
             applyUniversityTheme(universityData);
           } else {
             // No university found, use default
+            setUniversity(null);
             applyTheme(DEFAULT_THEME);
           }
         }
@@ -73,11 +76,28 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
   }, [supabase]);
 
   const parseSubdomain = (host: string): string => {
-    const parts = host.split('.');
-    if (parts.length > 2 || (parts.length === 2 && !parts[0].includes('localhost'))) {
-      return parts[0] === 'www' ? 'stu' : parts[0];
+    const sanitizedHost = host?.split(':')[0] ?? '';
+    const isIpAddress = /^\d{1,3}(\.\d{1,3}){3}$/.test(sanitizedHost);
+    if (isIpAddress) {
+      return DEFAULT_SUBDOMAIN;
     }
-    return 'stu'; // default for localhost
+
+    const parts = sanitizedHost.split('.').filter(Boolean);
+
+    if (parts.length <= 1) {
+      return DEFAULT_SUBDOMAIN;
+    }
+
+    if (parts.length === 2) {
+      return DEFAULT_SUBDOMAIN;
+    }
+
+    const firstPart = parts[0];
+    if (firstPart === 'www') {
+      return DEFAULT_SUBDOMAIN;
+    }
+
+    return firstPart || DEFAULT_SUBDOMAIN;
   };
 
   const applyUniversityTheme = (universityData: University) => {
