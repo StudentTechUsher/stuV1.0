@@ -176,7 +176,7 @@ export class ConversationService {
         const parsed = JSON.parse(response);
         return parsed.metadata || null;
       }
-      return (response as any)?.metadata || null;
+      return (response as { metadata?: ConversationMetadata })?.metadata || null;
     } catch {
       return null;
     }

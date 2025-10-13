@@ -12,7 +12,6 @@ import type {
   Course,
   EnrollmentAction,
   WithdrawalRow,
-  OrgScope,
 } from '@/types/withdrawals';
 
 // In-memory stores

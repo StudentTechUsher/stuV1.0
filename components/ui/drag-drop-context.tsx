@@ -63,8 +63,8 @@ export function DragDropContext({ children }: DragDropContextProps) {
     setActiveCourseId(String(event.active.id))
   }
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event
+  const handleDragOver = (_event: DragOverEvent) => {
+    // Currently no over handling needed
   }
 
   const handleDragEnd = (event: DragEndEvent) => {

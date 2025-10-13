@@ -63,10 +63,16 @@ export async function saveProfileAndPreferences(payload: SavePayload): Promise<S
       return Array.from(new Set(xs.filter(n => Number.isFinite(n))));
     };
 
-    // 1. Upsert profile
+    // 1. Upsert profile and mark as onboarded
     const { error: profileError } = await supabase
       .from("profiles")
-      .upsert({ id: userId, fname: fname.trim(), lname: lname.trim(), university_id: universityId }, { onConflict: "id" });
+      .upsert({
+        id: userId,
+        fname: fname.trim(),
+        lname: lname.trim(),
+        university_id: universityId,
+        onboarded: true
+      }, { onConflict: "id" });
     if (profileError) {
       console.error("[saveProfileAndPreferences] profile upsert", profileError);
       return { ok: false, error: profileError.message };

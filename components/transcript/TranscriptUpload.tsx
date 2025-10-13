@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type UploadStatus = "idle" | "uploading" | "parsing" | "parsed" | "failed";
 
@@ -20,9 +19,9 @@ interface TranscriptUploadProps {
 }
 
 export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadProps) {
-  const supabase = createSupabaseBrowserClient();
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseReport, setParseReport] = useState<ParseTranscriptReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,68 +29,52 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
   const handleFileUpload = async (file: File) => {
     setStatus("uploading");
     setError(null);
+    setParseErrors([]);
+    setFileName(file.name);
 
     try {
-      // 🧠 1. Get logged-in user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setError("You must be logged in to upload transcripts.");
-        setStatus("failed");
-        return;
-      }
-
-      const userId = user.id;
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${userId}/${fileName}`;
-      setFileName(file.name);
-
-      // 📤 2. Upload file to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from("transcripts")
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error("Upload failed:", uploadError);
-        throw new Error("Upload failed");
-      }
+      const formData = new FormData();
+      formData.append("file", file);
 
       setStatus("parsing");
 
-      // 🧩 3. Call your Next.js API route to trigger the parser
-      const response = await fetch("/api/parse-transcript", {
+      const response = await fetch("/api/transcript/parse", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: filePath, // full path now
-          userId: userId, // pass real user UUID
-        }),
+        body: formData,
       });
 
       const result = await response.json();
-      console.log("Parser response:", result);
+      const reportedErrors = Array.isArray(result?.report?.errors) ? result.report.errors : [];
 
-      if (result.success && result.report) {
+      if (response.ok && result?.report) {
         setStatus("parsed");
         setParseReport(result.report);
         onUploadSuccess?.(result.report);
+        setParseErrors([]);
       } else {
-        setError("Parsing failed. Check logs for details.");
+        const message =
+          result?.error ||
+          result?.details ||
+          (reportedErrors.length ? reportedErrors.join("; ") : "Parsing failed. Check logs for details.");
+
+        setError(message);
+        setParseErrors(reportedErrors);
+        setParseReport(result?.report ?? null);
         setStatus("failed");
       }
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Unexpected error");
+      setParseErrors([]);
       setStatus("failed");
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileUpload(file);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      void handleFileUpload(file);
+    }
   };
 
   return (
@@ -117,9 +100,7 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="text-sm mb-1">
-              Drag & drop or click to upload your transcript PDF
-            </p>
+            <p className="text-sm mb-1">Drag &amp; drop or click to upload your transcript PDF</p>
             <p className="text-xs text-muted-foreground">PDF only, max 10MB</p>
           </div>
           <input
@@ -132,26 +113,22 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
         </>
       ) : (
         <div className="py-8">
-          {status === "uploading" && (
-            <p className="text-blue-600">📤 Uploading your file...</p>
-          )}
+          {status === "uploading" && <p className="text-blue-600">Uploading your file…</p>}
           {status === "parsing" && (
             <>
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-              <p className="text-blue-600">🧠 Parsing your transcript...</p>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2" />
+              <p className="text-blue-600">Parsing your transcript…</p>
             </>
           )}
           {status === "parsed" && parseReport && (
             <div className="text-center">
-              <p className="text-primary font-semibold text-lg mb-2">
-                ✅ Transcript parsed successfully!
-              </p>
+              <p className="text-primary font-semibold text-lg mb-2">Transcript parsed successfully!</p>
               <p className="text-sm text-muted-foreground">
                 {parseReport.courses_found || parseReport.courses_upserted} courses added
               </p>
               {(parseReport.confidence_stats?.low_confidence_count ?? 0) > 0 && (
                 <p className="text-sm text-orange-600 mt-1">
-                  ⚠️ {parseReport.confidence_stats?.low_confidence_count ?? 0} courses need review
+                  {parseReport.confidence_stats?.low_confidence_count ?? 0} courses need review
                 </p>
               )}
               <button
@@ -170,8 +147,16 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
       )}
 
       {error && (
-        <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <p className="text-sm text-destructive">{error}</p>
+        <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-left">
+          <p className="text-sm text-destructive font-semibold">Parsing failed</p>
+          <p className="text-sm text-destructive/80 mt-1">{error}</p>
+          {parseErrors.length > 0 && (
+            <ul className="list-disc list-inside text-xs text-destructive/70 mt-2 space-y-1">
+              {parseErrors.map((errMsg, index) => (
+                <li key={index}>{errMsg}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

@@ -23,12 +23,11 @@ interface ParsedCoursesTableProps {
 export default function ParsedCoursesTable({
   documentId,
   onSaveComplete,
-}: ParsedCoursesTableProps) {
+}: Readonly<ParsedCoursesTableProps>) {
   const [courses, setCourses] = useState<ParsedCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadCourses = useCallback(async () => {
     try {

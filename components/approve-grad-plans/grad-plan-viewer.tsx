@@ -86,7 +86,7 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
     return [];
   };
 
-  const parseStringData = (data: string): Term[] => {
+  const parseStringData = React.useCallback((data: string): Term[] => {
     try {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
@@ -100,7 +100,7 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
       console.error('Error parsing JSON string:', error);
     }
     return [];
-  };
+  }, []);
 
   const parsed = React.useMemo(() => {
     if (!planDetails) return [];
@@ -118,7 +118,7 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
     }
 
     return [];
-  }, [planDetails]);
+  }, [planDetails, parseStringData]);
   const planData = planOverride ?? parsed;
 
   const handleMoveCourse = (fromTermIdx: number, courseIdx: number, toTermIdx: number) => {

@@ -574,7 +574,7 @@ const handleRemoveElective = (id: string) => {
     }
 
     return selectedClasses;
-  }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap, genEdProgramIds, genEdStrategy, userElectives]);
+  }, [areAllDropdownsFilled, selectedPrograms, selectedCourses, selectedProgramCourses, requirements, programRequirements, programsData, requirementCoursesMap, genEdProgramIds, genEdStrategy, userElectives, effectiveMode]);
 
   // Handle plan creation
   const handleCreatePlan = async () => {

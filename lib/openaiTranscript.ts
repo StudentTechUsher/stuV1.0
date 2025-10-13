@@ -1,7 +1,21 @@
 // lib/openaiTranscript.ts
 // Server-side OpenAI integration for parsing transcript PDFs
 
-import { logError, logInfo } from './logger';
+import { logError } from './logger';
+
+// OpenAI API response types
+interface OpenAIMessage {
+  role: 'assistant' | 'user' | 'system';
+  content: Array<{
+    text: {
+      value: string;
+    };
+  }>;
+}
+
+interface OpenAIMessagesResponse {
+  data: OpenAIMessage[];
+}
 
 export type ParsedCourse = {
   term: string | null;
@@ -187,8 +201,8 @@ export async function extractCoursesWithOpenAI(
       throw new Error('Failed to retrieve messages');
     }
 
-    const messages = await messagesResponse.json();
-    const assistantMessage = messages.data.find((msg: any) => msg.role === 'assistant');
+    const messages: OpenAIMessagesResponse = await messagesResponse.json();
+    const assistantMessage = messages.data.find((msg: OpenAIMessage) => msg.role === 'assistant');
 
     if (!assistantMessage || !assistantMessage.content || !assistantMessage.content[0]) {
       throw new Error('No assistant response found');

@@ -1,6 +1,21 @@
 import { ProgramRow } from "@/types/program";
 import { db } from "@/lib/database";
 
+// Custom error types for better error handling
+export class ProgramNotFoundError extends Error {
+  constructor(message = 'Program not found') {
+    super(message);
+    this.name = 'ProgramNotFoundError';
+  }
+}
+
+export class ProgramFetchError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'ProgramFetchError';
+  }
+}
+
 /**
  * AUTHORIZED FOR ANONYMOUS USERS AND ABOVE
  * Fetches all programs for a given university
@@ -149,4 +164,78 @@ export async function GetMinorsForUniversity(university_id: number): Promise<Pro
     return [];
   }
   return (data || []) as ProgramRow[];
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Fetches programs with optional filters for type and university
+ * @param options - Filter options (type, universityId)
+ * @returns Array of matching programs
+ */
+export async function fetchPrograms(options?: { type?: string; universityId?: number }) {
+  try {
+    let query = db
+      .from('program')
+      .select('id,name,university_id,program_type')
+      .order('name');
+
+    if (options?.type) {
+      query = query.eq('program_type', options.type);
+    }
+
+    if (options?.universityId) {
+      query = query.eq('university_id', options.universityId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new ProgramFetchError('Failed to fetch programs', error);
+    }
+
+    return data ?? [];
+  } catch (error) {
+    if (error instanceof ProgramFetchError) {
+      throw error;
+    }
+    throw new ProgramFetchError('Unexpected error fetching programs', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Fetches multiple programs by their IDs
+ * @param ids - Array of program IDs
+ * @param universityId - Optional university filter
+ * @returns Array of matching programs
+ */
+export async function fetchProgramsBatch(ids: string[], universityId?: number) {
+  try {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    let query = db
+      .from('program')
+      .select('id, name, university_id, program_type, version, created_at, modified_at, requirements, is_general_ed')
+      .in('id', ids)
+      .order('name');
+
+    if (universityId) {
+      query = query.eq('university_id', universityId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new ProgramFetchError('Failed to fetch programs batch', error);
+    }
+
+    return data ?? [];
+  } catch (error) {
+    if (error instanceof ProgramFetchError) {
+      throw error;
+    }
+    throw new ProgramFetchError('Unexpected error fetching programs batch', error);
+  }
 }

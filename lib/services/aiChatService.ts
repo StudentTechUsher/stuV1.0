@@ -177,7 +177,7 @@ Key guidelines:
     return basePrompt + (contextSpecificPrompts[routeContext] || contextSpecificPrompts.general);
   }
 
-  private shouldSuggestEscalation(response: string, userMessage: string, routeContext: RouteContext): boolean {
+  private shouldSuggestEscalation(response: string, userMessage: string, _routeContext: RouteContext): boolean {
     const escalationKeywords = [
       'specific policy',
       'exact requirement',

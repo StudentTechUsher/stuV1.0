@@ -89,7 +89,8 @@ export async function updateGradPlanWithAdvisorNotes(gradPlanId: string, advisor
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' };
     }
     return await _updateGradPlanWithAdvisorNotes(gradPlanId, advisorNotes);
@@ -111,7 +112,8 @@ export async function approveGradPlan(gradPlanId: string) {
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' } as { success: boolean; error?: string };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' } as { success: boolean; error?: string };
     }
     return await _approveGradPlan(gradPlanId);
@@ -146,7 +148,8 @@ export async function updateGradPlanDetailsAction(gradPlanId: string, planDetail
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' };
     }
     try {
@@ -177,7 +180,8 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
         if (profileError || !profile || profile.role_id !== 2) {
             return { success: false, error: 'Not authorized' };
         }
-    } catch (e) {
+    } catch (error) {
+        console.error('Authorization check failed:', error);
         return { success: false, error: 'Authorization check failed' };
     }
     const trimmedNotes = advisorNotes?.trim() ?? '';

@@ -36,7 +36,7 @@ function sanitizeError(error: unknown): { type: string; message?: string; code?:
     return {
       type: error.constructor.name,
       message: error.message,
-      code: (error as any).code, // Database errors often have codes
+      code: (error as Error & { code?: string }).code, // Database errors often have codes
     };
   }
   return {
@@ -50,7 +50,7 @@ function sanitizeError(error: unknown): { type: string; message?: string; code?:
  * Automatically hashes user IDs and sanitizes context
  */
 export function logSecure(level: LogLevel, message: string, context?: LogContext) {
-  const sanitized: Record<string, any> = {
+  const sanitized: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     ...context,
   };

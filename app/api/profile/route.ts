@@ -2,12 +2,21 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidSem } from '@/lib/gradDate';
+import {
+  updateProfile,
+  ProfileUpdateError,
+} from '@/lib/services/profileService.server';
+import { logError } from '@/lib/logger';
 
 /**
  * PATCH /api/profile
  * Update user profile fields (graduation timeline & career goals)
  */
 export async function PATCH(request: NextRequest) {
+  return handleUpdateProfile(request);
+}
+
+async function handleUpdateProfile(request: NextRequest) {
   try {
     // Create Supabase client for API routes
     const cookieStore = await cookies();
@@ -32,10 +41,7 @@ export async function PATCH(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -46,10 +52,7 @@ export async function PATCH(request: NextRequest) {
 
     if (est_grad_sem !== undefined) {
       if (est_grad_sem !== null && typeof est_grad_sem !== 'string') {
-        return NextResponse.json(
-          { error: 'est_grad_sem must be a string' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'est_grad_sem must be a string' }, { status: 400 });
       }
       if (est_grad_sem !== null && !isValidSem(est_grad_sem)) {
         return NextResponse.json(
@@ -79,10 +82,7 @@ export async function PATCH(request: NextRequest) {
 
     if (career_goals !== undefined) {
       if (career_goals !== null && typeof career_goals !== 'string') {
-        return NextResponse.json(
-          { error: 'career_goals must be a string' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'career_goals must be a string' }, { status: 400 });
       }
       if (career_goals !== null && career_goals.length > 1000) {
         return NextResponse.json(
@@ -95,32 +95,24 @@ export async function PATCH(request: NextRequest) {
 
     // Nothing to update
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 });
     }
 
-    // Update profile
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id);
-
-    if (updateError) {
-      console.error('Profile update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update profile' },
-        { status: 500 }
-      );
-    }
+    // Update profile using service layer
+    await updateProfile(user.id, updates);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('PATCH /api/profile error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    if (error instanceof ProfileUpdateError) {
+      logError('Failed to update profile', error, {
+        action: 'update_profile',
+      });
+      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+    }
+
+    logError('Unexpected error in profile update', error, {
+      action: 'update_profile',
+    });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

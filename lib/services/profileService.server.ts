@@ -27,6 +27,28 @@
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import type { AdvisorStudentRow } from './profileService';
 
+// Custom error types for better error handling
+export class ProfileNotFoundError extends Error {
+  constructor(message = 'Profile not found') {
+    super(message);
+    this.name = 'ProfileNotFoundError';
+  }
+}
+
+export class ProfileFetchError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'ProfileFetchError';
+  }
+}
+
+export class ProfileUpdateError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'ProfileUpdateError';
+  }
+}
+
 /**
  * AUTHORIZATION: SYSTEM ONLY (called from auth callback)
  * Ensures a profile exists for a user. Creates one if it doesn't exist.
@@ -97,7 +119,9 @@ export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow
     const programIds = new Set<number>();
     const studentProgramsMap = new Map<string, number[]>();
     students?.forEach(s => {
-      const list = Array.isArray(s.selected_programs) ? s.selected_programs.filter((x: any) => Number.isInteger(x)) : [];
+      const list = Array.isArray(s.selected_programs) 
+        ? s.selected_programs.filter((x: unknown): x is number => Number.isInteger(x)) 
+        : [];
       studentProgramsMap.set(s.profile_id, list);
       list.forEach(id => programIds.add(id));
     });
@@ -117,8 +141,125 @@ export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow
       const names = ids.map(id => programNameMap.get(id)).filter(Boolean) as string[];
       return { id: p.id, fname: p.fname, lname: p.lname, programs: names.join(', ') };
     });
-  } catch (e) {
-    console.error('❌ Server fetch students failed:', e);
+  } catch (error) {
+    console.error('❌ Server fetch students failed:', error);
     return [];
+  }
+}
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS (fetching their own profile)
+ * Fetches the authenticated user's profile
+ * @param userId - The authenticated user's ID
+ * @returns The user's profile data
+ */
+export async function fetchMyProfile(userId: string) {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new ProfileNotFoundError();
+      }
+      throw new ProfileFetchError('Failed to fetch profile', error);
+    }
+
+    if (!profile) {
+      throw new ProfileNotFoundError();
+    }
+
+    return profile;
+  } catch (error) {
+    if (error instanceof ProfileNotFoundError || error instanceof ProfileFetchError) {
+      throw error;
+    }
+    throw new ProfileFetchError('Unexpected error fetching profile', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS (updating their own targeted career)
+ * Updates a student's targeted career field
+ * @param userId - The authenticated user's ID (profile_id in student table)
+ * @param careerTitle - The career title to set
+ */
+export async function updateStudentTargetedCareer(userId: string, careerTitle: string) {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { error } = await supabase
+      .from('student')
+      .update({ targeted_career: careerTitle })
+      .eq('profile_id', userId);
+
+    if (error) {
+      throw new ProfileUpdateError('Failed to update targeted career', error);
+    }
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error updating targeted career', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS (updating their own profile)
+ * Updates profile fields for the authenticated user
+ * @param userId - The authenticated user's ID
+ * @param updates - Object containing fields to update
+ */
+export async function updateProfile(userId: string, updates: Record<string, string | null>) {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) {
+      throw new ProfileUpdateError('Failed to update profile', error);
+    }
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error updating profile', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS (completing their own onboarding)
+ * Completes the onboarding process by setting university and marking as onboarded
+ * @param userId - The authenticated user's ID
+ * @param universityId - The university ID to set
+ */
+export async function completeOnboarding(userId: string, universityId: number) {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        university_id: universityId,
+        onboarded: true,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new ProfileUpdateError('Failed to complete onboarding', error);
+    }
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error completing onboarding', error);
   }
 }

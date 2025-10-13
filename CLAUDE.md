@@ -50,13 +50,16 @@ function handleError(error: unknown) {
 
 ### 2. Database Operations - Service Layer Pattern
 
-**ALL database transactions MUST be in service files**
+**ALL database transactions AND business logic MUST be in service files**
 
-When you encounter or need to write database operations:
+This is a critical architectural requirement. ALL database operations and business logic should reside in the [`lib/services/`](lib/services/) folder, not in API routes, components, or other locations.
+
+When you encounter or need to write database operations or business logic:
 
 1. **Check if a service file exists** in [`lib/services/`](lib/services/)
 2. **Add the function to an existing service** if it fits the domain
 3. **Create a new service file** if it's a new domain
+4. **If you find database/business logic in `app/api/` or elsewhere**, refactor it into the appropriate service file
 
 **Service File Naming Convention:**
 - `lib/services/{domain}Service.ts` - For domain-specific operations
@@ -130,17 +133,86 @@ export async function fetchExampleDataAction(userId: string) {
 }
 ```
 
-**❌ NEVER do database operations directly in:**
-- API routes (unless simple read operations)
+**❌ NEVER do database operations or business logic directly in:**
+- API routes (API routes should be thin wrappers that call service functions)
 - React components
 - Utility functions
+- Other non-service locations
 
 **✅ ALWAYS:**
-- Put database logic in service files
+- Put ALL database logic and business logic in service files under [`lib/services/`](lib/services/)
 - Use proper TypeScript types (no `any`)
 - Include JSDoc comments with authorization level
 - Handle errors with custom error classes
 - Return typed data or throw typed errors
+- Keep API routes as thin HTTP wrappers around service functions
+
+---
+
+### 2a. API Route Handler Naming
+
+**NEVER use generic HTTP method names like `GET()`, `POST()`, `PATCH()`, `DELETE()` in API route handlers**
+
+API route handlers should have descriptive names that clearly indicate what the endpoint does, not just the HTTP method.
+
+- ❌ **Bad:**
+  ```typescript
+  // app/api/users/route.ts
+  export async function GET(request: NextRequest) {
+    // What does this do? Fetch one user? All users? Current user?
+    const users = await fetchActiveUsers();
+    return NextResponse.json({ users });
+  }
+
+  export async function POST(request: NextRequest) {
+    // What does this do? Create user? Update user? Something else?
+    const body = await request.json();
+    // ...
+  }
+  ```
+
+- ✅ **Good:**
+  ```typescript
+  // app/api/users/route.ts
+  export async function GET(request: NextRequest) {
+    return handleGetActiveUsers(request);
+  }
+
+  export async function POST(request: NextRequest) {
+    return handleCreateUser(request);
+  }
+
+  // Descriptive handler functions
+  async function handleGetActiveUsers(request: NextRequest) {
+    try {
+      const users = await fetchActiveUsers();
+      return NextResponse.json({ users });
+    } catch (error) {
+      // Error handling...
+    }
+  }
+
+  async function handleCreateUser(request: NextRequest) {
+    try {
+      const body = await request.json();
+      const user = await createUser(body);
+      return NextResponse.json({ user });
+    } catch (error) {
+      // Error handling...
+    }
+  }
+  ```
+
+**Pattern for API route handlers:**
+1. Export the HTTP method function (`GET`, `POST`, etc.) as required by Next.js
+2. Immediately delegate to a descriptive handler function: `handleGetX`, `handleCreateY`, `handleUpdateZ`
+3. Put all logic in the descriptive handler function
+
+**Benefits:**
+- Easy to identify what each endpoint does when reading code
+- Better code navigation and search
+- Clearer stack traces in error logs
+- Follows the principle of descriptive naming
 
 ---
 
@@ -213,6 +285,189 @@ export async function GET(req: NextRequest) {
 
 ---
 
+### 3. React Best Practices
+
+**Page components (page.tsx) should ALWAYS be Server Components**
+
+Next.js route page files should be Server Components by default for optimal performance and SEO.
+
+- ❌ **Bad:**
+  ```typescript
+  // app/some-route/page.tsx
+  "use client"
+
+  export default function Page() {
+    return <div>Content</div>
+  }
+  ```
+
+- ✅ **Good:**
+  ```typescript
+  // app/some-route/page.tsx
+  // No "use client" directive - Server Component by default
+
+  export default function Page() {
+    return <div>Content</div>
+  }
+  ```
+
+**When you need client-side interactivity:**
+- Extract interactive parts into separate Client Components
+- Import and use these Client Components in your Server Component page
+- Keep the page.tsx itself as a Server Component
+
+**Example:**
+```typescript
+// app/some-route/page.tsx (Server Component)
+import { ClientInteractiveForm } from './client-interactive-form'
+
+export default function Page() {
+  return (
+    <div>
+      <h1>Server-rendered heading</h1>
+      <ClientInteractiveForm />
+    </div>
+  )
+}
+
+// app/some-route/client-interactive-form.tsx (Client Component)
+"use client"
+
+export function ClientInteractiveForm() {
+  const [state, setState] = useState('')
+  return <form>...</form>
+}
+```
+
+---
+
+**ALWAYS include ALL dependencies in React hook dependency arrays**
+
+React's `useMemo`, `useCallback`, and `useEffect` hooks must include every value from component scope that they reference.
+
+- ❌ **Bad:**
+  ```typescript
+  const parseData = (data: string) => { /* ... */ };
+  
+  const parsed = useMemo(() => {
+    return parseData(rawData); // parseData missing from deps
+  }, [rawData]);
+  ```
+
+- ✅ **Good:**
+  ```typescript
+  const parseData = useCallback((data: string) => { /* ... */ }, []);
+  
+  const parsed = useMemo(() => {
+    return parseData(rawData);
+  }, [rawData, parseData]); // All dependencies included
+  ```
+
+**For functions defined in component scope:**
+- Wrap them in `useCallback()` if they're used in other hook dependencies
+- Or move them inside the hook if they're only used there
+- Or move them outside the component scope if they don't use component values
+
+**For values that should be stable:**
+- Use `useRef()` for mutable values that shouldn't trigger re-renders
+- Move constants outside the component scope when possible
+
+---
+
+### 4. Error Handling Standards
+
+**NEVER ignore caught exceptions - always log them**
+
+When catching errors, provide useful debugging information while respecting FERPA compliance.
+
+- ❌ **Bad:**
+  ```typescript
+  try {
+    await riskyOperation();
+  } catch (e) {
+    return { success: false, error: 'Operation failed' };
+  }
+  ```
+
+- ✅ **Good:**
+  ```typescript
+  try {
+    await riskyOperation();
+  } catch (error) {
+    console.error('Risky operation failed:', error);
+    return { success: false, error: 'Operation failed' };
+  }
+  ```
+
+**Error Variable Naming:**
+- Use `error` instead of `e` for caught exceptions
+- Use descriptive variable names: `validationError`, `networkError`, etc.
+- Prefix intentionally unused variables with `_` (e.g., `_unusedParam`)
+
+---
+
+### 5. Code Cleanup Standards
+
+**Remove dead code instead of commenting it out**
+
+- ❌ **Bad:**
+  ```typescript
+  // const oldFunction = () => { ... };
+  // Legacy approach - keeping for reference
+  ```
+
+- ✅ **Good:**
+  ```typescript
+  // Remove entirely - use git history if needed
+  ```
+
+**Unused Variables Policy:**
+- Remove if truly unused
+- Use `_` prefix for intentionally unused parameters (e.g., API requirements)
+- Add `eslint-disable-next-line` with explanation for necessary exceptions
+
+**Example:**
+```typescript
+// For API conformance where parameter is required but unused
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const handleEvent = (_event: MouseEvent) => {
+  // Implementation doesn't need event details
+};
+```
+
+---
+
+### 6. ESLint Configuration Standards
+
+**Configure ESLint rules to match project conventions**
+
+When you encounter patterns that need project-wide policy decisions, update the ESLint configuration instead of adding individual overrides.
+
+**Underscore-prefixed unused variables:**
+```javascript
+// eslint.config.mjs
+"@typescript-eslint/no-unused-vars": [
+  "warn",
+  {
+    "argsIgnorePattern": "^_",
+    "varsIgnorePattern": "^_", 
+    "caughtErrorsIgnorePattern": "^_"
+  }
+]
+```
+
+**When to use underscore prefixes:**
+- ✅ Function parameters required by API but not used: `_event`, `_userId`
+- ✅ Destructured values that are placeholders: `{ name, slug: _slug }`
+- ✅ Future extension points: `_routeContext` for methods designed to vary by context later
+- ❌ Don't use for values you should actually be using
+
+**Prefer ESLint configuration over individual disable comments:**
+- ❌ **Bad:** Adding `// eslint-disable-next-line` everywhere
+- ✅ **Good:** Update project-wide rules in `eslint.config.mjs`
+
+---
+
 ## Quick Checklist
 
 When writing code, Claude should:
@@ -220,11 +475,19 @@ When writing code, Claude should:
 - [ ] ❌ Never use `any` type
 - [ ] ✅ Use proper TypeScript types/interfaces
 - [ ] ✅ Put database operations in service files
+- [ ] ✅ Use descriptive handler names in API routes (not just `GET()`, `POST()`)
 - [ ] ✅ Use custom error classes for better error handling
 - [ ] ✅ Include JSDoc comments with authorization level
 - [ ] ✅ Follow existing service file patterns
 - [ ] ✅ Validate input with proper schemas (yup/zod)
 - [ ] ✅ Use FERPA-compliant logging (see [lib/logger.ts](lib/logger.ts))
+- [ ] ✅ Keep page.tsx files as Server Components (extract client logic to separate components)
+- [ ] ✅ Include ALL dependencies in React hook dependency arrays
+- [ ] ✅ Log caught exceptions with meaningful context
+- [ ] ✅ Remove dead code instead of commenting it out
+- [ ] ✅ Use descriptive error variable names (`error` not `e`)
+- [ ] ✅ Configure ESLint rules for project-wide patterns
+- [ ] ✅ Use underscore prefix for intentional unused variables
 
 ---
 
@@ -232,14 +495,21 @@ When writing code, Claude should:
 
 - [`lib/services/gradPlanService.ts`](lib/services/gradPlanService.ts) - Graduation plan operations
 - [`lib/services/programService.ts`](lib/services/programService.ts) - Program/degree operations
-- [`lib/services/profileService.ts`](lib/services/profileService.ts) - User profile operations
+- [`lib/services/profileService.ts`](lib/services/profileService.ts) - User profile operations (client-side)
+- [`lib/services/profileService.server.ts`](lib/services/profileService.server.ts) - User profile operations (server-side)
+- [`lib/services/institutionService.ts`](lib/services/institutionService.ts) - Institution settings management
+- [`lib/services/transcriptService.ts`](lib/services/transcriptService.ts) - Transcript parsing and course management
 - [`lib/services/conversationService.ts`](lib/services/conversationService.ts) - Chat/conversation operations
 - [`lib/services/notifService.ts`](lib/services/notifService.ts) - Notification operations
-- [`lib/services/openaiService.ts`](lib/services/openaiService.ts) - OpenAI integration
+- [`lib/services/withdrawalService.ts`](lib/services/withdrawalService.ts) - Withdrawal notification operations
+- [`lib/services/careerService.ts`](lib/services/careerService.ts) - Career information management
+- [`lib/services/openaiService.ts`](lib/services/openaiService.ts) - OpenAI integration and AI operations
+- [`lib/services/emailService.ts`](lib/services/emailService.ts) - Email sending functionality
+- [`lib/services/utilityService.ts`](lib/services/utilityService.ts) - Utility functions (color extraction, etc.)
 - [`lib/services/server-actions.ts`](lib/services/server-actions.ts) - Server action wrappers
 
 When in doubt, check these files for patterns to follow!
 
 ---
 
-**Last Updated:** 2025-10-08
+**Last Updated:** 2025-10-12

@@ -1,100 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
-
-type CourseInput = {
-  id?: string; // Optional: if updating existing course
-  term: string;
-  subject: string;
-  number: string;
-  title: string;
-  credits: number;
-  grade?: string | null;
-  source_document?: string | null;
-  confidence?: number | null;
-};
+import {
+  bulkUpsertCourses,
+  CourseUpsertError,
+  type CourseInput,
+} from '@/lib/services/transcriptService';
+import { logError } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
+  return handleBulkUpsertCourses(request);
+}
+
+async function handleBulkUpsertCourses(request: NextRequest) {
   try {
-    // 1. Authenticate user
+    // Authenticate user
     const supabase = await createSupabaseServerComponentClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Parse request body
-    const { courses } = await request.json() as { courses: CourseInput[] };
+    // Parse request body
+    const { courses } = (await request.json()) as { courses: CourseInput[] };
 
-    if (!courses || !Array.isArray(courses) || courses.length === 0) {
-      return NextResponse.json(
-        { error: 'No courses provided' },
-        { status: 400 }
-      );
-    }
+    // Bulk upsert courses using service layer
+    const result = await bulkUpsertCourses(user.id, courses);
 
-    // 3. Validate course data
-    for (const course of courses) {
-      if (!course.term || !course.subject || !course.number || !course.title) {
-        return NextResponse.json(
-          { error: 'Missing required course fields' },
-          { status: 400 }
-        );
-      }
-
-      if (typeof course.credits !== 'number' || course.credits <= 0) {
-        return NextResponse.json(
-          { error: 'Invalid credits value' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // 4. Prepare records for upsert
-    const records = courses.map((course) => ({
-      user_id: user.id,
-      term: course.term,
-      subject: course.subject,
-      number: course.number,
-      title: course.title,
-      credits: course.credits,
-      grade: course.grade || null,
-      source_document: course.source_document || null,
-      confidence: course.confidence || null,
-    }));
-
-    // 5. Bulk upsert courses
-    const { data, error: upsertError } = await supabase
-      .from('user_courses')
-      .upsert(records, {
-        onConflict: 'user_id,subject,number,term',
-        ignoreDuplicates: false,
-      })
-      .select();
-
-    if (upsertError) {
-      console.error('Bulk upsert error:', upsertError);
-      return NextResponse.json(
-        { error: 'Failed to save courses' },
-        { status: 500 }
-      );
-    }
-
-    // 6. Return success
-    return NextResponse.json({
-      success: true,
-      coursesProcessed: data?.length || 0,
-      courses: data,
-    });
-
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Bulk upsert error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    if (error instanceof CourseUpsertError) {
+      logError('Failed to bulk upsert courses', error, {
+        action: 'bulk_upsert_courses',
+      });
+
+      // Return specific error messages for validation errors
+      if (error.message.includes('No courses provided')) {
+        return NextResponse.json({ error: 'No courses provided' }, { status: 400 });
+      }
+      if (
+        error.message.includes('Missing required course fields') ||
+        error.message.includes('Invalid credits value')
+      ) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ error: 'Failed to save courses' }, { status: 500 });
+    }
+
+    logError('Unexpected error in bulk upsert', error, {
+      action: 'bulk_upsert_courses',
+    });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
