@@ -26,28 +26,7 @@
 
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import type { AdvisorStudentRow } from './profileService';
-
-// Custom error types for better error handling
-export class ProfileNotFoundError extends Error {
-  constructor(message = 'Profile not found') {
-    super(message);
-    this.name = 'ProfileNotFoundError';
-  }
-}
-
-export class ProfileFetchError extends Error {
-  constructor(message: string, public cause?: unknown) {
-    super(message);
-    this.name = 'ProfileFetchError';
-  }
-}
-
-export class ProfileUpdateError extends Error {
-  constructor(message: string, public cause?: unknown) {
-    super(message);
-    this.name = 'ProfileUpdateError';
-  }
-}
+import { ProfileNotFoundError, ProfileUpdateError, ProfileFetchError } from './errors/profileErrors';
 
 /**
  * AUTHORIZATION: SYSTEM ONLY (called from auth callback)

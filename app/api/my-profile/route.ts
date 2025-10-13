@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   fetchMyProfile,
+} from '@/lib/services/profileService.server';
+import {
   ProfileNotFoundError,
   ProfileFetchError,
-} from '@/lib/services/profileService.server';
+} from '@/lib/services/errors/profileErrors';
 import { logError } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {

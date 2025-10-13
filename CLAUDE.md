@@ -472,22 +472,23 @@ When you encounter patterns that need project-wide policy decisions, update the 
 
 When writing code, Claude should:
 
-- [ ] ❌ Never use `any` type
-- [ ] ✅ Use proper TypeScript types/interfaces
-- [ ] ✅ Put database operations in service files
-- [ ] ✅ Use descriptive handler names in API routes (not just `GET()`, `POST()`)
-- [ ] ✅ Use custom error classes for better error handling
-- [ ] ✅ Include JSDoc comments with authorization level
-- [ ] ✅ Follow existing service file patterns
-- [ ] ✅ Validate input with proper schemas (yup/zod)
-- [ ] ✅ Use FERPA-compliant logging (see [lib/logger.ts](lib/logger.ts))
-- [ ] ✅ Keep page.tsx files as Server Components (extract client logic to separate components)
-- [ ] ✅ Include ALL dependencies in React hook dependency arrays
-- [ ] ✅ Log caught exceptions with meaningful context
-- [ ] ✅ Remove dead code instead of commenting it out
-- [ ] ✅ Use descriptive error variable names (`error` not `e`)
-- [ ] ✅ Configure ESLint rules for project-wide patterns
-- [ ] ✅ Use underscore prefix for intentional unused variables
+- [ ] Do not introduce Python into this repository; if a Python solution is absolutely required, implement it in a separate environment and expose it through a well-defined API.
+- [ ] Never use ny type
+- [ ] Use proper TypeScript types/interfaces
+- [ ] Put database operations in service files
+- [ ] Use descriptive handler names in API routes (not just GET(), POST())
+- [ ] Use custom error classes for better error handling
+- [ ] Include JSDoc comments with authorization level
+- [ ] Follow existing service file patterns
+- [ ] Validate input with proper schemas (yup/zod)
+- [ ] Use FERPA-compliant logging (see [lib/logger.ts](lib/logger.ts))
+- [ ] Keep page.tsx files as Server Components (extract client logic to separate components)
+- [ ] Include ALL dependencies in React hook dependency arrays
+- [ ] Log caught exceptions with meaningful context
+- [ ] Remove dead code instead of commenting it out
+- [ ] Use descriptive error variable names (error not e)
+- [ ] Configure ESLint rules for project-wide patterns
+- [ ] Use underscore prefix for intentional unused variables
 
 ---
 
@@ -513,3 +514,5 @@ When in doubt, check these files for patterns to follow!
 ---
 
 **Last Updated:** 2025-10-12
+
+
