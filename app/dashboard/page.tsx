@@ -26,7 +26,17 @@ const ROLE_MAP: Record<string, Role> = {
 };
 
 export default async function DashboardPage() {
+
   const cookieStore = await cookies();
+
+  // Check what cookies we have
+  const allCookies = cookieStore.getAll()
+  const authCookies = allCookies.filter(c =>
+    c.name.includes('sb-') || c.name.includes('supabase')
+  )
+  authCookies.forEach(c => {
+    console.log(`  - ${c.name}: ${c.value.substring(0, 50)}...`)
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,6 +58,10 @@ export default async function DashboardPage() {
     data: { user },
     error: userErr,
   } = await supabase.auth.getUser();
+
+  if (userErr) {
+    console.error('User error:', userErr)
+  }
 
   if (userErr || !user) {
     // Not authenticated or token invalid → force login

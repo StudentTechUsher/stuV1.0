@@ -4,6 +4,7 @@
 import dynamic from "next/dynamic";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { Card, CardContent, Box, Typography, Button } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -123,13 +124,29 @@ export default function CalendarPanelClient({
     }
   }, [initialEvents, showSchedulerButton]);
   return (
-    <Card elevation={0} sx={{ borderRadius: 3, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+    <Card 
+      elevation={0} 
+      sx={{ 
+        borderRadius: 3, 
+        overflowY: "auto", 
+        display: "flex", 
+        flexDirection: "column",
+        // Glassmorphism effect
+        backgroundColor: "rgba(255, 255, 255, 0.1)",
+        backdropFilter: "blur(10px)",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+      }}
+    >
       <CardContent
         sx={{
           p: 2,
-          bgcolor: getPrimaryColor(),
-          border: "1px solid rgba(0,0,0,0.15)",
-          boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
+          // Make the content area also transparent with glassmorphism
+          background: `linear-gradient(135deg, ${getPrimaryColor()}1a 0%, ${getPrimaryColor()}0d 100%)`,
+          backdropFilter: "blur(5px)",
+          border: `1px solid ${getPrimaryColor()}33`,
+          borderRadius: 2,
+          boxShadow: "inset 0 1px 3px rgba(255, 255, 255, 0.1)",
         }}
       >
         {/* Title / Semester block with scheduler button */}
@@ -145,9 +162,17 @@ export default function CalendarPanelClient({
                 startIcon={<Calendar size={16} />}
                 className="font-body-semi"
                 sx={{
-                  bgcolor: "var(--primary-dark, #003228)",
+                  background: `linear-gradient(135deg, var(--primary-dark, #003228) 0%, ${getPrimaryColor()}f0 100%)`,
+                  backdropFilter: "blur(8px)",
+                  border: `2px solid ${getPrimaryColor()}80`,
+                  boxShadow: `0 4px 16px ${getPrimaryColor()}66, inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
                   color: "white",
-                  "&:hover": { bgcolor: "rgba(0, 50, 40, 0.8)" },
+                  fontWeight: 600,
+                  "&:hover": { 
+                    background: `linear-gradient(135deg, var(--primary-dark, #003228) 0%, ${getPrimaryColor()} 100%)`,
+                    boxShadow: `0 6px 20px ${getPrimaryColor()}80, inset 0 1px 3px rgba(255, 255, 255, 0.3)`,
+                    transform: "translateY(-1px)",
+                  },
                 }}
               >
                 Open Scheduler
@@ -161,13 +186,20 @@ export default function CalendarPanelClient({
           sx={{
             // Outer frame like the mock
             p: 0,
-            border: "2px solid #000",
+            border: `2px solid ${getPrimaryColor()}4d`,
             borderRadius: 2,
             overflow: "hidden",
+            // Glassmorphic container
+            background: `linear-gradient(135deg, ${getPrimaryColor()}33 0%, ${getPrimaryColor()}1a 100%)`,
+            backdropFilter: "blur(8px)",
+            boxShadow: "inset 0 2px 4px rgba(255, 255, 255, 0.1)",
 
             // FullCalendar theme overrides
-            "--fc-border-color": "rgba(0,0,0,0.55)",
-            "& .fc": { background: getPrimaryColor() },
+            "--fc-border-color": `${getPrimaryColor()}66`,
+            "& .fc": { 
+              background: `linear-gradient(135deg, ${getPrimaryColor()}26 0%, ${getPrimaryColor()}14 100%)`,
+              backdropFilter: "blur(6px)",
+            },
 
             // Make grid lines thicker / clearer
             "& .fc-theme-standard td, & .fc-theme-standard th": {
@@ -201,17 +233,25 @@ export default function CalendarPanelClient({
               overflow: "hidden",
             },
             "& .evt-registered .fc-event-main": {
-              background: "#000",
+              background: `linear-gradient(135deg, ${getPrimaryColor()}cc 0%, var(--primary-dark, #003228)e6 100%)`,
+              backdropFilter: "blur(8px)",
+              border: `1px solid ${getPrimaryColor()}66`,
+              boxShadow: `0 4px 12px ${getPrimaryColor()}4d, inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
               color: "#fff",
             },
             "& .evt-waitlisted .fc-event-main": {
-              background: "#e6e6e6",
-              color: "#000",
+              background: "linear-gradient(135deg, rgba(230, 230, 230, 0.7) 0%, rgba(200, 200, 200, 0.8) 100%)",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(180, 180, 180, 0.5)",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+              color: "#333",
             },
 
-            // Tweak today background (optional)
+            // Tweak today background with glassmorphism
             "& .fc-timegrid .fc-timegrid-col.fc-day-today": {
-              background: "rgba(0,0,0,0.06)",
+              background: `linear-gradient(180deg, ${getPrimaryColor()}1f 0%, ${getPrimaryColor()}0f 100%)`,
+              backdropFilter: "blur(4px)",
+              boxShadow: `inset 0 1px 2px ${getPrimaryColor()}33`,
             },
           }}
         >
@@ -261,8 +301,6 @@ export default function CalendarPanelClient({
   );
 }
 
-import type { SxProps, Theme } from "@mui/material/styles";
-
 function LegendDot({ sx }: Readonly<{ sx?: SxProps<Theme> }>) {
   return (
     <Box
@@ -272,7 +310,7 @@ function LegendDot({ sx }: Readonly<{ sx?: SxProps<Theme> }>) {
         borderRadius: "50%",
         display: "inline-block",
         mr: 1,
-        ...sx,
+        ...(typeof sx === "object" && !Array.isArray(sx) ? sx : {}),
       }}
     />
   );

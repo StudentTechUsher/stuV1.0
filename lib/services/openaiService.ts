@@ -69,6 +69,7 @@ interface MinorAuditResponse {
 interface ChatbotResponse {
   reply: string;
   category?: 'student' | 'non-student';
+  confidence?: number; // 0-100 scale, represents how confident the AI is in helping the user
 }
 
 /**
@@ -1401,7 +1402,7 @@ export async function ChatbotSendMessage_ServerAction(args: {
   message: string;
   sessionId?: string;
   model?: string;
-}): Promise<{ success: boolean; reply: string; sessionId: string; requestId?: string; error?: string }>{
+}): Promise<{ success: boolean; reply: string; sessionId: string; confidence?: number; requestId?: string; error?: string }>{
   try {
     const user = await getVerifiedUser(); // may be null if not required; leaving as requirement aligns with RLS
     if (!user) return { success: false, reply: '', sessionId: args.sessionId || '', error: 'User not authenticated' };
@@ -1410,12 +1411,19 @@ export async function ChatbotSendMessage_ServerAction(args: {
     const userMessage = (args.message || '').trim();
     if (!userMessage) return { success: false, reply: '', sessionId, error: 'Empty message' };
 
-    // Guardrailed prompt with JSON output to simplify handling
+    // Guardrailed prompt with JSON output to simplify handling - now includes confidence rating
     const systemInstruction = `You are a helpful university student assistant.
 If the user's message is about academic planning, courses, degree requirements, scheduling, registration, financial aid, student support, career pathways, internships, or campus resources, provide a concise, helpful answer.
 If the message is NOT related to academic, career, or student concerns, respond with this exact standard message:
 "I can help with academic, career, or student life questions. For other topics, please reach out to your advisor or campus support resources."
-Return valid JSON only with shape: { "reply": string, "category": "student" | "non-student" }.`;
+
+Additionally, include a confidence rating (0-100) indicating how well you can help with this specific question:
+- 90-100: You have comprehensive, accurate information and can provide excellent guidance
+- 70-89: You can provide helpful information but may lack some specific details
+- 50-69: You can provide general guidance but the user may benefit from speaking to an advisor
+- 0-49: This is outside your expertise or requires human advisor assistance
+
+Return valid JSON only with shape: { "reply": string, "category": "student" | "non-student", "confidence": number }.`;
 
     const prompt = `${systemInstruction}\n\nUSER_MESSAGE:\n${userMessage}\n\nReturn JSON now.`;
     const aiResult = await executeJsonPrompt({ prompt_name: 'chatbot_message', prompt, model: args.model || 'gpt-5-mini', max_output_tokens: 1200 });
@@ -1425,6 +1433,11 @@ Return valid JSON only with shape: { "reply": string, "category": "student" | "n
     const reply = aiResult.success && parsedResponse && typeof parsedResponse.reply === 'string'
       ? String(parsedResponse.reply)
       : (aiResult.rawText || fallback);
+
+    // Extract confidence rating (default to 50 if not provided)
+    const confidence = typeof parsedResponse?.confidence === 'number'
+      ? Math.max(0, Math.min(100, parsedResponse.confidence)) // Clamp between 0-100
+      : 50;
 
     // Log to ai_responses with session_id
     try {
@@ -1439,7 +1452,7 @@ Return valid JSON only with shape: { "reply": string, "category": "student" | "n
       console.error('Failed to insert chat exchange:', logErr);
     }
 
-    return { success: true, reply, sessionId, requestId: aiResult.requestId ?? undefined };
+    return { success: true, reply, sessionId, confidence, requestId: aiResult.requestId ?? undefined };
   } catch (err) {
     return { success: false, reply: '', sessionId: args.sessionId || '', error: err instanceof Error ? err.message : 'Unknown error' };
   }
