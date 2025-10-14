@@ -8,6 +8,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction, updateGradPlanNameAction } from '@/lib/services/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
+import { EventManager } from '@/components/grad-planner/EventManager';
+import { Event } from '@/components/grad-planner/types';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface GradPlanDetails {
@@ -22,13 +24,6 @@ interface GradPlanDetails {
   est_grad_date?: string;
   advisor_notes: string | null;
   plan_name: string | null;
-}
-
-interface Event {
-  id: string;
-  type: 'Major/Minor Application' | 'Internship';
-  title: string;
-  afterTerm: number;
 }
 
 interface Term {
@@ -152,6 +147,7 @@ export default function EditGradPlanPage() {
   } | null>(null);
   const [planNameInput, setPlanNameInput] = React.useState('');
   const [planNameError, setPlanNameError] = React.useState<string | null>(null);
+  const [events, setEvents] = React.useState<Event[]>([]);
 
   const isEditMode = true; // Always in edit mode for this page
 
@@ -193,15 +189,34 @@ export default function EditGradPlanPage() {
     setCurrentPlanData(updatedPlan);
   };
 
-  const handleSave = (updatedPlan: Term[], events: Event[]) => {
+  const handleSave = (updatedPlan: Term[], planEvents: Event[]) => {
     setCurrentPlanData(updatedPlan);
-    const eventCount = events.length;
+    setEvents(planEvents);
+    const eventCount = planEvents.length;
     const eventMessage = eventCount > 0
       ? `Plan saved! ${eventCount} event${eventCount === 1 ? '' : 's'} stored locally for now.`
       : 'Plan saved!';
     showSnackbar(eventMessage, 'success');
     // TODO: In the future, persist events to database
   };
+
+  // Store reference to the internal event dialog trigger
+  const openEventDialogRef = React.useRef<((event?: Event) => void) | null>(null);
+
+  const handleOpenEventDialog = React.useCallback((event?: Event) => {
+    if (openEventDialogRef.current) {
+      openEventDialogRef.current(event);
+    }
+  }, []);
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
+  };
+
+  // Callback to receive the event dialog opener from GraduationPlanner
+  const handleRegisterEventDialogOpener = React.useCallback((opener: (event?: Event) => void) => {
+    openEventDialogRef.current = opener;
+  }, []);
 
   // Check if user has access to this graduation plan
   React.useEffect(() => {
@@ -421,9 +436,9 @@ export default function EditGradPlanPage() {
   const pageTitle = isStudent ? headerTitle : `Graduation Plan for ${studentName}`;
 
   return (
-    <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
+    <Box sx={{ p: 3, mx: 'auto' }}>
       {/* Header with back button */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 4, maxWidth: '1400px', mx: 'auto' }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={handleBack}
@@ -565,37 +580,63 @@ export default function EditGradPlanPage() {
         )}
       </Box>
 
-      {/* Advisor Notes - Show above plan if present */}
-      {gradPlan.advisor_notes && (
-        <AdvisorNotesBox advisorNotes={gradPlan.advisor_notes} />
-      )}
+      {/* Main content area with two-column layout */}
+      <Box sx={{ display: 'flex', gap: 3, maxWidth: '1400px', mx: 'auto', alignItems: 'flex-start' }}>
+        {/* Left column - Main plan content */}
+        <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
+          {/* Plan Details */}
+          <Paper elevation={0} sx={{ p: 4, mb: 4, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
+            {(() => {
+              const raw = normalizePlanDetails(gradPlan.plan_details, {
+                est_grad_sem: gradPlan.est_grad_sem,
+                est_grad_date: gradPlan.est_grad_date,
+              });
+              return (
+                <GraduationPlanner
+                  plan={raw}
+                  isEditMode={isEditMode}
+                  onPlanUpdate={handlePlanUpdate}
+                  onSave={handleSave}
+                  editorRole={userRole === 'advisor' ? 'advisor' : 'student'}
+                  advisorChanges={advisorChanges}
+                  externalEvents={events}
+                  onEventsChange={setEvents}
+                  onOpenEventDialog={handleRegisterEventDialogOpener}
+                />
+              );
+            })()}
+          </Paper>
 
-      {/* Plan Details */}
-      <Paper elevation={0} sx={{ p: 4, mb: 4, backgroundColor: 'var(--card)', borderRadius: 3, border: '1px solid var(--border)' }}>
-        {(() => {
-          const raw = normalizePlanDetails(gradPlan.plan_details, {
-            est_grad_sem: gradPlan.est_grad_sem,
-            est_grad_date: gradPlan.est_grad_date,
-          });
-          return (
-            <GraduationPlanner
-              plan={raw}
-              isEditMode={isEditMode}
-              onPlanUpdate={handlePlanUpdate}
-              onSave={handleSave}
-              editorRole={userRole === 'advisor' ? 'advisor' : 'student'}
-              advisorChanges={advisorChanges}
-            />
-          );
-        })()}
-      </Paper>
+          {/* Info Alert for Students */}
+          {isStudent && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              You are editing your graduation plan. Click courses to move them between terms, then click &quot;Submit for Approval&quot; to save your changes.
+            </Alert>
+          )}
+        </Box>
 
-      {/* Info Alert for Students */}
-      {isStudent && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You are editing your graduation plan. Click courses to move them between terms, then click &quot;Submit for Approval&quot; to save your changes.
-        </Alert>
-      )}
+        {/* Right column - Sidebar with Advisor Notes and Event Manager */}
+        {(gradPlan.advisor_notes || (isEditMode && currentPlanData)) && (
+          <Box sx={{ flex: '0 0 320px', minWidth: '320px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Advisor Notes - Show above events if present */}
+            {gradPlan.advisor_notes && (
+              <AdvisorNotesBox advisorNotes={gradPlan.advisor_notes} />
+            )}
+
+            {/* Event Manager */}
+            {isEditMode && currentPlanData && (
+              <EventManager
+                events={events}
+                isEditMode={isEditMode}
+                onAddEvent={() => handleOpenEventDialog()}
+                onEditEvent={handleOpenEventDialog}
+                onDeleteEvent={handleDeleteEvent}
+                maxTermNumber={currentPlanData.length}
+              />
+            )}
+          </Box>
+        )}
+      </Box>
 
       {/* Snackbar for notifications */}
       <Snackbar

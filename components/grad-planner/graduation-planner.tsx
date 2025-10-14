@@ -22,7 +22,7 @@ import { TermBlock } from '@/components/space/TermCard';
 import { CourseItem } from '@/components/space/CoursePill';
 
 // Import types
-import { Course, Event, Term } from './types';
+import { Course, Event, EventType, Term } from './types';
 
 // Import components
 import { PlanSummary } from './PlanSummary';
@@ -54,6 +54,9 @@ interface GraduationPlannerProps {
     movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
     hasSuggestions: boolean;
   } | null;
+  externalEvents?: Event[];
+  onEventsChange?: (events: Event[]) => void;
+  onOpenEventDialog?: (opener: (event?: Event) => void) => void;
 }
 
 export default function GraduationPlanner({
@@ -63,7 +66,10 @@ export default function GraduationPlanner({
   onSave,
   initialSpaceView = false,
   editorRole = 'student',
-  advisorChanges
+  advisorChanges,
+  externalEvents,
+  onEventsChange,
+  onOpenEventDialog: externalOnOpenEventDialog
 }: Readonly<GraduationPlannerProps>) {
   // Parse plan data using custom hook
   const { planData, assumptions, durationYears } = usePlanParser(plan);
@@ -76,11 +82,13 @@ export default function GraduationPlanner({
   const [modifiedTerms, setModifiedTerms] = useState<Set<number>>(new Set());
   // View mode state
   const [isSpaceView, setIsSpaceView] = useState(initialSpaceView);
-  // Events state
-  const [events, setEvents] = useState<Event[]>([]);
+  // Events state - use external events if provided, otherwise use internal state
+  const [internalEvents, setInternalEvents] = useState<Event[]>([]);
+  const events = externalEvents ?? internalEvents;
+  const setEvents = onEventsChange ?? setInternalEvents;
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [newEventType, setNewEventType] = useState<'Major/Minor Application' | 'Internship'>('Major/Minor Application');
+  const [newEventType, setNewEventType] = useState<EventType>('Major/Minor Application');
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventAfterTerm, setNewEventAfterTerm] = useState<number>(1);
 
@@ -135,7 +143,7 @@ export default function GraduationPlanner({
   };
 
   // Event management functions
-  const handleOpenEventDialog = (event?: Event) => {
+  const handleOpenEventDialog = React.useCallback((event?: Event) => {
     if (event) {
       // Editing existing event
       setEditingEvent(event);
@@ -150,7 +158,14 @@ export default function GraduationPlanner({
       setNewEventAfterTerm(1);
     }
     setShowEventDialog(true);
-  };
+  }, []);
+
+  // Register the dialog opener with parent component
+  React.useEffect(() => {
+    if (externalOnOpenEventDialog) {
+      externalOnOpenEventDialog(handleOpenEventDialog);
+    }
+  }, [externalOnOpenEventDialog, handleOpenEventDialog]);
 
   const handleSaveEvent = () => {
     if (editingEvent) {
@@ -326,8 +341,9 @@ export default function GraduationPlanner({
       degree,
       gradSemester,
       terms,
+      events,
     };
-  }, [plan, currentPlanData]);
+  }, [plan, currentPlanData, events]);
 
   if (!planData || planData.length === 0) {
     return (
@@ -399,7 +415,12 @@ export default function GraduationPlanner({
 
             {/* Display terms with events between them */}
             {isSpaceView ? (
-              <SpaceView plan={spaceViewData} />
+              <SpaceView
+                plan={spaceViewData}
+                isEditMode={isEditMode}
+                onEditEvent={handleOpenEventDialog}
+                onDeleteEvent={handleDeleteEvent}
+              />
             ) : (
               <DetailView
                 currentPlanData={currentPlanData}

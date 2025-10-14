@@ -12,38 +12,18 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
-
-interface Term {
-  term: string;
-  notes?: string;
-  courses?: Course[];
-  credits_planned?: number;
-}
-
-interface Course {
-  code: string;
-  title: string;
-  credits: number;
-  fulfills?: string[];
-}
-
-interface Event {
-  id: string;
-  type: 'Major/Minor Application' | 'Internship';
-  title: string;
-  afterTerm: number;
-}
+import { Event, EventType, Term } from './types';
 
 interface EventDialogProps {
   open: boolean;
   editingEvent: Event | null;
-  eventType: 'Major/Minor Application' | 'Internship';
+  eventType: EventType;
   eventTitle: string;
   eventAfterTerm: number;
   planData: Term[];
   onClose: () => void;
   onSave: () => void;
-  onTypeChange: (type: 'Major/Minor Application' | 'Internship') => void;
+  onTypeChange: (type: EventType) => void;
   onTitleChange: (title: string) => void;
   onAfterTermChange: (afterTerm: number) => void;
 }
@@ -60,7 +40,7 @@ export function EventDialog({
   onTypeChange,
   onTitleChange,
   onAfterTermChange,
-}: EventDialogProps) {
+}: Readonly<EventDialogProps>) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle className="font-header-bold">
@@ -82,7 +62,7 @@ export function EventDialog({
             <Select
               value={eventType}
               label="Event Type"
-              onChange={(e) => onTypeChange(e.target.value as 'Major/Minor Application' | 'Internship')}
+              onChange={(e) => onTypeChange(e.target.value as EventType)}
               className="font-body"
               sx={{
                 '& .MuiOutlinedInput-notchedOutline': {
@@ -101,6 +81,24 @@ export function EventDialog({
               </MenuItem>
               <MenuItem value="Internship" className="font-body">
                 Internship
+              </MenuItem>
+              <MenuItem value="Co-op" className="font-body">
+                Co-op
+              </MenuItem>
+              <MenuItem value="Study Abroad" className="font-body">
+                Study Abroad
+              </MenuItem>
+              <MenuItem value="Research Project" className="font-body">
+                Research Project
+              </MenuItem>
+              <MenuItem value="Teaching Assistant" className="font-body">
+                Teaching Assistant
+              </MenuItem>
+              <MenuItem value="Sabbatical" className="font-body">
+                Sabbatical
+              </MenuItem>
+              <MenuItem value="Other" className="font-body">
+                Other
               </MenuItem>
             </Select>
           </FormControl>
