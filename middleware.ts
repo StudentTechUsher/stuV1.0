@@ -53,11 +53,15 @@ function handleAuthRedirects(
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
+  const pathname = request.nextUrl.pathname
 
   // Parse and set subdomain
   const host = request.headers.get('host')
   const subdomain = parseSubdomain(host)
   response.headers.set('x-subdomain', subdomain)
+
+  console.log('Host:', host)
+  console.log('Subdomain:', subdomain)
 
   // Create Supabase client for server-side operations
   const supabase = createSupabaseServerClient(request, response)
@@ -71,6 +75,9 @@ export async function middleware(request: NextRequest) {
 
   if (university) {
     response.headers.set('x-university', JSON.stringify(university))
+    console.log('University found:', university.name)
+  } else {
+    console.log('No university found for subdomain:', subdomain)
   }
 
   // Get session and handle auth errors
@@ -80,12 +87,16 @@ export async function middleware(request: NextRequest) {
     console.error('Middleware auth error:', error.message)
   }
 
+
   // Handle auth-based redirects
   const authRedirect = handleAuthRedirects(request, session)
   if (authRedirect) {
+    console.log('Redirecting to:', authRedirect.headers.get('location'))
     return authRedirect
   }
 
+  console.log('Allowing request to proceed')
+  console.log('=======================')
   return response
 }
 

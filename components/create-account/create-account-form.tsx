@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 // Removed direct client-side upsert; persistence handled by server action now.
 import { saveProfileAndPreferences } from "./save-profile-action";
 import { saveGradTimeline } from "./save-grad-timeline-action";
+import { upsertUserEntry } from "./upsert-user-entry-action";
 import { Option } from "@/types/option";
-import ChipsField from "@/helpers/chips-field";
+import SearchableMultiSelect from "@/helpers/searchable-multi-select";
 import SingleSelect from "@/helpers/single-select";
 import { TextField, Select, MenuItem, FormControl, InputLabel, FormHelperText } from "@mui/material";
 import TranscriptUploadSection from "@/components/transcript/TranscriptUploadSection";
@@ -60,8 +61,8 @@ export default function CreateAccountForm({
   const [universities] = useState<Option[]>(preload.universities);
   const [majorsOpts, setMajorsOpts] = useState<Option[]>([]);
   const [minorsOpts, setMinorsOpts] = useState<Option[]>([]);
-  const [interestsOpts] = useState<Option[]>(preload.interests);
-  const [careerOpts] = useState<Option[]>(preload.careers);
+  const [interestsOpts, setInterestsOpts] = useState<Option[]>(preload.interests);
+  const [careerOpts, setCareerOpts] = useState<Option[]>(preload.careers);
   const [classPrefOpts] = useState<Option[]>(preload.classPrefs);
 
   // Selected values
@@ -152,6 +153,36 @@ export default function CreateAccountForm({
       lastName.trim().length > 0
     );
   }, [universityId, firstName, lastName, gradTerm, gradYear, isEditMode]);
+
+  // Handler for adding custom interests
+  const handleAddInterest = useCallback(async (name: string): Promise<{ id: number; name: string } | null> => {
+    const result = await upsertUserEntry('student_interests', name);
+    if (result.ok && result.id !== undefined && result.name) {
+      const newOption = { id: result.id, name: result.name };
+      // Add to local options if not already there
+      setInterestsOpts(prev => {
+        if (prev.find(opt => opt.id === newOption.id)) return prev;
+        return [...prev, newOption];
+      });
+      return newOption;
+    }
+    return null;
+  }, []);
+
+  // Handler for adding custom career options
+  const handleAddCareer = useCallback(async (name: string): Promise<{ id: number; name: string } | null> => {
+    const result = await upsertUserEntry('career_options', name);
+    if (result.ok && result.id !== undefined && result.name) {
+      const newOption = { id: result.id, name: result.name };
+      // Add to local options if not already there
+      setCareerOpts(prev => {
+        if (prev.find(opt => opt.id === newOption.id)) return prev;
+        return [...prev, newOption];
+      });
+      return newOption;
+    }
+    return null;
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -270,50 +301,61 @@ export default function CreateAccountForm({
         disabled={isEditMode}
       />
 
-      <ChipsField
+      <SearchableMultiSelect
         label="Major(s)"
         helper={
           universityId == null
             ? "Choose a university first to see available majors."
-            : "Choose one or more majors you’re pursuing or considering."
+            : "Choose one or more majors you're pursuing or considering."
         }
         options={majorsOpts}
         values={majors}
         onChange={setMajors}
         disabled={universityId == null || majorsOpts.length === 0}
+        placeholder="Search for majors..."
+        maxSelections={3}
       />
 
-      <ChipsField
+      <SearchableMultiSelect
         label="Minor(s)"
-        helper="Optional – pick any minors you’re considering."
+        helper="Optional – pick any minors you're considering."
         options={minorsOpts}
         values={minors}
         onChange={setMinors}
         disabled={minorsOpts.length === 0}
+        placeholder="Search for minors..."
+        maxSelections={3}
       />
 
-      <ChipsField
+      <SearchableMultiSelect
         label="Interests"
-        helper="What subjects or areas excite you?"
+        helper="What subjects or areas excite you? Type and press Enter to add custom entries."
         options={interestsOpts}
         values={interests}
         onChange={setInterests}
+        placeholder="Search or add your own..."
+        allowCustomEntries={true}
+        onAddCustomEntry={handleAddInterest}
       />
 
-      <ChipsField
+      <SearchableMultiSelect
         label="Potential career paths"
-        helper="Where do you see yourself heading?"
+        helper="Where do you see yourself heading? Type and press Enter to add custom entries."
         options={careerOpts}
         values={careerSelections}
         onChange={setCareerSelections}
+        placeholder="Search or add your own..."
+        allowCustomEntries={true}
+        onAddCustomEntry={handleAddCareer}
       />
 
-      <ChipsField
+      <SearchableMultiSelect
         label="Class preferences"
         helper="e.g., mornings, small seminars, online, project-based."
         options={classPrefOpts}
         values={classPreferences}
         onChange={setClassPreferences}
+        placeholder="Search for preferences..."
       />
 
       {/* Graduation Timeline */}

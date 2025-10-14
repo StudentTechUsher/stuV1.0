@@ -97,13 +97,15 @@ export default function ChatbotDrawer({
   }, [isScrollable, isNearBottom, messages]);
 
   const handleSend = async () => {
+    if (isTyping) return;
     const text = input.trim();
     if (!text) return;
-    
+
     try {
       // Add user message to the chat
       setMessages(prev => [...prev, { type: 'user', text, id: `user-${Date.now()}` }]);
-      
+      setInput("");
+
       let currentSession = sessionId;
       if (!currentSession) {
         // generate a new session id once per drawer session
@@ -111,23 +113,40 @@ export default function ChatbotDrawer({
         setSessionId(currentSession);
       }
 
-      if (onSend) {
-        await onSend(text, { role });
-      }
-
       // Call server action to get AI reply and persist exchange
       try {
         setIsTyping(true);
+        if (onSend) {
+          await onSend(text, { role });
+        }
         const result = await chatbotSendMessage(text, currentSession || undefined);
         const reply = result?.success && result.reply ? result.reply : "I'm having trouble right now. Please try again in a moment.";
+        const confidence = result?.confidence ?? 50; // Default to 50 if not provided
+
+        // Add AI response
         setMessages(prev => [...prev, { type: 'bot', text: reply, id: `bot-${Date.now()}` }]);
-        setIsTyping(false);
+
+        // Check confidence level - if below 65%, suggest talking to an advisor
+        if (confidence < 65 && result?.success) {
+          // Wait a beat before showing advisor suggestion
+          setTimeout(() => {
+            const advisorSuggestion = "I may not have all the information you need for this question. Would you like to schedule a meeting with your advisor? They can provide more personalized guidance.";
+            setMessages(prev => [...prev, { type: 'bot', text: advisorSuggestion, id: `bot-advisor-${Date.now()}` }]);
+
+            // Auto-redirect after additional delay to give user time to read
+            setTimeout(() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/dashboard/meet-with-advisor';
+              }
+            }, 6000); // 6 seconds after showing the advisor suggestion
+          }, 1000); // 1 second after initial response
+        }
       } catch (aiErr) {
         console.error('AI send failed:', aiErr);
         setMessages(prev => [...prev, { type: 'bot', text: "I'm having trouble right now. Please try again in a moment.", id: `bot-${Date.now()}` }]);
+      } finally {
         setIsTyping(false);
       }
-      setInput("");
       inputRef.current?.focus();
     } catch (e) {
       console.error("Failed to send chat message:", e);
@@ -416,7 +435,13 @@ export default function ChatbotDrawer({
               }
             }}
           />
-          <Button variant="contained" color="success" onClick={handleSend} sx={{ alignSelf: "flex-end" }}>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSend}
+            sx={{ alignSelf: "flex-end" }}
+            disabled={isTyping || !input.trim()}
+          >
             Send
           </Button>
         </Stack>
