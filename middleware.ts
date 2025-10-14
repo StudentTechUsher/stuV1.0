@@ -60,9 +60,6 @@ export async function middleware(request: NextRequest) {
   const subdomain = parseSubdomain(host)
   response.headers.set('x-subdomain', subdomain)
 
-  console.log('Host:', host)
-  console.log('Subdomain:', subdomain)
-
   // Create Supabase client for server-side operations
   const supabase = createSupabaseServerClient(request, response)
 
@@ -76,8 +73,6 @@ export async function middleware(request: NextRequest) {
   if (university) {
     response.headers.set('x-university', JSON.stringify(university))
     console.log('University found:', university.name)
-  } else {
-    console.log('No university found for subdomain:', subdomain)
   }
 
   // Get session and handle auth errors
@@ -95,8 +90,6 @@ export async function middleware(request: NextRequest) {
     return authRedirect
   }
 
-  console.log('Allowing request to proceed')
-  console.log('=======================')
   return response
 }
 

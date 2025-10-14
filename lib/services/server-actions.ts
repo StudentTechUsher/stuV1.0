@@ -28,6 +28,11 @@ import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
     deleteProgram as _deleteProgram,
 } from './programService';
+import {
+    fetchUserCourses as _fetchUserCourses,
+    fetchMostRecentUserCourses as _fetchMostRecentUserCourses,
+    formatCoursesForDisplay,
+} from './userCoursesService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
 export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: unknown) {
@@ -269,4 +274,25 @@ export async function issueGradPlanAccessId(gradPlanId: string): Promise<string>
 // Chatbot message server action wrapper
 export async function chatbotSendMessage(message: string, sessionId?: string) {
     return await _chatbotSendMessage({ message, sessionId });
+}
+
+// User courses related
+export async function fetchUserCoursesAction(userId: string) {
+    try {
+        const courses = await _fetchUserCourses(userId);
+        return { success: true, courses: formatCoursesForDisplay(courses) };
+    } catch (error) {
+        console.error('Error fetching user courses:', error);
+        return { success: false, error: 'Failed to fetch user courses' };
+    }
+}
+
+export async function fetchMostRecentUserCoursesAction(userId: string) {
+    try {
+        const courses = await _fetchMostRecentUserCourses(userId);
+        return { success: true, courses: formatCoursesForDisplay(courses) };
+    } catch (error) {
+        console.error('Error fetching recent user courses:', error);
+        return { success: false, error: 'Failed to fetch recent user courses' };
+    }
 }
