@@ -5,9 +5,19 @@ export interface Course {
   fulfills?: string[];
 }
 
+export type EventType =
+  | 'Major/Minor Application'
+  | 'Internship'
+  | 'Sabbatical'
+  | 'Study Abroad'
+  | 'Research Project'
+  | 'Teaching Assistant'
+  | 'Co-op'
+  | 'Other';
+
 export interface Event {
   id: string;
-  type: 'Major/Minor Application' | 'Internship';
+  type: EventType;
   title: string;
   afterTerm: number;
 }

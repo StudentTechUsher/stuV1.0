@@ -24,7 +24,7 @@ export function DetailView({
   onMoveCourse,
   onEditEvent,
   onDeleteEvent
-}: DetailViewProps) {
+}: Readonly<DetailViewProps>) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
@@ -69,7 +69,24 @@ export function DetailView({
 
           // Render events after first term
           const firstTermEvents = eventsAfterThisTerm.length > 0 ? (
-            <Box key={`events-after-${index}`} sx={{ width: '100%' }}>
+            <Box
+              key={`events-after-${index}`}
+              sx={{
+                width: '100%',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: '-12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '2px',
+                  height: '24px',
+                  backgroundColor: 'var(--border)',
+                  opacity: 0.5,
+                }
+              }}
+            >
               {eventsAfterThisTerm.map((event) => (
                 <EventCard
                   key={event.id}
@@ -85,7 +102,24 @@ export function DetailView({
 
           // Render events after second term
           const secondTermEvents = nextTerm && nextEventsAfterTerm.length > 0 ? (
-            <Box key={`events-after-${index + 1}`} sx={{ width: '100%' }}>
+            <Box
+              key={`events-after-${index + 1}`}
+              sx={{
+                width: '100%',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: '-12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '2px',
+                  height: '24px',
+                  backgroundColor: 'var(--border)',
+                  opacity: 0.5,
+                }
+              }}
+            >
               {nextEventsAfterTerm.map((event) => (
                 <EventCard
                   key={event.id}

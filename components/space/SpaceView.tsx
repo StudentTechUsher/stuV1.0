@@ -1,17 +1,46 @@
+import React from 'react';
 import { TermCard, TermBlock } from './TermCard';
+import { Event } from '../grad-planner/types';
+import { EventCard } from '../grad-planner/EventCard';
 
 export interface PlanSpaceView {
   planName: string;
   degree: string;
   gradSemester: string;
   terms: TermBlock[];
+  events?: Event[];
 }
 
 interface SpaceViewProps {
   plan: PlanSpaceView;
+  isEditMode?: boolean;
+  onEditEvent?: (event: Event) => void;
+  onDeleteEvent?: (eventId: string) => void;
 }
 
-export function SpaceView({ plan }: SpaceViewProps) {
+export function SpaceView({ plan, isEditMode = false, onEditEvent, onDeleteEvent }: Readonly<SpaceViewProps>) {
+  // Create an array of terms and events to render in order
+  const gridItems = React.useMemo(() => {
+    const items: Array<{ type: 'term' | 'event'; data: TermBlock | Event; termNumber?: number }> = [];
+
+    plan.terms.forEach((term, index) => {
+      const termNumber = index + 1;
+
+      // Add the term
+      items.push({ type: 'term', data: term, termNumber });
+
+      // Add events that occur after this term
+      if (plan.events) {
+        const eventsAfterTerm = plan.events.filter(e => e.afterTerm === termNumber);
+        eventsAfterTerm.forEach(event => {
+          items.push({ type: 'event', data: event, termNumber });
+        });
+      }
+    });
+
+    return items;
+  }, [plan.terms, plan.events]);
+
   return (
     <div className="space-y-3">
       {/* Top inputs row */}
@@ -51,11 +80,25 @@ export function SpaceView({ plan }: SpaceViewProps) {
         </div>
       </div>
 
-      {/* Term cards grid */}
+      {/* Term cards and event cards grid */}
       <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {plan.terms.map((term) => (
-          <TermCard key={term.id} term={term} />
-        ))}
+        {gridItems.map((item) => {
+          if (item.type === 'term') {
+            return <TermCard key={`term-${item.data.id}`} term={item.data as TermBlock} />;
+          } else {
+            const event = item.data as Event;
+            return (
+              <EventCard
+                key={`event-${event.id}`}
+                event={event}
+                isEditMode={isEditMode}
+                variant="grid"
+                onEdit={onEditEvent}
+                onDelete={onDeleteEvent}
+              />
+            );
+          }
+        })}
       </div>
 
       {/* Bottom legend */}
