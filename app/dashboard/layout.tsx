@@ -105,9 +105,9 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
         listClassPreferences(),
       ]);
 
-    // Get session for JWT token to extract name
-    const { data: { session } } = await supabase.auth.getSession();
-    const tokenPayload = decodeJwtPayload(session?.access_token);
+    // Get authenticated user to extract JWT token securely
+    // Note: We already called getUser() above for authentication, using the same result
+    const tokenPayload = decodeJwtPayload(user?.app_metadata?.access_token);
     const fullName = tokenPayload?.name as string || "";
     const nameParts = fullName.split(' ');
 
@@ -206,6 +206,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
   { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",          icon: "inbox", badgeCount: inboxBadge },
         { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
         { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
+        { href: "/dashboard/maintain-programs",  segment: "maintain programs",  label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
         { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
         { href: "/pathfinder/careers/manage",    segment: "pathfinder",         label: "Manage Careers", icon: "careers" },

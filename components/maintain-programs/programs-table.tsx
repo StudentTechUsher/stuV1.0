@@ -20,9 +20,10 @@ export type ProgramsTableProps = {
   rows: ProgramRow[];
   onEdit: (row: ProgramRow) => void;
   onDelete: (row: ProgramRow) => void;
+  canDelete?: boolean;
 };
 
-export default function ProgramsTable({ rows, onEdit, onDelete }: ProgramsTableProps) {
+export default function ProgramsTable({ rows, onEdit, onDelete, canDelete = true }: Readonly<ProgramsTableProps>) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [programToDelete, setProgramToDelete] = React.useState<ProgramRow | null>(null);
 
@@ -45,63 +46,68 @@ export default function ProgramsTable({ rows, onEdit, onDelete }: ProgramsTableP
   };
 
   const columns = React.useMemo<GridColDef<ProgramRow>[]>(() => ([
-    { 
-      field: 'name', 
-      headerName: 'Name', 
-      flex: 1, 
-      minWidth: 160 
-    },
-    { 
-      field: 'program_type', 
-      headerName: 'Type', 
-      width: 120 
-    },
-    { 
-      field: 'version', 
-      headerName: 'Version', 
-      width: 120 
+    {
+      field: 'name',
+      headerName: 'Name',
+      flex: 0.5,
+      minWidth: 140
     },
     {
-      field: 'created_at', 
-      headerName: 'Created', 
-      width: 180,
-      valueFormatter: (value: string) => 
+      field: 'program_type',
+      headerName: 'Type',
+      flex: 0.35,
+      minWidth: 100
+    },
+    {
+      field: 'version',
+      headerName: 'Version',
+      flex: 0.35,
+      minWidth: 100
+    },
+    {
+      field: 'created_at',
+      headerName: 'Created',
+      flex: 0.6,
+      minWidth: 160,
+      valueFormatter: (value: string) =>
         value ? new Date(value).toLocaleString() : ''
     },
     {
-      field: 'modified_at', 
-      headerName: 'Modified', 
-      width: 180,
-      valueFormatter: (value: string) => 
+      field: 'modified_at',
+      headerName: 'Modified',
+      flex: 0.6,
+      minWidth: 160,
+      valueFormatter: (value: string) =>
         value ? new Date(value).toLocaleString() : ''
     },
     {
-      field: 'actions', 
-      headerName: 'Actions', 
-      width: 150, 
-      sortable: false, 
+      field: 'actions',
+      headerName: 'Actions',
+      width: 150,
+      sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams<ProgramRow>) => (
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <IconButton 
-            aria-label="Edit requirements" 
+          <IconButton
+            aria-label="Edit requirements"
             onClick={() => onEdit(params.row)}
             size="small"
           >
             <EditIcon />
           </IconButton>
-          <IconButton 
-            aria-label="Delete program" 
+          <IconButton
+            aria-label="Delete program"
             onClick={() => handleDeleteClick(params.row)}
             size="small"
             color="error"
+            disabled={!canDelete}
           >
             <DeleteIcon />
           </IconButton>
         </Box>
       )
     },
-  ]), [onEdit]);
+  ]), [onEdit, canDelete]);
 
   return (
     <>
@@ -111,15 +117,21 @@ export default function ProgramsTable({ rows, onEdit, onDelete }: ProgramsTableP
         getRowId={(r) => r.id}
         disableRowSelectionOnClick
         pageSizeOptions={[10, 25, 50]}
-        initialState={{ 
-          pagination: { 
-            paginationModel: { 
-              page: 0, 
-              pageSize: 10 
-            } 
-          } 
+        initialState={{
+          pagination: {
+            paginationModel: {
+              page: 0,
+              pageSize: 10
+            }
+          }
         }}
-        style={{ height: 560 }}
+        sx={{
+          height: 'calc(100vh - 280px)',
+          minHeight: 400,
+          '& .MuiDataGrid-columnHeaderTitle': {
+            fontWeight: 'bold'
+          }
+        }}
       />
 
       {/* Delete Confirmation Dialog */}

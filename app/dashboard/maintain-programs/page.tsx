@@ -3,18 +3,22 @@
 import * as React from 'react';
 import { Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import { useRouter } from 'next/navigation';
 import { getSessionUser } from '@/lib/services/auth';
 import { getUserUniversityId } from '@/lib/services/profileService';
+import { fetchMyProfile } from '@/lib/services/profileService.server';
 import type { ProgramRow } from '@/types/program';
 import EditRequirementsDialog from '@/components/maintain-programs/edit-requirements-dialog';
 import ProgramsTable from '@/components/maintain-programs/programs-table';
 import { fetchProgramsByUniversity, deleteProgram } from '@/lib/services/server-actions';
 
 export default function MaintainProgramsPage() {
+  const router = useRouter();
   const [rows, setRows] = React.useState<ProgramRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [universityId, setUniversityId] = React.useState<number>(0);
+  const [userRole, setUserRole] = React.useState<number | null>(null);
 
   const [editOpen, setEditOpen] = React.useState(false);
   const [editingRow, setEditingRow] = React.useState<ProgramRow | null>(null);
@@ -28,10 +32,19 @@ export default function MaintainProgramsPage() {
         setError(null);
 
         const user = await getSessionUser();
+        const profile = await fetchMyProfile(user.id);
+
+        // Redirect students (role 3) to dashboard
+        if (profile.role_id === 3) {
+          router.push('/dashboard');
+          return;
+        }
+
         const universityId = await getUserUniversityId(user.id);
         const programs = await fetchProgramsByUniversity(universityId);
 
         if (!active) return;
+        setUserRole(profile.role_id);
         setUniversityId(universityId);
         setRows(programs);
       } catch (e: unknown) {
@@ -49,7 +62,7 @@ export default function MaintainProgramsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   const handleOpenEdit = (row: ProgramRow) => {
     setEditingRow(row);
@@ -153,7 +166,12 @@ export default function MaintainProgramsPage() {
           return <Alert severity="error">{error}</Alert>;
         } else {
           return (
-            <ProgramsTable rows={rows} onEdit={handleOpenEdit} onDelete={handleDeleteProgram} />
+            <ProgramsTable
+              rows={rows}
+              onEdit={handleOpenEdit}
+              onDelete={handleDeleteProgram}
+              canDelete={userRole === 1} // Only admins (role 1) can delete
+            />
           );
         }
       })()}
