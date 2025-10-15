@@ -24,6 +24,9 @@ import AddIcon from '@mui/icons-material/Add';
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
+import { updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { decodeAccessIdClient } from '@/lib/utils/access-id';
+import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import {
   parseRequirementsFromGenEd,
   parseProgramRequirements,
@@ -96,8 +99,9 @@ interface CreateGradPlanDialogProps {
   genEdStrategy: 'early' | 'balanced';
   planMode: 'AUTO' | 'MANUAL';
   universityId: number;
-  onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string) => void;
+  onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string, planName?: string) => void;
   prompt: string;
+  initialPlanName?: string;
 }
 
 export default function CreateGradPlanDialog({
@@ -109,7 +113,8 @@ export default function CreateGradPlanDialog({
   planMode: initialPlanMode,
   universityId,
   onPlanCreated,
-  prompt
+  prompt,
+  initialPlanName
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: program data (loaded dynamically)
@@ -130,6 +135,8 @@ export default function CreateGradPlanDialog({
   // State: plan creation
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
+  const [planName, setPlanName] = useState(initialPlanName ?? '');
+  const [planNameError, setPlanNameError] = useState<string | null>(null);
   // Snackbar for success/error feedback
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>(
     { open: false, message: '', severity: 'info' }
@@ -142,6 +149,13 @@ export default function CreateGradPlanDialog({
     title: 'Creating Your Graduation Plan',
     subtitle: 'AI is organizing your courses into semesters...'
   });
+
+  useEffect(() => {
+    if (open) {
+      setPlanName(initialPlanName ?? '');
+      setPlanNameError(null);
+    }
+  }, [open, initialPlanName]);
 
 // --- Fetch program data dynamically when dialog opens ---
 useEffect(() => {
@@ -584,6 +598,16 @@ const handleRemoveElective = (id: string) => {
       return;
     }
 
+    const nameValidation = validatePlanName(planName, { allowEmpty: true });
+    if (!nameValidation.isValid) {
+      setPlanNameError(nameValidation.error);
+      showSnackbar(nameValidation.error, 'error');
+      return;
+    }
+    setPlanNameError(null);
+    const sanitizedPlanName = nameValidation.sanitizedValue;
+    setPlanName(sanitizedPlanName);
+
     setIsCreatingPlan(true);
     setPlanCreationError(null);
 
@@ -611,14 +635,36 @@ const handleRemoveElective = (id: string) => {
       }
 
       if (aiResult.success && aiResult.accessId) {
+        let savedPlanName: string | undefined;
+        if (sanitizedPlanName) {
+          const gradPlanId = decodeAccessIdClient(aiResult.accessId);
+          if (!gradPlanId) {
+            console.warn('⚠️ Unable to decode grad plan ID from accessId while saving plan name.');
+          } else {
+            const renameResult = await updateGradPlanNameAction(gradPlanId, sanitizedPlanName);
+            if (!renameResult.success) {
+              const renameMessage = renameResult.error ?? 'Failed to save plan name. Please rename it from your dashboard.';
+              setPlanCreationError(renameMessage);
+              showSnackbar(renameMessage, 'error');
+            } else {
+              savedPlanName = sanitizedPlanName;
+            }
+          }
+        }
+
         // Call the onPlanCreated callback with the AI-generated plan
         if (onPlanCreated && aiResult.semesterPlan) {
           // Convert selected program IDs from strings to numbers (include both majors/minors AND GenEd programs)
           const allProgramIds = [...Array.from(selectedPrograms), ...genEdProgramIds].map(id => parseInt(id, 10));
           // Use the accessId from the AI result
-          onPlanCreated(aiResult.semesterPlan as Term[], allProgramIds, aiResult.accessId);
+          onPlanCreated(aiResult.semesterPlan as Term[], allProgramIds, aiResult.accessId, savedPlanName);
         }
-        showSnackbar('Semester plan generated successfully!', 'success');
+        const renameFailed = Boolean(sanitizedPlanName) && !savedPlanName;
+        const resultSeverity: 'success' | 'error' | 'info' | 'warning' = renameFailed ? 'warning' : 'success';
+        const resultMessage = renameFailed
+          ? 'Plan generated, but we could not save the name automatically. Please update it from your dashboard.'
+          : 'Semester plan generated successfully!';
+        showSnackbar(resultMessage, resultSeverity);
 
         // Close dialog on success
         onClose();
@@ -822,6 +868,27 @@ const handleRemoveElective = (id: string) => {
         )}
         
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Plan Name */}
+          <Box>
+            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
+              Name Your Plan
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Ex: First Year STEM Roadmap"
+              value={planName}
+              onChange={(event) => {
+                setPlanName(event.target.value);
+                if (planNameError) {
+                  setPlanNameError(null);
+                }
+              }}
+              disabled={isCreatingPlan}
+              error={Boolean(planNameError)}
+              helperText={planNameError ?? 'Optional, but helpful! You can change this later.'}
+              inputProps={{ maxLength: 100 }}
+            />
+          </Box>
           {/* Available Programs */}
           <Box>
             <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>Available Programs:</Typography>

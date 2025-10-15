@@ -4,6 +4,7 @@
 
 import { ValidationError } from 'yup';
 import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
+import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
 import {
@@ -206,10 +207,11 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
 
 // Update plan name (students can update their own; advisors/admins allowed)
 export async function updateGradPlanNameAction(gradPlanId: string, planName: string) {
-    const trimmedName = planName?.trim?.() ?? '';
-    if (!trimmedName) {
-        return { success: false, error: 'Plan name is required' };
+    const validation = validatePlanName(planName);
+    if (!validation.isValid) {
+        return { success: false, error: validation.error };
     }
+    const sanitizedName = validation.sanitizedValue;
     try {
         const supabaseSrv = await createSupabaseServerComponentClient();
         const { data: { user } } = await supabaseSrv.auth.getUser();
@@ -250,7 +252,7 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
             }
         }
 
-        return await _updateGradPlanName(gradPlanId, trimmedName);
+        return await _updateGradPlanName(gradPlanId, sanitizedName);
     } catch (error) {
         console.error('�?O Error updating plan name:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

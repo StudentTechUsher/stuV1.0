@@ -55,10 +55,10 @@ export function PlanHeader({
             startIcon={<AddIcon />}
             className="font-body-semi"
             sx={{
-              backgroundColor: '#1A1A1A',
+              backgroundColor: 'var(--dark)',
               color: 'white',
               '&:hover': {
-                backgroundColor: '#000000',
+                backgroundColor: 'var(--foreground)',
               }
             }}
           >
@@ -71,11 +71,11 @@ export function PlanHeader({
           startIcon={isSpaceView ? <ZoomInMapIcon /> : <ZoomOutMapIcon />}
           className="font-body-semi"
           sx={{
-            borderColor: '#1A1A1A',
-            color: '#1A1A1A',
+            borderColor: 'var(--dark)',
+            color: 'var(--dark)',
             '&:hover': {
-              borderColor: '#000000',
-              backgroundColor: 'rgba(26, 26, 26, 0.08)',
+              borderColor: 'var(--foreground)',
+              backgroundColor: 'rgba(0, 0, 0, 0.08)',
             }
           }}
         >

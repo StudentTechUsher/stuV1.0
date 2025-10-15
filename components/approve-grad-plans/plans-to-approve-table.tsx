@@ -55,7 +55,13 @@ export default function PlansToApproveTable({ plans, onRowClick }: PlansToApprov
     <TableContainer component={Paper} sx={{ mt: 2 }}>
       <Table>
         <TableHead>
-          <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableRow sx={{
+            backgroundColor: 'var(--primary)',
+            opacity: 0.08,
+            '& .MuiTableCell-root': {
+              backgroundColor: 'transparent'
+            }
+          }}>
             <TableCell sx={{ fontWeight: 600 }}>Student Name</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Submitted Date</TableCell>
             <TableCell sx={{ fontWeight: 600, width: 150 }} align="center">
@@ -71,9 +77,9 @@ export default function PlansToApproveTable({ plans, onRowClick }: PlansToApprov
               sx={{
                 cursor: 'pointer',
                 '&:hover': {
-                  backgroundColor: '#f0fdf4', // Light mint green hover
+                  backgroundColor: 'var(--hover-green)',
                   '& .arrow-icon': {
-                    color: '#000000' // Black on hover
+                    color: 'var(--dark)'
                   }
                 },
                 transition: 'background-color 0.2s ease-in-out'

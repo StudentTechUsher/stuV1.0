@@ -86,8 +86,8 @@ function ProgressPill({
 /** A filled chip-like box */
 function FilledChip({
   children,
-  bg = "#CFFDE8",
-  color = "#0A0A0A",
+  bg = "color-mix(in srgb, var(--primary) 30%, white)",
+  color = "var(--dark)",
   height = 40,
 }: Readonly<{
   children: React.ReactNode;
@@ -114,7 +114,7 @@ function FilledChip({
   );
 }
 
-/** Clickable “Optimization” badge */
+/** Clickable "Optimization" badge */
 function OptimizationBadge({ level }: Readonly<{ level: string }>) {
   return (
     <ButtonBase
@@ -124,8 +124,8 @@ function OptimizationBadge({ level }: Readonly<{ level: string }>) {
         px: 2,
         py: 1,
         height: 40,
-        bgcolor: "#FFF8B8",
-        color: "#0A0A0A",
+        bgcolor: "color-mix(in srgb, var(--accent) 25%, white)",
+        color: "var(--dark)",
         border: "1px solid rgba(0,0,0,0.08)",
         boxShadow: "none",
         textAlign: "left",
@@ -275,7 +275,7 @@ export default function AcademicSummary({
             <Stack direction="row" spacing={1.5} alignItems="baseline">
               <Typography
                 variant="h5"
-                sx={{ fontWeight: 800, color: "#FFFFFF" }}
+                sx={{ fontWeight: 800, color: "var(--background)" }}
               >
                 {d.name}
               </Typography>

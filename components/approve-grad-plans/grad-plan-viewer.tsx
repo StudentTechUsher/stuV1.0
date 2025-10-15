@@ -209,10 +209,10 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
                 sx={{
                   px: 2,
                   py: 1,
-                  backgroundColor: '#f3e5f5',
+                  backgroundColor: 'color-mix(in srgb, var(--accent) 15%, white)',
                   borderRadius: 1,
-                  border: '1px solid #ce93d8',
-                  color: '#6a1b9a',
+                  border: '1px solid color-mix(in srgb, var(--accent) 40%, white)',
+                  color: 'var(--accent)',
                   fontWeight: 500
                 }}
               >
@@ -222,42 +222,42 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
           </Box>
         </Box>
       )}
-      
+
       {/* Plan Summary */}
       <Box sx={{ display: 'flex', gap: 3, mb: 3, flexWrap: 'wrap' }}>
-        <Typography variant="body2" sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Typography variant="body2" sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 0.5,
           px: 2,
           py: 1,
-          backgroundColor: '#e3f2fd',
+          backgroundColor: 'color-mix(in srgb, var(--primary) 10%, white)',
           borderRadius: 1,
-          border: '1px solid #90caf9'
+          border: '1px solid color-mix(in srgb, var(--primary) 30%, white)'
         }}>
           📚 {planData.length} terms planned
         </Typography>
-        <Typography variant="body2" sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Typography variant="body2" sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 0.5,
           px: 2,
           py: 1,
-          backgroundColor: '#e8f5e8',
+          backgroundColor: 'color-mix(in srgb, var(--secondary) 10%, white)',
           borderRadius: 1,
-          border: '1px solid #81c784'
+          border: '1px solid color-mix(in srgb, var(--secondary) 30%, white)'
         }}>
           📊 {totalCredits} total credits
         </Typography>
-        <Typography variant="body2" sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Typography variant="body2" sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 0.5,
           px: 2,
           py: 1,
-          backgroundColor: '#fff3e0',
+          backgroundColor: 'color-mix(in srgb, var(--accent) 10%, white)',
           borderRadius: 1,
-          border: '1px solid #ffb74d'
+          border: '1px solid color-mix(in srgb, var(--accent) 30%, white)'
         }}>
           ⏱️ {Math.ceil(planData.length / 2)} years
         </Typography>
@@ -292,17 +292,17 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
             >
               {/* Term Header */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+                <Typography variant="h6" sx={{ color: 'var(--primary)', fontWeight: 'bold' }}>
                   {term.term ? `Term ${term.term}` : `Term ${index + 1}`}
                 </Typography>
-                <Typography variant="body2" sx={{ 
-                  fontWeight: 'bold', 
-                  color: '#1976d2',
+                <Typography variant="body2" sx={{
+                  fontWeight: 'bold',
+                  color: 'var(--primary)',
                   px: 2,
                   py: 0.5,
-                  backgroundColor: '#e3f2fd',
+                  backgroundColor: 'color-mix(in srgb, var(--primary) 10%, white)',
                   borderRadius: 1,
-                  border: '1px solid #90caf9'
+                  border: '1px solid color-mix(in srgb, var(--primary) 30%, white)'
                 }}>
                   {termCredits} Credits
                 </Typography>
@@ -437,12 +437,12 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
                     startIcon={<Add />}
                     onClick={() => handleAddSuggestion(termKey)}
                     sx={{
-                      color: '#1976d2',
-                      borderColor: '#1976d2',
+                      color: 'var(--primary)',
+                      borderColor: 'var(--primary)',
                       alignSelf: 'flex-end',
                       '&:hover': {
-                        backgroundColor: '#e3f2fd',
-                        borderColor: '#1565c0'
+                        backgroundColor: 'color-mix(in srgb, var(--primary) 10%, white)',
+                        borderColor: 'var(--dark)'
                       }
                     }}
                   >
