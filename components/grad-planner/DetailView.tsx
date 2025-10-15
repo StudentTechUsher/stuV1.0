@@ -1,5 +1,4 @@
 import React from 'react';
-import Box from '@mui/material/Box';
 import { Term, Event } from './types';
 import { TermCard } from './TermCard';
 import { EventCard } from './EventCard';
@@ -25,15 +24,55 @@ export function DetailView({
   onEditEvent,
   onDeleteEvent
 }: Readonly<DetailViewProps>) {
+  const renderEventsAfterTerm = (termNumber: number, termEvents: Event[]) => {
+    if (termEvents.length === 0) {
+      return null;
+    }
+
+    return (
+      <div
+        key={`events-after-${termNumber}`}
+        className="relative w-full rounded-[28px] border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-6 py-5 shadow-[0_36px_80px_-58px_rgba(8,35,24,0.45)]"
+      >
+        <div className="absolute left-8 top-0 h-6 w-px -translate-y-3 bg-[color-mix(in_srgb,var(--muted-foreground)_36%,var(--border)_64%)]" aria-hidden="true" />
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
+              After Term {termNumber}
+            </span>
+            {isEditMode && (
+              <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--muted-foreground)_62%,var(--foreground)_38%)]">
+                {termEvents.length} milestone{termEvents.length === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {termEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isEditMode={isEditMode}
+                variant="bar"
+                onEdit={onEditEvent}
+                onDelete={onDeleteEvent}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <div className="flex flex-col gap-10">
       {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
         const termNumber = index + 1;
         const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
 
         // Render term card
         const termCard = (
-          <Box key={`term-wrapper-${index}`} sx={{ flex: '1 1 48%' }}>
+          <div key={`term-wrapper-${index}`} className="min-h-full">
             <TermCard
               term={term}
               termIndex={index}
@@ -43,7 +82,7 @@ export function DetailView({
               movedCourses={movedCourses}
               onMoveCourse={onMoveCourse}
             />
-          </Box>
+          </div>
         );
 
         // Group terms in pairs (2 columns)
@@ -54,7 +93,7 @@ export function DetailView({
           const nextEventsAfterTerm = nextTerm ? events.filter(e => e.afterTerm === nextTermNumber) : [];
 
           const nextTermCard = nextTerm ? (
-            <Box key={`term-wrapper-${index + 1}`} sx={{ flex: '1 1 48%' }}>
+            <div key={`term-wrapper-${index + 1}`} className="min-h-full">
               <TermCard
                 term={nextTerm}
                 termIndex={index + 1}
@@ -64,92 +103,33 @@ export function DetailView({
                 movedCourses={movedCourses}
                 onMoveCourse={onMoveCourse}
               />
-            </Box>
-          ) : null;
-
-          // Render events after first term
-          const firstTermEvents = eventsAfterThisTerm.length > 0 ? (
-            <Box
-              key={`events-after-${index}`}
-              sx={{
-                width: '100%',
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: '-12px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '2px',
-                  height: '24px',
-                  backgroundColor: 'var(--border)',
-                  opacity: 0.5,
-                }
-              }}
-            >
-              {eventsAfterThisTerm.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  isEditMode={isEditMode}
-                  variant="bar"
-                  onEdit={onEditEvent}
-                  onDelete={onDeleteEvent}
-                />
-              ))}
-            </Box>
-          ) : null;
-
-          // Render events after second term
-          const secondTermEvents = nextTerm && nextEventsAfterTerm.length > 0 ? (
-            <Box
-              key={`events-after-${index + 1}`}
-              sx={{
-                width: '100%',
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: '-12px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '2px',
-                  height: '24px',
-                  backgroundColor: 'var(--border)',
-                  opacity: 0.5,
-                }
-              }}
-            >
-              {nextEventsAfterTerm.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  isEditMode={isEditMode}
-                  variant="bar"
-                  onEdit={onEditEvent}
-                  onDelete={onDeleteEvent}
-                />
-              ))}
-            </Box>
+            </div>
           ) : null;
 
           // Add row with 2 terms
           acc.push(
-            <Box key={`row-${index}`} sx={{ display: 'flex', gap: 3, '@media (max-width: 900px)': { flexDirection: 'column' } }}>
+            <div
+              key={`row-${index}`}
+              className="grid w-full grid-cols-1 items-stretch gap-6 xl:grid-cols-2"
+            >
               {termCard}
               {nextTermCard}
-            </Box>
+            </div>
           );
 
-          // Add events after first term
+          const firstTermEvents = renderEventsAfterTerm(termNumber, eventsAfterThisTerm);
+          const secondTermEvents =
+            nextTerm && nextEventsAfterTerm.length > 0
+              ? renderEventsAfterTerm(nextTermNumber, nextEventsAfterTerm)
+              : null;
+
           if (firstTermEvents) acc.push(firstTermEvents);
-          // Add events after second term
           if (secondTermEvents) acc.push(secondTermEvents);
         }
         // Skip odd indices as they're handled in the even index case
 
         return acc;
       }, [])}
-    </Box>
+    </div>
   );
 }

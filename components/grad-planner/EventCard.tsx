@@ -1,9 +1,6 @@
 'use client';
 
 import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EventIcon from '@mui/icons-material/Event';
@@ -81,157 +78,124 @@ export function EventCard({
 }: Readonly<EventCardProps>) {
   const eventColor = getEventColor(event.type);
   const EventIconComponent = getEventIcon(event.type);
+  const tintedBackground = `color-mix(in srgb, ${eventColor} 18%, var(--card))`;
+  const borderColor = `color-mix(in srgb, ${eventColor} 38%, transparent)`;
+  const glowShadow = `${eventColor}33`;
 
   if (variant === 'grid') {
     return (
-      <Box
-        sx={{
-          p: 1.5,
-          backgroundColor: eventColor,
-          color: 'white',
-          borderRadius: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
-          minHeight: '120px',
-          height: '100%',
-          position: 'relative',
-          border: '1px solid rgba(255,255,255,0.2)',
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
-          },
+      <div
+        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-[22px] border px-3 py-4 text-center text-white shadow-[0_20px_40px_-24px_rgba(8,35,24,0.46)] transition-all duration-200 ease-out hover:-translate-y-1"
+        style={{
+          backgroundColor: tintedBackground,
+          borderColor,
+          boxShadow: `0 26px 52px -34px ${glowShadow}`,
         }}
       >
-        <EventIconComponent sx={{ fontSize: 28, mb: 0.75 }} />
-        <Typography
-          variant="body2"
-          className="font-body-semi"
-          sx={{
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            textAlign: 'center',
-            mb: 0.25,
-            lineHeight: 1.2,
-            px: 0.5,
-          }}
-        >
+        <EventIconComponent
+          fontSize="large"
+          style={{ color: 'color-mix(in srgb, var(--primary-foreground) 92%, white 8%)' }}
+        />
+        <p className="font-body-semi text-sm font-semibold leading-tight tracking-tight text-[color-mix(in_srgb,var(--primary-foreground)_92%,white_8%)]">
           {event.title}
-        </Typography>
-        <Typography
-          variant="caption"
-          className="font-body"
-          sx={{
-            opacity: 0.85,
-            fontSize: '0.625rem',
-            textAlign: 'center',
-            lineHeight: 1.2,
-          }}
-        >
+        </p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--primary-foreground)_80%,white_20%)]">
           {event.type}
-        </Typography>
+        </p>
         {isEditMode && (
-          <Box sx={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 0.25 }}>
-            <IconButton
-              size="small"
+          <div className="absolute right-2 top-2 flex gap-1">
+            <button
+              type="button"
               onClick={() => onEdit?.(event)}
-              sx={{
-                color: 'white',
-                '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' },
-                p: 0.25,
-                minWidth: 0,
-                width: 24,
-                height: 24,
-              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label={`Edit ${event.title}`}
             >
               <EditIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-            <IconButton
-              size="small"
+            </button>
+            <button
+              type="button"
               onClick={() => onDelete?.(event.id)}
-              sx={{
-                color: 'white',
-                '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' },
-                p: 0.25,
-                minWidth: 0,
-                width: 24,
-                height: 24,
-              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label={`Delete ${event.title}`}
             >
               <DeleteIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Box>
+            </button>
+          </div>
         )}
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Box
-      sx={{
-        p: 2,
-        py: 1.5,
-        backgroundColor: eventColor,
-        color: 'white',
-        borderRadius: 3,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-        mb: 2,
-        minHeight: '70px',
-        position: 'relative',
-        border: '2px solid rgba(255,255,255,0.3)',
-        transition: 'all 0.2s ease-in-out',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: '0 6px 16px rgba(0,0,0,0.25)',
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          left: '16px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '4px',
-          height: '60%',
-          backgroundColor: 'rgba(255,255,255,0.4)',
-          borderRadius: '2px',
-        }
+    <div
+      className="group relative flex flex-wrap items-center justify-between gap-4 rounded-[22px] border px-5 py-4 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)] transition-all duration-200 ease-out hover:-translate-y-1"
+      style={{
+        background: tintedBackground,
+        borderColor,
+        boxShadow: `0 32px 70px -54px ${glowShadow}`,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pl: 1 }}>
-        <EventIconComponent sx={{ fontSize: 28 }} />
-        <Box>
-          <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600, fontSize: '1rem', lineHeight: 1.3 }}>
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-10 w-10 items-center justify-center rounded-full border"
+          style={{
+            background: `color-mix(in srgb, ${eventColor} 18%, white)`,
+            borderColor: `color-mix(in srgb, ${eventColor} 42%, transparent)`,
+          }}
+        >
+          <EventIconComponent
+            fontSize="small"
+            style={{ color: 'color-mix(in srgb, var(--foreground) 72%, white 28%)' }}
+          />
+        </span>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span
+            className="font-body-semi text-base font-semibold leading-tight tracking-tight"
+            style={{ color: `color-mix(in srgb, var(--foreground) 92%, ${eventColor} 8%)` }}
+          >
             {event.title}
-          </Typography>
-          <Typography variant="caption" className="font-body" sx={{ opacity: 0.9, fontSize: '0.75rem', mt: 0.25, display: 'block' }}>
+          </span>
+          <span
+            className="text-[11px] font-semibold uppercase tracking-[0.22em]"
+            style={{ color: `color-mix(in srgb, var(--foreground) 68%, ${eventColor} 32%)` }}
+          >
             {event.type}
-          </Typography>
-        </Box>
-      </Box>
+          </span>
+        </div>
+      </div>
+
       {isEditMode && (
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <IconButton
-            size="small"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
             onClick={() => onEdit?.(event)}
-            sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+            className="flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            style={{
+              color: `color-mix(in srgb, var(--foreground) 78%, ${eventColor} 22%)`,
+              borderColor: `color-mix(in srgb, ${eventColor} 42%, transparent)`,
+              backgroundColor: `color-mix(in srgb, ${eventColor} 10%, transparent)`,
+            }}
+            aria-label={`Edit ${event.title}`}
           >
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
+            <EditIcon sx={{ fontSize: 16 }} />
+            Edit
+          </button>
+          <button
+            type="button"
             onClick={() => onDelete?.(event.id)}
-            sx={{ color: 'white', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }, p: 0.5 }}
+            className="flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destructive)]"
+            style={{
+              color: `color-mix(in srgb, #7f1d1d 75%, ${eventColor} 25%)`,
+              borderColor: `color-mix(in srgb, #ef4444 60%, ${eventColor} 40%)`,
+              backgroundColor: 'rgba(239,68,68,0.12)',
+            }}
+            aria-label={`Delete ${event.title}`}
           >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Box>
+            <DeleteIcon sx={{ fontSize: 16 }} />
+            Delete
+          </button>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

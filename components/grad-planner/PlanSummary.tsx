@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
+import { cn } from '@/lib/utils';
 
 interface Term {
   term: string;
@@ -25,6 +23,12 @@ interface PlanSummaryProps {
   fulfilledRequirements: string[];
 }
 
+const summaryPill =
+  'inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] shadow-[0_26px_70px_-50px_rgba(8,35,24,0.45)]';
+
+/**
+ * Compact summary strip that mirrors the dashboard stat language while keeping requirements visible.
+ */
 export function PlanSummary({ planData, durationYears, fulfilledRequirements }: PlanSummaryProps) {
   const totalCredits = planData.reduce((total, term) => {
     const termCredits =
@@ -33,64 +37,62 @@ export function PlanSummary({ planData, durationYears, fulfilledRequirements }: 
     return total + termCredits;
   }, 0);
 
+  const basePills = [
+    {
+      key: 'terms',
+      label: `${planData.length} term${planData.length === 1 ? '' : 's'} planned`,
+      tone: 'primary',
+    },
+    durationYears
+      ? {
+          key: 'duration',
+          label: `${durationYears} year${durationYears === 1 ? '' : 's'}`,
+          tone: 'neutral',
+        }
+      : null,
+    {
+      key: 'credits',
+      label: `Total Credits • ${totalCredits}`,
+      tone: 'accent',
+    },
+  ].filter(Boolean) as Array<{ key: string; label: string; tone: 'primary' | 'neutral' | 'accent' }>;
+
+  const toneMap: Record<typeof basePills[number]['tone'], string> = {
+    primary:
+      'border-[color-mix(in_srgb,var(--primary)_48%,transparent)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] text-[color-mix(in_srgb,var(--foreground)_80%,var(--primary)_20%)]',
+    accent:
+      'border-[color-mix(in_srgb,#0a1f1a_18%,var(--primary)_32%)] bg-[color-mix(in_srgb,var(--primary)_12%,white_88%)] text-[color-mix(in_srgb,#043322_60%,var(--primary)_40%)]',
+    neutral:
+      'border-[color-mix(in_srgb,var(--muted-foreground)_42%,transparent)] bg-[color-mix(in_srgb,var(--muted)_26%,transparent)] text-[color-mix(in_srgb,var(--foreground)_82%,var(--muted-foreground)_18%)]',
+  };
+
   return (
-    <Box
-      sx={{
-        mb: 3,
-        p: 2,
-        borderRadius: 2,
-        background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 90%)',
-        border: '1px solid #bbdefb',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 1.5,
-        alignItems: 'center'
-      }}
-    >
-      <Chip
-        label={`${planData.length} term${planData.length === 1 ? '' : 's'} planned`}
-        sx={{ backgroundColor: '#e3f2fd', border: '1px solid #90caf9', fontWeight: 'bold' }}
-        size="small"
-      />
-      {Boolean(durationYears) && (
-        <Chip
-          label={`${durationYears} year${durationYears === 1 ? '' : 's'}`}
-          size="small"
-          sx={{ backgroundColor: '#ede7f6', border: '1px solid #b39ddb', fontWeight: 'bold' }}
-        />
-      )}
-      <Chip
-        label={`Total Credits: ${totalCredits}`}
-        size="small"
-        color="primary"
-        sx={{ backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', color: '#2e7d32', fontWeight: 'bold' }}
-      />
+    <section className="rounded-[24px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_28%,var(--border)_72%)] bg-white px-5 py-4 shadow-[0_40px_110px_-68px_rgba(8,35,24,0.55)]">
+      <div className="flex flex-wrap items-center gap-2">
+        {basePills.map((pill) => (
+          <span key={pill.key} className={cn(summaryPill, toneMap[pill.tone])}>
+            {pill.label}
+          </span>
+        ))}
+      </div>
+
       {fulfilledRequirements.length > 0 && (
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-          <Typography
-            variant="body2"
-            className="font-body"
-            sx={{ fontWeight: 'bold', mr: 0.5, color: '#1565c0' }}
-          >
-            Requirements:
-          </Typography>
-          {fulfilledRequirements.map((req) => (
-            <Chip
-              key={req}
-              label={req}
-              size="small"
-              sx={{
-                backgroundColor: '#fffde7',
-                border: '1px solid #fff59d',
-                fontSize: '0.65rem',
-                height: 22,
-                fontWeight: 500
-              }}
-            />
-          ))}
-        </Box>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">
+            Requirements Met
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {fulfilledRequirements.map((requirement) => (
+              <span
+                key={requirement}
+                className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--primary)_32%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-[color-mix(in_srgb,var(--foreground)_80%,var(--primary)_20%)]"
+              >
+                {requirement}
+              </span>
+            ))}
+          </div>
+        </div>
       )}
-    </Box>
+    </section>
   );
 }

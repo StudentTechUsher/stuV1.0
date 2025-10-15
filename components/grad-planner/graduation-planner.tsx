@@ -3,9 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
-import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -395,23 +392,6 @@ export default function GraduationPlanner({
               durationYears={durationYears}
               fulfilledRequirements={fulfilledRequirements}
             />
-
-            <Button
-              variant="outlined"
-              onClick={() => setIsSpaceView(!isSpaceView)}
-              startIcon={isSpaceView ? <ZoomInMapIcon /> : <ZoomOutMapIcon />}
-              className="font-body-semi"
-              sx={{
-                borderColor: 'var(--dark)',
-                color: 'var(--dark)',
-                '&:hover': {
-                  borderColor: 'var(--foreground)',
-                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                }
-              }}
-            >
-              {isSpaceView ? 'Detail View' : 'Zoom Out'}
-            </Button>
 
             {/* Display terms with events between them */}
             {isSpaceView ? (

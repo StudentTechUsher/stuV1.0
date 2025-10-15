@@ -1,27 +1,12 @@
 'use client';
 
 import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import EditIcon from '@mui/icons-material/Edit';
 import { useDraggable } from '@dnd-kit/core';
+import { GripVertical, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { RequirementBubbles } from './RequirementBubbles';
 import { CourseMoveField } from './CourseMoveField';
-
-interface Course {
-  code: string;
-  title: string;
-  credits: number;
-  fulfills?: string[];
-}
-
-interface Term {
-  term: string;
-  notes?: string;
-  courses?: Course[];
-  credits_planned?: number;
-}
+import type { Course, Term as PlannerTerm } from './types';
 
 interface DraggableCourseProps {
   course: Course;
@@ -29,7 +14,7 @@ interface DraggableCourseProps {
   courseIndex: number;
   isEditMode: boolean;
   onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
-  currentPlanData: Term[];
+  currentPlanData: PlannerTerm[];
   movedCourses: Set<string>;
 }
 
@@ -41,16 +26,10 @@ export function DraggableCourse({
   onMoveCourse,
   currentPlanData,
   movedCourses,
-}: DraggableCourseProps) {
+}: Readonly<DraggableCourseProps>) {
   const courseId = `course-${termIndex}-${courseIndex}`;
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: courseId,
     data: {
       course,
@@ -60,90 +39,99 @@ export function DraggableCourse({
     disabled: !isEditMode,
   });
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: isDragging ? 1000 : 'auto',
-    opacity: isDragging ? 0 : 1,
-  } : undefined;
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: isDragging ? 1000 : 'auto',
+        opacity: isDragging ? 0 : 1,
+      }
+    : undefined;
 
-  // Check if this course has been moved
   const courseIdentifier = `${course.code}-${course.title}`;
   const hasMoved = movedCourses.has(courseIdentifier);
 
   return (
-    <Box
+    <div
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
-      sx={{
-        p: 2,
-        backgroundColor: 'white',
-        borderRadius: 2,
-        border: hasMoved ? '2px solid var(--action-edit)' : (isEditMode ? '1px solid var(--primary)' : '1px solid var(--border)'),
-        minHeight: '80px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        cursor: isEditMode ? 'grab' : 'default',
-        boxShadow: hasMoved ? '0 4px 12px rgba(255, 165, 0, 0.25)' : undefined,
-        '&:hover': isEditMode ? {
-          backgroundColor: hasMoved ? 'rgba(255, 165, 0, 0.1)' : 'var(--primary-22)',
-          borderColor: hasMoved ? 'var(--action-edit)' : 'var(--hover-green)',
-          transform: 'translateY(-2px)',
-          boxShadow: hasMoved ? '0 6px 16px rgba(255, 165, 0, 0.35)' : '0 4px 12px rgba(18, 249, 135, 0.15)'
-        } : {},
-        '&:active': isEditMode ? {
-          cursor: 'grabbing',
-        } : {},
-        transition: 'all 0.2s ease-in-out'
-      }}
+      className={cn(
+        'group relative flex flex-col gap-4 rounded-[20px] border border-[color-mix(in_srgb,var(--border)_82%,transparent_18%)] bg-white/95 p-4 text-sm shadow-[0_38px_88px_-56px_rgba(8,35,24,0.55)] transition-all duration-200 ease-out',
+        isEditMode
+          ? 'cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:border-[color-mix(in_srgb,var(--primary)_42%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_6%,#ffffff_94%)] hover:shadow-[0_32px_68px_-48px_rgba(18,249,135,0.45)]'
+          : 'cursor-default',
+        hasMoved && 'border-[var(--action-edit)] shadow-[0_30px_62px_-46px_rgba(253,204,74,0.55)]'
+      )}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-        <Typography variant="body2" className="font-body-medium" sx={{ fontWeight: 'bold', mb: 1 }}>
-          {course.code}: {course.title}
-        </Typography>
+      <div className="flex items-start gap-3">
         {isEditMode && (
-          <IconButton
-            size="small"
-            sx={{
-              ml: 1,
-              p: 0.5,
-              color: 'var(--primary)',
-              '&:hover': { backgroundColor: 'var(--primary-15)' }
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // TODO: Add course edit functionality
-            }}
+          <span
+            className="mt-1 flex h-8 w-8 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--primary)_26%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] text-[color-mix(in_srgb,var(--foreground)_75%,var(--primary)_25%)] transition-colors duration-200 group-hover:bg-[color-mix(in_srgb,var(--primary)_18%,transparent)]"
+            aria-hidden="true"
           >
-            <EditIcon fontSize="small" />
-          </IconButton>
+            <GripVertical size={18} strokeWidth={2.25} />
+          </span>
         )}
-      </Box>
-      <Box>
-        <Typography variant="caption" className="font-body" color="text.secondary" display="block">
-          {course.credits} credits
-        </Typography>
-        {course.fulfills && Array.isArray(course.fulfills) && course.fulfills.length > 0 && (
-          <RequirementBubbles fulfills={course.fulfills} />
-        )}
-        {isEditMode && (
-          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" className="font-body" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-              Move:
-            </Typography>
-            <CourseMoveField
-              currentTerm={termIndex + 1}
-              maxTerms={currentPlanData.length}
-              course={course}
-              termIndex={termIndex}
-              courseIndex={courseIndex}
-              onMoveCourse={onMoveCourse}
-            />
-          </Box>
-        )}
-      </Box>
-    </Box>
+
+        <div className="flex-1 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--muted-foreground)_75%,var(--foreground)_25%)]">
+                {course.code}
+              </span>
+              <h4 className="font-body-semi text-base font-semibold leading-5 text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)]">
+                {course.title}
+              </h4>
+            </div>
+
+            {isEditMode && (
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-[color-mix(in_srgb,var(--primary)_60%,var(--foreground)_40%)] transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  // TODO: Add course edit functionality
+                }}
+                aria-label={`Edit ${course.code}`}
+              >
+                <Pencil size={18} strokeWidth={2} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--muted-foreground)_68%,var(--foreground)_32%)]">
+            <span className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
+                Credits
+              </span>
+              <span className="text-[12px] font-bold text-[color-mix(in_srgb,var(--foreground)_85%,var(--primary)_15%)]">
+                {course.credits}
+              </span>
+            </span>
+          </div>
+
+          {course.fulfills && Array.isArray(course.fulfills) && course.fulfills.length > 0 && (
+            <RequirementBubbles fulfills={course.fulfills} />
+          )}
+        </div>
+      </div>
+
+      {isEditMode && (
+        <div className="flex items-center gap-2 rounded-[18px] border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_18%,transparent)] px-3 py-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
+            Move
+          </span>
+          <CourseMoveField
+            currentTerm={termIndex + 1}
+            maxTerms={currentPlanData.length}
+            course={course}
+            termIndex={termIndex}
+            courseIndex={courseIndex}
+            onMoveCourse={onMoveCourse}
+          />
+        </div>
+      )}
+    </div>
   );
 }
