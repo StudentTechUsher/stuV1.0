@@ -11,6 +11,7 @@ import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Course, Term } from '@/components/grad-planner/types';
+import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
 
 interface GradPlanDetails {
   id: string;
@@ -77,6 +78,7 @@ export default function ApproveGradPlanPage() {
   const [editablePlan, setEditablePlan] = React.useState<Term[] | null>(null); // normalized array of terms
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
+  const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -447,6 +449,43 @@ export default function ApproveGradPlanPage() {
     return 'Approve Plan';
   };
 
+  // Calculate category progress for the progress panel
+  const categoryProgress = React.useMemo(() => {
+    if (!editablePlan) return [];
+    return calculateCategoryProgress(editablePlan);
+  }, [editablePlan]);
+
+  // Calculate total credits for progress panel
+  const totalCreditsData = React.useMemo(() => {
+    if (!editablePlan) return { earned: 0, required: 133.66 };
+
+    const earned = editablePlan.reduce((total, term) => {
+      const termCredits = term.credits_planned ||
+                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+      return total + termCredits;
+    }, 0);
+
+    return { earned, required: 133.66 }; // You can make 'required' dynamic based on program requirements
+  }, [editablePlan]);
+
+  // Calculate current semester credits (assuming first term is current)
+  const currentSemesterCredits = React.useMemo(() => {
+    if (!editablePlan || editablePlan.length === 0) return 0;
+    const currentTerm = editablePlan[0];
+    return currentTerm.credits_planned ||
+           (currentTerm.courses ? currentTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+  }, [editablePlan]);
+
+  // Calculate total planned credits in the grad plan
+  const plannedCredits = React.useMemo(() => {
+    if (!editablePlan) return 0;
+    return editablePlan.reduce((total, term) => {
+      const termCredits = term.credits_planned ||
+                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+      return total + termCredits;
+    }, 0);
+  }, [editablePlan]);
+
   if (isCheckingRole || loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -508,7 +547,7 @@ export default function ApproveGradPlanPage() {
       sx={{
         px: { xs: 2, md: 3 },
         py: { xs: 2, md: 3 },
-        maxWidth: '1400px',
+        maxWidth: '1600px',
         mx: 'auto',
         display: 'flex',
         flexDirection: 'column',
@@ -518,7 +557,7 @@ export default function ApproveGradPlanPage() {
       <Box
         component="section"
         sx={{
-          borderRadius: '28px',
+          borderRadius: '7px',
           border: '1px solid',
           borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 35%, var(--border) 65%)',
           backgroundColor: '#ffffff',
@@ -579,7 +618,7 @@ export default function ApproveGradPlanPage() {
                   gap: 1,
                   px: 2.5,
                   py: 1,
-                  borderRadius: '999px',
+                  borderRadius: '7px',
                   backgroundColor: '#0a1f1a',
                   color: '#ffffff',
                   fontSize: '0.75rem',
@@ -597,7 +636,7 @@ export default function ApproveGradPlanPage() {
                   gap: 1,
                   px: 2.5,
                   py: 1,
-                  borderRadius: '999px',
+                  borderRadius: '7px',
                   backgroundColor: 'color-mix(in srgb, var(--primary) 16%, white 84%)',
                   color: 'color-mix(in srgb, var(--foreground) 80%, var(--primary) 20%)',
                   fontSize: '0.75rem',
@@ -624,7 +663,7 @@ export default function ApproveGradPlanPage() {
               letterSpacing: '0.06em',
               px: 3,
               py: 1.25,
-              borderRadius: '18px',
+              borderRadius: '7px',
               '&:hover': {
                 backgroundColor: '#043322',
               },
@@ -643,29 +682,39 @@ export default function ApproveGradPlanPage() {
         </Box>
       </Box>
 
+      {/* Main content area with grad plan and progress panel */}
       <Box
         sx={{
-          borderRadius: '28px',
-          border: '1px solid',
-          borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 30%, var(--border) 70%)',
-          backgroundColor: '#ffffff',
-          boxShadow: '0 48px 120px -80px rgba(10,31,26,0.45)',
-          p: { xs: 2, md: 3 },
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', lg: isPanelCollapsed ? '1fr auto' : '1fr 380px' },
+          gap: 4,
+          alignItems: 'start',
         }}
       >
-        <GraduationPlanner
-          plan={editablePlan ?? (gradPlan.plan_details as Record<string, unknown> | Term[] | undefined)}
-          isEditMode
-          initialSpaceView
-          editorRole="advisor"
-          onPlanUpdate={(updated) => {
-            setEditablePlan(updated);
-            setUnsavedChanges(true);
+        {/* Left column - Graduation Planner */}
+        <Box
+          sx={{
+            borderRadius: '7px',
+            border: '1px solid',
+            borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 30%, var(--border) 70%)',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 48px 120px -80px rgba(10,31,26,0.45)',
+            p: { xs: 2, md: 3 },
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
           }}
-        />
+        >
+          <GraduationPlanner
+            plan={editablePlan ?? (gradPlan.plan_details as Record<string, unknown> | Term[] | undefined)}
+            isEditMode
+            initialSpaceView
+            editorRole="advisor"
+            onPlanUpdate={(updated) => {
+              setEditablePlan(updated);
+              setUnsavedChanges(true);
+            }}
+          />
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography
@@ -690,7 +739,7 @@ export default function ApproveGradPlanPage() {
                 <Box
                   key={termKey}
                   sx={{
-                    borderRadius: '20px',
+                    borderRadius: '7px',
                     border: '1px solid',
                     borderColor: has
                       ? 'color-mix(in srgb, var(--primary) 38%, transparent)'
@@ -722,7 +771,7 @@ export default function ApproveGradPlanPage() {
                         startIcon={<Add />}
                         onClick={() => addSuggestion(termKey)}
                         sx={{
-                          borderRadius: '999px',
+                          borderRadius: '7px',
                           borderColor: '#0a1f1a',
                           color: '#0a1f1a',
                           textTransform: 'none',
@@ -753,15 +802,30 @@ export default function ApproveGradPlanPage() {
           </Box>
         </Box>
 
-        <Alert severity={unsavedChanges ? 'warning' : 'info'} sx={{ borderRadius: '16px' }}>
-          {unsavedChanges
-            ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.'
-            : 'Move courses or add per-term suggestions. Saving sends updates to the student without approving the plan.'}
-        </Alert>
+          <Alert severity={unsavedChanges ? 'warning' : 'info'} sx={{ borderRadius: '7px' }}>
+            {unsavedChanges
+              ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.'
+              : 'Move courses or add per-term suggestions. Saving sends updates to the student without approving the plan.'}
+          </Alert>
+        </Box>
+
+        {/* Right column - Progress Panel (hidden on mobile) */}
+        <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
+          <AdvisorProgressPanel
+            studentName={studentName}
+            totalCredits={totalCreditsData}
+            categories={categoryProgress}
+            planData={editablePlan ?? []}
+            isCollapsed={isPanelCollapsed}
+            onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
+            currentSemesterCredits={currentSemesterCredits}
+            plannedCredits={plannedCredits}
+          />
+        </Box>
       </Box>
 
       {hasSuggestions && (
-        <Alert severity="info" sx={{ borderRadius: '16px' }}>
+        <Alert severity="info" sx={{ borderRadius: '7px' }}>
           You have unsaved suggestions. Save them before approving this plan.
         </Alert>
       )}
@@ -780,7 +844,7 @@ export default function ApproveGradPlanPage() {
             letterSpacing: '0.08em',
             px: 4,
             py: 1.5,
-            borderRadius: '20px',
+            borderRadius: '7px',
             boxShadow: (hasSuggestions || isProcessing || unsavedChanges)
               ? 'none'
               : '0 22px 46px -28px rgba(18,249,135,0.55)',

@@ -301,7 +301,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
       <div className="space-y-6">
-        <section className="rounded-[32px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white px-6 py-6 shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)]">
+        <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white px-6 py-6 shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)]">
           <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex flex-col gap-3">
@@ -386,7 +386,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                       onChange={handleGradPlanSelection}
                       className="font-body"
                       sx={{
-                        borderRadius: '14px',
+                        borderRadius: '7px',
                         fontWeight: 500,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: 'rgba(10,31,26,0.2)',
@@ -449,7 +449,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               </div>
 
               {selectedGradPlan && isRenaming && (
-                <div className="flex flex-col gap-3 rounded-[20px] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,white)] p-4 lg:max-w-md">
+                <div className="flex flex-col gap-3 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,white)] p-4 lg:max-w-md">
                   <TextField
                     label="Plan Name"
                     value={renameInput}
@@ -523,7 +523,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               py: 6,
               px: 4,
               backgroundColor: 'var(--muted)',
-              borderRadius: 3,
+              borderRadius: '7px',
               border: '2px dashed',
               borderColor: 'var(--border)'
             }}

@@ -319,17 +319,22 @@ export default function GraduationPlanner({
 
     const terms: TermBlock[] = currentPlanData.map((term, index) => {
       const courses: CourseItem[] = (term.courses || []).map((course, courseIndex) => ({
-        id: `${index}-${courseIndex}`,
+        id: `space-course-${index}-${courseIndex}`,
         code: course.code || '',
         title: course.title || '',
         credits: course.credits || 0,
         requirements: course.fulfills || [],
+        termIndex: index,
+        courseIndex,
+        rawCourse: course,
       }));
 
       return {
         id: `term-${index}`,
         label: term.term || `Term ${index + 1}`,
         courses,
+        termIndex: index,
+        rawTerm: term,
       };
     });
 
@@ -398,6 +403,7 @@ export default function GraduationPlanner({
               <SpaceView
                 plan={spaceViewData}
                 isEditMode={isEditMode}
+                modifiedTerms={modifiedTerms}
                 onEditEvent={handleOpenEventDialog}
                 onDeleteEvent={handleDeleteEvent}
               />

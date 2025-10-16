@@ -21,9 +21,9 @@ export default function ChangesSummaryBox({ movedCourses, hasSuggestions }: Chan
   }
 
   return (
-    <aside className="sticky top-5 max-h-[calc(100vh-40px)] overflow-y-auto rounded-[28px] border border-[color-mix(in_srgb,var(--accent)_36%,transparent)] bg-[color-mix(in_srgb,var(--card)_94%,white_6%)] p-5 shadow-[0_48px_120px_-70px_rgba(8,35,24,0.55)]">
+    <aside className="sticky top-5 max-h-[calc(100vh-40px)] overflow-y-auto rounded-[7px] border border-[color-mix(in_srgb,var(--accent)_36%,transparent)] bg-[color-mix(in_srgb,var(--card)_94%,white_6%)] p-5 shadow-[0_48px_120px_-70px_rgba(8,35,24,0.55)]">
       <div className="mb-4 flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--accent)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[color-mix(in_srgb,var(--foreground)_78%,var(--accent)_22%)]">
+        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,var(--accent)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[color-mix(in_srgb,var(--foreground)_78%,var(--accent)_22%)]">
           <Info size={18} strokeWidth={2.2} aria-hidden="true" />
         </span>
         <div>
@@ -46,7 +46,7 @@ export default function ChangesSummaryBox({ movedCourses, hasSuggestions }: Chan
             {movedCourses.map((course, index) => (
               <li
                 key={`${course.courseCode}-${course.courseName}-${index}`}
-                className="rounded-[20px] border border-[color-mix(in_srgb,var(--border)_82%,transparent_18%)] bg-white/85 px-4 py-3 shadow-[0_26px_70px_-48px_rgba(8,35,24,0.35)]"
+                className="rounded-[7px] border border-[color-mix(in_srgb,var(--border)_82%,transparent_18%)] bg-white/85 px-4 py-3 shadow-[0_26px_70px_-48px_rgba(8,35,24,0.35)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -65,11 +65,11 @@ export default function ChangesSummaryBox({ movedCourses, hasSuggestions }: Chan
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,#ff9f9f_65%,transparent)] bg-[color-mix(in_srgb,#fee2e2_75%,white_25%)] px-3 py-1 text-[11px] font-semibold text-[color-mix(in_srgb,#991b1b_80%,var(--foreground)_20%)]">
+                  <span className="inline-flex items-center rounded-[7px] border border-[color-mix(in_srgb,#ff9f9f_65%,transparent)] bg-[color-mix(in_srgb,#fee2e2_75%,white_25%)] px-3 py-1 text-[11px] font-semibold text-[color-mix(in_srgb,#991b1b_80%,var(--foreground)_20%)]">
                     Term {course.fromTerm}
                   </span>
                   <ArrowRight size={14} strokeWidth={2.4} className="text-[color-mix(in_srgb,var(--muted-foreground)_60%,var(--foreground)_40%)]" />
-                  <span className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,#a3e4c3_65%,transparent)] bg-[color-mix(in_srgb,#dcfce7_75%,white_25%)] px-3 py-1 text-[11px] font-semibold text-[color-mix(in_srgb,#166534_80%,var(--foreground)_20%)]">
+                  <span className="inline-flex items-center rounded-[7px] border border-[color-mix(in_srgb,#a3e4c3_65%,transparent)] bg-[color-mix(in_srgb,#dcfce7_75%,white_25%)] px-3 py-1 text-[11px] font-semibold text-[color-mix(in_srgb,#166534_80%,var(--foreground)_20%)]">
                     Term {course.toTerm}
                   </span>
                 </div>
@@ -80,7 +80,7 @@ export default function ChangesSummaryBox({ movedCourses, hasSuggestions }: Chan
       )}
 
       {hasSuggestions && (
-        <div className="mt-5 rounded-[18px] border border-[color-mix(in_srgb,#fb923c_52%,transparent)] bg-[color-mix(in_srgb,#fff7ed_88%,white_12%)] px-4 py-3 text-xs text-[color-mix(in_srgb,#9a3412_80%,var(--foreground)_20%)]">
+        <div className="mt-5 rounded-[7px] border border-[color-mix(in_srgb,#fb923c_52%,transparent)] bg-[color-mix(in_srgb,#fff7ed_88%,white_12%)] px-4 py-3 text-xs text-[color-mix(in_srgb,#9a3412_80%,var(--foreground)_20%)]">
           <p className="font-semibold">Advisor suggestions available</p>
           <p className="mt-1 leading-relaxed">
             Review the advisor notes section to make sure their feedback is captured.

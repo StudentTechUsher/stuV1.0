@@ -54,7 +54,7 @@ export function DroppableTerm({
       <div
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute inset-0 rounded-[24px] transition-all duration-200',
+          'pointer-events-none absolute inset-0 rounded-[7px] transition-all duration-200',
           hasBeenModified
             ? 'ring-2 ring-[var(--action-edit)] ring-offset-2 ring-offset-transparent shadow-[0_18px_48px_-28px_rgba(253,204,74,0.45)]'
             : 'ring-0'
@@ -66,7 +66,7 @@ export function DroppableTerm({
       <div
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute inset-0 rounded-[24px] border-2 border-transparent opacity-0 transition-all duration-200',
+          'pointer-events-none absolute inset-0 rounded-[7px] border-2 border-transparent opacity-0 transition-all duration-200',
           isEditMode && isOver && 'border-dashed border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] opacity-100 shadow-[0_28px_60px_-36px_rgba(18,249,135,0.55)]'
         )}
         style={{ zIndex: 1 }}

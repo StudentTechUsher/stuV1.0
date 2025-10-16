@@ -24,7 +24,7 @@ interface PlanSummaryProps {
 }
 
 const summaryPill =
-  'inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] shadow-[0_26px_70px_-50px_rgba(8,35,24,0.45)]';
+  'inline-flex items-center gap-2 rounded-[7px] border px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] shadow-[0_26px_70px_-50px_rgba(8,35,24,0.45)]';
 
 /**
  * Compact summary strip that mirrors the dashboard stat language while keeping requirements visible.
@@ -67,7 +67,7 @@ export function PlanSummary({ planData, durationYears, fulfilledRequirements }: 
   };
 
   return (
-    <section className="rounded-[24px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_28%,var(--border)_72%)] bg-white px-5 py-4 shadow-[0_40px_110px_-68px_rgba(8,35,24,0.55)]">
+    <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_28%,var(--border)_72%)] bg-white px-5 py-4 shadow-[0_40px_110px_-68px_rgba(8,35,24,0.55)]">
       <div className="flex flex-wrap items-center gap-2">
         {basePills.map((pill) => (
           <span key={pill.key} className={cn(summaryPill, toneMap[pill.tone])}>

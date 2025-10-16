@@ -55,7 +55,7 @@ export function PlanHeader({
   const ViewIcon = isSpaceView ? Minimize2 : Maximize2;
 
   return (
-    <section className="rounded-[28px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-6 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+    <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-6 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex flex-col gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">
@@ -74,7 +74,7 @@ export function PlanHeader({
             <button
               type="button"
               onClick={onAddEvent}
-              className="inline-flex items-center gap-2 rounded-[16px] border border-[color-mix(in_srgb,var(--primary)_48%,transparent)] bg-[color-mix(in_srgb,var(--primary)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)] shadow-[0_28px_68px_-48px_rgba(18,249,135,0.55)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,var(--primary)_20%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              className="inline-flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_48%,transparent)] bg-[color-mix(in_srgb,var(--primary)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)] shadow-[0_28px_68px_-48px_rgba(18,249,135,0.55)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,var(--primary)_20%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
             >
               <Plus size={18} strokeWidth={2} aria-hidden="true" />
               Add milestone
@@ -83,10 +83,10 @@ export function PlanHeader({
           <button
             type="button"
             onClick={onToggleView}
-            className="inline-flex items-center gap-2 rounded-[16px] border border-[color-mix(in_srgb,var(--muted-foreground)_45%,transparent)] bg-[color-mix(in_srgb,var(--muted)_26%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_84%,var(--muted-foreground)_16%)] shadow-[0_24px_60px_-44px_rgba(8,35,24,0.45)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,var(--muted)_32%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foreground)]"
+            className="inline-flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--muted-foreground)_45%,transparent)] bg-[color-mix(in_srgb,var(--muted)_26%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_84%,var(--muted-foreground)_16%)] shadow-[0_24px_60px_-44px_rgba(8,35,24,0.45)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,var(--muted)_32%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foreground)]"
           >
             <ViewIcon size={18} strokeWidth={2} aria-hidden="true" />
-            {isSpaceView ? 'Return to detail view' : 'Open space view'}
+            {isSpaceView ? 'Return to Detail View' : 'Zoom Out'}
           </button>
         </div>
       </div>
@@ -96,7 +96,7 @@ export function PlanHeader({
           <div
             key={stat.label}
             className={cn(
-              'flex flex-col gap-2 rounded-[20px] border px-4 py-3',
+              'flex flex-col gap-2 rounded-[7px] border px-4 py-3',
               toneStyles[stat.tone]
             )}
           >

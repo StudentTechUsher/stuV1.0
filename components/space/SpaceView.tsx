@@ -14,11 +14,12 @@ export interface PlanSpaceView {
 interface SpaceViewProps {
   plan: PlanSpaceView;
   isEditMode?: boolean;
+  modifiedTerms?: Set<number>;
   onEditEvent?: (event: Event) => void;
   onDeleteEvent?: (eventId: string) => void;
 }
 
-export function SpaceView({ plan, isEditMode = false, onEditEvent, onDeleteEvent }: Readonly<SpaceViewProps>) {
+export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent }: Readonly<SpaceViewProps>) {
   // Create an array of terms and events to render in order
   const gridItems = React.useMemo(() => {
     const items: Array<{ type: 'term' | 'event'; data: TermBlock | Event; termNumber?: number }> = [];
@@ -84,7 +85,15 @@ export function SpaceView({ plan, isEditMode = false, onEditEvent, onDeleteEvent
       <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {gridItems.map((item) => {
           if (item.type === 'term') {
-            return <TermCard key={`term-${item.data.id}`} term={item.data as TermBlock} />;
+            const term = item.data as TermBlock;
+            return (
+              <TermCard
+                key={`term-${term.id}`}
+                term={term}
+                isEditMode={isEditMode}
+                modifiedTerms={modifiedTerms}
+              />
+            );
           } else {
             const event = item.data as Event;
             return (

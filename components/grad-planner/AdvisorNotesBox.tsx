@@ -47,7 +47,7 @@ export default function AdvisorNotesBox({ advisorNotes }: AdvisorNotesBoxProps) 
   return (
     <Box
       sx={{
-        borderRadius: '24px',
+        borderRadius: '7px',
         border: '1px solid',
         borderColor: 'color-mix(in srgb, rgba(10,31,26,0.14) 32%, var(--border) 68%)',
         backgroundColor: '#ffffff',
@@ -63,7 +63,7 @@ export default function AdvisorNotesBox({ advisorNotes }: AdvisorNotesBoxProps) 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: '14px',
+            borderRadius: '7px',
             backgroundColor: 'color-mix(in srgb, var(--primary) 18%, white 82%)',
             color: 'color-mix(in srgb, var(--foreground) 78%, var(--primary) 22%)',
           }}
@@ -88,7 +88,7 @@ export default function AdvisorNotesBox({ advisorNotes }: AdvisorNotesBoxProps) 
           <Box
             key={`${item.term}-${index}`}
             sx={{
-              borderRadius: '18px',
+              borderRadius: '7px',
               border: '1px solid color-mix(in srgb, var(--primary) 26%, transparent)',
               backgroundColor: 'color-mix(in srgb, var(--primary) 8%, white)',
               px: 2.5,

@@ -85,7 +85,7 @@ export function EventCard({
   if (variant === 'grid') {
     return (
       <div
-        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-[22px] border px-3 py-4 text-center text-white shadow-[0_20px_40px_-24px_rgba(8,35,24,0.46)] transition-all duration-200 ease-out hover:-translate-y-1"
+        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-[7px] border px-3 py-4 text-center text-white shadow-[0_20px_40px_-24px_rgba(8,35,24,0.46)] transition-all duration-200 ease-out hover:-translate-y-1"
         style={{
           backgroundColor: tintedBackground,
           borderColor,
@@ -107,7 +107,7 @@ export function EventCard({
             <button
               type="button"
               onClick={() => onEdit?.(event)}
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               aria-label={`Edit ${event.title}`}
             >
               <EditIcon sx={{ fontSize: 14 }} />
@@ -115,7 +115,7 @@ export function EventCard({
             <button
               type="button"
               onClick={() => onDelete?.(event.id)}
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               aria-label={`Delete ${event.title}`}
             >
               <DeleteIcon sx={{ fontSize: 14 }} />
@@ -128,7 +128,7 @@ export function EventCard({
 
   return (
     <div
-      className="group relative flex flex-wrap items-center justify-between gap-4 rounded-[22px] border px-5 py-4 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)] transition-all duration-200 ease-out hover:-translate-y-1"
+      className="group relative flex flex-wrap items-center justify-between gap-4 rounded-[7px] border px-5 py-4 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)] transition-all duration-200 ease-out hover:-translate-y-1"
       style={{
         background: tintedBackground,
         borderColor,
@@ -137,7 +137,7 @@ export function EventCard({
     >
       <div className="flex items-center gap-3">
         <span
-          className="flex h-10 w-10 items-center justify-center rounded-full border"
+          className="flex h-10 w-10 items-center justify-center rounded-[7px] border"
           style={{
             background: `color-mix(in srgb, ${eventColor} 18%, white)`,
             borderColor: `color-mix(in srgb, ${eventColor} 42%, transparent)`,
@@ -169,7 +169,7 @@ export function EventCard({
           <button
             type="button"
             onClick={() => onEdit?.(event)}
-            className="flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            className="flex h-8 items-center gap-1 rounded-[7px] border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
             style={{
               color: `color-mix(in srgb, var(--foreground) 78%, ${eventColor} 22%)`,
               borderColor: `color-mix(in srgb, ${eventColor} 42%, transparent)`,
@@ -183,7 +183,7 @@ export function EventCard({
           <button
             type="button"
             onClick={() => onDelete?.(event.id)}
-            className="flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destructive)]"
+            className="flex h-8 items-center gap-1 rounded-[7px] border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destructive)]"
             style={{
               color: `color-mix(in srgb, #7f1d1d 75%, ${eventColor} 25%)`,
               borderColor: `color-mix(in srgb, #ef4444 60%, ${eventColor} 40%)`,

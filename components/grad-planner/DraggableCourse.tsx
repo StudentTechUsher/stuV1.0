@@ -57,7 +57,7 @@ export function DraggableCourse({
       {...listeners}
       {...attributes}
       className={cn(
-        'group relative flex flex-col gap-4 rounded-[20px] border border-[color-mix(in_srgb,var(--border)_82%,transparent_18%)] bg-white/95 p-4 text-sm shadow-[0_38px_88px_-56px_rgba(8,35,24,0.55)] transition-all duration-200 ease-out',
+        'group relative flex flex-col gap-4 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_82%,transparent_18%)] bg-white/95 p-4 text-sm shadow-[0_38px_88px_-56px_rgba(8,35,24,0.55)] transition-all duration-200 ease-out',
         isEditMode
           ? 'cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:border-[color-mix(in_srgb,var(--primary)_42%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_6%,#ffffff_94%)] hover:shadow-[0_32px_68px_-48px_rgba(18,249,135,0.45)]'
           : 'cursor-default',
@@ -118,7 +118,7 @@ export function DraggableCourse({
       </div>
 
       {isEditMode && (
-        <div className="flex items-center gap-2 rounded-[18px] border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_18%,transparent)] px-3 py-2">
+        <div className="flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_18%,transparent)] px-3 py-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
             Move
           </span>

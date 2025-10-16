@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, TextField } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert, TextField } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction, updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
 import { EventManager } from '@/components/grad-planner/EventManager';
@@ -383,12 +384,10 @@ export default function EditGradPlanPage() {
   if (isCheckingAccess || loading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
-            {isCheckingAccess ? 'Checking access permissions...' : 'Loading graduation plan...'}
-          </Typography>
-        </Box>
+        <StuLoader
+          variant="inline"
+          text={isCheckingAccess ? 'Checking access permissions...' : 'Loading graduation plan...'}
+        />
       </Box>
     );
   }
@@ -433,6 +432,7 @@ export default function EditGradPlanPage() {
   const selectedPlanName = existingPlanName;
   const requiresPlanName = existingPlanName.length === 0;
   const isPlanNameValid = !requiresPlanName || planNameInput.trim().length > 0;
+  const renameSaveDisabled = isSavingRename || planNameInput.trim().length === 0;
   const headerTitle = existingPlanName
     ? `Edit ${existingPlanName}`
     : 'Edit Graduation Plan';
@@ -511,7 +511,7 @@ export default function EditGradPlanPage() {
       <Box
         component="section"
         sx={{
-          borderRadius: '28px',
+          borderRadius: '7px',
           border: '1px solid',
           borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 35%, var(--border) 65%)',
           backgroundColor: '#ffffff',
@@ -573,7 +573,7 @@ export default function EditGradPlanPage() {
                   gap: 1,
                   px: 2.5,
                   py: 1,
-                  borderRadius: '999px',
+                  borderRadius: '7px',
                   backgroundColor: '#0a1f1a',
                   color: '#ffffff',
                   fontSize: '0.75rem',
@@ -592,7 +592,7 @@ export default function EditGradPlanPage() {
                     gap: 1,
                     px: 2.5,
                     py: 1,
-                    borderRadius: '999px',
+                    borderRadius: '7px',
                     backgroundColor: 'color-mix(in srgb, var(--primary) 18%, white 82%)',
                     color: 'color-mix(in srgb, var(--foreground) 82%, var(--primary) 18%)',
                     fontSize: '0.75rem',
@@ -612,7 +612,7 @@ export default function EditGradPlanPage() {
                   <Box
                     key={program.id}
                     sx={{
-                      borderRadius: '999px',
+                      borderRadius: '7px',
                       border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)',
                       backgroundColor: 'color-mix(in srgb, var(--primary) 12%, white)',
                       px: 2,
@@ -641,7 +641,7 @@ export default function EditGradPlanPage() {
                 onClick={handleStartRename}
                 sx={{
                   alignSelf: 'flex-start',
-                  borderRadius: '999px',
+                  borderRadius: '7px',
                   borderColor: 'var(--primary)',
                   color: 'var(--primary)',
                   fontWeight: 600,
@@ -675,7 +675,7 @@ export default function EditGradPlanPage() {
                   letterSpacing: '0.06em',
                   px: 3,
                   py: 1.25,
-                  borderRadius: '18px',
+                  borderRadius: '7px',
                   '&:hover': {
                     backgroundColor: '#043322',
                     boxShadow: '0 10px 26px -18px rgba(10,31,26,0.6)',
@@ -702,7 +702,7 @@ export default function EditGradPlanPage() {
                   letterSpacing: '0.06em',
                   px: 3,
                   py: 1.25,
-                  borderRadius: '18px',
+                  borderRadius: '7px',
                   '&:hover': {
                     borderColor: 'var(--action-cancel-hover)',
                     backgroundColor: 'rgba(244, 67, 54, 0.08)',
@@ -722,7 +722,7 @@ export default function EditGradPlanPage() {
         {isStudent && isRenaming && (
           <Box
             sx={{
-              borderRadius: '22px',
+              borderRadius: '7px',
               border: '1px solid',
               borderColor: 'color-mix(in srgb, var(--primary) 38%, transparent)',
               backgroundColor: 'color-mix(in srgb, var(--primary) 12%, white)',
@@ -803,7 +803,7 @@ export default function EditGradPlanPage() {
         <Box sx={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box
             sx={{
-              borderRadius: '28px',
+              borderRadius: '7px',
               border: '1px solid',
               borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 30%, var(--border) 70%)',
               backgroundColor: '#ffffff',
@@ -833,7 +833,7 @@ export default function EditGradPlanPage() {
           </Box>
 
           {isStudent && (
-            <Alert severity="info" sx={{ borderRadius: '20px' }}>
+            <Alert severity="info" sx={{ borderRadius: '7px' }}>
               You are editing your graduation plan. Drag courses between terms and add milestones, then submit for approval to lock in your updates.
             </Alert>
           )}

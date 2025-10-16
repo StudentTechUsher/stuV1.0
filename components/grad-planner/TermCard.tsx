@@ -49,7 +49,7 @@ export function TermCard({
     >
       <article
         className={cn(
-          'relative flex h-full flex-col gap-5 rounded-[24px] border border-[color-mix(in_srgb,rgba(10,31,26,0.18)_32%,var(--border)_68%)] bg-white p-6 shadow-[0_40px_90px_-60px_rgba(8,35,24,0.85)] transition-all duration-200 ease-out',
+          'relative flex h-full flex-col gap-5 rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.18)_32%,var(--border)_68%)] bg-white p-6 shadow-[0_40px_90px_-60px_rgba(8,35,24,0.85)] transition-all duration-200 ease-out',
           'backdrop-blur-[2px]'
         )}
         data-editable={isEditMode}
@@ -119,7 +119,7 @@ export function TermCard({
 
         {term.notes && (
           <section
-            className="rounded-2xl border border-[color-mix(in_srgb,var(--primary)_28%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] px-4 py-3 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_85%,var(--primary)_15%)] shadow-[0_16px_42px_-32px_rgba(18,249,135,0.6)]"
+            className="rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_28%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] px-4 py-3 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_85%,var(--primary)_15%)] shadow-[0_16px_42px_-32px_rgba(18,249,135,0.6)]"
             aria-label="Term notes"
           >
             {term.notes}
@@ -154,7 +154,7 @@ export function TermCard({
             </div>
           </section>
         ) : (
-          <div className="flex items-center justify-center rounded-2xl border border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_38%,var(--border)_62%)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-4 py-10 text-sm font-medium text-[color-mix(in_srgb,var(--muted-foreground)_78%,var(--foreground)_22%)]">
+          <div className="flex items-center justify-center rounded-[7px] border border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_38%,var(--border)_62%)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-4 py-10 text-sm font-medium text-[color-mix(in_srgb,var(--muted-foreground)_78%,var(--foreground)_22%)]">
             No courses defined for this term yet
           </div>
         )}

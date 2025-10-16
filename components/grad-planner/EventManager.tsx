@@ -103,7 +103,7 @@ export function EventManager({
     >
       <Box
         sx={{
-          borderRadius: '24px',
+          borderRadius: '7px',
           border: '1px solid',
           borderColor: 'color-mix(in srgb, rgba(10,31,26,0.14) 32%, var(--border) 68%)',
           backgroundColor: '#ffffff',
@@ -139,7 +139,7 @@ export function EventManager({
                 fontFamily: '"Inter", sans-serif',
                 fontSize: '0.75rem',
                 px: 2,
-                borderRadius: '999px',
+                borderRadius: '7px',
                 textTransform: 'none',
                 '&:hover': {
                   backgroundColor: '#043322',
@@ -205,7 +205,7 @@ export function EventManager({
                             justifyContent: 'space-between',
                             gap: 1.5,
                             p: 1.5,
-                            borderRadius: '18px',
+                            borderRadius: '7px',
                             border: '1px solid color-mix(in srgb, rgba(10,31,26,0.12) 40%, transparent)',
                             backgroundColor: `color-mix(in srgb, ${eventColor} 12%, white 88%)`,
                           }}

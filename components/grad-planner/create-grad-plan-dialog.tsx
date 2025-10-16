@@ -20,6 +20,7 @@ import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
+import { StuLoader } from '@/components/ui/StuLoader';
 import AddIcon from '@mui/icons-material/Add';
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
@@ -814,11 +815,8 @@ const handleRemoveElective = (id: string) => {
 
         {/* Loading skeleton during program data fetch */}
         {loadingProgramData && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 4, gap: 2 }}>
-            <CircularProgress size={40} />
-            <Typography variant="body2" className="font-body" color="text.secondary">
-              Loading program requirements...
-            </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+            <StuLoader variant="card" text="Loading program requirements..." />
           </Box>
         )}
 
@@ -841,27 +839,23 @@ const handleRemoveElective = (id: string) => {
         
         {/* Loading overlay during AI processing */}
         {isCreatingPlan && (
-          <Box sx={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            bgcolor: 'rgba(255, 255, 255, 0.8)', 
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(255, 255, 255, 0.95)',
             zIndex: 1000,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: 2
+            gap: 2,
+            p: 4
           }}>
-            <CircularProgress size={60} />
-            <Typography variant="h6" className="font-header-bold" sx={{ textAlign: 'center' }}>
-              {loadingMessage.title}
-            </Typography>
-            <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary' }}>
-              {loadingMessage.subtitle}
-              <br />
+            <StuLoader variant="page" text={`${loadingMessage.title} — ${loadingMessage.subtitle}`} />
+            <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary', mt: 2 }}>
               This may take a moment. Please don&apos;t close this window.
             </Typography>
           </Box>
