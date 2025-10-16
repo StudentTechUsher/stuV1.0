@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import type { MajorInfo } from '@/types/major';
 import CareerSkillChips from './CareerSkillChips';
 import InfoRow from './InfoRow';
+import { MajorMatchVisualization, calculateMajorMatch } from './MajorMatchVisualization';
 
 interface MajorInfoModalProps {
   major: MajorInfo;
@@ -53,7 +54,15 @@ export default function MajorInfoModal({
 
   if (!open) return null;
 
-  // Calculate course overlap
+  // Calculate comprehensive match data
+  const matchData = calculateMajorMatch(completedCourses, {
+    coreCourses: major.coreCourses,
+    electiveCourses: major.electiveCourses,
+    prerequisites: major.prerequisites,
+    totalCredits: major.totalCredits,
+  });
+
+  // Legacy: Keep for backward compatibility with existing badge
   const completedCodes = new Set(completedCourses.map(c => c.code.trim().toUpperCase()));
   const coreCourseMatches = major.coreCourses.filter(course => {
     const code = course.split('-')[0].trim().toUpperCase();
@@ -130,6 +139,19 @@ export default function MajorInfoModal({
               {major.overview}
             </p>
           </section>
+
+          {/* Major Match Visualization */}
+          {completedCourses.length > 0 && (
+            <section>
+              <h3 className="text-xl font-body-semi text-[var(--foreground)] mb-3 border-b border-[var(--border)] pb-2">
+                Your Course Alignment
+              </h3>
+              <MajorMatchVisualization
+                matchData={matchData}
+                majorName={major.name}
+              />
+            </section>
+          )}
 
           {/* Career Paths */}
           {major.topCareers.length > 0 && (

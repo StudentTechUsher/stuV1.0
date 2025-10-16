@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { StuLoader } from "@/components/ui/StuLoader";
 
 type UploadStatus = "idle" | "uploading" | "parsing" | "parsed" | "failed";
 
@@ -113,13 +114,8 @@ export default function TranscriptUpload({ onUploadSuccess }: TranscriptUploadPr
         </>
       ) : (
         <div className="py-8">
-          {status === "uploading" && <p className="text-blue-600">Uploading your file…</p>}
-          {status === "parsing" && (
-            <>
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2" />
-              <p className="text-blue-600">Parsing your transcript…</p>
-            </>
-          )}
+          {status === "uploading" && <StuLoader variant="inline" text="Uploading your file..." />}
+          {status === "parsing" && <StuLoader variant="inline" text="Parsing your transcript..." />}
           {status === "parsed" && parseReport && (
             <div className="text-center">
               <p className="text-primary font-semibold text-lg mb-2">Transcript parsed successfully!</p>

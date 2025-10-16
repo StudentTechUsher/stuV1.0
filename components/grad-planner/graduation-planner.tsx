@@ -3,9 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
-import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import { GraduationPlan } from '@/types/graduation-plan';
 import {
   DndContext,
@@ -322,17 +319,22 @@ export default function GraduationPlanner({
 
     const terms: TermBlock[] = currentPlanData.map((term, index) => {
       const courses: CourseItem[] = (term.courses || []).map((course, courseIndex) => ({
-        id: `${index}-${courseIndex}`,
+        id: `space-course-${index}-${courseIndex}`,
         code: course.code || '',
         title: course.title || '',
         credits: course.credits || 0,
         requirements: course.fulfills || [],
+        termIndex: index,
+        courseIndex,
+        rawCourse: course,
       }));
 
       return {
         id: `term-${index}`,
         label: term.term || `Term ${index + 1}`,
         courses,
+        termIndex: index,
+        rawTerm: term,
       };
     });
 
@@ -396,28 +398,12 @@ export default function GraduationPlanner({
               fulfilledRequirements={fulfilledRequirements}
             />
 
-            <Button
-              variant="outlined"
-              onClick={() => setIsSpaceView(!isSpaceView)}
-              startIcon={isSpaceView ? <ZoomInMapIcon /> : <ZoomOutMapIcon />}
-              className="font-body-semi"
-              sx={{
-                borderColor: '#1A1A1A',
-                color: '#1A1A1A',
-                '&:hover': {
-                  borderColor: '#000000',
-                  backgroundColor: 'rgba(26, 26, 26, 0.08)',
-                }
-              }}
-            >
-              {isSpaceView ? 'Detail View' : 'Zoom Out'}
-            </Button>
-
             {/* Display terms with events between them */}
             {isSpaceView ? (
               <SpaceView
                 plan={spaceViewData}
                 isEditMode={isEditMode}
+                modifiedTerms={modifiedTerms}
                 onEditEvent={handleOpenEventDialog}
                 onDeleteEvent={handleDeleteEvent}
               />

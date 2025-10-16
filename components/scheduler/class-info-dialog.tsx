@@ -134,27 +134,46 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
       PaperProps={{
         sx: {
           borderRadius: 3,
-          p: 1,
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+          border: "1px solid var(--border)",
         },
       }}
     >
-      <DialogTitle sx={{ pb: 1 }}>
+      <DialogTitle
+        sx={{
+          pb: 2,
+          pt: 3,
+          px: 3,
+          mb: 3,
+          backgroundColor: "#0A0A0A",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h6" className="font-header">
+          <Typography variant="h6" className="font-header" sx={{ color: "white", fontWeight: 700 }}>
             Class Information
           </Typography>
-          <IconButton onClick={onClose} size="small">
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: "white",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.1)"
+              }
+            }}
+          >
             <X size={20} />
           </IconButton>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2, pb: 3 }}>
+      <DialogContent sx={{ pt: 3, pb: 3, px: 3 }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {/* Course Title */}
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-              <Typography variant="h5" className="font-header">
+              <Typography variant="h5" className="font-header" sx={{ fontWeight: 700, color: "var(--foreground)" }}>
                 {event.course_code}
               </Typography>
               {event.section && (
@@ -162,30 +181,42 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
                   label={`Section ${event.section}`}
                   size="small"
                   sx={{
-                    bgcolor: "var(--muted)",
-                    color: "var(--foreground)",
+                    bgcolor: "color-mix(in srgb, var(--primary) 18%, white)",
+                    color: "var(--dark)",
                     fontFamily: "Inter, sans-serif",
-                    fontWeight: 500,
+                    fontWeight: 600,
+                    border: "1px solid color-mix(in srgb, var(--primary) 30%, white)",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                   }}
                 />
               )}
             </Box>
-            <Typography variant="body1" className="font-body" color="text.secondary">
+            <Typography variant="body1" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
               {event.title}
             </Typography>
           </Box>
 
           {/* Course Details Grid */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 2,
+              p: 2.5,
+              backgroundColor: "color-mix(in srgb, var(--muted) 4%, white)",
+              borderRadius: 2,
+              border: "1px solid var(--border)",
+            }}
+          >
             {/* Professor */}
             {event.professor && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <User size={18} style={{ color: "var(--muted-foreground)" }} />
+              <Box sx={{ display: "flex", alignItems: "start", gap: 1.5 }}>
+                <User size={18} style={{ color: "var(--primary)", marginTop: "2px" }} />
                 <Box>
-                  <Typography variant="caption" className="font-body" color="text.secondary" display="block">
+                  <Typography variant="caption" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }} display="block">
                     Professor
                   </Typography>
-                  <Typography variant="body2" className="font-body-semi">
+                  <Typography variant="body2" className="font-body-semi" sx={{ color: "var(--foreground)", fontWeight: 600, mt: 0.5 }}>
                     {event.professor}
                   </Typography>
                 </Box>
@@ -194,13 +225,13 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
 
             {/* Location */}
             {event.location && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <MapPin size={18} style={{ color: "var(--muted-foreground)" }} />
+              <Box sx={{ display: "flex", alignItems: "start", gap: 1.5 }}>
+                <MapPin size={18} style={{ color: "var(--primary)", marginTop: "2px" }} />
                 <Box>
-                  <Typography variant="caption" className="font-body" color="text.secondary" display="block">
+                  <Typography variant="caption" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }} display="block">
                     Location
                   </Typography>
-                  <Typography variant="body2" className="font-body-semi">
+                  <Typography variant="body2" className="font-body-semi" sx={{ color: "var(--foreground)", fontWeight: 600, mt: 0.5 }}>
                     {event.location}
                   </Typography>
                 </Box>
@@ -208,26 +239,26 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
             )}
 
             {/* Schedule */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Clock size={18} style={{ color: "var(--muted-foreground)" }} />
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1.5 }}>
+              <Clock size={18} style={{ color: "var(--primary)", marginTop: "2px" }} />
               <Box>
-                <Typography variant="caption" className="font-body" color="text.secondary" display="block">
+                <Typography variant="caption" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }} display="block">
                   Schedule
                 </Typography>
-                <Typography variant="body2" className="font-body-semi">
+                <Typography variant="body2" className="font-body-semi" sx={{ color: "var(--foreground)", fontWeight: 600, mt: 0.5 }}>
                   {dayName} {event.startTime} - {event.endTime}
                 </Typography>
               </Box>
             </Box>
 
             {/* Credits */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <CreditCard size={18} style={{ color: "var(--muted-foreground)" }} />
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1.5 }}>
+              <CreditCard size={18} style={{ color: "var(--primary)", marginTop: "2px" }} />
               <Box>
-                <Typography variant="caption" className="font-body" color="text.secondary" display="block">
+                <Typography variant="caption" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }} display="block">
                   Credits
                 </Typography>
-                <Typography variant="body2" className="font-body-semi">
+                <Typography variant="body2" className="font-body-semi" sx={{ color: "var(--foreground)", fontWeight: 600, mt: 0.5 }}>
                   {event.credits || 3.0}
                 </Typography>
               </Box>
@@ -240,10 +271,12 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
               label={event.status === "registered" ? "Registered" : "Waitlisted"}
               size="small"
               sx={{
-                bgcolor: event.status === "registered" ? "var(--primary-15)" : "var(--secondary)",
-                color: event.status === "registered" ? "var(--primary)" : "var(--foreground)",
+                bgcolor: event.status === "registered" ? "color-mix(in srgb, var(--primary) 18%, white)" : "color-mix(in srgb, var(--muted) 15%, white)",
+                color: event.status === "registered" ? "var(--dark)" : "var(--foreground)",
                 fontFamily: "Inter, sans-serif",
                 fontWeight: 600,
+                border: event.status === "registered" ? "1px solid color-mix(in srgb, var(--primary) 30%, white)" : "1px solid var(--border)",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
               }}
             />
           </Box>
@@ -251,12 +284,19 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
           {/* Alternative Sections */}
           {alternativeSections.length > 0 && (
             <>
-              <Divider sx={{ my: 2 }} />
-              <Box>
-                <Typography variant="h6" className="font-header" sx={{ mb: 2 }}>
+              <Divider sx={{ my: 1 }} />
+              <Box
+                sx={{
+                  p: 2.5,
+                  backgroundColor: "color-mix(in srgb, var(--primary) 3%, white)",
+                  borderRadius: 2,
+                  border: "1px solid color-mix(in srgb, var(--primary) 15%, white)",
+                }}
+              >
+                <Typography variant="h6" className="font-header" sx={{ mb: 1, fontWeight: 700, color: "var(--foreground)" }}>
                   Find Alternative Section
                 </Typography>
-                <Typography variant="body2" className="font-body" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" className="font-body" sx={{ color: "var(--muted-foreground)", mb: 2.5, fontWeight: 500 }}>
                   {alternativeSections.filter(course => !hasConflict(course)).length} compatible alternatives found
                 </Typography>
 
@@ -268,8 +308,20 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
                     disabled={alternativeSections.filter(course => !hasConflict(course)).length === 0}
                     sx={{
                       bgcolor: "var(--primary)",
-                      color: "var(--muted-foreground)",
-                      "&:hover": { bgcolor: "var(--hover-green)", color: "var(--muted-foreground)" },
+                      color: "#0A0A0A",
+                      fontWeight: 600,
+                      px: 2.5,
+                      py: 1,
+                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                      "&:hover": {
+                        bgcolor: "var(--hover-green)",
+                        color: "white",
+                        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.15)",
+                      },
+                      "&:disabled": {
+                        bgcolor: "var(--muted)",
+                        color: "var(--muted-foreground)",
+                      },
                     }}
                   >
                     Auto Pick
@@ -279,12 +331,15 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
                     startIcon={<RefreshCw size={16} />}
                     onClick={() => setShowAlternatives(!showAlternatives)}
                     sx={{
-                      borderColor: "var(--muted-foreground)",
-                      color: "var(--muted-foreground)",
+                      borderColor: "var(--border)",
+                      color: "var(--foreground)",
+                      fontWeight: 600,
+                      px: 2.5,
+                      py: 1,
+                      borderWidth: "1.5px",
                       "&:hover": {
-                        backgroundColor: "var(--hover-gray)",
-                        color: "white",
-                        borderColor: "var(--hover-gray)",
+                        backgroundColor: "color-mix(in srgb, var(--muted) 15%, white)",
+                        borderColor: "var(--foreground)",
                       },
                     }}
                   >
@@ -293,13 +348,31 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
                 </Box>
 
                 {showAlternatives && (
-                  <Box sx={{ mt: 2 }}>
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>Select Alternative Section</InputLabel>
+                  <Box sx={{ mt: 2.5 }}>
+                    <FormControl
+                      fullWidth
+                      sx={{
+                        mb: 2,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "var(--primary)",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "var(--primary)",
+                            borderWidth: "2px",
+                          },
+                        },
+                      }}
+                    >
+                      <InputLabel sx={{ fontWeight: 600 }}>Select Alternative Section</InputLabel>
                       <Select
                         value={selectedAlternative}
                         label="Select Alternative Section"
                         onChange={(e) => setSelectedAlternative(e.target.value)}
+                        sx={{
+                          fontWeight: 600,
+                        }}
                       >
                         {alternativeSections.map((course) => {
                           const isConflict = hasConflict(course);
@@ -310,18 +383,19 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
                               disabled={isConflict}
                               sx={{
                                 opacity: isConflict ? 0.5 : 1,
-                                bgcolor: isConflict ? "var(--muted)" : "transparent",
+                                bgcolor: isConflict ? "color-mix(in srgb, var(--action-cancel) 8%, white)" : "transparent",
+                                py: 1.5,
                                 "&:hover": {
-                                  bgcolor: isConflict ? "var(--muted)" : "var(--primary-15)",
+                                  bgcolor: isConflict ? "color-mix(in srgb, var(--action-cancel) 12%, white)" : "color-mix(in srgb, var(--primary) 8%, white)",
                                 },
                               }}
                             >
                               <Box>
-                                <Typography variant="body2" className="font-body-semi">
+                                <Typography variant="body2" className="font-body-semi" sx={{ fontWeight: 600 }}>
                                   Section {course.section} - {course.professor}
                                   {isConflict && " (Conflicts)"}
                                 </Typography>
-                                <Typography variant="caption" className="font-body" color="text.secondary">
+                                <Typography variant="caption" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
                                   {course.schedule} • {course.location}
                                 </Typography>
                               </Box>
@@ -337,8 +411,19 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
                       fullWidth
                       sx={{
                         bgcolor: "var(--primary)",
-                        color: "var(--muted-foreground)",
-                        "&:hover": { bgcolor: "var(--hover-green)", color: "var(--muted-foreground)" },
+                        color: "#0A0A0A",
+                        fontWeight: 600,
+                        py: 1.25,
+                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                        "&:hover": {
+                          bgcolor: "var(--hover-green)",
+                          color: "white",
+                          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.15)",
+                        },
+                        "&:disabled": {
+                          bgcolor: "var(--muted)",
+                          color: "var(--muted-foreground)",
+                        },
                       }}
                     >
                       Replace with Selected Section
