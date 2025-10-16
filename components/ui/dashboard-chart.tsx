@@ -15,7 +15,7 @@ import {
   LineChart,
   Line
 } from "recharts"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 
 export interface ChartData {
   name: string
@@ -178,20 +178,27 @@ export function DashboardChart({
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
+    <Card className={`group overflow-hidden transition-all duration-200 hover:shadow-md ${className || ''}`}>
+      {/* Black header bar matching academic-progress-card */}
+      <div className="border-b-2 px-6 py-3.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+          <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+            {title}
+          </h3>
           {description && (
-            <div className="relative group">
-              <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-muted-foreground cursor-help">
+            <div className="relative">
+              <button
+                type="button"
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/70 transition-all duration-200 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-label="Show chart description"
+                title={description}
+              >
                 <svg
-                  width="17"
-                  height="17"
+                  className="h-3.5 w-3.5"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
@@ -199,15 +206,17 @@ export function DashboardChart({
                   <path d="M12 16v-4"/>
                   <path d="M12 8h.01"/>
                 </svg>
-              </div>
-              <div className="absolute right-0 top-6 w-64 p-2 bg-popover border border-border rounded-md shadow-lg text-sm text-popover-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+              </button>
+              {/* Tooltip on hover */}
+              <div className="pointer-events-none absolute right-0 top-8 z-10 w-72 rounded-lg border border-[var(--border)] bg-[var(--popover)] p-3 text-xs leading-relaxed text-[var(--popover-foreground)] opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
                 {description}
               </div>
             </div>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      <CardContent className="p-6">
         {renderChart()}
       </CardContent>
     </Card>
