@@ -4,10 +4,8 @@ import React from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Term } from './types';
-import {
-  ExpandableProgressCategory,
-  type ExpandableCategoryData,
-} from './ExpandableProgressCategory';
+import type { ExpandableCategoryData } from './ExpandableProgressCategory';
+import { RequirementGroup } from './ExpandableProgressCategory';
 
 // === Type Definitions ===
 
@@ -31,7 +29,6 @@ export interface AdvisorProgressPanelProps {
   currentSemesterCredits?: number; // Credits student is currently taking
   plannedCredits?: number; // Total credits planned in the grad plan
   expandableCategories?: ExpandableCategoryData[]; // Optional detailed category data for expansion
-  useExpandableView?: boolean; // Toggle between simple and expandable view
 }
 
 // === Helper Functions ===
@@ -236,15 +233,20 @@ export function AdvisorProgressPanel({
   currentSemesterCredits = 0,
   plannedCredits = 0,
   expandableCategories,
-  useExpandableView = true,
 }: AdvisorProgressPanelProps) {
   const totalPercent = totalCredits.required > 0
     ? Math.round((totalCredits.earned / totalCredits.required) * 100)
     : 0;
 
-  const hasExpandableCategories = useExpandableView && Boolean(expandableCategories?.length);
+  // Track which category is expanded (for click-to-expand on simple bars)
+  const [expandedCategory, setExpandedCategory] = React.useState<string | null>(null);
 
   const CollapseIcon = isCollapsed ? ChevronLeft : ChevronRight;
+
+  // Handle category click - toggle expanded state
+  const handleCategoryClick = (categoryName: string) => {
+    setExpandedCategory(prev => prev === categoryName ? null : categoryName);
+  };
 
   return (
     <aside
@@ -364,38 +366,49 @@ export function AdvisorProgressPanel({
 
             <div className="flex flex-col gap-5">
               {categories.map((category) => {
-                const expandableData = hasExpandableCategories
-                  ? expandableCategories?.find((ec) => ec.name === category.category)
-                  : undefined;
-
-                if (hasExpandableCategories && expandableData) {
-                  return (
-                    <ExpandableProgressCategory
-                      key={expandableData.name}
-                      category={expandableData}
-                    />
-                  );
-                }
+                const isExpanded = expandedCategory === category.category;
+                const expandableData = expandableCategories?.find(
+                  (ec) => ec.name === category.category
+                );
 
                 return (
-                  <CategoryProgressBar
-                    key={category.category}
-                    category={category}
-                  />
+                  <div key={category.category} className="flex flex-col gap-3">
+                    {/* Simple progress bar - clickable if expandable data exists */}
+                    <CategoryProgressBar
+                      category={category}
+                      isClickable={!!expandableData}
+                      onClick={() => expandableData && handleCategoryClick(category.category)}
+                    />
+
+                    {/* Show expandable details if clicked and data exists */}
+                    {isExpanded && expandableData && (
+                      <div className="overflow-hidden">
+                        <div
+                          className="flex flex-col gap-3 rounded-xl border border-[color-mix(in_srgb,var(--border)_60%,transparent)] p-4 animate-in fade-in slide-in-from-top-2 duration-300"
+                          style={{
+                            backgroundColor: `color-mix(in srgb, ${category.color} 4%, white)`
+                          }}
+                        >
+                          {expandableData.requirements.length > 0 ? (
+                            expandableData.requirements.map((requirement, index) => (
+                              <RequirementGroup
+                                key={requirement.id}
+                                requirement={requirement}
+                                requirementNumber={index + 1}
+                                categoryColor={category.color}
+                              />
+                            ))
+                          ) : (
+                            <p className="text-sm text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">
+                              No requirements defined for this category yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
-
-              {hasExpandableCategories &&
-                expandableCategories
-                  ?.filter((expandableCategory) =>
-                    !categories.some((category) => category.category === expandableCategory.name)
-                  )
-                  .map((expandableCategory) => (
-                    <ExpandableProgressCategory
-                      key={expandableCategory.name}
-                      category={expandableCategory}
-                    />
-                  ))}
             </div>
           </div>
 

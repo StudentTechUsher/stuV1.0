@@ -124,13 +124,13 @@ function CourseItem({ course, categoryColor }: CourseItemProps) {
 
 // === Requirement Group Component ===
 
-interface RequirementGroupProps {
+export interface RequirementGroupProps {
   requirement: Requirement;
   requirementNumber: number;
   categoryColor: string;
 }
 
-function RequirementGroup({ requirement, requirementNumber, categoryColor }: RequirementGroupProps) {
+export function RequirementGroup({ requirement, requirementNumber, categoryColor }: RequirementGroupProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
 
   const progressPercent = requirement.total > 0

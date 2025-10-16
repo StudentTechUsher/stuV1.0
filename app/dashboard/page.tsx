@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Box from "@mui/material/Box";
-import AcademicSummarySkeleton from "@/components/dashboard/skeletons/academic-summary-skeleton";
-import CalendarSkeleton from "@/components/dashboard/skeletons/calendar-skeleton";
+import { StuLoader } from "@/components/ui/StuLoader";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
 import AcademicSummary from "@/components/dashboard/academic-summary";
 import AcademicProgressCard from "@/components/dashboard/academic-progress-card";
@@ -141,14 +140,22 @@ function StudentDashboard({
     <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
       {/* Left Column - Academic Summary and Progress Card */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <Suspense fallback={<AcademicSummarySkeleton />}>
+        <Suspense fallback={
+          <div className="flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-8 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+            <StuLoader variant="card" text="Loading your academic summary..." />
+          </div>
+        }>
           <AcademicSummary yearInSchool={studentData?.year_in_school} />
         </Suspense>
         <AcademicProgressCard />
       </Box>
 
       {/* Right Column - Calendar */}
-      <Suspense fallback={<CalendarSkeleton />}>
+      <Suspense fallback={
+        <div className="flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-8 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+          <StuLoader variant="card" text="Loading your schedule..." />
+        </div>
+      }>
         <CalendarPanel userId={userId} showSchedulerButton={true} />
       </Suspense>
     </Box>

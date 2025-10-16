@@ -78,14 +78,14 @@ export function EventCard({
 }: Readonly<EventCardProps>) {
   const eventColor = getEventColor(event.type);
   const EventIconComponent = getEventIcon(event.type);
-  const tintedBackground = `color-mix(in srgb, ${eventColor} 18%, var(--card))`;
-  const borderColor = `color-mix(in srgb, ${eventColor} 38%, transparent)`;
+  const tintedBackground = `color-mix(in srgb, ${eventColor} 70%, white)`;
+  const borderColor = `color-mix(in srgb, ${eventColor}, transparent)`;
   const glowShadow = `${eventColor}33`;
 
   if (variant === 'grid') {
     return (
       <div
-        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-[7px] border px-3 py-4 text-center text-white shadow-[0_20px_40px_-24px_rgba(8,35,24,0.46)] transition-all duration-200 ease-out hover:-translate-y-1"
+        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-[7px] border px-3 py-4 text-center shadow-[0_20px_40px_-24px_rgba(8,35,24,0.46)] transition-all duration-200 ease-out hover:-translate-y-1"
         style={{
           backgroundColor: tintedBackground,
           borderColor,
@@ -93,32 +93,42 @@ export function EventCard({
         }}
       >
         <EventIconComponent
-          fontSize="large"
-          style={{ color: 'color-mix(in srgb, var(--primary-foreground) 92%, white 8%)' }}
+          sx={{ fontSize: 24 }}
+          style={{ color: `color-mix(in srgb, ${eventColor} 92%, black 8%)` }}
         />
-        <p className="font-body-semi text-sm font-semibold leading-tight tracking-tight text-[color-mix(in_srgb,var(--primary-foreground)_92%,white_8%)]">
+        <p className="font-body-semi text-xs font-semibold leading-tight tracking-tight" style={{ color: `color-mix(in srgb, var(--foreground) 95%, ${eventColor} 5%)` }}>
           {event.title}
         </p>
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--primary-foreground)_80%,white_20%)]">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em]" style={{ color: `color-mix(in srgb, var(--foreground) 75%, ${eventColor} 25%)` }}>
           {event.type}
         </p>
         {isEditMode && (
-          <div className="absolute right-2 top-2 flex gap-1">
+          <div className="absolute right-1 top-1 flex gap-0.5">
             <button
               type="button"
               onClick={() => onEdit?.(event)}
-              className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex h-5 w-5 items-center justify-center rounded-[4px] border transition focus-visible:outline-none focus-visible:ring-1"
+              style={{
+                borderColor: `color-mix(in srgb, ${eventColor} 40%, transparent)`,
+                backgroundColor: `color-mix(in srgb, ${eventColor} 15%, white)`,
+                color: `color-mix(in srgb, ${eventColor} 85%, black 15%)`,
+              }}
               aria-label={`Edit ${event.title}`}
             >
-              <EditIcon sx={{ fontSize: 14 }} />
+              <EditIcon sx={{ fontSize: 12 }} />
             </button>
             <button
               type="button"
               onClick={() => onDelete?.(event.id)}
-              className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-white/30 bg-white/10 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex h-5 w-5 items-center justify-center rounded-[4px] border transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+              style={{
+                borderColor: 'color-mix(in srgb, #ef4444 50%, transparent)',
+                backgroundColor: 'rgba(239,68,68,0.15)',
+                color: '#b91c1c',
+              }}
               aria-label={`Delete ${event.title}`}
             >
-              <DeleteIcon sx={{ fontSize: 14 }} />
+              <DeleteIcon sx={{ fontSize: 12 }} />
             </button>
           </div>
         )}
@@ -128,35 +138,35 @@ export function EventCard({
 
   return (
     <div
-      className="group relative flex flex-wrap items-center justify-between gap-4 rounded-[7px] border px-5 py-4 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)] transition-all duration-200 ease-out hover:-translate-y-1"
+      className="group relative flex flex-wrap items-center justify-between gap-3 rounded-[7px] border px-4 py-2.5 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)] transition-all duration-200 ease-out hover:-translate-y-1"
       style={{
         background: tintedBackground,
         borderColor,
         boxShadow: `0 32px 70px -54px ${glowShadow}`,
       }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <span
-          className="flex h-10 w-10 items-center justify-center rounded-[7px] border"
+          className="flex h-8 w-8 items-center justify-center rounded-[7px] border"
           style={{
-            background: `color-mix(in srgb, ${eventColor} 18%, white)`,
-            borderColor: `color-mix(in srgb, ${eventColor} 42%, transparent)`,
+            background: `color-mix(in srgb, ${eventColor} 25%, white)`,
+            borderColor: `color-mix(in srgb, ${eventColor} 50%, transparent)`,
           }}
         >
           <EventIconComponent
-            fontSize="small"
-            style={{ color: 'color-mix(in srgb, var(--foreground) 72%, white 28%)' }}
+            sx={{ fontSize: 18 }}
+            style={{ color: `color-mix(in srgb, ${eventColor} 85%, black 15%)` }}
           />
         </span>
-        <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <span
-            className="font-body-semi text-base font-semibold leading-tight tracking-tight"
+            className="font-body-semi text-sm font-semibold leading-tight tracking-tight"
             style={{ color: `color-mix(in srgb, var(--foreground) 92%, ${eventColor} 8%)` }}
           >
             {event.title}
           </span>
           <span
-            className="text-[11px] font-semibold uppercase tracking-[0.22em]"
+            className="text-[10px] font-semibold uppercase tracking-[0.20em]"
             style={{ color: `color-mix(in srgb, var(--foreground) 68%, ${eventColor} 32%)` }}
           >
             {event.type}

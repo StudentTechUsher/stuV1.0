@@ -1,9 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Box, Typography, CircularProgress, Alert, Button } from '@mui/material';
+import { Box, Typography, Alert, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useRouter } from 'next/navigation';
+import { StuLoader } from '@/components/ui/StuLoader';
 import { getSessionUser } from '@/lib/services/auth';
 import { getUserUniversityId } from '@/lib/services/profileService';
 import { fetchMyProfile } from '@/lib/services/profileService.server';
@@ -158,9 +159,9 @@ export default function MaintainProgramsPage() {
       {(() => {
         if (loading) {
           return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={20} /> Loading…
-            </Box>
+            <div className="mt-6 flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-12 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+              <StuLoader variant="card" text="Loading programs..." />
+            </div>
           );
         } else if (error) {
           return <Alert severity="error">{error}</Alert>;

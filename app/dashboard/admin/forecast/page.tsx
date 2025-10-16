@@ -16,13 +16,13 @@ import {
   Collapse,
   IconButton,
   Chip,
-  CircularProgress,
   ToggleButtonGroup,
   ToggleButton,
   Alert,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import { StuLoader } from '@/components/ui/StuLoader';
 import { formatTermCode } from '@/lib/terms';
 import type { ForecastResponse, ForecastRow } from '@/app/api/admin/forecast/route';
 
@@ -278,9 +278,9 @@ export default function ForecastPage() {
 
       {/* Results Table */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
+        <div className="flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-12 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+          <StuLoader variant="card" text="Generating forecast data..." />
+        </div>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : data && data.rows.length === 0 ? (

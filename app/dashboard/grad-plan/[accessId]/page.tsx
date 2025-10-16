@@ -9,9 +9,10 @@ import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServe
 import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
-import { EventManager } from '@/components/grad-planner/EventManager';
 import { Event } from '@/components/grad-planner/types';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
+import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
 
 interface GradPlanDetails {
   id: string;
@@ -151,6 +152,7 @@ export default function EditGradPlanPage() {
   const [isRenaming, setIsRenaming] = React.useState(false);
   const [isSavingRename, setIsSavingRename] = React.useState(false);
   const [events, setEvents] = React.useState<Event[]>([]);
+  const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
 
   const isEditMode = true; // Always in edit mode for this page
 
@@ -203,22 +205,9 @@ export default function EditGradPlanPage() {
     // TODO: In the future, persist events to database
   };
 
-  // Store reference to the internal event dialog trigger
-  const openEventDialogRef = React.useRef<((event?: Event) => void) | null>(null);
-
-  const handleOpenEventDialog = React.useCallback((event?: Event) => {
-    if (openEventDialogRef.current) {
-      openEventDialogRef.current(event);
-    }
-  }, []);
-
-  const handleDeleteEvent = (eventId: string) => {
-    setEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
-  };
-
-  // Callback to receive the event dialog opener from GraduationPlanner
-  const handleRegisterEventDialogOpener = React.useCallback((opener: (event?: Event) => void) => {
-    openEventDialogRef.current = opener;
+  // Callback to receive the event dialog opener from GraduationPlanner (not used in UI, but passed to component)
+  const handleRegisterEventDialogOpener = React.useCallback((_opener: (event?: Event) => void) => {
+    // Event dialog functionality removed from sidebar, but kept for internal component use
   }, []);
 
   // Check if user has access to this graduation plan
@@ -380,6 +369,43 @@ export default function EditGradPlanPage() {
       setIsSubmitting(false);
     }
   };
+
+  // Calculate category progress for the progress panel
+  const categoryProgress = React.useMemo(() => {
+    if (!currentPlanData) return [];
+    return calculateCategoryProgress(currentPlanData);
+  }, [currentPlanData]);
+
+  // Calculate total credits for progress panel
+  const totalCreditsData = React.useMemo(() => {
+    if (!currentPlanData) return { earned: 0, required: 133.66 };
+
+    const earned = currentPlanData.reduce((total, term) => {
+      const termCredits = term.credits_planned ||
+                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+      return total + termCredits;
+    }, 0);
+
+    return { earned, required: 133.66 };
+  }, [currentPlanData]);
+
+  // Calculate current semester credits (assuming first term is current)
+  const currentSemesterCredits = React.useMemo(() => {
+    if (!currentPlanData || currentPlanData.length === 0) return 0;
+    const currentTerm = currentPlanData[0];
+    return currentTerm.credits_planned ||
+           (currentTerm.courses ? currentTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+  }, [currentPlanData]);
+
+  // Calculate total planned credits in the grad plan
+  const plannedCredits = React.useMemo(() => {
+    if (!currentPlanData) return 0;
+    return currentPlanData.reduce((total, term) => {
+      const termCredits = term.credits_planned ||
+                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+      return total + termCredits;
+    }, 0);
+  }, [currentPlanData]);
 
   if (isCheckingAccess || loading) {
     return (
@@ -839,31 +865,43 @@ export default function EditGradPlanPage() {
           )}
         </Box>
 
-        {(gradPlan.advisor_notes || (isEditMode && currentPlanData)) && (
+        {(gradPlan.advisor_notes || (isEditMode && currentPlanData) || currentPlanData) && (
           <Box
             sx={{
-              flex: { xs: '1 1 auto', lg: '0 0 340px' },
-              minWidth: { xs: '100%', lg: '320px' },
+              flex: isPanelCollapsed
+                ? { xs: '0 0 auto', lg: '0 0 80px' }
+                : { xs: '1 1 auto', lg: '0 0 380px' },
+              minWidth: isPanelCollapsed
+                ? { xs: '100%', lg: '80px' }
+                : { xs: '100%', lg: '360px' },
+              maxWidth: isPanelCollapsed
+                ? { lg: '80px' }
+                : { lg: '380px' },
               display: 'flex',
               flexDirection: 'column',
               gap: 3,
               position: { lg: 'sticky' },
               top: { lg: 24 },
+              transition: 'all 0.3s ease',
             }}
           >
-            {gradPlan.advisor_notes && (
-              <AdvisorNotesBox advisorNotes={gradPlan.advisor_notes} />
+            {/* Progress Panel - shown for both students and advisors */}
+            {currentPlanData && (
+              <AdvisorProgressPanel
+                studentName={studentName}
+                totalCredits={totalCreditsData}
+                categories={categoryProgress}
+                planData={currentPlanData}
+                isCollapsed={isPanelCollapsed}
+                onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
+                currentSemesterCredits={currentSemesterCredits}
+                plannedCredits={plannedCredits}
+                expandableCategories={mockExpandableCategories}
+              />
             )}
 
-            {isEditMode && currentPlanData && (
-              <EventManager
-                events={events}
-                isEditMode={isEditMode}
-                onAddEvent={() => handleOpenEventDialog()}
-                onEditEvent={handleOpenEventDialog}
-                onDeleteEvent={handleDeleteEvent}
-                maxTermNumber={currentPlanData.length}
-              />
+            {gradPlan.advisor_notes && (
+              <AdvisorNotesBox advisorNotes={gradPlan.advisor_notes} />
             )}
           </Box>
         )}

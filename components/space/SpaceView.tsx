@@ -20,27 +20,71 @@ interface SpaceViewProps {
 }
 
 export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent }: Readonly<SpaceViewProps>) {
-  // Create an array of terms and events to render in order
-  const gridItems = React.useMemo(() => {
-    const items: Array<{ type: 'term' | 'event'; data: TermBlock | Event; termNumber?: number }> = [];
+  // Group terms into rows of 4
+  const termsPerRow = 4;
 
-    plan.terms.forEach((term, index) => {
-      const termNumber = index + 1;
+  const rows = React.useMemo(() => {
+    const result: React.ReactNode[] = [];
 
-      // Add the term
-      items.push({ type: 'term', data: term, termNumber });
+    for (let i = 0; i < plan.terms.length; i += termsPerRow) {
+      const rowTerms = plan.terms.slice(i, i + termsPerRow);
+      const rowStartIndex = i;
 
-      // Add events that occur after this term
-      if (plan.events) {
-        const eventsAfterTerm = plan.events.filter(e => e.afterTerm === termNumber);
-        eventsAfterTerm.forEach(event => {
-          items.push({ type: 'event', data: event, termNumber });
-        });
-      }
-    });
+      result.push(
+        <div
+          key={`row-${i}`}
+          className="flex items-stretch gap-3 w-full transition-all duration-300 ease-in-out"
+        >
+          {rowTerms.map((term, indexInRow) => {
+            const globalIndex = rowStartIndex + indexInRow;
+            const termNumber = globalIndex + 1;
 
-    return items;
-  }, [plan.terms, plan.events]);
+            // Get events that should appear after this specific term
+            const eventsAfterThisTerm = plan.events?.filter(e => e.afterTerm === termNumber) || [];
+
+            return (
+              <React.Fragment key={`term-group-${term.id}`}>
+                {/* Term Card */}
+                <div
+                  className="flex-1 min-w-0 transition-all duration-250 ease-in-out"
+                  style={{ flex: '1 1 0' }}
+                >
+                  <TermCard
+                    term={term}
+                    isEditMode={isEditMode}
+                    modifiedTerms={modifiedTerms}
+                  />
+                </div>
+
+                {/* Events after this term (inline in the same row) */}
+                {eventsAfterThisTerm.map((event) => (
+                  <div
+                    key={`event-${event.id}`}
+                    className="shrink-0 transition-all duration-250 ease-in-out"
+                    style={{
+                      width: '140px',
+                      minWidth: '140px',
+                      maxWidth: '140px',
+                    }}
+                  >
+                    <EventCard
+                      event={event}
+                      isEditMode={isEditMode}
+                      variant="grid"
+                      onEdit={onEditEvent}
+                      onDelete={onDeleteEvent}
+                    />
+                  </div>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return result;
+  }, [plan.terms, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent]);
 
   return (
     <div className="space-y-3">
@@ -81,33 +125,9 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
         </div>
       </div>
 
-      {/* Term cards and event cards grid */}
-      <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {gridItems.map((item) => {
-          if (item.type === 'term') {
-            const term = item.data as TermBlock;
-            return (
-              <TermCard
-                key={`term-${term.id}`}
-                term={term}
-                isEditMode={isEditMode}
-                modifiedTerms={modifiedTerms}
-              />
-            );
-          } else {
-            const event = item.data as Event;
-            return (
-              <EventCard
-                key={`event-${event.id}`}
-                event={event}
-                isEditMode={isEditMode}
-                variant="grid"
-                onEdit={onEditEvent}
-                onDelete={onDeleteEvent}
-              />
-            );
-          }
-        })}
+      {/* Term cards and event cards - Row-based layout maintaining 4 terms per row */}
+      <div className="flex flex-col gap-3">
+        {rows}
       </div>
 
       {/* Bottom legend */}

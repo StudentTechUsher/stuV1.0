@@ -2,16 +2,18 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, TextField, IconButton } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert, TextField, IconButton } from '@mui/material';
 import { CheckCircle, Save } from '@mui/icons-material';
 import { Add, Remove } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { StuLoader } from '@/components/ui/StuLoader';
 import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction } from '@/lib/services/server-actions';
 import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Course, Term } from '@/components/grad-planner/types';
 import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
+import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
 
 interface GradPlanDetails {
   id: string;
@@ -488,14 +490,12 @@ export default function ApproveGradPlanPage() {
 
   if (isCheckingRole || loading) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
-            {isCheckingRole ? 'Checking permissions...' : 'Loading graduation plan...'}
-          </Typography>
-        </Box>
-      </Box>
+      <div className="flex min-h-[400px] items-center justify-center p-6">
+        <StuLoader
+          variant="page"
+          text={isCheckingRole ? 'Checking permissions...' : 'Loading graduation plan for review...'}
+        />
+      </div>
     );
   }
 
@@ -820,6 +820,7 @@ export default function ApproveGradPlanPage() {
             onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
             currentSemesterCredits={currentSemesterCredits}
             plannedCredits={plannedCredits}
+            expandableCategories={mockExpandableCategories}
           />
         </Box>
       </Box>

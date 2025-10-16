@@ -42,7 +42,7 @@ export function TermCard({ term, isEditMode = false, modifiedTerms }: TermCardPr
   return (
     <div
       ref={setNodeRef}
-      className="rounded-xl bg-white border border-gray-200 shadow-sm p-2"
+      className="rounded-xl bg-white border border-gray-200 shadow-sm p-2 h-full flex flex-col"
       style={{
         outline: isOver && isEditMode ? '2px dashed var(--primary)' : undefined,
         outlineOffset: isOver && isEditMode ? '2px' : undefined,
@@ -58,7 +58,7 @@ export function TermCard({ term, isEditMode = false, modifiedTerms }: TermCardPr
       </div>
 
       {/* Course list */}
-      <div className="space-y-1 mb-1.5">
+      <div className="space-y-1 mb-1.5 flex-1">
         {term.courses.length > 0 ? (
           term.courses.map((course) => (
             <CoursePill key={course.id} course={course} isEditMode={isEditMode} />
