@@ -179,7 +179,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       setGradPlans(prev =>
         prev.map(plan => (plan.id === selectedGradPlan.id ? { ...plan, plan_name: sanitizedName } : plan))
       );
-      setSelectedGradPlan(prev => (prev ? { ...prev, plan_name: sanitizedName } : prev));
+      setSelectedGradPlan(prev => {
+        const updated = prev ? { ...prev, plan_name: sanitizedName } : prev;
+        console.log('Updated selectedGradPlan:', updated);
+        return updated;
+      });
       setIsRenaming(false);
       setRenameInput('');
       setNotification({
@@ -189,7 +193,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       });
     } catch (error) {
       console.error('Error updating plan name:', error);
-      const message = 'Unexpected error renaming plan. Please try again.';
+      const message = 'Error updating plan name. Please try again.';
       setRenameError(message);
       setNotification({
         open: true,
@@ -226,6 +230,10 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     ? selectedGradPlan.plan_name.trim()
     : '';
   const selectedPlanTitle = selectedPlanName || 'Untitled Graduation Plan';
+
+  console.log('Rendering with selectedGradPlan.plan_name:', selectedGradPlan?.plan_name);
+  console.log('Computed selectedPlanTitle:', selectedPlanTitle);
+
   const selectedPlanCreatedAt = (() => {
     if (!selectedGradPlan?.created_at) return null;
     const createdValue = selectedGradPlan.created_at;

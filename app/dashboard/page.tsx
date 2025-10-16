@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Box from "@mui/material/Box";
 import { StuLoader } from "@/components/ui/StuLoader";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
 import AcademicSummary from "@/components/dashboard/academic-summary";
@@ -101,9 +100,10 @@ export default async function DashboardPage() {
   return (
     <>
       {needsOnboarding && <OnboardingModalWrapper userName={profile?.fname} />}
-      <Box sx={{ p: 2 }}>
+      {/* Unified padding for all dashboard views - responsive spacing for better mobile/desktop experience */}
+      <div className="p-4 sm:p-6">
         <RoleView role={role} userId={userId} studentData={studentData} />
-      </Box>
+      </div>
     </>
   );
 }
@@ -137,43 +137,40 @@ function StudentDashboard({
   studentData: { year_in_school: string } | null;
 }>) {
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: { md: "1fr 1fr" }, gap: 2 }}>
+    // Modern grid layout with responsive columns and consistent gap spacing
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
       {/* Left Column - Academic Summary and Progress Card */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div className="flex flex-col gap-4 sm:gap-6">
         <Suspense fallback={
-          <div className="flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-8 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+          // Clean, modern loading state matching new design system
+          <div className="flex items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-8 shadow-sm">
             <StuLoader variant="card" text="Loading your academic summary..." />
           </div>
         }>
           <AcademicSummary yearInSchool={studentData?.year_in_school} />
         </Suspense>
         <AcademicProgressCard />
-      </Box>
+      </div>
 
       {/* Right Column - Calendar */}
       <Suspense fallback={
-        <div className="flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-8 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+        // Clean, modern loading state matching new design system
+        <div className="flex items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-8 shadow-sm">
           <StuLoader variant="card" text="Loading your schedule..." />
         </div>
       }>
         <CalendarPanel userId={userId} showSchedulerButton={true} />
       </Suspense>
-    </Box>
+    </div>
   );
 }
 
 function AdvisorDashboardWrapper() {
-  return (
-    <Box sx={{ p: 0 }}>
-      <AdvisorDashboard />
-    </Box>
-  );
+  // Advisor dashboard handles its own layout and styling
+  return <AdvisorDashboard />;
 }
 
 function AdminDashboardWrapper() {
-  return (
-    <Box sx={{ p: 0 }}>
-      <AdminDashboard />
-    </Box>
-  );
+  // Admin dashboard handles its own layout and styling
+  return <AdminDashboard />;
 }

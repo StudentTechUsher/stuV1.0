@@ -9,7 +9,8 @@ const LEET_MAP: Record<string, string> = {
   '8': 'b',
   '9': 'g',
   '@': 'a',
-  '$': 's'
+  '$': 's',
+  '!': 'i'
 };
 
 const BANNED_WORDS = [
@@ -19,6 +20,9 @@ const BANNED_WORDS = [
   'fuckers',
   'fucking',
   'motherfucker',
+  'fack', // leet speak variant of fuck (f@ck)
+  'fuc', // partial obfuscation
+  'fuk', // common misspelling
   'shit',
   'shits',
   'shitty',
@@ -75,23 +79,6 @@ const BANNED_WORDS = [
   'faggot'
 ] as const;
 
-const cachedRegex: Record<string, RegExp> = {};
-
-const NON_ALNUM = '[^a-z0-9]+';
-
-const escapeRegex = (value: string) => value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-
-const buildWordPattern = (word: string) => {
-  if (cachedRegex[word]) {
-    return cachedRegex[word];
-  }
-
-  const letters = word.split('').map((ch) => escapeRegex(ch)).join(`${NON_ALNUM}?`);
-  const pattern = new RegExp(`(^|${NON_ALNUM})${letters}(${NON_ALNUM}|$)`, 'i');
-  cachedRegex[word] = pattern;
-  return pattern;
-};
-
 const normalizeLeetSpeak = (value: string) =>
   value
     .toLowerCase()
@@ -104,12 +91,16 @@ const sanitizeWhitespace = (value: string) => value.trim().replace(/\s+/g, ' ');
 export const findProhibitedSubstring = (value: string): string | null => {
   if (!value) return null;
 
-  const normalized = sanitizeWhitespace(value).toLowerCase();
-  const leetNormalized = normalizeLeetSpeak(normalized);
+  // Normalize: lowercase, replace whitespace, convert leet speak
+  const normalized = normalizeLeetSpeak(sanitizeWhitespace(value).toLowerCase());
+
+  // Remove ALL non-alphanumeric characters to catch obfuscated variants
+  // e.g., "f.u.c.k" or "f@ck" becomes "fuck"
+  const cleaned = normalized.replace(/[^a-z0-9]/g, '');
 
   for (const word of BANNED_WORDS) {
-    const regex = buildWordPattern(word);
-    if (regex.test(normalized) || regex.test(leetNormalized)) {
+    // Check if the banned word appears in the cleaned string
+    if (cleaned.includes(word)) {
       return word;
     }
   }

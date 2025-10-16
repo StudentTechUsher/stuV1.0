@@ -127,6 +127,15 @@ export async function approveGradPlan(gradPlanId: string) {
 
 export async function submitGradPlanForApproval(userId: string, planData: unknown, programIds: number[], planName?: string) {
     try {
+        // Validate plan name if provided
+        if (planName !== undefined && planName !== null && planName.trim() !== '') {
+            const nameValidation = validatePlanName(planName, { allowEmpty: false });
+            if (!nameValidation.isValid) {
+                return { success: false, message: nameValidation.error };
+            }
+            planName = nameValidation.sanitizedValue;
+        }
+
         const sanitizedPlan = await graduationPlanPayloadSchema.validate(planData, VALIDATION_OPTIONS);
         return await _submitGradPlanForApproval(userId, sanitizedPlan, programIds, planName);
     } catch (error) {
@@ -207,12 +216,26 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
 
 // Update plan name (students can update their own; advisors/admins allowed)
 export async function updateGradPlanNameAction(gradPlanId: string, planName: string) {
-    const validation = validatePlanName(planName);
-    if (!validation.isValid) {
-        return { success: false, error: validation.error };
-    }
-    const sanitizedName = validation.sanitizedValue;
     try {
+        console.log('🔍 Validating plan name:', planName);
+
+        // Validate plan name - do NOT pass allowEmpty option, let it default
+        let validation;
+        try {
+            validation = validatePlanName(planName);
+            console.log('✅ Validation result:', validation);
+        } catch (validationError) {
+            console.error('❌ Validation function threw error:', validationError);
+            return { success: false, error: 'Plan name validation failed. Please use only letters, numbers, and basic punctuation.' };
+        }
+
+        if (!validation.isValid) {
+            console.log('❌ Plan name validation failed:', validation.error);
+            return { success: false, error: validation.error };
+        }
+        const sanitizedName = validation.sanitizedValue;
+        console.log('✅ Sanitized name:', sanitizedName);
+
         const supabaseSrv = await createSupabaseServerComponentClient();
         const { data: { user } } = await supabaseSrv.auth.getUser();
         if (!user) {
@@ -226,6 +249,7 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
             .maybeSingle();
 
         if (profileError || !profile) {
+            console.error('❌ Profile error:', profileError);
             return { success: false, error: 'Unable to verify user role' };
         }
 
@@ -236,6 +260,7 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
             .maybeSingle();
 
         if (planError || !planRecord) {
+            console.error('❌ Plan record error:', planError);
             return { success: false, error: 'Graduation plan not found' };
         }
 
@@ -248,14 +273,21 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
                 .maybeSingle();
 
             if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                console.error('❌ Student authorization error:', studentError);
                 return { success: false, error: 'Not authorized to rename this plan' };
             }
         }
 
-        return await _updateGradPlanName(gradPlanId, sanitizedName);
+        const result = await _updateGradPlanName(gradPlanId, sanitizedName);
+        console.log('✅ Plan name update result:', result);
+        return result;
     } catch (error) {
-        console.error('�?O Error updating plan name:', error);
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        console.error('❌ Unexpected error updating plan name:', error);
+        if (error instanceof Error) {
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        }
+        return { success: false, error: 'Unable to update plan name. Please try again.' };
     }
 }
 

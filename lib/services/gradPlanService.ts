@@ -595,6 +595,8 @@ export async function updateGradPlanName(
     gradPlanId: string,
     planName: string
 ): Promise<{ success: boolean; error?: string }> {
+    // Note: Validation should be done by the caller (server action),
+    // but we keep basic sanitization here as a safety measure
     const trimmedName = planName.trim();
     if (!trimmedName) {
         return { success: false, error: 'Plan name is required' };
@@ -605,12 +607,12 @@ export async function updateGradPlanName(
             .update({ plan_name: trimmedName })
             .eq('id', gradPlanId);
         if (error) {
-            console.error('�?O Error updating plan_name:', error);
+            console.error('❌ Error updating plan_name:', error);
             return { success: false, error: error.message };
         }
         return { success: true };
     } catch (err) {
-        console.error('�?O Unexpected error updating plan_name:', err);
+        console.error('❌ Unexpected error updating plan_name:', err);
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }

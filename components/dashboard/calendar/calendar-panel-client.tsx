@@ -3,8 +3,7 @@
 
 import dynamic from "next/dynamic";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import { Card, CardContent, Box, Typography, Button } from "@mui/material";
-import type { SxProps, Theme } from "@mui/material/styles";
+import { Box, Button } from "@mui/material";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -39,13 +38,6 @@ type Props = {
   hiddenDays?: number[]; // [0] to hide Sunday
   semester?: string;     // e.g. "Winter 2025 Schedule"
   showSchedulerButton?: boolean;
-};
-
-const getPrimaryColor = () => {
-  if (typeof window !== 'undefined') {
-    return getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#12F987';
-  }
-  return '#12F987'; // fallback for SSR
 };
 
 function convertSchedulerEventsToCalendarEvents(schedulerEvents: SchedulerEvent[]): CalendarEvent[] {
@@ -124,28 +116,14 @@ export default function CalendarPanelClient({
     }
   }, [initialEvents, showSchedulerButton]);
   return (
-    <Card
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "var(--card)",
-        border: "1px solid var(--border)",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-      }}
-    >
-      <CardContent
-        sx={{
-          p: 2,
-        }}
-      >
-        {/* Title / Semester block with scheduler button */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-          <Typography variant="h5" className="font-header-bold" sx={{ color: "var(--dark)", fontWeight: 800 }}>
+    // Modern card layout with rounded corners and bold header
+    <div className="flex flex-col overflow-y-auto rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
+      {/* Bold black header like semester-results-table */}
+      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-header-bold text-xl font-extrabold text-white">
             {semester}
-          </Typography>
+          </h2>
           {showSchedulerButton && (
             <Link href="/dashboard/semester-scheduler" passHref>
               <Button
@@ -155,8 +133,11 @@ export default function CalendarPanelClient({
                 className="font-body-semi"
                 sx={{
                   backgroundColor: "var(--primary)",
-                  color: "white",
-                  fontWeight: 600,
+                  color: "#0A0A0A",
+                  fontWeight: 700,
+                  borderRadius: "7px",
+                  textTransform: "none",
+                  boxShadow: "0 2px 8px rgba(18, 249, 135, 0.3)",
                   "&:hover": {
                     backgroundColor: "var(--hover-green)",
                   },
@@ -166,7 +147,10 @@ export default function CalendarPanelClient({
               </Button>
             </Link>
           )}
-        </Box>
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-6">
 
         {/* Calendar */}
         <Box
@@ -266,27 +250,19 @@ export default function CalendarPanelClient({
           />
         </Box>
 
-        {/* Legend */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1.5 }}>
-          <LegendDot sx={{ bgcolor: "var(--primary)" }} /> Registered
-          <LegendDot sx={{ bgcolor: "var(--muted)", border: "1px solid var(--border)" }} /> Waitlisted
-        </Box>
-      </CardContent>
-    </Card>
+        {/* Legend - visual key for event status colors */}
+        <div className="mt-4 flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-[var(--primary)]" />
+            <span className="font-body text-[var(--foreground)]">Registered</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full border border-[var(--border)] bg-[var(--muted)]" />
+            <span className="font-body text-[var(--foreground)]">Waitlisted</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function LegendDot({ sx }: Readonly<{ sx?: SxProps<Theme> }>) {
-  return (
-    <Box
-      sx={{
-        width: 12,
-        height: 12,
-        borderRadius: "50%",
-        display: "inline-block",
-        mr: 1,
-        ...(typeof sx === "object" && !Array.isArray(sx) ? sx : {}),
-      }}
-    />
-  );
-}
