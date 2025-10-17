@@ -178,9 +178,9 @@ export function DashboardChart({
   }
 
   return (
-    <Card className={`group overflow-hidden transition-all duration-200 hover:shadow-md ${className || ''}`}>
-      {/* Black header bar matching academic-progress-card */}
-      <div className="border-b-2 px-6 py-3.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+    <Card className={`group overflow-hidden !p-0 transition-all duration-200 hover:shadow-md ${className || ''}`}>
+      {/* Black header bar - full width spanning entire card top with rounded top corners */}
+      <div className="rounded-t-2xl border-b-2 bg-[#0A0A0A] px-6 py-4" style={{ borderColor: "#0A0A0A" }}>
         <div className="flex items-center justify-between">
           <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
             {title}

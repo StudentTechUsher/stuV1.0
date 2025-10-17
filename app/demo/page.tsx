@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function DemoPage() {
   return (
@@ -113,6 +114,25 @@ export default function DemoPage() {
                 .
               </p>
             </form>
+             <div className="flex justify-center">
+                <Link href="/signup" className="w-1/2 flex justify-center">
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2 w-full bg-white border border-primary text-zinc-900 font-medium py-2.5 rounded-lg transition-all duration-200 hover:bg-primary hover:text-white"
+                  >
+                    Try
+                    <Image
+                      src="/stu_icon_black.png"
+                      alt="stu. logo"
+                      width={70}
+                      height={70}
+                      priority
+                      className="w-auto h-5"
+                    />
+                    stu. for FREE
+                  </Button>
+                </Link>
+              </div>
         </div>
       </div>
     </div>

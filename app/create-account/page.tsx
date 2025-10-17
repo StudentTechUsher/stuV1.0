@@ -97,15 +97,62 @@ export default async function CreateAccountPage() {
   };
 
   return (
-    <main style={{ maxWidth: 720, margin: "3rem auto", padding: "0 1rem" }}>
-      <h1 className="text-3xl mb-3 font-header">Create your account</h1>
+    <main className="min-h-screen bg-[var(--background)]">
+      <div className="mx-auto max-w-3xl p-4 sm:p-6 py-8 sm:py-12">
+        {/* Welcome Header - Modern, engaging design */}
+        <div className="mb-8 sm:mb-10 text-center">
+          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0A0A0A] shadow-lg">
+            <svg className="h-8 w-8 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h1 className="font-header-bold mb-3 text-3xl sm:text-4xl text-[#0A0A0A]">
+            Welcome to Stu
+          </h1>
+          <p className="font-body mx-auto max-w-xl text-sm sm:text-base text-[var(--muted-foreground)]">
+            Let&apos;s set up your account. Tell us about yourself so we can personalize your academic journey and help you achieve your goals.
+          </p>
+        </div>
 
-      <CreateAccountClient
-        nextHref="/dashboard"
-        preload={{ universities, majorsAll, minorsAll, interests, careers, classPrefs }}
-        initial={initialData}
-        isEditMode={false}
-      />
+        {/* Progress Indicator - Clean, minimal */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] shadow-sm">
+              <span className="font-body-semi text-sm text-[#0A0A0A]">1</span>
+            </div>
+            <div className="h-0.5 w-12 sm:w-20 bg-[var(--border)]"></div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--border)] bg-white">
+              <span className="font-body-semi text-sm text-[var(--muted-foreground)]">2</span>
+            </div>
+            <div className="h-0.5 w-12 sm:w-20 bg-[var(--border)]"></div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--border)] bg-white">
+              <span className="font-body-semi text-sm text-[var(--muted-foreground)]">3</span>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-2 text-center">
+            <p className="font-body text-xs sm:text-sm text-[var(--muted-foreground)]">
+              <span className="font-body-semi text-[var(--foreground)]">Step 1:</span> Basic Information
+            </p>
+          </div>
+        </div>
+
+        {/* Main Form Card */}
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white p-6 sm:p-8 shadow-sm">
+          <CreateAccountClient
+            nextHref="/dashboard"
+            preload={{ universities, majorsAll, minorsAll, interests, careers, classPrefs }}
+            initial={initialData}
+            isEditMode={false}
+          />
+        </div>
+
+        {/* Help Text */}
+        <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--muted)] p-4 text-center">
+          <p className="font-body text-xs sm:text-sm text-[var(--muted-foreground)]">
+            You can update any of this information later in your profile settings
+          </p>
+        </div>
+      </div>
     </main>
   );
 }
