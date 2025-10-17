@@ -53,15 +53,9 @@ export async function deleteProgram(id: string): Promise<void> {
     if (error) throw error;
 }
 
-export async function createGraduationPlan(planData?: unknown): Promise<{ success: boolean; message: string; planId?: string }> {
-    // TODO: Implement graduation plan creation logic
-    // This is a stub function that will be implemented later
+export async function createGraduationPlan(): Promise<{ success: boolean; message: string; planId?: string }> {
     
     try {
-        // Log the planData for debugging
-        if (planData) {
-            console.log('📋 Creating graduation plan with data:', planData);
-        }
         
         // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 1000));

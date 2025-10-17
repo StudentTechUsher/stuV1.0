@@ -1466,9 +1466,48 @@ export class OpenAIChatError extends Error {
   }
 }
 
+export class TranscriptParsingError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'TranscriptParsingError';
+  }
+}
+
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+}
+
+export interface ParsedTranscriptCourse {
+  courseCode: string;
+  title: string;
+  credits: number;
+  grade: string | null;
+  term?: string | null; // Term like "Fall 2023", "Spring 2024"
+}
+
+/**
+ * Helper function to transform ParsedTranscriptCourse to ParsedCourse format
+ * Splits courseCode into subject and number, uses term from AI or defaults to "Unknown"
+ */
+function transformTranscriptCoursesToParsedCourses(
+  courses: ParsedTranscriptCourse[]
+): Array<{ term: string; subject: string; number: string; title: string; credits: number; grade: string | null }> {
+  return courses.map((course) => {
+    // Split courseCode into subject and number (e.g., "CS 142" -> subject: "CS", number: "142")
+    const codeParts = course.courseCode.trim().split(/\s+/);
+    const subject = codeParts[0] || 'UNKNOWN';
+    const number = codeParts[1] || '000';
+
+    return {
+      term: course.term || 'Unknown',
+      subject,
+      number,
+      title: course.title,
+      credits: course.credits,
+      grade: course.grade,
+    };
+  });
 }
 
 /**
@@ -1522,4 +1561,315 @@ export async function chatCompletion(
     }
     throw new OpenAIChatError('Unexpected error in chat completion', error);
   }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Parse transcript text into structured course data using AI
+ * Saves the prompt and response to the database for analytics
+ * @param transcriptText - The extracted text from the transcript PDF
+ * @param userId - The user ID (optional, for database logging)
+ * @param sessionId - The session ID for grouping related AI calls
+ * @returns Array of parsed courses with courseCode, title, credits, and grade
+ */
+export async function parseTranscriptCourses_ServerAction(args: {
+  transcriptText: string;
+  userId?: string | null;
+  sessionId?: string;
+}): Promise<{
+  success: boolean;
+  courses?: ParsedTranscriptCourse[];
+  isPartial?: boolean;
+  savedToDb?: boolean;
+  error?: string;
+  sessionId: string;
+}> {
+  try {
+    const { transcriptText, userId = null, sessionId: providedSessionId } = args;
+
+    // Generate session ID if not provided
+    const sessionId = providedSessionId || `transcript_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Validate input
+    if (!transcriptText || transcriptText.trim().length === 0) {
+      return {
+        success: false,
+        error: 'Transcript text is required',
+        sessionId,
+      };
+    }
+
+    // Build system prompt
+    const systemPrompt =
+      'You extract structured course records from transcript snippets. ' +
+      'Always respond with valid JSON only (no prose). The JSON must be an array. ' +
+      'Each array item should include: courseCode (string), title (string), credits (number), grade (string|null), term (string|null). ' +
+      'courseCode should be in format "SUBJECT NUMBER" (e.g., "CS 142", "MATH 112"). ' +
+      'term should be extracted from the transcript if available (e.g., "Fall 2023", "Spring 2024", "Winter 2022"). ' +
+      'Use null if the grade or term is missing. Convert credits to numbers.';
+
+    const userPrompt =
+      'Transcript content:\n\n' +
+      transcriptText +
+      '\n\nReturn only the JSON array of courses you can confidently extract.';
+
+    const messages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ];
+
+    // Call OpenAI via chatCompletion
+    const result = await chatCompletion(messages, {
+      max_tokens: 2000, // Increased to handle longer transcripts (~40-50 courses)
+      temperature: 0,
+    });
+
+    const aiResponse = result.content;
+    const outputTokens = result.usage?.completion_tokens || 0;
+
+    // Save to database
+    let savedToDb = false;
+    try {
+      const saveResult = await InsertAiChatExchange({
+        userId,
+        sessionId,
+        userMessage: userPrompt,
+        aiResponse,
+        outputTokens,
+      });
+
+      if (saveResult.success) {
+        savedToDb = true;
+        console.log('✅ Transcript parsing saved to database:', {
+          sessionId,
+          userId: userId || 'anonymous',
+          outputTokens,
+        });
+      } else {
+        console.error('❌ Failed to save to database:', saveResult.error);
+      }
+    } catch (dbError) {
+      console.error('❌ Exception while saving transcript parsing to database:', dbError);
+      // Don't fail the entire operation if DB save fails
+    }
+
+    // Parse the response
+    const { courses, isPartial } = extractCoursesFromResponse(aiResponse);
+
+    console.log('✅ Transcript parsing complete:', {
+      coursesFound: courses.length,
+      isPartial,
+      savedToDb,
+    });
+
+    // Save courses to user_courses table if userId is provided
+    let savedCourses = false;
+    if (userId && courses.length > 0) {
+      try {
+        const { upsertUserCourses } = await import('./userCoursesService');
+        const parsedCourses = transformTranscriptCoursesToParsedCourses(courses);
+
+        const upsertResult = await upsertUserCourses(userId, parsedCourses);
+        if (upsertResult.success) {
+          savedCourses = true;
+          console.log('✅ Courses saved to user_courses table:', {
+            userId,
+            courseCount: upsertResult.courseCount,
+          });
+        } else {
+          console.error('❌ Failed to save courses to user_courses table');
+        }
+      } catch (saveError) {
+        console.error('❌ Exception while saving courses to user_courses table:', saveError);
+        // Don't fail the entire operation if course save fails
+      }
+    }
+
+    return {
+      success: true,
+      courses,
+      isPartial,
+      savedToDb: savedToDb && savedCourses,
+      sessionId,
+    };
+  } catch (error) {
+    console.error('parseTranscriptCourses_ServerAction error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to parse transcript',
+      sessionId: args.sessionId || `transcript_error_${Date.now()}`,
+    };
+  }
+}
+
+/**
+ * Helper function to extract courses from AI response
+ * Handles various JSON formats and validates course structure
+ * Returns courses and a flag indicating if response was partial/truncated
+ */
+function extractCoursesFromResponse(content: string): { courses: ParsedTranscriptCourse[]; isPartial: boolean } {
+  const { data: parsed, isPartial } = parseJsonPayload(content);
+
+  const items = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>).courses)
+    ? (parsed as Record<string, unknown>).courses
+    : null;
+
+  if (!items) {
+    throw new TranscriptParsingError('AI response did not contain a course list');
+  }
+
+  const courses: ParsedTranscriptCourse[] = [];
+  for (const item of items as unknown[]) {
+    const normalized = normalizeCourseRecord(item);
+    if (normalized) {
+      courses.push(normalized);
+    }
+  }
+
+  return { courses, isPartial };
+}
+
+/**
+ * Helper function to repair truncated JSON arrays
+ * Removes incomplete last element and closes the array properly
+ */
+function repairTruncatedArray(jsonStr: string): string {
+  let depth = 0;
+  let lastCompleteIndex = -1;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    if (jsonStr[i] === '{') depth++;
+    if (jsonStr[i] === '}') {
+      depth--;
+      if (depth === 1) lastCompleteIndex = i; // Mark last complete object in array
+    }
+  }
+
+  if (lastCompleteIndex > 0) {
+    // Truncate after last complete object and close array
+    return jsonStr.substring(0, lastCompleteIndex + 1) + '\n]';
+  }
+
+  return jsonStr;
+}
+
+/**
+ * Helper function to parse JSON from AI response
+ * Handles markdown code blocks, extracts JSON, and repairs truncated responses
+ */
+function parseJsonPayload(rawContent: string): { data: unknown; isPartial: boolean } {
+  const sanitized = rawContent
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
+
+  // Try normal parsing first
+  const direct = tryJsonParse(sanitized);
+  if (direct.success) {
+    return { data: direct.value, isPartial: false };
+  }
+
+  // Try to extract complete array
+  const arrayMatch = sanitized.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    const attempt = tryJsonParse(arrayMatch[0]);
+    if (attempt.success) {
+      return { data: attempt.value, isPartial: false };
+    }
+  }
+
+  // Try to repair truncated array (handles incomplete responses)
+  const truncatedArrayMatch = sanitized.match(/\[[\s\S]*/);
+  if (truncatedArrayMatch) {
+    const repaired = repairTruncatedArray(truncatedArrayMatch[0]);
+    const attempt = tryJsonParse(repaired);
+    if (attempt.success) {
+      console.warn('AI response was truncated - returning partial results');
+      return { data: attempt.value, isPartial: true };
+    }
+  }
+
+  // Try complete object as fallback
+  const objectMatch = sanitized.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    const attempt = tryJsonParse(objectMatch[0]);
+    if (attempt.success) {
+      return { data: attempt.value, isPartial: false };
+    }
+  }
+
+  console.error('Failed to parse JSON from AI response:', { rawContent });
+  throw new TranscriptParsingError('AI response was not valid JSON');
+}
+
+/**
+ * Helper function to safely parse JSON
+ */
+function tryJsonParse(payload: string): { success: true; value: unknown } | { success: false } {
+  if (!payload) {
+    return { success: false };
+  }
+
+  try {
+    const value = JSON.parse(payload);
+    return { success: true, value };
+  } catch (_error) {
+    return { success: false };
+  }
+}
+
+/**
+ * Helper function to normalize and validate a course record
+ */
+function normalizeCourseRecord(record: unknown): ParsedTranscriptCourse | null {
+  if (!record || typeof record !== 'object') {
+    return null;
+  }
+
+  const raw = record as Record<string, unknown>;
+  const courseCodeValue = raw.courseCode ?? raw.code ?? raw.course ?? null;
+  const titleValue = raw.title ?? raw.name ?? raw.description ?? null;
+  const creditsValue = raw.credits ?? raw.creditHours ?? raw.credit ?? null;
+  const gradeValue = raw.grade ?? null;
+  const termValue = raw.term ?? raw.semester ?? null;
+
+  if (typeof courseCodeValue !== 'string' || !courseCodeValue.trim()) {
+    console.warn('Skipping AI course with missing courseCode', record);
+    return null;
+  }
+
+  if (typeof titleValue !== 'string' || !titleValue.trim()) {
+    console.warn('Skipping AI course with missing title', record);
+    return null;
+  }
+
+  let credits = typeof creditsValue === 'number' ? creditsValue : Number(creditsValue);
+  if (!Number.isFinite(credits)) {
+    console.warn('Skipping AI course with invalid credits', record);
+    return null;
+  }
+
+  credits = Number(credits.toFixed(2));
+
+  const normalizedGrade =
+    gradeValue === null || gradeValue === undefined || gradeValue === ''
+      ? null
+      : String(gradeValue).trim();
+
+  const normalizedTerm =
+    termValue === null || termValue === undefined || termValue === ''
+      ? null
+      : String(termValue).trim();
+
+  return {
+    courseCode: courseCodeValue.trim(),
+    title: titleValue.trim(),
+    credits,
+    grade: normalizedGrade,
+    term: normalizedTerm,
+  };
 }

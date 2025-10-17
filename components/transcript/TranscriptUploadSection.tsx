@@ -1,34 +1,27 @@
 "use client";
 
 import { useState } from 'react';
-import TranscriptUpload, { type ParseTranscriptReport } from './TranscriptUpload';
+import TranscriptUpload from './TranscriptUpload';
 import ParsedCoursesTable from './ParsedCoursesTable';
 
 export default function TranscriptUploadSection() {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [showParsedCourses, setShowParsedCourses] = useState(false);
 
-  const handleUploadSuccess = (report: ParseTranscriptReport) => {
-    const docId = (typeof report?.documentId === 'string'
-      ? report.documentId
-      : typeof report?.document_id === 'string'
-        ? report.document_id
-        : null);
-    if (docId) {
-      setDocumentId(docId);
-      setShowParsedCourses(true);
-    }
+  const handleTextExtracted = (text: string) => {
+    console.log('Extracted text:', text);
+    // For now, just log the text
+    // In the future, we can parse it and create a document
   };
 
   const handleSaveComplete = () => {
     // Optionally refresh or show success message
-    console.log('Courses saved successfully');
   };
 
   return (
     <div className="space-y-4">
       <TranscriptUpload
-        onUploadSuccess={handleUploadSuccess}
+        onTextExtracted={handleTextExtracted}
       />
 
       {showParsedCourses && documentId && (

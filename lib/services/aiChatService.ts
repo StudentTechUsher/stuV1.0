@@ -13,6 +13,13 @@ export interface ChatResponse {
   intentCategory: string;
 }
 
+export interface ParsedTranscriptCourse {
+  courseCode: string;
+  title: string;
+  credits: number;
+  grade: string | null;
+}
+
 export class AIChatService {
   private static instance: AIChatService;
   private readonly MAX_TOKENS_PER_CONVERSATION = 4000;
@@ -118,6 +125,162 @@ export class AIChatService {
         intentCategory: 'error'
       };
     }
+  }
+
+  async parseTranscriptCourses(transcriptText: string): Promise<ParsedTranscriptCourse[]> {
+    const systemPrompt =
+      "You extract structured course records from transcript snippets. " +
+      "Always respond with valid JSON only (no prose). The JSON must be an array. " +
+      "Each array item should include: courseCode (string), title (string), credits (number), grade (string|null). " +
+      "Use null if the grade is missing. Convert credits to numbers.";
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content:
+          "Transcript content:\n\n" +
+          transcriptText +
+          "\n\nReturn only the JSON array of courses you can confidently extract.",
+      },
+    ];
+
+    try {
+      const response = await fetch('/api/openai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+          max_tokens: 800,
+          temperature: 0,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to parse transcript with AI');
+      }
+
+      const { content } = await response.json();
+      return this.extractCoursesFromResponse(content);
+    } catch (error) {
+      console.error('AI transcript parsing failed:', error);
+      throw error instanceof Error ? error : new Error('Failed to parse transcript with AI');
+    }
+  }
+
+  private extractCoursesFromResponse(content: string): ParsedTranscriptCourse[] {
+    const parsed = this.parseJsonPayload(content);
+
+    const items =
+      Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>).courses)
+        ? (parsed as Record<string, unknown>).courses
+        : null;
+
+    if (!items) {
+      throw new Error('AI response did not contain a course list');
+    }
+
+    const courses: ParsedTranscriptCourse[] = [];
+    for (const item of items as unknown[]) {
+      const normalized = this.normalizeCourseRecord(item);
+      if (normalized) {
+        courses.push(normalized);
+      }
+    }
+
+    return courses;
+  }
+
+  private parseJsonPayload(rawContent: string): unknown {
+    const sanitized = rawContent
+      .trim()
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```$/i, '')
+      .trim();
+
+    const direct = this.tryJsonParse(sanitized);
+    if (direct.success) {
+      return direct.value;
+    }
+
+    const arrayMatch = sanitized.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      const attempt = this.tryJsonParse(arrayMatch[0]);
+      if (attempt.success) {
+        return attempt.value;
+      }
+    }
+
+    const objectMatch = sanitized.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      const attempt = this.tryJsonParse(objectMatch[0]);
+      if (attempt.success) {
+        return attempt.value;
+      }
+    }
+
+    console.error('Failed to parse JSON from AI response:', { rawContent });
+    throw new Error('AI response was not valid JSON');
+  }
+
+  private tryJsonParse(payload: string): { success: true; value: unknown } | { success: false } {
+    if (!payload) {
+      return { success: false };
+    }
+
+    try {
+      const value = JSON.parse(payload);
+      return { success: true, value };
+    } catch (_error) {
+      return { success: false };
+    }
+  }
+
+  private normalizeCourseRecord(record: unknown): ParsedTranscriptCourse | null {
+    if (!record || typeof record !== 'object') {
+      return null;
+    }
+
+    const raw = record as Record<string, unknown>;
+    const courseCodeValue = raw.courseCode ?? raw.code ?? raw.course ?? null;
+    const titleValue = raw.title ?? raw.name ?? raw.description ?? null;
+    const creditsValue = raw.credits ?? raw.creditHours ?? raw.credit ?? null;
+    const gradeValue = raw.grade ?? null;
+
+    if (typeof courseCodeValue !== 'string' || !courseCodeValue.trim()) {
+      console.warn('Skipping AI course with missing courseCode', record);
+      return null;
+    }
+
+    if (typeof titleValue !== 'string' || !titleValue.trim()) {
+      console.warn('Skipping AI course with missing title', record);
+      return null;
+    }
+
+    let credits = typeof creditsValue === 'number' ? creditsValue : Number(creditsValue);
+    if (!Number.isFinite(credits)) {
+      console.warn('Skipping AI course with invalid credits', record);
+      return null;
+    }
+
+    credits = Number(credits.toFixed(2));
+
+    const normalizedGrade =
+      gradeValue === null || gradeValue === undefined || gradeValue === ''
+        ? null
+        : String(gradeValue).trim();
+
+    return {
+      courseCode: courseCodeValue.trim(),
+      title: titleValue.trim(),
+      credits,
+      grade: normalizedGrade,
+    };
   }
 
   private buildSystemPrompt(routeContext: RouteContext): string {

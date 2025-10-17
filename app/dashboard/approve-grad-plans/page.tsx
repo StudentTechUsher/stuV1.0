@@ -55,7 +55,6 @@ export default function SelectGradPlansPage() {
         const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
         
         if (role !== "advisor") {
-          console.log('Access denied: User is not an advisor');
           router.push('/home');
           return;
         }

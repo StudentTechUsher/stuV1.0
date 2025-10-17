@@ -43,19 +43,15 @@ export function AdvisorDashboard() {
 
   // Load CSV data on component mount
   useEffect(() => {
-    console.log('Fetching CSV data for advisor dashboard...')
     fetch('/Mock_Student_KPI_Data.csv')
       .then(response => {
-        console.log('CSV response status:', response.status)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         return response.text()
       })
       .then(csvContent => {
-        console.log('CSV content length:', csvContent.length)
         const parsedData = parseCSVData(csvContent)
-        console.log('Parsed data length:', parsedData.length)
         setData(parsedData)
       })
       .catch(error => {
@@ -73,7 +69,7 @@ export function AdvisorDashboard() {
 
   const getKpiValue = (kpiKey: string): number => {
     if (!kpis) return 0
-    return kpis[kpiKey as keyof KPICalculations] as number
+    return kpis[kpiKey as keyof KPICalculations]
   }
 
   const getKpiTitle = (kpiKey: string): string => {

@@ -331,7 +331,6 @@ const handleRemoveElective = (id: string) => {
     if (!open || selectedPrograms.size === 0) return;
 
     const timer = setTimeout(() => {
-      console.log('🔍 Auto-selection running for programs:', Array.from(selectedPrograms));
       Array.from(selectedPrograms).forEach(programId => {
         programRequirements.forEach(req => {
           if (req.courses) {
@@ -340,7 +339,6 @@ const handleRemoveElective = (id: string) => {
             const validCourses = getValidCourses(req);
 
             if (shouldAutoSelect(req, false)) {
-              console.log(`✅ Auto-selecting for requirement ${req.requirementId} (${requirementKey}):`, validCourses.slice(0, dropdownCount).map(c => c.code));
               setSelectedProgramCourses(prev => {
                 const existing = prev[requirementKey] ?? [];
                 const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
@@ -354,10 +352,8 @@ const handleRemoveElective = (id: string) => {
                       next[i] = validCourses[i].code;
                     }
                   }
-                  console.log(`📝 Setting selected courses for ${requirementKey}:`, next);
                   return { ...prev, [requirementKey]: next };
                 }
-                console.log(`⏭️  Skipping ${requirementKey} - already filled`);
                 return prev;
               });
             }
@@ -1051,9 +1047,6 @@ const handleRemoveElective = (id: string) => {
                                         <Select
                                           value={(() => {
                                             const val = selectedProgramCourses[key]?.[slot] ?? '';
-                                            if (isAutoSelected && slot === 0) {
-                                              console.log(`🎯 Rendering ${key} slot ${slot}, value:`, val, 'from state:', selectedProgramCourses[key]);
-                                            }
                                             return val;
                                           })()}
                                           label={
