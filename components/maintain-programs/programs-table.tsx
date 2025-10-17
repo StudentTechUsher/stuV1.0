@@ -174,10 +174,18 @@ export default function ProgramsTable({ rows, onEdit, onDelete, canDelete = true
       {/* Delete Confirmation Modal */}
       {deleteDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-xl">
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+          >
             {/* Modal Header */}
             <div className="border-b border-[var(--border)] px-6 py-4">
-              <h3 className="font-header text-lg font-bold text-[var(--foreground)]">
+              <h3
+                id="delete-dialog-title"
+                className="font-header text-lg font-bold text-[var(--foreground)]"
+              >
                 Confirm Delete
               </h3>
             </div>
