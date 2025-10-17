@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import Box from '@mui/material/Box';
 import { useDroppable } from '@dnd-kit/core';
+import { cn } from '@/lib/utils';
 
 interface Term {
   term: string;
@@ -49,45 +49,37 @@ export function DroppableTerm({
   });
 
   return (
-    <Box
-      ref={setNodeRef}
-      sx={{
-        // Invisible wrapper - only provide drop zone functionality
-        position: 'relative',
-        // Add orange glow effect for modified terms
-        ...(hasBeenModified && {
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            top: -2,
-            left: -2,
-            right: -2,
-            bottom: -2,
-            backgroundColor: 'transparent',
-            borderRadius: 3,
-            border: '2px solid var(--action-edit)',
-            pointerEvents: 'none',
-            zIndex: 0,
-            boxShadow: '0 0 8px rgba(255, 165, 0, 0.3)'
-          }
-        }),
-        // Add subtle visual feedback when dragging over in edit mode
-        '&::before': isOver && isEditMode ? {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'var(--primary-15)',
-          borderRadius: 2,
-          border: '2px dashed var(--primary)',
-          pointerEvents: 'none',
-          zIndex: 1
-        } : {}
-      }}
-    >
-      {children}
-    </Box>
+    <div ref={setNodeRef} className="relative h-full w-full">
+      {/* Persistent accent for terms advisors/students have touched */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-0 rounded-[7px] transition-all duration-200',
+          hasBeenModified
+            ? 'ring-2 ring-[var(--action-edit)] ring-offset-2 ring-offset-transparent shadow-[0_18px_48px_-28px_rgba(253,204,74,0.45)]'
+            : 'ring-0'
+        )}
+        style={{ zIndex: 0 }}
+      />
+
+      {/* Active drop target affordance */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-0 rounded-[7px] border-2 border-transparent opacity-0 transition-all duration-200',
+          isEditMode && isOver && 'border-dashed border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] opacity-100 shadow-[0_28px_60px_-36px_rgba(18,249,135,0.55)]'
+        )}
+        style={{ zIndex: 1 }}
+      />
+
+      <div
+        className={cn(
+          'relative z-[2] h-full transition-all duration-200',
+          isEditMode && isOver && 'translate-y-[-2px]'
+        )}
+      >
+        {children}
+      </div>
+    </div>
   );
 }

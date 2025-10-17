@@ -7,6 +7,7 @@ import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
 import ClassInfoDialog from "./class-info-dialog";
+import SemesterResultsTable from "./semester-results-table";
 import { loadMockCourses } from "@/lib/course-parser";
 
 type GradPlan = {
@@ -127,8 +128,11 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   // Combine all events for display
   const allEvents = [...events, ...personalEvents];
 
+  const [showResults, setShowResults] = useState(false);
+
   const handleScheduleGenerated = (generatedEvents: SchedulerEvent[]) => {
     setEvents(generatedEvents);
+    setShowResults(true); // Show results table when schedule is generated
   };
 
   const handleScheduleSaved = (schedule: SchedulerEvent[]) => {
@@ -187,6 +191,28 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
       isOpen: true,
       event,
     });
+  };
+
+  const handleSectionClick = (courseCode: string, section: string) => {
+    // Find the event for this course
+    const courseEvent = events.find(e => e.course_code === courseCode && e.section === section);
+    if (courseEvent) {
+      setClassInfoDialog({
+        isOpen: true,
+        event: courseEvent,
+      });
+    }
+  };
+
+  const handleInstructorClick = (courseCode: string, instructor: string) => {
+    // Find the event for this course
+    const courseEvent = events.find(e => e.course_code === courseCode && e.professor === instructor);
+    if (courseEvent) {
+      setClassInfoDialog({
+        isOpen: true,
+        event: courseEvent,
+      });
+    }
   };
 
   const handleEventDrop = (eventId: string, newDayOfWeek: number, newStartTime: string, newEndTime: string) => {
@@ -288,6 +314,64 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     return { days, startTime, endTime };
   };
 
+  // Convert SchedulerEvents to CourseRow format for SemesterResultsTable
+  const convertEventsToRows = (events: SchedulerEvent[]) => {
+    // Group events by course code to avoid duplicates
+    const courseMap = new Map<string, SchedulerEvent>();
+
+    events.forEach(event => {
+      if (event.type === 'class' && event.course_code) {
+        const key = `${event.course_code}-${event.section || ''}`;
+        if (!courseMap.has(key)) {
+          courseMap.set(key, event);
+        }
+      }
+    });
+
+    // Convert to rows
+    return Array.from(courseMap.values()).map(event => {
+      // Determine requirement chip color based on requirement type
+      const getRequirementColor = (req: string): 'green' | 'blue' | 'purple' | 'indigo' | 'magenta' => {
+        const reqLower = req.toLowerCase();
+        if (reqLower.includes('major')) return 'green';
+        if (reqLower.includes('ge') || reqLower.includes('general')) return 'blue';
+        if (reqLower.includes('minor')) return 'purple';
+        if (reqLower.includes('rel')) return 'indigo';
+        return 'magenta'; // elective
+      };
+
+      // Format days for display
+      const dayOfWeekMap: Record<number, string> = {
+        1: 'M', 2: 'T', 3: 'W', 4: 'Th', 5: 'F', 6: 'S'
+      };
+
+      const allDaysForCourse = events
+        .filter(e => e.course_code === event.course_code && e.section === event.section)
+        .map(e => dayOfWeekMap[e.dayOfWeek])
+        .filter(Boolean);
+
+      // Combine adjacent days (M,W -> MW, T,Th -> TTh)
+      const days = Array.from(new Set(allDaysForCourse)).sort();
+
+      return {
+        courseCode: event.course_code || 'Unknown',
+        title: event.title || '',
+        section: event.section || '000',
+        difficulty: '__/5', // Default placeholder
+        instructor: event.professor || 'TBA',
+        days: days as ('M' | 'T' | 'W' | 'Th' | 'F' | 'MW' | 'TTh' | 'Fri')[],
+        time: `${event.startTime}-${event.endTime}`,
+        location: event.location || 'TBA',
+        hours: event.credits || 3.0,
+        requirements: event.requirement ? [{
+          label: event.requirement,
+          color: getRequirementColor(event.requirement)
+        }] : [],
+        status: 'active' as const,
+      };
+    });
+  };
+
   if (isLoading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -346,144 +430,177 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
         </Box>
       </Box>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" }, gap: 2 }}>
-        {/* Left Panel - Controls */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <ScheduleGenerator
-            gradPlans={gradPlans}
-            courses={courses}
-            blockedEvents={personalEvents}
-            onScheduleGenerated={handleScheduleGenerated}
-            onScheduleSaved={handleScheduleSaved}
-          />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Top Section - Controls + Calendar */}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" }, gap: 2 }}>
+          {/* Left Panel - Controls */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <ScheduleGenerator
+              gradPlans={gradPlans}
+              courses={courses}
+              blockedEvents={personalEvents}
+              onScheduleGenerated={handleScheduleGenerated}
+              onScheduleSaved={handleScheduleSaved}
+            />
 
-          <Paper elevation={0} sx={{ p: 2, borderRadius: 3 }}>
-            <Typography variant="h6" className="font-header" sx={{ mb: 2 }}>
-              Personal Events
-            </Typography>
-            <Typography variant="body2" className="font-body" color="text.secondary" sx={{ mb: 2 }}>
-              Block out time for work, clubs, sports, and other commitments
-            </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<Plus size={16} />}
-              onClick={handleAddPersonalEvent}
-              fullWidth
+            <Paper
+              elevation={0}
               sx={{
-                borderColor: "var(--muted-foreground)",
-                color: "var(--muted-foreground)",
-                fontWeight: 500,
-                px: 3,
-                py: 1.25,
-                fontSize: "1rem",
-                transition: "all 0.2s",
-                "&:hover": {
-                  backgroundColor: "var(--hover-gray)",
-                  color: "white",
-                  borderColor: "var(--hover-gray)",
-                },
+                p: 3,
+                borderRadius: 3,
+                border: "1px solid var(--border)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
               }}
             >
-              Add Personal Event
-            </Button>
-
-            {personalEvents.length > 0 && (
+              <Typography variant="h6" className="font-header" sx={{ mb: 2, fontWeight: 700, color: "var(--foreground)" }}>
+                Personal Events
+              </Typography>
+              <Typography variant="body2" className="font-body" sx={{ color: "var(--muted-foreground)", mb: 2.5, fontWeight: 500 }}>
+                Block out time for work, clubs, sports, and other commitments
+              </Typography>
               <Button
                 variant="outlined"
-                startIcon={<Trash2 size={16} />}
-                onClick={handleClearAllEvents}
+                startIcon={<Plus size={16} />}
+                onClick={handleAddPersonalEvent}
                 fullWidth
                 sx={{
-                  borderColor: "var(--action-cancel)",
-                  color: "var(--action-cancel)",
-                  fontWeight: 500,
-                  px: 3,
+                  borderColor: "var(--border)",
+                  color: "var(--foreground)",
+                  fontWeight: 600,
+                  px: 2.5,
                   py: 1.25,
-                  fontSize: "1rem",
-                  transition: "all 0.2s",
-                  mt: 1,
+                  borderWidth: "1.5px",
                   "&:hover": {
-                    backgroundColor: "var(--action-cancel)",
-                    color: "white",
-                    borderColor: "var(--action-cancel)",
+                    backgroundColor: "color-mix(in srgb, var(--muted) 15%, white)",
+                    borderColor: "var(--foreground)",
                   },
                 }}
               >
-                Clear All Events
+                Add Personal Event
               </Button>
-            )}
 
-            {personalEvents.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" className="font-body-semi" sx={{ mb: 1 }}>
-                  Current Blocked Times: {personalEvents.length}
-                </Typography>
-                {(showAllPersonalEvents ? personalEvents : personalEvents.slice(0, 3)).map((event) => (
-                  <Box
-                    key={event.id}
-                    sx={{
-                      p: 1,
-                      mb: 1,
-                      bgcolor: getEventBackgroundColor(event),
-                      borderRadius: 1,
-                      borderLeft: `3px solid ${getEventColor(event)}`,
-                    }}
-                  >
-                    <Typography variant="caption" className="font-body-semi">
-                      {event.title}
-                    </Typography>
-                    <Typography variant="caption" className="font-body" display="block" color="text.secondary">
-                      {event.category}
-                    </Typography>
-                  </Box>
-                ))}
-                {personalEvents.length > 3 && !showAllPersonalEvents && (
-                  <Typography
-                    variant="caption"
-                    className="font-body"
-                    color="text.secondary"
-                    sx={{
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                      "&:hover": { color: "var(--primary)" }
-                    }}
-                    onClick={() => setShowAllPersonalEvents(true)}
-                  >
-                    +{personalEvents.length - 3} more events
+              {personalEvents.length > 0 && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Trash2 size={16} />}
+                  onClick={handleClearAllEvents}
+                  fullWidth
+                  sx={{
+                    borderColor: "var(--action-cancel)",
+                    color: "var(--action-cancel)",
+                    fontWeight: 600,
+                    px: 2.5,
+                    py: 1.25,
+                    mt: 1.5,
+                    borderWidth: "1.5px",
+                    "&:hover": {
+                      backgroundColor: "var(--action-cancel)",
+                      color: "white",
+                      borderColor: "var(--action-cancel)",
+                    },
+                  }}
+                >
+                  Clear All Events
+                </Button>
+              )}
+
+              {personalEvents.length > 0 && (
+                <Box sx={{ mt: 2.5 }}>
+                  <Typography variant="subtitle2" className="font-body-semi" sx={{ mb: 1.5, fontWeight: 700, color: "var(--foreground)", textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }}>
+                    Current Blocked Times: {personalEvents.length}
                   </Typography>
-                )}
-                {showAllPersonalEvents && personalEvents.length > 3 && (
-                  <Typography
-                    variant="caption"
-                    className="font-body"
-                    color="text.secondary"
-                    sx={{
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                      "&:hover": { color: "var(--primary)" }
-                    }}
-                    onClick={() => setShowAllPersonalEvents(false)}
-                  >
-                    Show less
-                  </Typography>
-                )}
-              </Box>
-            )}
-          </Paper>
+                  {(showAllPersonalEvents ? personalEvents : personalEvents.slice(0, 3)).map((event) => (
+                    <Box
+                      key={event.id}
+                      sx={{
+                        p: 1.5,
+                        mb: 1.5,
+                        bgcolor: getEventBackgroundColor(event),
+                        borderRadius: 2,
+                        borderLeft: `3px solid ${getEventColor(event)}`,
+                        border: "1px solid var(--border)",
+                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                      }}
+                    >
+                      <Typography variant="caption" className="font-body-semi" sx={{ fontWeight: 600, color: "var(--foreground)" }}>
+                        {event.title}
+                      </Typography>
+                      <Typography variant="caption" className="font-body" display="block" sx={{ color: "var(--muted-foreground)", fontWeight: 500, mt: 0.25 }}>
+                        {event.category}
+                      </Typography>
+                    </Box>
+                  ))}
+                  {personalEvents.length > 3 && !showAllPersonalEvents && (
+                    <Typography
+                      variant="caption"
+                      className="font-body"
+                      color="text.secondary"
+                      sx={{
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        "&:hover": { color: "var(--primary)" }
+                      }}
+                      onClick={() => setShowAllPersonalEvents(true)}
+                    >
+                      +{personalEvents.length - 3} more events
+                    </Typography>
+                  )}
+                  {showAllPersonalEvents && personalEvents.length > 3 && (
+                    <Typography
+                      variant="caption"
+                      className="font-body"
+                      color="text.secondary"
+                      sx={{
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        "&:hover": { color: "var(--primary)" }
+                      }}
+                      onClick={() => setShowAllPersonalEvents(false)}
+                    >
+                      Show less
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Paper>
+          </Box>
+
+          {/* Right Panel - Calendar */}
+          <Box>
+            <SchedulerCalendar
+              events={allEvents}
+              onPersonalEventClick={handlePersonalEventClick}
+              onClassEventClick={handleClassEventClick}
+              onEventDrop={handleEventDrop}
+              onSlotSelect={handleSlotSelect}
+              slotMinTime="08:00:00"
+              slotMaxTime="20:00:00"
+            />
+          </Box>
         </Box>
 
-        {/* Right Panel - Calendar */}
-        <Box>
-          <SchedulerCalendar
-            events={allEvents}
-            onPersonalEventClick={handlePersonalEventClick}
-            onClassEventClick={handleClassEventClick}
-            onEventDrop={handleEventDrop}
-            onSlotSelect={handleSlotSelect}
-            slotMinTime="08:00:00"
-            slotMaxTime="20:00:00"
-          />
-        </Box>
+        {/* Bottom Section - Results Table (Full Width) */}
+        {showResults && events.length > 0 && (() => {
+          const rows = convertEventsToRows(events);
+          const totalCredits = rows.reduce((sum, row) => sum + row.hours, 0);
+
+          return (
+            <Box sx={{ width: "100%", mb: 4 }}>
+              <SemesterResultsTable
+                termLabel="Winter 2025 Classes"
+                totalCredits={totalCredits}
+                scheduleDifficulty="?/5"
+                addDropDeadline="12 Sept"
+                rows={rows}
+                onWithdraw={(courseCode) => {
+                  console.log(`Withdraw requested for ${courseCode}`);
+                }}
+                onSectionClick={handleSectionClick}
+                onInstructorClick={handleInstructorClick}
+              />
+            </Box>
+          );
+        })()}
       </Box>
 
       <EventManager

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -28,7 +27,6 @@ interface EventManagerProps {
   maxTermNumber: number;
 }
 
-// Helper function to get icon for event type
 const getEventIcon = (type: EventType) => {
   switch (type) {
     case 'Internship':
@@ -52,7 +50,6 @@ const getEventIcon = (type: EventType) => {
   }
 };
 
-// Helper function to get color for event type
 const getEventColor = (type: EventType): string => {
   switch (type) {
     case 'Internship':
@@ -84,7 +81,6 @@ export function EventManager({
   onDeleteEvent,
   maxTermNumber,
 }: EventManagerProps) {
-  // Group events by term
   const eventsByTerm = React.useMemo(() => {
     const grouped: Record<number, Event[]> = {};
     events.forEach((event) => {
@@ -101,26 +97,31 @@ export function EventManager({
       sx={{
         position: 'sticky',
         top: 24,
-        maxHeight: 'calc(100vh - 48px)',
+        maxHeight: { xs: 'none', lg: 'calc(100vh - 48px)' },
         overflowY: 'auto',
       }}
     >
-      <Paper
-        elevation={2}
+      <Box
         sx={{
+          borderRadius: '7px',
+          border: '1px solid',
+          borderColor: 'color-mix(in srgb, rgba(10,31,26,0.14) 32%, var(--border) 68%)',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 38px 100px -76px rgba(10,31,26,0.45)',
           p: 3,
-          backgroundColor: 'var(--card)',
-          borderRadius: 3,
-          border: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography
             variant="h6"
             sx={{
               fontFamily: '"Red Hat Display", sans-serif',
               fontWeight: 700,
-              color: 'black',
+              color: '#0a1f1a',
+              letterSpacing: '0.04em',
             }}
           >
             Events
@@ -132,14 +133,16 @@ export function EventManager({
               startIcon={<AddIcon />}
               onClick={onAddEvent}
               sx={{
-                backgroundColor: 'var(--primary)',
-                color: 'white',
+                backgroundColor: '#0a1f1a',
+                color: '#ffffff',
                 fontWeight: 600,
                 fontFamily: '"Inter", sans-serif',
                 fontSize: '0.75rem',
                 px: 2,
+                borderRadius: '7px',
+                textTransform: 'none',
                 '&:hover': {
-                  backgroundColor: 'var(--hover-green)',
+                  backgroundColor: '#043322',
                 },
               }}
             >
@@ -153,21 +156,20 @@ export function EventManager({
             sx={{
               py: 4,
               textAlign: 'center',
-              color: 'var(--muted-foreground)',
+              color: 'color-mix(in srgb, var(--muted-foreground) 75%, var(--foreground) 25%)',
             }}
           >
-            <Typography variant="body2" sx={{ fontFamily: '"Inter", sans-serif' }}>
+            <Typography variant="body2" sx={{ fontFamily: '"Inter", sans-serif', fontWeight: 500 }}>
               No events added yet.
             </Typography>
             {isEditMode && (
               <Typography variant="caption" sx={{ fontFamily: '"Inter", sans-serif', mt: 1, display: 'block' }}>
-                Click &quot;Add Event&quot; to create your first event.
+                Click “Add Event” to create your first milestone.
               </Typography>
             )}
           </Box>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Render events grouped by term */}
             {Array.from({ length: maxTermNumber }, (_, i) => i + 1).map((termNumber) => {
               const termEvents = eventsByTerm[termNumber] || [];
               if (termEvents.length === 0) return null;
@@ -179,9 +181,10 @@ export function EventManager({
                     sx={{
                       fontFamily: '"Inter", sans-serif',
                       fontWeight: 600,
-                      color: 'var(--muted-foreground)',
+                      color: 'color-mix(in srgb, var(--muted-foreground) 78%, var(--foreground) 22%)',
                       textTransform: 'uppercase',
                       fontSize: '0.65rem',
+                      letterSpacing: '0.18em',
                       mb: 1,
                       display: 'block',
                     }}
@@ -191,35 +194,45 @@ export function EventManager({
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {termEvents.map((event) => {
                       const IconComponent = getEventIcon(event.type);
-                      const color = getEventColor(event.type);
+                      const eventColor = getEventColor(event.type);
 
                       return (
-                        <Paper
+                        <Box
                           key={event.id}
-                          elevation={1}
                           sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1.5,
                             p: 1.5,
-                            backgroundColor: color,
-                            color: 'white',
-                            borderRadius: 2,
-                            position: 'relative',
-                            transition: 'transform 0.2s',
-                            '&:hover': {
-                              transform: 'translateX(4px)',
-                            },
+                            borderRadius: '7px',
+                            border: '1px solid color-mix(in srgb, rgba(10,31,26,0.12) 40%, transparent)',
+                            backgroundColor: `color-mix(in srgb, ${eventColor} 12%, white 88%)`,
                           }}
                         >
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                            <IconComponent sx={{ fontSize: 20, mt: 0.25 }} />
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box
+                              sx={{
+                                height: 32,
+                                width: 32,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                                backgroundColor: `color-mix(in srgb, ${eventColor} 20%, white 80%)`,
+                                color: `color-mix(in srgb, ${eventColor} 70%, black 30%)`,
+                              }}
+                            >
+                              <IconComponent fontSize="small" />
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
                               <Typography
                                 variant="body2"
                                 sx={{
                                   fontFamily: '"Inter", sans-serif',
                                   fontWeight: 600,
-                                  fontSize: '0.85rem',
-                                  lineHeight: 1.3,
-                                  wordBreak: 'break-word',
+                                  color: '#0a1f1a',
+                                  lineHeight: 1.4,
                                 }}
                               >
                                 {event.title}
@@ -228,43 +241,39 @@ export function EventManager({
                                 variant="caption"
                                 sx={{
                                   fontFamily: '"Inter", sans-serif',
-                                  fontSize: '0.7rem',
-                                  opacity: 0.9,
-                                  display: 'block',
-                                  mt: 0.25,
+                                  color: 'color-mix(in srgb, var(--muted-foreground) 72%, var(--foreground) 28%)',
                                 }}
                               >
                                 {event.type}
                               </Typography>
                             </Box>
-                            {isEditMode && (
-                              <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => onEditEvent(event)}
-                                  sx={{
-                                    color: 'white',
-                                    p: 0.5,
-                                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' },
-                                  }}
-                                >
-                                  <EditIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => onDeleteEvent(event.id)}
-                                  sx={{
-                                    color: 'white',
-                                    p: 0.5,
-                                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' },
-                                  }}
-                                >
-                                  <DeleteIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </Box>
-                            )}
                           </Box>
-                        </Paper>
+
+                          {isEditMode && (
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => onEditEvent(event)}
+                                sx={{
+                                  color: '#0a1f1a',
+                                  '&:hover': { backgroundColor: 'rgba(10,31,26,0.08)' },
+                                }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => onDeleteEvent(event.id)}
+                                sx={{
+                                  color: 'var(--action-cancel)',
+                                  '&:hover': { backgroundColor: 'rgba(244,67,54,0.12)' },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </Box>
                       );
                     })}
                   </Box>
@@ -273,7 +282,7 @@ export function EventManager({
             })}
           </Box>
         )}
-      </Paper>
+      </Box>
     </Box>
   );
 }

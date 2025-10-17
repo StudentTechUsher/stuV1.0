@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, Alert } from '@mui/material';
+import { StuLoader } from '@/components/ui/StuLoader';
 import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approve-table';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
 import { fetchPendingGradPlans, issueGradPlanAccessId } from '@/lib/services/server-actions';
@@ -115,12 +116,12 @@ export default function SelectGradPlansPage() {
   const renderContent = () => {
     if (isCheckingRole || loading) {
       return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3 }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
-            {isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
-          </Typography>
-        </Box>
+        <div className="mt-8 flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-12 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+          <StuLoader
+            variant="card"
+            text={isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
+          />
+        </div>
       );
     }
 

@@ -221,16 +221,31 @@ export default function ScheduleGenerator({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Card elevation={0} sx={{ borderRadius: 3 }}>
-        <CardContent sx={{ p: 2 }}>
-          <Typography variant="h6" className="font-header" sx={{ mb: 2 }}>
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: "1px solid var(--border)",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" className="font-header" sx={{ mb: 2.5, fontWeight: 700, color: "var(--foreground)" }}>
             Schedule Generator
           </Typography>
 
           {gradPlans.length === 0 ? (
             <Box sx={{ mb: 2 }}>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2" className="font-body" sx={{ mb: 1 }}>
+              <Alert
+                severity="info"
+                sx={{
+                  mb: 2,
+                  borderRadius: 2,
+                  backgroundColor: "color-mix(in srgb, var(--action-info) 8%, white)",
+                  border: "1px solid color-mix(in srgb, var(--action-info) 20%, white)",
+                }}
+              >
+                <Typography variant="body2" className="font-body" sx={{ mb: 1, fontWeight: 500 }}>
                   No graduation plans found. Create one to start scheduling your classes.
                 </Typography>
               </Alert>
@@ -242,8 +257,15 @@ export default function ScheduleGenerator({
                   className="font-body-semi"
                   sx={{
                     bgcolor: "var(--primary)",
-                    color: "var(--muted-foreground)",
-                    "&:hover": { bgcolor: "var(--hover-green)", color: "var(--primary-foreground)" },
+                    color: "#0A0A0A",
+                    fontWeight: 600,
+                    py: 1.25,
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                    "&:hover": {
+                      bgcolor: "var(--hover-green)",
+                      color: "white",
+                      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.15)",
+                    },
                   }}
                 >
                   Create Grad Plan
@@ -251,27 +273,32 @@ export default function ScheduleGenerator({
               </Link>
             </Box>
           ) : (
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>Graduation Plan</InputLabel>
+            <FormControl
+              fullWidth
+              sx={{
+                mb: 2.5,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "var(--primary)",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "var(--primary)",
+                    borderWidth: "2px",
+                  },
+                },
+              }}
+            >
+              <InputLabel sx={{ fontWeight: 600 }}>Graduation Plan</InputLabel>
               <Select
                 value={selectedPlan}
                 label="Graduation Plan"
                 onChange={(e) => setSelectedPlan(e.target.value)}
                 className="font-body"
-                sx={{
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--primary)'
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--hover-green)'
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--primary)'
-                  }
-                }}
               >
                 {gradPlans.map((plan) => (
-                  <MenuItem key={plan.id} value={plan.id} className="font-body">
+                  <MenuItem key={plan.id} value={plan.id} className="font-body" sx={{ fontWeight: 600, py: 1.5 }}>
                     {plan.name} {plan.isActive && "(Active)"}
                   </MenuItem>
                 ))}
@@ -280,11 +307,19 @@ export default function ScheduleGenerator({
           )}
 
           {selectedGradPlan && (
-            <Box sx={{ mb: 2, p: 2, bgcolor: "var(--muted)", borderRadius: 2 }}>
-              <Typography variant="subtitle2" className="font-body-semi" sx={{ mb: 1 }}>
-                Course Requirements:
+            <Box
+              sx={{
+                mb: 2.5,
+                p: 2.5,
+                backgroundColor: "color-mix(in srgb, var(--muted) 4%, white)",
+                borderRadius: 2,
+                border: "1px solid var(--border)",
+              }}
+            >
+              <Typography variant="subtitle2" className="font-body-semi" sx={{ mb: 1.5, fontWeight: 700, color: "var(--foreground)", textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }}>
+                Course Requirements
               </Typography>
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+              <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
                 <RequirementChip label="Major" count={selectedGradPlan.requiredCourses.major} />
                 <RequirementChip label="Minor" count={selectedGradPlan.requiredCourses.minor} />
                 <RequirementChip label="GE" count={selectedGradPlan.requiredCourses.ge} />
@@ -295,9 +330,19 @@ export default function ScheduleGenerator({
           )}
 
           {generating && (
-            <Box sx={{ mb: 2 }}>
-              <LinearProgress sx={{ mb: 1 }} />
-              <Typography variant="body2" className="font-body" color="text.secondary">
+            <Box sx={{ mb: 2.5 }}>
+              <LinearProgress
+                sx={{
+                  mb: 1,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: "color-mix(in srgb, var(--primary) 15%, white)",
+                  "& .MuiLinearProgress-bar": {
+                    backgroundColor: "var(--primary)",
+                  },
+                }}
+              />
+              <Typography variant="body2" className="font-body" sx={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
                 Generating feasible schedule...
               </Typography>
             </Box>
@@ -312,8 +357,20 @@ export default function ScheduleGenerator({
               className="font-body-semi"
               sx={{
                 bgcolor: "var(--primary)",
-                color: "var(--muted-foreground)",
-                "&:hover": { bgcolor: "var(--hover-green)", color: "var(--primary-foreground)" },
+                color: "#0A0A0A",
+                fontWeight: 600,
+                px: 2.5,
+                py: 1.25,
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                "&:hover": {
+                  bgcolor: "var(--hover-green)",
+                  color: "white",
+                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.15)",
+                },
+                "&:disabled": {
+                  bgcolor: "var(--muted)",
+                  color: "var(--muted-foreground)",
+                },
               }}
             >
               Generate New Schedule
@@ -325,21 +382,19 @@ export default function ScheduleGenerator({
               onClick={saveSchedule}
               disabled={currentSchedule.length === 0}
               sx={{
-                borderColor: "var(--muted-foreground)",
-                color: "var(--muted-foreground)",
-                fontWeight: 500,
-                px: 3,
+                borderColor: "var(--border)",
+                color: "var(--foreground)",
+                fontWeight: 600,
+                px: 2.5,
                 py: 1.25,
-                fontSize: "1rem",
-                transition: "all 0.2s",
+                borderWidth: "1.5px",
                 "&:hover": {
-                  backgroundColor: "var(--hover-gray)",
-                  color: "white",
-                  borderColor: "var(--hover-gray)",
+                  backgroundColor: "color-mix(in srgb, var(--muted) 15%, white)",
+                  borderColor: "var(--foreground)",
                 },
                 "&:disabled": {
                   borderColor: "var(--border)",
-                  color: "var(--border)",
+                  color: "var(--muted-foreground)",
                 },
               }}
             >
@@ -348,7 +403,17 @@ export default function ScheduleGenerator({
           </Box>
 
           {showSuccess && (
-            <Alert severity="success" sx={{ mt: 2 }}>
+            <Alert
+              severity="success"
+              sx={{
+                mt: 2,
+                borderRadius: 2,
+                backgroundColor: "color-mix(in srgb, var(--primary) 8%, white)",
+                border: "1px solid color-mix(in srgb, var(--primary) 20%, white)",
+                color: "var(--dark)",
+                fontWeight: 600,
+              }}
+            >
               Schedule saved successfully!
             </Alert>
           )}
@@ -359,17 +424,62 @@ export default function ScheduleGenerator({
 }
 
 function RequirementChip({ label, count }: { label: string; count: number }) {
+  // Map requirement types to colors matching the dashboard (academic-progress-card.tsx)
+  const getChipStyles = (label: string) => {
+    const lowerLabel = label.toLowerCase();
+    if (lowerLabel.includes('major')) {
+      return {
+        bgcolor: 'color-mix(in srgb, var(--primary) 18%, white)',
+        borderColor: 'color-mix(in srgb, var(--primary) 35%, white)',
+        color: 'var(--dark)',
+      };
+    }
+    if (lowerLabel.includes('minor')) {
+      // Dashboard uses #001F54 (dark blue)
+      return {
+        bgcolor: 'color-mix(in srgb, #001F54 18%, white)',
+        borderColor: 'color-mix(in srgb, #001F54 35%, white)',
+        color: '#001F54',
+      };
+    }
+    if (lowerLabel.includes('ge') || lowerLabel.includes('general')) {
+      // Dashboard uses #2196f3 (blue)
+      return {
+        bgcolor: 'color-mix(in srgb, #2196f3 18%, white)',
+        borderColor: 'color-mix(in srgb, #2196f3 35%, white)',
+        color: '#1565c0',
+      };
+    }
+    if (lowerLabel.includes('religion') || lowerLabel.includes('rel')) {
+      // Dashboard uses #5E35B1 (purple)
+      return {
+        bgcolor: 'color-mix(in srgb, #5E35B1 18%, white)',
+        borderColor: 'color-mix(in srgb, #5E35B1 35%, white)',
+        color: '#5E35B1',
+      };
+    }
+    // Elective - Dashboard uses #9C27B0 (magenta)
+    return {
+      bgcolor: 'color-mix(in srgb, #9C27B0 18%, white)',
+      borderColor: 'color-mix(in srgb, #9C27B0 35%, white)',
+      color: '#9C27B0',
+    };
+  };
+
+  const styles = getChipStyles(label);
+
   return (
     <Box
       sx={{
-        px: 2,
-        py: 0.5,
-        bgcolor: "var(--primary-15)",
+        px: 2.5,
+        py: 1,
+        bgcolor: styles.bgcolor,
         borderRadius: 2,
-        border: "1px solid var(--primary-22)",
+        border: `1px solid ${styles.borderColor}`,
+        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
       }}
     >
-      <Typography variant="caption" className="font-body-semi">
+      <Typography variant="caption" className="font-body-semi" sx={{ fontWeight: 600, color: styles.color }}>
         {label}: {count}
       </Typography>
     </Box>

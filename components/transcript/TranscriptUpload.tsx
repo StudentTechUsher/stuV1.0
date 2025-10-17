@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useState, useRef } from "react";
+import { StuLoader } from "@/components/ui/StuLoader";
 import {
   parseTranscriptText,
   validateCourse,

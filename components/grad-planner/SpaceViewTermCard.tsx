@@ -19,6 +19,10 @@ interface Term {
 interface SpaceViewTermCardProps {
   term: Term;
   index: number;
+  events?: Event[];
+  isEditMode?: boolean;
+  onEditEvent?: (event?: Event) => void;
+  onDeleteEvent?: (eventId: string) => void;
 }
 
 export function SpaceViewTermCard({ term, index }: SpaceViewTermCardProps) {
@@ -34,6 +38,8 @@ export function SpaceViewTermCard({ term, index }: SpaceViewTermCardProps) {
         backgroundColor: 'white',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         minHeight: '150px',
+        height: '100%',
+        width: '100%',
       }}
     >
       <Typography variant="subtitle2" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 700, mb: 1, fontSize: '0.9rem' }}>

@@ -2,15 +2,18 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, CircularProgress, Snackbar, Alert, Paper, TextField, IconButton } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert, TextField, IconButton } from '@mui/material';
 import { CheckCircle, Save } from '@mui/icons-material';
 import { Add, Remove } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { StuLoader } from '@/components/ui/StuLoader';
 import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction } from '@/lib/services/server-actions';
 import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Course, Term } from '@/components/grad-planner/types';
+import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
+import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
 
 interface GradPlanDetails {
   id: string;
@@ -77,6 +80,7 @@ export default function ApproveGradPlanPage() {
   const [editablePlan, setEditablePlan] = React.useState<Term[] | null>(null); // normalized array of terms
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
+  const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -446,16 +450,51 @@ export default function ApproveGradPlanPage() {
     return 'Approve Plan';
   };
 
+  // Calculate category progress for the progress panel
+  const categoryProgress = React.useMemo(() => {
+    if (!editablePlan) return [];
+    return calculateCategoryProgress(editablePlan);
+  }, [editablePlan]);
+
+  // Calculate total credits for progress panel
+  const totalCreditsData = React.useMemo(() => {
+    if (!editablePlan) return { earned: 0, required: 133.66 };
+
+    const earned = editablePlan.reduce((total, term) => {
+      const termCredits = term.credits_planned ||
+                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+      return total + termCredits;
+    }, 0);
+
+    return { earned, required: 133.66 }; // You can make 'required' dynamic based on program requirements
+  }, [editablePlan]);
+
+  // Calculate current semester credits (assuming first term is current)
+  const currentSemesterCredits = React.useMemo(() => {
+    if (!editablePlan || editablePlan.length === 0) return 0;
+    const currentTerm = editablePlan[0];
+    return currentTerm.credits_planned ||
+           (currentTerm.courses ? currentTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+  }, [editablePlan]);
+
+  // Calculate total planned credits in the grad plan
+  const plannedCredits = React.useMemo(() => {
+    if (!editablePlan) return 0;
+    return editablePlan.reduce((total, term) => {
+      const termCredits = term.credits_planned ||
+                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+      return total + termCredits;
+    }, 0);
+  }, [editablePlan]);
+
   if (isCheckingRole || loading) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
-            {isCheckingRole ? 'Checking permissions...' : 'Loading graduation plan...'}
-          </Typography>
-        </Box>
-      </Box>
+      <div className="flex min-h-[400px] items-center justify-center p-6">
+        <StuLoader
+          variant="page"
+          text={isCheckingRole ? 'Checking permissions...' : 'Loading graduation plan for review...'}
+        />
+      </div>
     );
   }
 
@@ -494,87 +533,254 @@ export default function ApproveGradPlanPage() {
   }
 
   const studentName = `${gradPlan.student_first_name} ${gradPlan.student_last_name}`;
-  
+  const submittedDisplay = new Date(gradPlan.created_at).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 
   return (
-    <Box sx={{ p: 3, maxWidth: '1200px', mx: 'auto' }}>
-      {/* Header with back button */}
-      <Box sx={{ mb: 4 }}>
+    <Box
+      sx={{
+        px: { xs: 2, md: 3 },
+        py: { xs: 2, md: 3 },
+        maxWidth: '1600px',
+        mx: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <Box
+        component="section"
+        sx={{
+          borderRadius: '7px',
+          border: '1px solid',
+          borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 35%, var(--border) 65%)',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 56px 120px -90px rgba(10,31,26,0.55)',
+          p: { xs: 3, md: 4 },
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+        }}
+      >
         <Button
           startIcon={<ArrowBackIcon />}
+          variant="text"
           onClick={handleBack}
-          sx={{ mb: 2 }}
+          sx={{
+            alignSelf: 'flex-start',
+            px: 0,
+            color: '#0a1f1a',
+            fontWeight: 600,
+            textTransform: 'none',
+            letterSpacing: '0.04em',
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: 'var(--hover-green)',
+            },
+          }}
         >
           Back to Approval List
         </Button>
-        
-        <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, color: '#333' }}>
-          Review Graduation Plan
-        </Typography>
-        
-        <Typography variant="body2" color="text.secondary">
-          Submitted: {new Date(gradPlan.created_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </Typography>
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', lg: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', lg: 'center' },
+            gap: { xs: 3, lg: 4 },
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontFamily: '"Red Hat Display", sans-serif',
+                fontWeight: 800,
+                fontSize: { xs: '1.75rem', md: '2.1rem' },
+                color: '#0a1f1a',
+              }}
+            >
+              Review Graduation Plan
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 2.5,
+                  py: 1,
+                  borderRadius: '7px',
+                  backgroundColor: '#0a1f1a',
+                  color: '#ffffff',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Submitted {submittedDisplay}
+              </Box>
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 2.5,
+                  py: 1,
+                  borderRadius: '7px',
+                  backgroundColor: 'color-mix(in srgb, var(--primary) 16%, white 84%)',
+                  color: 'color-mix(in srgb, var(--foreground) 80%, var(--primary) 20%)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {studentName}
+              </Box>
+            </Box>
+          </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<Save />}
+            onClick={handleSave}
+            disabled={!unsavedChanges || isSaving}
+            sx={{
+              backgroundColor: '#0a1f1a',
+              color: '#ffffff',
+              fontWeight: 600,
+              textTransform: 'none',
+              letterSpacing: '0.06em',
+              px: 3,
+              py: 1.25,
+              borderRadius: '7px',
+              '&:hover': {
+                backgroundColor: '#043322',
+              },
+              '&:disabled': {
+                backgroundColor: 'var(--muted)',
+                color: 'var(--muted-foreground)',
+              },
+            }}
+          >
+            {(() => {
+              if (isSaving) return 'Saving…';
+              if (unsavedChanges) return 'Save Changes & Notify Student';
+              return 'Saved';
+            })()}
+          </Button>
+        </Box>
       </Box>
 
-      {/* Planner + Suggestions (advisor-only) */}
-      <Paper elevation={2} sx={{ p: 4, mb: 4, backgroundColor: '#fafafa' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            Pending Plan for {studentName}
-          </Typography>
-          <Box sx={{ display:'flex', gap:1 }}>
-            <Button
-              variant="contained"
-              startIcon={<Save />}
-              onClick={handleSave}
-              disabled={!unsavedChanges || isSaving}
-            >
-              {(() => {
-                if (isSaving) return 'Saving...';
-                if (unsavedChanges) return 'Save Changes and Notify Student';
-                return 'Saved';
-              })()}
-            </Button>
-          </Box>
-        </Box>
-        <GraduationPlanner
-          plan={editablePlan ?? (gradPlan.plan_details as (Record<string, unknown> | Term[] | undefined))}
-          isEditMode
-          initialSpaceView
-          editorRole="advisor"
-          onPlanUpdate={(updated) => { setEditablePlan(updated); setUnsavedChanges(true); }}
-        />
-        {/* Advisor Suggestions UI */}
-        <Box sx={{ mt:3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#333' }}>
+      {/* Main content area with grad plan and progress panel */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', lg: isPanelCollapsed ? '1fr auto' : '1fr 380px' },
+          gap: 4,
+          alignItems: 'start',
+        }}
+      >
+        {/* Left column - Graduation Planner */}
+        <Box
+          sx={{
+            borderRadius: '7px',
+            border: '1px solid',
+            borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 30%, var(--border) 70%)',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 48px 120px -80px rgba(10,31,26,0.45)',
+            p: { xs: 2, md: 3 },
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+          }}
+        >
+          <GraduationPlanner
+            plan={editablePlan ?? (gradPlan.plan_details as Record<string, unknown> | Term[] | undefined)}
+            isEditMode
+            initialSpaceView
+            editorRole="advisor"
+            onPlanUpdate={(updated) => {
+              setEditablePlan(updated);
+              setUnsavedChanges(true);
+            }}
+          />
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontFamily: '"Red Hat Display", sans-serif',
+              fontWeight: 700,
+              color: '#0a1f1a',
+              letterSpacing: '0.04em',
+            }}
+          >
             Advisor Suggestions
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Add optional suggestions for specific terms. These notes are sent to the student.
+          <Typography variant="body2" color="text.secondary">
+            Add optional notes for specific terms. Saved suggestions notify the student automatically.
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2 }}>
             {(editablePlan || []).map((term, idx) => {
               const termKey = `term-${idx + 1}`;
               const has = Object.prototype.hasOwnProperty.call(suggestions, termKey);
               return (
-                <Box key={termKey} sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1, backgroundColor: '#fff' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Term {term?.term || (idx + 1)}
+                <Box
+                  key={termKey}
+                  sx={{
+                    borderRadius: '7px',
+                    border: '1px solid',
+                    borderColor: has
+                      ? 'color-mix(in srgb, var(--primary) 38%, transparent)'
+                      : 'color-mix(in srgb, rgba(10,31,26,0.12) 40%, transparent)',
+                    backgroundColor: has
+                      ? 'color-mix(in srgb, var(--primary) 10%, white)'
+                      : '#ffffff',
+                    p: 2.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.5,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 700, color: '#0a1f1a', letterSpacing: '0.06em' }}
+                    >
+                      Term {term?.term || idx + 1}
                     </Typography>
                     {has ? (
-                      <IconButton size="small" onClick={() => removeSuggestion(termKey)} sx={{ color: '#f44336' }}>
+                      <IconButton size="small" onClick={() => removeSuggestion(termKey)} sx={{ color: 'var(--action-cancel)' }}>
                         <Remove fontSize="small" />
                       </IconButton>
                     ) : (
-                      <Button variant="outlined" size="small" startIcon={<Add />} onClick={() => addSuggestion(termKey)}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Add />}
+                        onClick={() => addSuggestion(termKey)}
+                        sx={{
+                          borderRadius: '7px',
+                          borderColor: '#0a1f1a',
+                          color: '#0a1f1a',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: '#043322',
+                            backgroundColor: 'rgba(10,31,26,0.06)',
+                          },
+                        }}
+                      >
                         Suggest Edit
                       </Button>
                     )}
@@ -584,7 +790,7 @@ export default function ApproveGradPlanPage() {
                       fullWidth
                       multiline
                       minRows={3}
-                      placeholder="Enter your suggestion for improving this term..."
+                      placeholder="Share guidance for this term..."
                       value={suggestions[termKey] || ''}
                       onChange={(e) => updateSuggestion(termKey, e.target.value)}
                     />
@@ -594,49 +800,67 @@ export default function ApproveGradPlanPage() {
             })}
           </Box>
         </Box>
-        <Box sx={{ mt:3 }}>
-          <Alert severity={unsavedChanges ? 'warning':'info'}>
-            {unsavedChanges ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.' : 'You can move courses between terms or add per-term suggestions. Saving does not approve the plan.'}
+
+          <Alert severity={unsavedChanges ? 'warning' : 'info'} sx={{ borderRadius: '7px' }}>
+            {unsavedChanges
+              ? 'You have unsaved changes. Saving your edits or suggestions does not approve the plan.'
+              : 'Move courses or add per-term suggestions. Saving sends updates to the student without approving the plan.'}
           </Alert>
         </Box>
-      </Paper>
 
-      {/* Action Buttons */}
+        {/* Right column - Progress Panel (hidden on mobile) */}
+        <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
+          <AdvisorProgressPanel
+            studentName={studentName}
+            totalCredits={totalCreditsData}
+            categories={categoryProgress}
+            planData={editablePlan ?? []}
+            isCollapsed={isPanelCollapsed}
+            onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
+            currentSemesterCredits={currentSemesterCredits}
+            plannedCredits={plannedCredits}
+            expandableCategories={mockExpandableCategories}
+          />
+        </Box>
+      </Box>
+
       {hasSuggestions && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You have unsaved suggestions. Click Save to send them and remove this plan from the approval queue.
+        <Alert severity="info" sx={{ borderRadius: '7px' }}>
+          You have unsaved suggestions. Save them before approving this plan.
         </Alert>
       )}
-      
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button
           variant="contained"
-          color="success"
-          size="large"
           startIcon={<CheckCircle />}
           onClick={handleApprove}
           disabled={hasSuggestions || isProcessing || unsavedChanges}
-          sx={{ 
-            px: 4, 
+          sx={{
+            backgroundColor: 'var(--primary)',
+            color: '#0a1f1a',
+            fontWeight: 700,
+            textTransform: 'none',
+            letterSpacing: '0.08em',
+            px: 4,
             py: 1.5,
-            fontSize: '1.1rem',
-            fontWeight: 'bold',
-            boxShadow: (hasSuggestions || isProcessing) ? 'none' : '0 4px 12px rgba(76, 175, 80, 0.3)',
-            opacity: (hasSuggestions || isProcessing) ? 0.6 : 1,
+            borderRadius: '7px',
+            boxShadow: (hasSuggestions || isProcessing || unsavedChanges)
+              ? 'none'
+              : '0 22px 46px -28px rgba(18,249,135,0.55)',
             '&:hover': {
-              boxShadow: (hasSuggestions || isProcessing) ? 'none' : '0 6px 16px rgba(76, 175, 80, 0.4)'
+              backgroundColor: 'var(--hover-green)',
             },
             '&:disabled': {
-              backgroundColor: '#ccc',
-              color: '#666'
-            }
+              backgroundColor: 'var(--muted)',
+              color: 'var(--muted-foreground)',
+            },
           }}
         >
           {getApproveButtonText()}
         </Button>
       </Box>
 
-      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

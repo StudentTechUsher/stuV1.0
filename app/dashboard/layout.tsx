@@ -83,7 +83,8 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
       .eq("id", userId)
       .maybeSingle();
 
-    roleId = profile?.role_id ?? null;
+    // Convert role_id to string for consistent lookup in ROLE_MAP
+    roleId = profile?.role_id ? String(profile.role_id) : null;
     // Only set onboarded to false if explicitly false in the database
     onboarded = profile?.onboarded !== false;
   }
@@ -209,7 +210,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/dashboard/maintain-programs",  segment: "maintain programs",  label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
         { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
-        { href: "/pathfinder/careers/manage",    segment: "pathfinder",         label: "Manage Careers", icon: "careers" },
+        { href: "/dashboard/careers/manage",     segment: "careers",            label: "Manage Careers", icon: "careers" },
         { href: "/dashboard/profile",            segment: "profile",            label: "Profile",        icon: "profile" },
       ];
 
@@ -221,7 +222,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
         { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
-        { href: "/pathfinder/careers/manage",       segment: "pathfinder",            label: "Manage Careers",         icon: "careers" },
+        { href: "/dashboard/careers/manage",        segment: "careers",               label: "Manage Careers",         icon: "careers" },
         { href: "/dashboard/system",                segment: "system",                label: "System",                 icon: "system" },
         { href: "/dashboard/profile",               segment: "profile",               label: "Profile",                icon: "profile" },
       ];

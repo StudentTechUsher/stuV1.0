@@ -120,48 +120,68 @@ export default function SchedulerCalendar({
     }
   };
 
+  const totalCredits = events.filter(e => e.type === "class").reduce((acc, event) => {
+    // Only count credits once per unique course
+    const courseKey = `${event.course_code}-${event.section}`;
+    if (!acc.seenCourses.has(courseKey)) {
+      acc.seenCourses.add(courseKey);
+      acc.total += (event.credits || 0);
+    }
+    return acc;
+  }, { total: 0, seenCourses: new Set() }).total;
+
   return (
-    <Card elevation={0} sx={{ borderRadius: 3 }}>
-      <CardContent sx={{ p: 2, height: "100%" }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography variant="h5" className="font-header">
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 3,
+        border: "1px solid var(--border)",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Black Header Bar */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2.5,
+          backgroundColor: "#0A0A0A",
+          borderBottom: "1px solid #0A0A0A",
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
+          <Typography variant="h5" className="font-header" sx={{ color: "white", fontWeight: 700 }}>
             Weekly Schedule
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", color: "white" }}>
             {/* Total Credits Counter */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="body2" className="font-body-semi" color="text.secondary">
-                Total Credits:
-              </Typography>
-              <Chip
-                label={`${events.filter(e => e.type === "class").reduce((acc, event) => {
-                  // Only count credits once per unique course
-                  const courseKey = `${event.course_code}-${event.section}`;
-                  if (!acc.seenCourses.has(courseKey)) {
-                    acc.seenCourses.add(courseKey);
-                    acc.total += (event.credits || 0);
-                  }
-                  return acc;
-                }, { total: 0, seenCourses: new Set() }).total} credits`}
-                size="small"
-                sx={{
-                  bgcolor: "var(--primary-15)",
-                  color: "var(--muted-foreground)",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 600,
-                }}
-              />
-            </Box>
+            <button
+              className="flex items-center gap-1.5 hover:opacity-70 transition-opacity font-medium px-3 py-1.5 rounded-md"
+              style={{
+                color: "white",
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+              }}
+            >
+              <span className="font-bold text-base">{totalCredits}</span>
+              <span className="text-sm">credits</span>
+            </button>
             {isGenerating && (
               <Chip
                 label="Generating..."
-                color="primary"
-                variant="outlined"
-                className="font-body"
+                size="small"
+                sx={{
+                  bgcolor: "rgba(255, 255, 255, 0.15)",
+                  color: "white",
+                  fontWeight: 600,
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                }}
               />
             )}
           </Box>
         </Box>
+      </Box>
+
+      <CardContent sx={{ p: 3, height: "100%" }}>
 
         <Box
           sx={{

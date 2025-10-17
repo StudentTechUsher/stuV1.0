@@ -1,7 +1,5 @@
 "use client";
 
-import { Box, Card, CardContent, Typography } from "@mui/material";
-
 type RequirementProgress = {
   label: string;
   percentage: number;
@@ -16,201 +14,101 @@ const requirements: RequirementProgress[] = [
   { label: "Electives", percentage: 34, color: "#9C27B0" },
 ];
 
-function SummaryCard({
-  children,
-  bgColor = "white",
-  className = ""
-}: {
-  children: React.ReactNode;
-  bgColor?: string;
-  className?: string;
-}) {
-  return (
-    <Box
-      sx={{
-        backgroundColor: bgColor,
-        borderRadius: 2,
-        p: 2,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "80px",
-        flex: 1,
-      }}
-      className={className}
-    >
-      {children}
-    </Box>
-  );
-}
-
 function ProgressBar({
   label,
   percentage,
   color
 }: RequirementProgress) {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-      <Typography
-        variant="body1"
-        className="font-brand"
-        sx={{
-          fontWeight: 700,
-          minWidth: "140px",
-          mr: 3,
-        }}
-      >
-        {label}
-      </Typography>
+    // Modern progress bar with cleaner design and better spacing
+    <div className="space-y-2">
+      {/* Label and percentage row */}
+      <div className="flex items-center justify-between">
+        <span className="font-body-semi text-sm font-medium text-[var(--foreground)]">
+          {label}
+        </span>
+        <span className="font-body-semi text-sm font-bold" style={{ color }}>
+          {percentage}%
+        </span>
+      </div>
 
-      <Box
-        sx={{
-          position: "relative",
-          flex: 1,
-          height: "32px",
-          borderRadius: "16px",
-          backgroundColor: "white",
-          overflow: "hidden",
-          border: "1px solid rgba(0,0,0,0.1)",
-        }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            height: "100%",
+      {/* Progress bar track */}
+      <div className="relative h-2.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--muted)_60%,transparent)]">
+        {/* Filled portion with smooth gradient and animation */}
+        <div
+          className="h-full rounded-full transition-all duration-700 ease-out"
+          style={{
             width: `${percentage}%`,
-            backgroundColor: color,
-            borderRadius: "16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            background: `linear-gradient(90deg, ${color} 0%, color-mix(in srgb, ${color} 70%, white) 100%)`
           }}
-        >
-          <Typography
-            variant="body2"
-            className="font-body-semi"
-            sx={{
-              color: "white",
-              fontWeight: 600,
-              fontSize: "14px",
-            }}
-          >
-            {percentage}% complete
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+        />
+      </div>
+    </div>
   );
 }
 
 export default function AcademicProgressCard() {
   return (
-    <Card
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        backgroundColor: "var(--muted, #f4f4f5)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        border: "1px solid rgba(0,0,0,0.06)",
-      }}
-    >
-      <CardContent sx={{ p: 3 }}>
-        {/* Summary Section */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            mb: 3,
-            flexDirection: { xs: "column", md: "row" }
-          }}
-        >
-          {/* GPA Card */}
-          <SummaryCard bgColor="var(--primary)">
-            <Box sx={{ textAlign: "center" }}>
-              <Typography
-                variant="h4"
-                className="font-header-bold"
-                sx={{
-                  color: "black",
-                  fontWeight: 800,
-                }}
-              >
+    // Modern card with clean hierarchy and better spacing
+    <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+      {/* Bold black header matching semester-results-table */}
+      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+          Academic Progress
+        </h3>
+      </div>
+
+      <div className="p-6">
+        {/* Stats Grid - larger, more prominent cards */}
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* GPA Card - standout design with gradient */}
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-5 shadow-sm transition-transform duration-200 hover:-translate-y-1">
+            <div className="relative z-10 text-center">
+              <div className="font-header-bold text-4xl font-extrabold text-white">
                 3.98
-              </Typography>
-              <Typography
-                variant="body2"
-                className="font-body"
-                sx={{
-                  color: "black",
-                  fontSize: "12px",
-                  opacity: 0.8,
-                }}
-              >
+              </div>
+              <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-white/90">
                 GPA
-              </Typography>
-            </Box>
-          </SummaryCard>
+              </div>
+            </div>
+            {/* Subtle pattern overlay */}
+            <div className="absolute inset-0 bg-white/5" />
+          </div>
 
-          {/* Credits Card */}
-          <SummaryCard>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography
-                variant="h4"
-                className="font-header-bold"
-                sx={{
-                  color: "black",
-                  fontWeight: 800,
-                }}
-              >
+          {/* Credits Card - clean and minimal */}
+          <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+            <div className="text-center">
+              <div className="font-header-bold text-4xl font-extrabold text-[var(--foreground)]">
                 76
-              </Typography>
-              <Typography
-                variant="body2"
-                className="font-body"
-                sx={{
-                  color: "black",
-                  fontSize: "12px",
-                  opacity: 0.7,
-                }}
-              >
-                Credits Completed
-              </Typography>
-            </Box>
-          </SummaryCard>
+              </div>
+              <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                Credits Earned
+              </div>
+            </div>
+          </div>
 
-          {/* GPA Calculator Card */}
-          <SummaryCard>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography
-                variant="body1"
-                className="font-brand-bold"
-                sx={{
-                  color: "black",
-                  fontWeight: 800,
-                  fontSize: "16px",
-                  mb: 0.5,
-                }}
-              >
-                GPA Prediction Calculator
-              </Typography>
-              <Typography
-                variant="body2"
-                className="font-body"
-                sx={{
-                  color: "var(--muted-foreground, #71717a)",
-                  fontSize: "12px",
-                }}
-              >
-                Click Here to Start
-              </Typography>
-            </Box>
-          </SummaryCard>
-        </Box>
+          {/* GPA Calculator Card - interactive CTA */}
+          <button
+            type="button"
+            className="group overflow-hidden rounded-xl border-2 border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_25%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] p-5 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]"
+          >
+            <svg className="mx-auto mb-2 h-8 w-8 text-[var(--muted-foreground)] transition-colors group-hover:text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <div className="font-body-semi text-xs font-semibold text-[var(--foreground)]">
+              GPA Calculator
+            </div>
+            <div className="font-body mt-0.5 text-xs text-[var(--muted-foreground)]">
+              Predict your GPA
+            </div>
+          </button>
+        </div>
 
-        {/* Progress Bars Section */}
-        <Box>
+        {/* Progress Bars Section - requirement completion tracking */}
+        <div className="space-y-4">
+          <h4 className="font-body text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            Requirement Progress
+          </h4>
           {requirements.map((requirement) => (
             <ProgressBar
               key={requirement.label}
@@ -219,8 +117,8 @@ export default function AcademicProgressCard() {
               color={requirement.color}
             />
           ))}
-        </Box>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
