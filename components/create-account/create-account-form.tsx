@@ -252,44 +252,88 @@ export default function CreateAccountForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} className="space-y-6">
       {error && (
         <div
           role="alert"
-          style={{
-            background: "#fee",
-            border: "1px solid #fca5a5",
-            color: "#b91c1c",
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 12,
-          }}
+          className="rounded-xl border-2 border-red-200 bg-red-50 p-4 flex items-start gap-3"
         >
-          {error}
+          <svg className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="font-body text-sm text-red-800">{error}</p>
         </div>
       )}
 
-      {/* Names (required by profiles.fname/lname) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <TextField
-          id="fname"
-          label="First name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-        />
-        <TextField
-          id="lname"
-          label="Last name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-        />
+      {/* Names Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Personal Information
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <TextField
+            id="fname"
+            label="First name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+                '& fieldset': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              },
+            }}
+          />
+          <TextField
+            id="lname"
+            label="Last name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+                '& fieldset': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              },
+            }}
+          />
+        </div>
       </div>
 
-      <p className="font-body" style={{ color: "var(--text-secondary, #666)", marginBottom: 16 }}>
-        Tell us a bit about your academic goals and interests. You can change these later.
-      </p>
+      {/* Academic Information Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Academic Details
+          </h3>
+        </div>
+        {!isEditMode && (
+          <p className="font-body text-sm text-[var(--muted-foreground)] -mt-2">
+            Tell us about your academic goals and interests
+          </p>
+        )}
 
       <SingleSelect
         label="University"
@@ -358,44 +402,77 @@ export default function CreateAccountForm({
         placeholder="Search for preferences..."
       />
 
+      </div>
+
       {/* Graduation Timeline */}
-      <div style={{ marginTop: 16, marginBottom: 16 }}>
-        <h3 className="font-header-bold" style={{ fontSize: '1rem', marginBottom: 8 }}>
-          Graduation Timeline {!isEditMode && <span style={{ color: 'var(--action-cancel)' }}>*</span>}
-        </h3>
-        <p className="font-body" style={{ color: "var(--text-secondary, #666)", marginBottom: 12, fontSize: '0.9rem' }}>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Graduation Timeline {!isEditMode && <span className="text-red-500 ml-1">*</span>}
+          </h3>
+        </div>
+        <p className="font-body text-sm text-[var(--muted-foreground)] -mt-2">
           When do you plan to graduate?
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormControl fullWidth required={!isEditMode}>
-            <InputLabel id="grad-term-label">Term</InputLabel>
+            <InputLabel id="grad-term-label" className="font-body">Term</InputLabel>
             <Select
               labelId="grad-term-label"
               value={gradTerm}
               label="Term"
               onChange={(e) => setGradTerm(e.target.value as Term | "")}
+              className="font-body"
+              sx={{
+                borderRadius: '10px',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              }}
             >
               <MenuItem value="">
                 <em>Select term</em>
               </MenuItem>
-              <MenuItem value="Spring">Spring</MenuItem>
-              <MenuItem value="Summer">Summer</MenuItem>
-              <MenuItem value="Fall">Fall</MenuItem>
-              <MenuItem value="Winter">Winter</MenuItem>
+              <MenuItem value="Spring" className="font-body">Spring</MenuItem>
+              <MenuItem value="Summer" className="font-body">Summer</MenuItem>
+              <MenuItem value="Fall" className="font-body">Fall</MenuItem>
+              <MenuItem value="Winter" className="font-body">Winter</MenuItem>
             </Select>
             {!isEditMode && (
-              <FormHelperText>When you plan to graduate</FormHelperText>
+              <FormHelperText className="font-body">When you plan to graduate</FormHelperText>
             )}
           </FormControl>
 
           <FormControl fullWidth required={!isEditMode}>
-            <InputLabel id="grad-year-label">Year</InputLabel>
+            <InputLabel id="grad-year-label" className="font-body">Year</InputLabel>
             <Select
               labelId="grad-year-label"
               value={gradYear}
               label="Year"
               onChange={(e) => setGradYear(e.target.value as number | "")}
+              className="font-body"
+              sx={{
+                borderRadius: '10px',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              }}
             >
               <MenuItem value="">
                 <em>Select year</em>
@@ -403,79 +480,83 @@ export default function CreateAccountForm({
               {Array.from({ length: 10 }, (_, i) => {
                 const year = new Date().getFullYear() + i;
                 return (
-                  <MenuItem key={year} value={year}>
+                  <MenuItem key={year} value={year} className="font-body">
                     {year}
                   </MenuItem>
                 );
               })}
             </Select>
             {!isEditMode && (
-              <FormHelperText>You can edit this later</FormHelperText>
+              <FormHelperText className="font-body">You can edit this later</FormHelperText>
             )}
           </FormControl>
         </div>
       </div>
 
       {/* Career Goals */}
-      <div style={{ marginTop: 16, marginBottom: 16 }}>
-        <h3 className="font-header-bold" style={{ fontSize: '1rem', marginBottom: 8 }}>
-          Career Goals
-        </h3>
-        <p className="font-body" style={{ color: "var(--text-secondary, #666)", marginBottom: 12, fontSize: '0.9rem' }}>
-          What are your career aspirations? (Optional)
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Career Goals <span className="font-body-semi text-xs normal-case">(Optional)</span>
+          </h3>
+        </div>
+        <p className="font-body text-sm text-[var(--muted-foreground)] -mt-1">
+          What are your career aspirations?
         </p>
 
-        <textarea
-          value={careerGoalsText}
-          onChange={(e) => setCareerGoalsText(e.target.value)}
-          placeholder="E.g., I want to work in software engineering, focus on AI/ML, and eventually start my own company..."
-          maxLength={1000}
-          style={{
-            width: '100%',
-            minHeight: '100px',
-            padding: '12px',
-            borderRadius: '8px',
-            border: '1px solid var(--border, #ccc)',
-            fontFamily: 'inherit',
-            fontSize: '0.95rem',
-            resize: 'vertical',
-          }}
-        />
-        <p className="font-body" style={{ color: "var(--text-secondary, #666)", fontSize: '0.8rem', marginTop: 4 }}>
-          {careerGoalsText.length}/1000 characters
-        </p>
+        <div className="relative">
+          <textarea
+            value={careerGoalsText}
+            onChange={(e) => setCareerGoalsText(e.target.value)}
+            placeholder="E.g., I want to work in software engineering, focus on AI/ML, and eventually start my own company..."
+            maxLength={1000}
+            className="font-body w-full min-h-[120px] rounded-xl border border-[var(--border)] bg-white p-4 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-opacity-20 transition-all resize-vertical"
+          />
+          <p className="font-body text-xs text-[var(--muted-foreground)] mt-2">
+            {careerGoalsText.length}/1000 characters
+          </p>
+        </div>
       </div>
 
       {/* Transcript Upload - only show in create mode, not edit mode */}
       {!isEditMode && (
-        <div style={{ marginTop: 24 }}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+            <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+              Transcript Upload <span className="font-body-semi text-xs normal-case">(Optional)</span>
+            </h3>
+          </div>
           <TranscriptUploadSection />
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-        {(() => {
-          let buttonLabel = "Continue";
-          if (isEditMode) buttonLabel = "Update Profile";
-          if (saving) buttonLabel = "Saving…";
-          return (
-            <button
+      {/* Submit Button */}
+      <div className="flex gap-3 pt-4 border-t border-[var(--border)]">
+        <button
           type="submit"
           disabled={!canSubmit || saving}
           aria-disabled={!canSubmit || saving}
-          className="font-body-medium"
-          style={{
-            padding: "10px 14px",
-            borderRadius: 10,
-            border: "1px solid var(--border-light)",
-            background: canSubmit && !saving ? "black" : "var(--text-muted, #999)",
-            color: "white",
-          }}
+          className="font-body-semi flex-1 sm:flex-none sm:px-8 py-3 rounded-xl bg-[#0A0A0A] text-white transition-all duration-200 hover:bg-[var(--primary)] hover:text-[#0A0A0A] hover:shadow-lg hover:-translate-y-0.5 disabled:bg-[var(--muted)] disabled:text-[var(--muted-foreground)] disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
         >
-          {buttonLabel}
+          {saving ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              {isEditMode ? "Update Profile" : "Continue to Dashboard"}
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </span>
+          )}
         </button>
-          );
-        })()}
       </div>
     </form>
   );

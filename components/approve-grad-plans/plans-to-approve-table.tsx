@@ -1,27 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { 
-  Box, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper,
-  Typography,
-  IconButton
-} from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { useRouter } from 'next/navigation';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
+import { issueGradPlanAccessId } from '@/lib/services/server-actions';
+import { FileText, ArrowRight, Calendar, User } from 'lucide-react';
 
 export interface PlansToApproveTableProps {
   readonly plans: PendingGradPlan[];
-  readonly onRowClick?: (plan: PendingGradPlan) => void;
 }
 
-export default function PlansToApproveTable({ plans, onRowClick }: PlansToApproveTableProps) {
+export default function PlansToApproveTable({ plans }: PlansToApproveTableProps) {
+  const router = useRouter();
+  const [navigatingId, setNavigatingId] = React.useState<string | null>(null);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -32,85 +24,102 @@ export default function PlansToApproveTable({ plans, onRowClick }: PlansToApprov
     });
   };
 
-  const handleRowClick = (plan: PendingGradPlan) => {
-    if (onRowClick) {
-      onRowClick(plan);
+  const handleRowClick = async (plan: PendingGradPlan) => {
+    try {
+      setNavigatingId(String(plan.id));
+      const accessId = await issueGradPlanAccessId(plan.id);
+      router.push(`/dashboard/approve-grad-plans/${accessId}`);
+    } catch (error) {
+      console.error('Error navigating to grad plan:', error);
+      setNavigatingId(null);
     }
   };
 
+  // Empty state - matching design system
   if (plans.length === 0) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" color="text.secondary">
-          No graduation plans awaiting approval
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          When students submit plans for approval, they will appear here.
-        </Typography>
-      </Box>
+      <div className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-white p-12 text-center">
+        <div className="mx-auto max-w-md space-y-3">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--muted)]">
+            <FileText size={32} className="text-[var(--muted-foreground)]" />
+          </div>
+          <h3 className="font-header-bold text-lg text-[var(--foreground)]">
+            No Plans Awaiting Approval
+          </h3>
+          <p className="font-body text-sm text-[var(--muted-foreground)] leading-relaxed">
+            When students submit graduation plans for approval, they will appear here for you to review.
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <TableContainer component={Paper} sx={{ mt: 2 }}>
-      <Table>
-        <TableHead>
-          <TableRow sx={{
-            backgroundColor: 'var(--primary)',
-            opacity: 0.08,
-            '& .MuiTableCell-root': {
-              backgroundColor: 'transparent'
-            }
-          }}>
-            <TableCell sx={{ fontWeight: 600 }}>Student Name</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Submitted Date</TableCell>
-            <TableCell sx={{ fontWeight: 600, width: 150 }} align="center">
-              View Plan
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {plans.map((plan) => (
-            <TableRow
-              key={plan.id}
-              onClick={() => handleRowClick(plan)}
-              sx={{
-                cursor: 'pointer',
-                '&:hover': {
-                  backgroundColor: 'var(--hover-green)',
-                  '& .arrow-icon': {
-                    color: 'var(--dark)'
-                  }
-                },
-                transition: 'background-color 0.2s ease-in-out'
-              }}
-            >
-              <TableCell>
-                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+    <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white shadow-sm transition-shadow hover:shadow-md">
+      {/* Black Header - matching academic-summary style */}
+      <div className="border-b-2 border-[#0A0A0A] bg-[#0A0A0A] px-6 py-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-left">
+            <span className="font-body-semi text-xs uppercase tracking-wider text-white">
+              Student Name
+            </span>
+          </div>
+          <div className="text-left">
+            <span className="font-body-semi text-xs uppercase tracking-wider text-white">
+              Submitted
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="font-body-semi text-xs uppercase tracking-wider text-white">
+              Action
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Table Body */}
+      <div className="divide-y divide-[var(--border)]">
+        {plans.map((plan) => (
+          <div
+            key={plan.id}
+            onClick={() => handleRowClick(plan)}
+            className="group cursor-pointer px-6 py-4 transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--primary)_3%,white)]"
+          >
+            <div className="grid grid-cols-3 items-center gap-4">
+              {/* Student Name with Avatar */}
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-[var(--border)] bg-[color-mix(in_srgb,var(--primary)_15%,white)] shadow-sm">
+                  <User size={18} className="text-[var(--foreground)]" />
+                </div>
+                <span className="font-body-semi text-sm text-[var(--foreground)]">
                   {plan.student_first_name} {plan.student_last_name}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="body2" color="text.secondary">
-                  {formatDate(plan.created_at)}
-                </Typography>
-              </TableCell>
-              <TableCell align="center">
-                <IconButton 
-                  size="small" 
-                  className="arrow-icon"
-                  sx={{ 
-                    color: 'text.secondary',
-                    transition: 'color 0.2s ease-in-out'
-                  }}
-                >
-                  <ArrowForwardIcon />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+                </span>
+              </div>
+
+              {/* Submitted Date */}
+              <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                <Calendar size={16} className="flex-shrink-0 text-[var(--muted-foreground)]" />
+                <span className="font-body">{formatDate(plan.created_at)}</span>
+              </div>
+
+              {/* Action Button */}
+              <div className="text-right">
+                {navigatingId === String(plan.id) ? (
+                  <div className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--primary)]"></div>
+                    <span className="font-body-semi">Opening...</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-body-semi text-[#0A0A0A] shadow-sm transition-all duration-150 group-hover:shadow-md">
+                    <span>Review Plan</span>
+                    <ArrowRight size={16} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

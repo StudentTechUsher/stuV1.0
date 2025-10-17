@@ -1,13 +1,10 @@
-'use client';
-
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { Box, Typography, Alert } from '@mui/material';
-import { StuLoader } from '@/components/ui/StuLoader';
+import { redirect } from 'next/navigation';
+import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
+import { fetchPendingGradPlans } from '@/lib/services/server-actions';
 import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approve-table';
-import type { PendingGradPlan } from '@/types/pending-grad-plan';
-import { fetchPendingGradPlans, issueGradPlanAccessId } from '@/lib/services/server-actions';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { CheckCircle2 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 type Role = "student" | "advisor" | "admin";
 
@@ -17,144 +14,63 @@ const ROLE_MAP: Record<string, Role> = {
   3: "student",
 };
 
-export default function SelectGradPlansPage() {
-  const router = useRouter();
-  const [plans, setPlans] = React.useState<PendingGradPlan[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isCheckingRole, setIsCheckingRole] = React.useState(true);
+export default async function ApproveGradPlansPage() {
+  const supabase = await createSupabaseServerComponentClient();
 
-  const supabase = createSupabaseBrowserClient();
+  // Get the current user session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-  // Check if user is an advisor before allowing access
-  React.useEffect(() => {
-    async function checkUserRole() {
-      try {
-        // Get the current user session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session?.user) {
-          console.error('Error getting session:', sessionError);
-          router.push('/home');
-          return;
-        }
+  if (sessionError || !session?.user) {
+    redirect('/home');
+  }
 
-        // Fetch the user's profile to get their role_id
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role_id")
-          .eq("id", session.user.id)
-          .maybeSingle();
+  // Fetch the user's profile to get their role_id
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role_id")
+    .eq("id", session.user.id)
+    .maybeSingle();
 
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-          router.push('/home');
-          return;
-        }
+  if (profileError) {
+    console.error('Error fetching user profile:', profileError);
+    redirect('/home');
+  }
 
-        // Check if user is an advisor (role_id = 2)
-        const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
-        
-        if (role !== "advisor") {
-          console.log('Access denied: User is not an advisor');
-          router.push('/home');
-          return;
-        }
+  // Check if user is an advisor (role_id = 2)
+  const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
 
-        // User is an advisor, allow access
-        setIsCheckingRole(false);
-      } catch (error) {
-        console.error('Error checking user role:', error);
-        router.push('/home');
-      }
-    }
+  if (role !== "advisor") {
+    console.log('Access denied: User is not an advisor');
+    redirect('/home');
+  }
 
-    checkUserRole();
-  }, [router, supabase]);
-
-  React.useEffect(() => {
-    // Don't fetch data until role check is complete
-    if (isCheckingRole) return;
-
-    let active = true;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const fetchedPlans = await fetchPendingGradPlans();
-        
-        if (!active) return;
-        setPlans(fetchedPlans);
-      } catch (e: unknown) {
-        if (!active) return;
-        if (e instanceof Error) {
-          setError(e.message);
-        } else {
-          setError('Failed to load pending graduation plans');
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [isCheckingRole]);
-
-  const handleRowClick = async (plan: PendingGradPlan) => {
-    try {
-      const accessId = await issueGradPlanAccessId(plan.id);
-      router.push(`/dashboard/approve-grad-plans/${accessId}`);
-    } catch (error) {
-      console.error('Error navigating to grad plan:', error);
-      setError('Failed to open graduation plan');
-    }
-  };
-
-  const renderContent = () => {
-    if (isCheckingRole || loading) {
-      return (
-        <div className="mt-8 flex items-center justify-center rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-12 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
-          <StuLoader
-            variant="card"
-            text={isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
-          />
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      );
-    }
-
-    return <PlansToApproveTable plans={plans} onRowClick={handleRowClick} />;
-  };
+  // Fetch pending graduation plans
+  const plans = await fetchPendingGradPlans();
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{
-        fontFamily: '"Red Hat Display", sans-serif',
-        fontWeight: 800,
-        color: 'black',
-        fontSize: '2rem',
-        margin: 0,
-        marginBottom: '24px'
-      }}>
-        Approve Graduation Plans
-      </Typography>
-      
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Review and approve graduation plans submitted by students.
-      </Typography>
+    <main className="p-4 sm:p-6 space-y-6">
+      {/* Modern Page Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-header-bold text-3xl sm:text-4xl font-bold text-[#0A0A0A]">
+            Approve Graduation Plans
+          </h1>
+          <p className="font-body text-sm text-[var(--muted-foreground)] mt-2">
+            Review and approve graduation plans submitted by students
+          </p>
+        </div>
 
-      {renderContent()}
-    </Box>
+        {/* Stats Badge */}
+        <div className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 shadow-sm">
+          <CheckCircle2 size={20} className="text-[#0A0A0A]" />
+          <span className="font-body-semi text-sm text-[#0A0A0A]">
+            <span className="font-bold">{plans.length}</span> {plans.length === 1 ? 'Plan' : 'Plans'} Pending
+          </span>
+        </div>
+      </div>
+
+      {/* Plans Table */}
+      <PlansToApproveTable plans={plans} />
+    </main>
   );
 }
