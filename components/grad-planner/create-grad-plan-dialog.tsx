@@ -640,7 +640,7 @@ const handleRemoveElective = (id: string) => {
         if (sanitizedPlanName) {
           const gradPlanId = decodeAccessIdClient(aiResult.accessId);
           if (!gradPlanId) {
-            console.warn('⚠️ Unable to decode grad plan ID from accessId while saving plan name.');
+            console.warn(`⚠️ Unable to decode grad plan ID from accessId "${aiResult.accessId}" while saving plan name.`);
           } else {
             const renameResult = await updateGradPlanNameAction(gradPlanId, sanitizedPlanName);
             if (!renameResult.success) {
