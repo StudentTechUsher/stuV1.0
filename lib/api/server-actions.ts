@@ -13,17 +13,9 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
   const start = Date.now();
   const t = (label: string, since?: number) => {
     const now = Date.now();
-    const ms = since ? now - since : now - start;
-    console.log(`⏱️ ${label}: ${ms}ms`);
     return now;
   };
   const trunc = (s: string, n = 1200) => (s.length > n ? `${s.slice(0, n)}…[+${s.length - n}]` : s);
-
-  console.log("🔍 OrganizeCoursesIntoSemesters_ServerAction called with (preview):",
-    (() => {
-      try { return trunc(JSON.stringify(coursesData ?? null)); } catch { return "[unserializable]"; }
-    })(),
-  );
 
   try {
     // Get the current user from session
@@ -34,27 +26,20 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       console.error("❌ Auth error: user not authenticated");
       throw new Error("User not authenticated");
     }
-    console.log("👤 user.id:", user.id);
 
     // Validate OpenAI API key
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       console.error("❌ Config error: OPENAI_API_KEY missing");
       throw new Error("OpenAI API key not configured");
-    } else {
-      console.log("🔐 OPENAI_API_KEY present (preview):", `${apiKey.slice(0, 2)}***${apiKey.slice(-2)}`);
     }
 
     // Load example structure from external JSON file
     let exampleStructure;
     try {
       const examplePath = path.join(process.cwd(), "config", "prompts", "semester-plan-example.json");
-      console.log("📄 Loading example structure from:", examplePath);
-      const tRead = Date.now();
       const exampleContent = fs.readFileSync(examplePath, "utf8");
-      console.log("📄 Example file read OK in", Date.now() - tRead, "ms | size:", exampleContent.length);
       exampleStructure = JSON.parse(exampleContent);
-      console.log("✅ Example JSON parsed (preview):", trunc(JSON.stringify(exampleStructure)));
     } catch (error) {
       console.error("❌ Failed to load example structure:", error);
       throw new Error("Failed to load example structure");
@@ -82,7 +67,6 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     Input data:
     ${JSON.stringify(coursesData, null, 2)}
     `;
-    console.log("🧾 Prompt length:", prompt.length);
 
     const payload = {
       model: "gpt-5-mini",
@@ -90,7 +74,6 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       text: { format: { type: "json_object" } }, // 👈 object, not "json_object" string
       max_output_tokens: 10000,
     };
-    console.log("📦 OpenAI payload (preview):", { model: payload.model, max_output_tokens: payload.max_output_tokens });
 
     // Call OpenAI
     let resp: Response;

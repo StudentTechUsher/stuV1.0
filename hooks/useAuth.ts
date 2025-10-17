@@ -65,7 +65,6 @@ export function useAuth(): AuthState & AuthActions {
     
     // If 401, try to refresh and retry once
     if (response.status === 401 && token) {
-      console.log('401 received, attempting token refresh...')
       const { data: refreshData, error: refreshError } = await refreshSession()
       
       if (!refreshError && refreshData.session) {

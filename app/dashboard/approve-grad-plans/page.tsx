@@ -19,6 +19,13 @@ export default async function ApproveGradPlansPage() {
 
   // Get the current user session
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Check if user is an advisor (role_id = 2)
+        const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
+        
+        if (role !== "advisor") {
+          router.push('/home');
+          return;
+        }
 
   if (sessionError || !session?.user) {
     redirect('/home');

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logError, logInfo } from '@/lib/logger';
 
 // Custom error types for better error handling
 export class UserCourseFetchError extends Error {
@@ -8,19 +9,27 @@ export class UserCourseFetchError extends Error {
   }
 }
 
-export interface UserCourse {
-  id: string;
-  user_id: string;
+export class CourseUpsertError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'CourseUpsertError';
+  }
+}
+
+export interface ParsedCourse {
   term: string;
   subject: string;
   number: string;
   title: string;
   credits: number;
   grade: string | null;
-  confidence: number | null;
-  source_document: string | null;
+}
+
+export interface UserCourse {
+  id: string;
+  user_id: string;
   inserted_at: string;
-  updated_at: string;
+  courses: ParsedCourse[];
 }
 
 export interface FormattedCourse {
@@ -35,95 +44,135 @@ export interface FormattedCourse {
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
- * Fetches all courses for a user
+ * Fetches the user's course record (containing all courses as JSON)
  * @param userId - The user ID
- * @returns Array of user courses
+ * @returns UserCourse record or null if not found
  */
-export async function fetchUserCourses(userId: string): Promise<UserCourse[]> {
+export async function fetchUserCourses(userId: string): Promise<UserCourse | null> {
   const { data, error } = await supabase
     .from('user_courses')
     .select('*')
     .eq('user_id', userId)
-    .order('term', { ascending: false })
-    .order('subject', { ascending: true });
+    .maybeSingle();
 
   if (error) {
     throw new UserCourseFetchError('Failed to fetch user courses', error);
   }
 
-  return data || [];
+  return data;
 }
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
- * Fetches courses for a user that were updated on a specific date
+ * Fetches all parsed courses for a user as a flat array
  * @param userId - The user ID
- * @param date - The date to filter by (ISO string or Date object)
- * @returns Array of user courses updated on that date
+ * @returns Array of parsed courses or empty array if not found
  */
-export async function fetchUserCoursesByDate(
+export async function fetchUserCoursesArray(userId: string): Promise<ParsedCourse[]> {
+  const record = await fetchUserCourses(userId);
+  return record?.courses ?? [];
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ * Stores or replaces all courses for a user
+ * Deletes any existing course record and inserts a new one with the provided courses
+ * @param userId - The user ID
+ * @param courses - Array of parsed courses to store
+ * @returns Object with success status and count of courses stored
+ */
+export async function upsertUserCourses(
   userId: string,
-  date: string | Date
-): Promise<UserCourse[]> {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const startOfDay = new Date(dateObj);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(dateObj);
-  endOfDay.setHours(23, 59, 59, 999);
+  courses: ParsedCourse[]
+): Promise<{ success: boolean; courseCount: number }> {
+  try {
+    // Validate input
+    if (!userId) {
+      throw new CourseUpsertError('User ID is required');
+    }
 
-  const { data, error } = await supabase
-    .from('user_courses')
-    .select('*')
-    .eq('user_id', userId)
-    .gte('updated_at', startOfDay.toISOString())
-    .lte('updated_at', endOfDay.toISOString())
-    .order('term', { ascending: false })
-    .order('subject', { ascending: true });
+    if (!Array.isArray(courses)) {
+      throw new CourseUpsertError('Courses must be an array');
+    }
 
-  if (error) {
-    throw new UserCourseFetchError('Failed to fetch user courses by date', error);
+    // Validate each course has required fields
+    for (const course of courses) {
+      if (!course.term || !course.subject || !course.number || !course.title) {
+        throw new CourseUpsertError('All courses must have term, subject, number, and title');
+      }
+
+      if (typeof course.credits !== 'number' || course.credits < 0) {
+        throw new CourseUpsertError('Course credits must be a non-negative number');
+      }
+    }
+
+    // Delete existing record if it exists
+    const { error: deleteError } = await supabase
+      .from('user_courses')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      logError('Failed to delete existing courses', deleteError, {
+        userId,
+        action: 'delete_user_courses',
+      });
+      throw new CourseUpsertError('Failed to delete existing courses', deleteError);
+    }
+
+    logInfo('Deleted existing courses for user', {
+      userId,
+      action: 'delete_user_courses',
+    });
+
+    // Insert new record with courses as JSONB
+    const { error: insertError } = await supabase
+      .from('user_courses')
+      .insert({
+        user_id: userId,
+        courses: courses,
+      });
+
+    if (insertError) {
+      logError('Failed to insert courses', insertError, {
+        userId,
+        action: 'insert_user_courses',
+      });
+      throw new CourseUpsertError('Failed to insert courses', insertError);
+    }
+
+    logInfo('Successfully inserted courses for user', {
+      userId,
+      action: 'insert_user_courses',
+      count: courses.length,
+    });
+
+    return {
+      success: true,
+      courseCount: courses.length,
+    };
+  } catch (error) {
+    if (error instanceof CourseUpsertError) {
+      throw error;
+    }
+
+    logError('Unexpected error upserting courses', error, {
+      userId,
+      action: 'upsert_user_courses',
+    });
+
+    throw new CourseUpsertError('Unexpected error upserting courses', error);
   }
-
-  return data || [];
-}
-
-/**
- * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
- * Fetches courses for a user from the most recent upload batch
- * This finds the most recent updated_at timestamp and returns all courses with that timestamp
- * @param userId - The user ID
- * @returns Array of user courses from the most recent batch
- */
-export async function fetchMostRecentUserCourses(userId: string): Promise<UserCourse[]> {
-  // First, get the most recent updated_at timestamp
-  const { data: latestCourse, error: latestError } = await supabase
-    .from('user_courses')
-    .select('updated_at')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (latestError) {
-    throw new UserCourseFetchError('Failed to fetch latest course timestamp', latestError);
-  }
-
-  if (!latestCourse) {
-    return [];
-  }
-
-  // Now fetch all courses with that same updated_at timestamp (or within the same day)
-  return fetchUserCoursesByDate(userId, latestCourse.updated_at);
 }
 
 /**
  * Helper function to format user courses for display in components
- * @param courses - Array of UserCourse objects
+ * @param courses - Array of ParsedCourse objects
  * @returns Array of formatted courses ready for UI display
  */
-export function formatCoursesForDisplay(courses: UserCourse[]): FormattedCourse[] {
-  return courses.map((course) => ({
-    id: course.id,
+export function formatCoursesForDisplay(courses: ParsedCourse[]): FormattedCourse[] {
+  return courses.map((course, index) => ({
+    id: `${course.subject}-${course.number}-${course.term}-${index}`, // Generate ID from course data
     code: `${course.subject} ${course.number}`,
     title: course.title,
     credits: course.credits,
@@ -136,10 +185,10 @@ export function formatCoursesForDisplay(courses: UserCourse[]): FormattedCourse[
 /**
  * Helper function to infer course tags based on course properties
  * This is a simple heuristic - can be enhanced with more sophisticated logic
- * @param course - A UserCourse object
+ * @param course - A ParsedCourse object
  * @returns Array of tag strings
  */
-function inferCourseTags(course: UserCourse): string[] {
+function inferCourseTags(course: ParsedCourse): string[] {
   const tags: string[] = [];
 
   // Add tag based on subject prefix

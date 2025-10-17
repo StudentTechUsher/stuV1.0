@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Disable webpack cache to prevent corruption issues
-  webpack: (config) => {
-    config.cache = false;
-    return config;
-  },
+  // Using Turbopack (via --turbopack flag in package.json scripts)
+  // Turbopack has its own optimized caching, no webpack config needed
 };
 
 export default nextConfig;

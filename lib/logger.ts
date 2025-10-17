@@ -2,8 +2,6 @@
 // FERPA-compliant logging utility
 // Ensures no PII (Personally Identifiable Information) is logged
 
-import crypto from 'crypto';
-
 type LogLevel = 'info' | 'warn' | 'error';
 
 interface LogContext {
@@ -23,9 +21,21 @@ interface LogContext {
 
 /**
  * Hash user ID for logging - allows correlation without exposing actual ID
+ * Uses a lightweight FNV-1a hash implementation that works in both Node and browsers.
  */
 function hashUserId(userId: string): string {
-  return crypto.createHash('sha256').update(userId).digest('hex').slice(0, 16);
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(userId);
+
+  let hash = 0xcbf29ce484222325n; // 64-bit offset basis
+  const prime = 0x100000001b3n; // 64-bit FNV prime
+
+  for (const byte of bytes) {
+    hash ^= BigInt(byte);
+    hash = (hash * prime) & 0xffffffffffffffffn; // Ensure 64-bit overflow
+  }
+
+  return hash.toString(16).padStart(16, '0').slice(0, 16);
 }
 
 /**
