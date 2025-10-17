@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent, Autocomplete } from '@mui/material';
+import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent, Autocomplete, Chip, CircularProgress } from '@mui/material';
 import { Add, Delete, Edit, Save, FileCopy, Refresh, Upload } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProgressCircle } from '@/components/ui/progress-circle';
-import ParsedCoursesCards from '@/components/transcript/ParsedCoursesCards';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
+import { fetchUserCoursesArray, formatCoursesForDisplay, type FormattedCourse } from '@/lib/services/userCoursesService';
 
 type CourseEntry = {
 	id: string;
@@ -41,10 +41,12 @@ export default function AcademicHistoryPage() {
 	const [dirty, setDirty] = useState(false);
 	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
 	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-	const [parsedCoursesCount, setParsedCoursesCount] = useState(0);
-	const [refreshTrigger] = useState(0);
 	const [parseReport] = useState<{coursesFound: number; lowConfidence: number} | null>(null);
+	const [parsedCourses, setParsedCourses] = useState<FormattedCourse[]>([]);
+	const [parsedCoursesLoading, setParsedCoursesLoading] = useState(false);
+	const [parsedCoursesError, setParsedCoursesError] = useState<string | null>(null);
 	const [availableCourses, setAvailableCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
+	const parsedCoursesCount = parsedCourses.length;
 
 	// Optimistic immediate sample (only if everything truly empty at mount)
 	useEffect(() => {
@@ -165,6 +167,42 @@ export default function AcademicHistoryPage() {
 		}
 	}, [userId]);
 
+	const loadParsedCourses = useCallback(async (signal?: AbortSignal) => {
+		if (!userId) {
+			setParsedCourses([]);
+			setParsedCoursesError(null);
+			setParsedCoursesLoading(false);
+			return;
+		}
+
+		setParsedCoursesLoading(true);
+		setParsedCoursesError(null);
+
+		try {
+			const courses = await fetchUserCoursesArray(userId);
+			if (signal?.aborted) return;
+			const formatted = formatCoursesForDisplay(courses);
+			setParsedCourses(formatted);
+		} catch (error) {
+			console.error('Failed to fetch user courses', error);
+			if (signal?.aborted) return;
+			setParsedCourses([]);
+			setParsedCoursesError('Unable to load your parsed courses right now.');
+		} finally {
+			if (!signal?.aborted) {
+				setParsedCoursesLoading(false);
+			}
+		}
+	}, [userId]);
+
+	useEffect(() => {
+		const controller = new AbortController();
+		void loadParsedCourses(controller.signal);
+		return () => {
+			controller.abort();
+		};
+	}, [loadParsedCourses]);
+
 	// Persist (debounced) to localStorage
 	useEffect(() => {
 		if (!loadedKey) return;
@@ -193,6 +231,17 @@ export default function AcademicHistoryPage() {
 
 	const totalCredits = (col: keyof ColumnState) => data[col].reduce((sum, c) => sum + (c.credits || 0), 0);
 	const grandTotal = totalCredits('general') + totalCredits('program') + totalCredits('minor') + totalCredits('religion') + totalCredits('electives');
+
+	const coursesByTerm = useMemo(() => {
+		if (!parsedCourses.length) return [];
+		const grouped = parsedCourses.reduce((acc, course) => {
+			const term = course.term || 'Unspecified Term';
+			if (!acc.has(term)) acc.set(term, []);
+			acc.get(term)!.push(course);
+			return acc;
+		}, new Map<string, FormattedCourse[]>());
+		return Array.from(grouped.entries());
+	}, [parsedCourses]);
 
 	const exportJson = async () => {
 		try {
@@ -248,8 +297,7 @@ export default function AcademicHistoryPage() {
 			}
 
 			alert(`Successfully saved ${allCourses.filter(c => c.code).length} courses to your profile!`);
-			// Trigger reload of parsed courses
-			setParsedCoursesCount(prev => prev + 1);
+			await loadParsedCourses();
 		} catch (error) {
 			console.error('Error saving courses:', error);
 			alert('Failed to save courses to database');
@@ -408,7 +456,11 @@ export default function AcademicHistoryPage() {
 					<Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
 						Parsed Transcript Courses
 					</Typography>
-					{parsedCoursesCount > 0 ? (
+					{parsedCoursesLoading ? (
+						<Typography variant="body2" color="text.secondary">
+							Loading parsed courses...
+						</Typography>
+					) : parsedCoursesCount > 0 ? (
 						<>
 							<Typography variant="body2" color="text.secondary">
 								{parsedCoursesCount} course{parsedCoursesCount !== 1 ? 's' : ''} from uploaded transcripts
@@ -425,11 +477,72 @@ export default function AcademicHistoryPage() {
 						</Typography>
 					)}
 				</Box>
-				<ParsedCoursesCards
-					userId={userId}
-					onCoursesLoaded={setParsedCoursesCount}
-					refreshTrigger={refreshTrigger}
-				/>
+				{parsedCoursesLoading ? (
+					<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+						<CircularProgress size={24} />
+					</Box>
+				) : parsedCoursesError ? (
+					<Typography variant="body2" color="error">
+						{parsedCoursesError}
+					</Typography>
+				) : !parsedCourses.length ? (
+					<Typography variant="body2" color="text.secondary">
+						No parsed courses available yet.
+					</Typography>
+				) : (
+					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+						{coursesByTerm.map(([term, courses]) => (
+							<Box key={term} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+								<Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+									{term}
+								</Typography>
+								<Box
+									sx={{
+										display: 'grid',
+										gridTemplateColumns: {
+											xs: '1fr',
+											md: 'repeat(2, 1fr)',
+											lg: 'repeat(3, 1fr)',
+										},
+										gap: 2,
+									}}
+								>
+									{courses.map(course => (
+										<Paper key={course.id} elevation={1} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+											<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+												<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+													{course.code}
+												</Typography>
+												<Chip label={course.term} size="small" variant="outlined" />
+											</Box>
+											<Typography variant="body2" color="text.secondary">
+												{course.title}
+											</Typography>
+											<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+												<Chip label={`${course.credits} credit${course.credits === 1 ? '' : 's'}`} size="small" color="primary" variant="outlined" />
+												{course.grade && (
+													<Chip
+														label={course.grade}
+														size="small"
+														color={course.grade.toLowerCase().includes('in progress') ? 'default' : 'success'}
+														variant="outlined"
+													/>
+												)}
+											</Box>
+											{course.tags?.length ? (
+												<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+													{course.tags.map(tag => (
+														<Chip key={`${course.id}-${tag}`} label={tag} size="small" variant="outlined" />
+													))}
+												</Box>
+											) : null}
+										</Paper>
+									))}
+								</Box>
+							</Box>
+						))}
+					</Box>
+				)}
 			</Box>
 
 			{/* Upload Transcript Dialog */}
