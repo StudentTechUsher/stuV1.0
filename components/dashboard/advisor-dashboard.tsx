@@ -120,18 +120,23 @@ export function AdvisorDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header - No dropdown for advisors */}
-      <div className="flex items-center justify-between">
-        <h1 style={{
-          fontFamily: '"Red Hat Display", sans-serif',
-          fontWeight: 800,
-          color: 'black',
-          fontSize: '2rem',
-          margin: 0,
-          marginBottom: '24px'
-        }}>Advisor Dashboard</h1>
-        <div className="text-sm text-muted-foreground">
-          Business School
+      {/* Modern Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-header text-3xl font-bold text-[var(--foreground)]">
+            Advisor Dashboard
+          </h1>
+          <p className="font-body mt-1.5 text-sm text-[var(--muted-foreground)]">
+            Track student progress and engagement
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 shadow-sm">
+          <svg className="h-4 w-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+          <span className="font-body-semi text-sm font-medium text-[var(--foreground)]">
+            Business School
+          </span>
         </div>
       </div>
 
