@@ -24,14 +24,16 @@ import {
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
     updateGradPlanName as _updateGradPlanName,
 } from './gradPlanService';
-import { ChatbotSendMessage_ServerAction as _chatbotSendMessage } from './openaiService';
+import {
+    ChatbotSendMessage_ServerAction as _chatbotSendMessage,
+    parseTranscriptCourses_ServerAction as _parseTranscriptCourses,
+} from './openaiService';
 import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
     deleteProgram as _deleteProgram,
 } from './programService';
 import {
-    fetchUserCourses as _fetchUserCourses,
-    fetchMostRecentUserCourses as _fetchMostRecentUserCourses,
+    fetchUserCoursesArray as _fetchUserCoursesArray,
     formatCoursesForDisplay,
 } from './userCoursesService';
 
@@ -313,7 +315,7 @@ export async function chatbotSendMessage(message: string, sessionId?: string) {
 // User courses related
 export async function fetchUserCoursesAction(userId: string) {
     try {
-        const courses = await _fetchUserCourses(userId);
+        const courses = await _fetchUserCoursesArray(userId);
         return { success: true, courses: formatCoursesForDisplay(courses) };
     } catch (error) {
         console.error('Error fetching user courses:', error);
@@ -321,12 +323,11 @@ export async function fetchUserCoursesAction(userId: string) {
     }
 }
 
-export async function fetchMostRecentUserCoursesAction(userId: string) {
-    try {
-        const courses = await _fetchMostRecentUserCourses(userId);
-        return { success: true, courses: formatCoursesForDisplay(courses) };
-    } catch (error) {
-        console.error('Error fetching recent user courses:', error);
-        return { success: false, error: 'Failed to fetch recent user courses' };
-    }
+// Transcript parsing with AI
+export async function parseTranscriptCoursesAction(args: {
+    transcriptText: string;
+    userId?: string | null;
+    sessionId?: string;
+}) {
+    return await _parseTranscriptCourses(args);
 }

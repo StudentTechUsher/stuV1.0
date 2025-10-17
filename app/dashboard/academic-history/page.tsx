@@ -42,8 +42,8 @@ export default function AcademicHistoryPage() {
 	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
 	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 	const [parsedCoursesCount, setParsedCoursesCount] = useState(0);
-	const [refreshTrigger, setRefreshTrigger] = useState(0);
-	const [parseReport, setParseReport] = useState<{coursesFound: number; lowConfidence: number} | null>(null);
+	const [refreshTrigger] = useState(0);
+	const [parseReport] = useState<{coursesFound: number; lowConfidence: number} | null>(null);
 	const [availableCourses, setAvailableCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
 
 	// Optimistic immediate sample (only if everything truly empty at mount)
@@ -241,9 +241,7 @@ export default function AcademicHistoryPage() {
 					title: course.title || null,
 					credits: course.credits || null,
 					term: course.term || null,
-					grade: null,
-					confidence: 1.0,
-					source_document: null
+					grade: null
 				}, {
 					onConflict: 'user_id,subject,number,term'
 				});
@@ -438,25 +436,15 @@ export default function AcademicHistoryPage() {
 			<Dialog
 				open={uploadDialogOpen}
 				onClose={() => setUploadDialogOpen(false)}
-				maxWidth="sm"
+				maxWidth="md"
 				fullWidth
 			>
 				<DialogContent sx={{ p: 3 }}>
 					<TranscriptUpload
-						onUploadSuccess={(report) => {
-							// Update parse report stats
-							if (report) {
-								setParseReport({
-									coursesFound: report.courses_found || report.courses_upserted || 0,
-									lowConfidence: report.confidence_stats?.low_confidence_count || 0,
-								});
-							}
-							// Trigger reload of parsed courses
-							setRefreshTrigger(prev => prev + 1);
-							// Close dialog after a delay to show success message
-							setTimeout(() => {
-								setUploadDialogOpen(false);
-							}, 3000);
+						onTextExtracted={(text) => {
+							console.log('Extracted text:', text);
+							// For now, just log the extracted text
+							// In the future, we can parse it and add courses
 						}}
 					/>
 				</DialogContent>

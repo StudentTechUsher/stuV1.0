@@ -30,8 +30,6 @@ export async function saveGradTimeline(payload: GradTimelinePayload): Promise<{ 
     const supabase = await serverClient();
     const { userId, est_grad_sem, est_grad_date, career_goals } = payload;
 
-    console.log("Saving to profiles:", { userId, est_grad_sem, est_grad_date, career_goals });
-
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -46,7 +44,6 @@ export async function saveGradTimeline(payload: GradTimelinePayload): Promise<{ 
       return { ok: false, error: error.message };
     }
 
-    console.log("Successfully saved grad timeline");
     return { ok: true };
   } catch (error: unknown) {
     console.error("Unexpected error:", error);

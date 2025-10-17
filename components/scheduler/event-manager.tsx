@@ -115,7 +115,6 @@ export default function EventManager({
   }, [event, selectedSlot]);
 
   const handleSave = () => {
-    console.log('Saving events for days:', formData.daysOfWeek);
 
     // Create an event for each selected day
     if (formData.daysOfWeek.length === 0) {
@@ -148,7 +147,6 @@ export default function EventManager({
         category: formData.category,
       }));
 
-      console.log('Creating events for multiple days:', events);
       // Pass all events at once as an array
       onSave(events);
     }

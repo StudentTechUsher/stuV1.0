@@ -16,7 +16,6 @@ async function verifySessionReadable(
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
-      console.log(`Session verified readable on attempt ${attempt + 1}`);
       return true;
     }
 
@@ -109,19 +108,7 @@ export async function GET(req: Request) {
   // Use request origin instead of NODE_ENV for reliable environment detection
   const origin = `${url.protocol}//${url.host}`;
 
-  // Enhanced debug logging
-  console.log('=== Auth Callback Debug ===');
-  console.log('Timestamp:', new Date().toISOString());
-  console.log('Origin:', origin);
-  console.log('Host:', url.host);
-  console.log('Protocol:', url.protocol);
-  console.log('Next param:', next);
-  console.log('Original URL:', req.url);
-  console.log('Code present:', !!code);
-
   if (!code) {
-    console.log('ERROR: No code provided');
-    console.log('========================');
     return NextResponse.redirect(new URL("/login?error=missing_code", origin));
   }
 
@@ -144,24 +131,15 @@ export async function GET(req: Request) {
   );
 
   // Exchange the PKCE code for a session
-  const exchangeStart = Date.now();
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-  const exchangeTime = Date.now() - exchangeStart;
-
-  console.log(`Code exchange took ${exchangeTime}ms`);
 
   if (exchangeError) {
     console.error('Exchange error:', exchangeError);
-    console.log('========================');
     return NextResponse.redirect(new URL("/login?error=exchange_failed", origin));
   }
 
   // Verify session is readable before continuing
-  const verifyStart = Date.now();
   const sessionReadable = await verifySessionReadable(supabase);
-  const verifyTime = Date.now() - verifyStart;
-
-  console.log(`Session verification took ${verifyTime}ms`);
 
   if (!sessionReadable) {
     console.error('Session not readable after exchange - potential cookie persistence issue');
@@ -171,33 +149,19 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     console.error('No user found after successful exchange');
-    console.log('========================');
     return NextResponse.redirect(new URL("/login", origin));
   }
-
-  console.log('User authenticated:', user.id);
-  console.log('User email:', user.email);
 
   // Ensure profile exists (safe operation - won't overwrite existing profiles)
   // This is needed for magic link and new OAuth users
   if (user.email) {
-    const profileStart = Date.now();
     const { ensureProfileExists } = await import('@/lib/services/profileService.server');
     await ensureProfileExists(user.id, user.email);
-    const profileTime = Date.now() - profileStart;
-    console.log(`Profile creation/verification took ${profileTime}ms`);
   }
 
   // Always redirect to dashboard - onboarding modal will handle first-time setup
   const dest = next;
   const finalUrl = new URL(dest, origin);
-
-  const totalTime = Date.now() - startTime;
-  console.log('=== Final Redirect ===');
-  console.log('Destination:', dest);
-  console.log('Final redirect URL:', finalUrl.toString());
-  console.log(`Total callback processing time: ${totalTime}ms`);
-  console.log('=====================');
 
   // Try server-side redirect after verification
   // If this still doesn't work, the issue is in middleware or dashboard auth checks
