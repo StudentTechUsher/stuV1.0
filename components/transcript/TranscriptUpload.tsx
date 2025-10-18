@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { StuLoader } from "@/components/ui/StuLoader";
 import {
   parseTranscriptText,
@@ -23,9 +23,10 @@ type UploadStatus = "idle" | "extracting" | "extracted" | "failed";
 
 interface TranscriptUploadProps {
   onTextExtracted?: (text: string) => void;
+  onParsingComplete?: () => void | Promise<void>;
 }
 
-export default function TranscriptUpload({ onTextExtracted }: Readonly<TranscriptUploadProps>) {
+export default function TranscriptUpload({ onTextExtracted, onParsingComplete }: Readonly<TranscriptUploadProps>) {
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -105,8 +106,9 @@ export default function TranscriptUpload({ onTextExtracted }: Readonly<Transcrip
       // Join pages without PAGE BREAK markers
       const fullText = textPages.join('\n\n');
       setRawText(fullText);
-      const trimmedText = fullText.slice(200).trimStart();
-      const displayText = trimmedText;
+      // TESTING: Send full text to AI instead of trimming first 200 characters
+      // const trimmedText = fullText.slice(200).trimStart();
+      const displayText = fullText; // Use full text instead of trimmed
       setCleanedText(displayText);
 
       try {
@@ -160,6 +162,11 @@ export default function TranscriptUpload({ onTextExtracted }: Readonly<Transcrip
           // Log database save status for debugging
           if (result.savedToDb === false) {
             console.warn('⚠️ Transcript parsing succeeded but failed to save to database');
+          }
+
+          // Call onParsingComplete if courses were successfully saved
+          if (result.savedToDb && result.courses.length > 0) {
+            await onParsingComplete?.();
           }
         } else {
           throw new Error(result.error || "Unknown error during AI parsing");
