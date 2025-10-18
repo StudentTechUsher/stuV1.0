@@ -209,7 +209,7 @@ export async function fetchPrograms(options?: { type?: string; universityId?: nu
  * @param universityId - Optional university filter
  * @returns Array of matching programs
  */
-export async function fetchProgramsBatch(ids: string[], universityId?: number) {
+export async function fetchProgramsBatch(ids: string[], universityId?: number): Promise<ProgramRow[]> {
   try {
     if (ids.length === 0) {
       return [];
@@ -231,7 +231,7 @@ export async function fetchProgramsBatch(ids: string[], universityId?: number) {
       throw new ProgramFetchError('Failed to fetch programs batch', error);
     }
 
-    return data ?? [];
+    return (data ?? []) as ProgramRow[];
   } catch (error) {
     if (error instanceof ProgramFetchError) {
       throw error;

@@ -35,6 +35,10 @@ import {
 import {
     fetchUserCoursesArray as _fetchUserCoursesArray,
     formatCoursesForDisplay,
+    saveManualCourses as _saveManualCourses,
+    updateUserCourseTags as _updateUserCourseTags,
+    upsertUserCourses as _upsertUserCourses,
+    type ParsedCourse,
 } from './userCoursesService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
@@ -315,7 +319,8 @@ export async function chatbotSendMessage(message: string, sessionId?: string) {
 // User courses related
 export async function fetchUserCoursesAction(userId: string) {
     try {
-        const courses = await _fetchUserCoursesArray(userId);
+        const supabase = await createSupabaseServerComponentClient();
+        const courses = await _fetchUserCoursesArray(supabase, userId);
         return { success: true, courses: formatCoursesForDisplay(courses) };
     } catch (error) {
         console.error('Error fetching user courses:', error);
@@ -330,4 +335,117 @@ export async function parseTranscriptCoursesAction(args: {
     sessionId?: string;
 }) {
     return await _parseTranscriptCourses(args);
+}
+
+/**
+ * Server action to save manual courses
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function saveManualCoursesAction(
+    userId: string,
+    manualCourses: ParsedCourse[],
+    options?: { existingParsed?: ParsedCourse[] }
+) {
+    try {
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const result = await _saveManualCourses(supabase, userId, manualCourses, options);
+        return { success: true, manualCount: result.manualCount };
+    } catch (error) {
+        console.error('Error saving manual courses:', error);
+        return { success: false, error: 'Failed to save manual courses' };
+    }
+}
+
+/**
+ * Server action to update course tags
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function updateUserCourseTagsAction(
+    userId: string,
+    courseId: string,
+    tags: string[]
+) {
+    try {
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            console.error('❌ updateUserCourseTagsAction: User not authenticated');
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            console.error('❌ updateUserCourseTagsAction: User ID mismatch', {
+                authenticatedUser: user.id,
+                requestedUserId: userId,
+            });
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        console.log('✅ updateUserCourseTagsAction: Auth verified, calling service', {
+            userId,
+            courseId,
+            tags,
+        });
+
+        const result = await _updateUserCourseTags(supabase, userId, courseId, tags);
+
+        console.log('✅ updateUserCourseTagsAction: Service call successful', {
+            success: result.success,
+            tags: result.tags,
+        });
+
+        return { success: true, tags: result.tags };
+    } catch (error) {
+        console.error('❌ updateUserCourseTagsAction: Error updating course tags:', error);
+        if (error instanceof Error) {
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+            });
+        }
+        return { success: false, error: 'Failed to update course tags' };
+    }
+}
+
+/**
+ * Server action to update all user courses
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function updateUserCoursesAction(
+    userId: string,
+    courses: ParsedCourse[]
+) {
+    try {
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const result = await _upsertUserCourses(supabase, userId, courses);
+        return { success: true, courseCount: result.courseCount };
+    } catch (error) {
+        console.error('Error updating user courses:', error);
+        return { success: false, error: 'Failed to update courses' };
+    }
 }

@@ -1,568 +1,909 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Typography, Paper, TextField, Button, IconButton, Divider, Tooltip, Dialog, DialogContent, Autocomplete, Chip, CircularProgress } from '@mui/material';
-import { Add, Delete, Edit, Save, FileCopy, Refresh, Upload } from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  Tooltip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogActions,
+  TextField,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  Paper,
+  Chip,
+  Divider,
+  IconButton,
+  Stack,
+} from '@mui/material';
+import { Save, FileCopy, Refresh, Upload, ViewModule, ViewList, Edit as EditIcon, Close as CloseIcon } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { ProgressCircle } from '@/components/ui/progress-circle';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
-import { fetchUserCoursesArray, formatCoursesForDisplay, type FormattedCourse } from '@/lib/services/userCoursesService';
+import {
+  fetchUserCourses,
+  type ParsedCourse,
+} from '@/lib/services/userCoursesService';
+import { updateUserCoursesAction } from '@/lib/services/server-actions';
+import { GetActiveGradPlan } from '@/lib/services/gradPlanService';
+import { fetchProgramsBatch, GetGenEdsForUniversity } from '@/lib/services/programService';
+import type { ProgramRow } from '@/types/program';
+import {
+  matchCoursesToPrograms,
+  matchCoursesToProgram,
+  type ProgramWithMatches,
+} from '@/lib/services/courseMatchingService';
 
-type CourseEntry = {
-	id: string;
-	code: string;
-	title: string;
-	credits: number | null;
-	term?: string;
-	notes?: string;
-	requirement?: string; // e.g., "Humanities", "Major Core", "Free Elective"
-	editing?: boolean;
-};
-
-interface ColumnState {
-	general: CourseEntry[];
-	program: CourseEntry[];
-	minor: CourseEntry[];
-	religion: CourseEntry[];
-	electives: CourseEntry[];
-}
-
-const EMPTY: ColumnState = { general: [], program: [], minor: [], religion: [], electives: [] };
-
-function newCourse(): CourseEntry {
-	return { id: crypto.randomUUID(), code: '', title: '', credits: null, editing: true };
+interface GradPlan {
+  id: string;
+  student_id: number;
+  programs_in_plan: number[];
+  plan_details: unknown;
+  is_active: boolean;
+  created_at: string;
 }
 
 export default function AcademicHistoryPage() {
-	const supabase = createSupabaseBrowserClient();
-	const [userId, setUserId] = useState<string | null>(null);
-	const [data, setData] = useState<ColumnState>(EMPTY);
-	const [loadedKey, setLoadedKey] = useState<string | null>(null);
-	const [dirty, setDirty] = useState(false);
-	const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
-	const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-	const [parseReport] = useState<{coursesFound: number; lowConfidence: number} | null>(null);
-	const [parsedCourses, setParsedCourses] = useState<FormattedCourse[]>([]);
-	const [parsedCoursesLoading, setParsedCoursesLoading] = useState(false);
-	const [parsedCoursesError, setParsedCoursesError] = useState<string | null>(null);
-	const [availableCourses, setAvailableCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
-	const parsedCoursesCount = parsedCourses.length;
+  const supabase = createSupabaseBrowserClient();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [hasUserCourses, setHasUserCourses] = useState<boolean | null>(null);
+  const [userCoursesLoading, setUserCoursesLoading] = useState(true);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const [userCourses, setUserCourses] = useState<ParsedCourse[]>([]);
+  const [activeGradPlan, setActiveGradPlan] = useState<GradPlan | null>(null);
+  const [programs, setPrograms] = useState<ProgramRow[]>([]);
+  const [genEdProgram, setGenEdProgram] = useState<ProgramRow | null>(null);
+  const [universityId, setUniversityId] = useState<number | null>(null);
+  const [programMatches, setProgramMatches] = useState<ProgramWithMatches[]>([]);
+  const [genEdMatches, setGenEdMatches] = useState<ProgramWithMatches | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact');
+  const [editingCourse, setEditingCourse] = useState<ParsedCourse | null>(null);
+  const [editForm, setEditForm] = useState({
+    subject: '',
+    number: '',
+    title: '',
+    credits: '',
+    grade: '',
+    term: '',
+  });
 
-	// Optimistic immediate sample (only if everything truly empty at mount)
-	useEffect(() => {
-		setData(prev => {
-			if (prev.general.length || prev.program.length || prev.minor.length || prev.religion.length || prev.electives.length) return prev;
-			return {
-				general: [
-					{ id: 'seed-eng101', code: 'ENG 101', title: 'College Writing I', credits: 3, requirement: 'Communication', editing: false },
-					{ id: 'seed-math110', code: 'MATH 110', title: 'Quantitative Reasoning', credits: 3, requirement: 'Mathematics', editing: false },
-				],
-				program: [
-					{ id: 'seed-cs101', code: 'CS 101', title: 'Intro to Computer Science', credits: 3, requirement: 'Major Core', editing: false },
-					{ id: 'seed-cs201', code: 'CS 201', title: 'Data Structures', credits: 4, requirement: 'Major Core', editing: false },
-				],
-				minor: [
-					{ id: 'seed-bus101', code: 'BUS 101', title: 'Principles of Business', credits: 3, requirement: 'Minor Requirement', editing: false },
-				],
-				religion: [
-					{ id: 'seed-rel121', code: 'REL 121', title: 'Book of Mormon', credits: 2, requirement: 'Religion', editing: false },
-				],
-				electives: [
-					{ id: 'seed-art105', code: 'ART 105', title: 'Foundations of Drawing', credits: 3, requirement: 'Fine Arts Elective', editing: false },
-					{ id: 'seed-phil120', code: 'PHIL 120', title: 'Ethics & Society', credits: 3, requirement: 'Humanities Elective', editing: false },
-				],
-			};
-		});
-	}, []);
+  // Helper function to calculate total required credits or courses from program requirements
+  const calculateProgramTotals = (program: ProgramRow): { total: number; unit: 'credits' | 'courses' } => {
+    if (!program.requirements) return { total: 0, unit: 'credits' };
 
-	// Load session user id
-	useEffect(() => {
-		(async () => {
-			const { data: sess } = await supabase.auth.getSession();
-			const id = sess.session?.user?.id || null;
-			setUserId(id);
-		})();
-	}, [supabase]);
+    try {
+      const req = typeof program.requirements === 'string'
+        ? JSON.parse(program.requirements)
+        : program.requirements;
 
-	// Load available courses from database
-	useEffect(() => {
-		(async () => {
-			const { data: courses } = await supabase
-				.from('courses')
-				.select('code, title, credits')
-				.order('code');
-			if (courses) setAvailableCourses(courses);
-		})();
-	}, [supabase]);
+      // For Gen Ed programs, requirements is an array of RichRequirement
+      if (Array.isArray(req)) {
+        let totalCredits = 0;
+        let totalCourses = 0;
+        let hasCredits = false;
 
-	// Load from localStorage when user id resolves
-	useEffect(() => {
-		if (!userId) return;
-		const key = `academic-history:${userId}`;
-		setLoadedKey(key);
-		try {
-			const raw = localStorage.getItem(key);
-			if (raw) {
-				const parsed = JSON.parse(raw);
-				const loaded: ColumnState = {
-					general: Array.isArray(parsed.general) ? parsed.general : [],
-					program: Array.isArray(parsed.program) ? parsed.program : [],
-					minor: Array.isArray(parsed.minor) ? parsed.minor : [],
-					religion: Array.isArray(parsed.religion) ? parsed.religion : [],
-					electives: Array.isArray(parsed.electives) ? parsed.electives : [],
-				};
-				// If all arrays are empty, treat as fresh and seed
-				const allEmpty = !loaded.general.length && !loaded.program.length && !loaded.minor.length && !loaded.religion.length && !loaded.electives.length;
-				if (allEmpty) {
-					setData({
-						general: [
-							{ id: crypto.randomUUID(), code: 'ENG 101', title: 'College Writing I', credits: 3, requirement: 'Communication', editing: false },
-							{ id: crypto.randomUUID(), code: 'MATH 110', title: 'Quantitative Reasoning', credits: 3, requirement: 'Mathematics', editing: false },
-						],
-						program: [
-							{ id: crypto.randomUUID(), code: 'CS 101', title: 'Intro to Computer Science', credits: 3, requirement: 'Major Core', editing: false },
-							{ id: crypto.randomUUID(), code: 'CS 201', title: 'Data Structures', credits: 4, requirement: 'Major Core', editing: false },
-						],
-						minor: [
-							{ id: crypto.randomUUID(), code: 'BUS 101', title: 'Principles of Business', credits: 3, requirement: 'Minor Requirement', editing: false },
-						],
-						religion: [
-							{ id: crypto.randomUUID(), code: 'REL 121', title: 'Book of Mormon', credits: 2, requirement: 'Religion', editing: false },
-						],
-						electives: [
-							{ id: crypto.randomUUID(), code: 'ART 105', title: 'Foundations of Drawing', credits: 3, requirement: 'Fine Arts Elective', editing: false },
-							{ id: crypto.randomUUID(), code: 'PHIL 120', title: 'Ethics & Society', credits: 3, requirement: 'Humanities Elective', editing: false },
-						],
-					});
-					setDirty(true);
-				} else {
-					setData(loaded);
-				}
-			} else {
-				// Seed sample courses (only when no saved data)
-				setData({
-					general: [
-						{ id: crypto.randomUUID(), code: 'ENG 101', title: 'College Writing I', credits: 3, requirement: 'Communication', editing: false },
-						{ id: crypto.randomUUID(), code: 'MATH 110', title: 'Quantitative Reasoning', credits: 3, requirement: 'Mathematics', editing: false },
-					],
-					program: [
-						{ id: crypto.randomUUID(), code: 'CS 101', title: 'Intro to Computer Science', credits: 3, requirement: 'Major Core', editing: false },
-						{ id: crypto.randomUUID(), code: 'CS 201', title: 'Data Structures', credits: 4, requirement: 'Major Core', editing: false },
-					],
-					minor: [
-						{ id: crypto.randomUUID(), code: 'BUS 101', title: 'Principles of Business', credits: 3, requirement: 'Minor Requirement', editing: false },
-					],
-					religion: [
-						{ id: crypto.randomUUID(), code: 'REL 121', title: 'Book of Mormon', credits: 2, requirement: 'Religion', editing: false },
-					],
-					electives: [
-						{ id: crypto.randomUUID(), code: 'ART 105', title: 'Foundations of Drawing', credits: 3, requirement: 'Fine Arts Elective', editing: false },
-						{ id: crypto.randomUUID(), code: 'PHIL 120', title: 'Ethics & Society', credits: 3, requirement: 'Humanities Elective', editing: false },
-					],
-				});
-				setDirty(true); // ensure seeded data persists
-			}
-		} catch (e) {
-			console.error('[AcademicHistory] load failed', e);
-		}
-	}, [userId]);
+        req.forEach((item: {
+          requirement?: { rule?: { type?: string; min_count?: number; unit?: string } };
+          blocks?: Array<{ credits?: { fixed?: number } }>
+        }) => {
+          const rule = item.requirement?.rule;
+          if (rule?.type === 'min_count') {
+            const minCount = rule.min_count || 1;
+            const unit = rule.unit || 'courses';
 
-	const loadParsedCourses = useCallback(async (signal?: AbortSignal) => {
-		if (!userId) {
-			setParsedCourses([]);
-			setParsedCoursesError(null);
-			setParsedCoursesLoading(false);
-			return;
-		}
+            if (unit === 'credits') {
+              hasCredits = true;
+              // Try to get credits from blocks
+              if (item.blocks && Array.isArray(item.blocks)) {
+                item.blocks.forEach((block: { credits?: { fixed?: number } }) => {
+                  if (block.credits?.fixed) {
+                    totalCredits += block.credits.fixed;
+                  }
+                });
+              }
+            } else {
+              totalCourses += minCount;
+            }
+          }
+        });
 
-		setParsedCoursesLoading(true);
-		setParsedCoursesError(null);
+        // If we found any credit-based requirements, use credits. Otherwise use courses
+        if (hasCredits && totalCredits > 0) {
+          return { total: totalCredits, unit: 'credits' };
+        }
+        return { total: totalCourses, unit: 'courses' };
+      }
 
-		try {
-			const courses = await fetchUserCoursesArray(userId);
-			if (signal?.aborted) return;
-			const formatted = formatCoursesForDisplay(courses);
-			setParsedCourses(formatted);
-		} catch (error) {
-			console.error('Failed to fetch user courses', error);
-			if (signal?.aborted) return;
-			setParsedCourses([]);
-			setParsedCoursesError('Unable to load your parsed courses right now.');
-		} finally {
-			if (!signal?.aborted) {
-				setParsedCoursesLoading(false);
-			}
-		}
-	}, [userId]);
+      // For regular programs, check metadata first
+      if (req && typeof req === 'object' && 'metadata' in req) {
+        const metadata = (req as { metadata?: { totalMinCredits?: number } }).metadata;
+        if (metadata?.totalMinCredits) {
+          return { total: metadata.totalMinCredits, unit: 'credits' };
+        }
+      }
 
-	useEffect(() => {
-		const controller = new AbortController();
-		void loadParsedCourses(controller.signal);
-		return () => {
-			controller.abort();
-		};
-	}, [loadParsedCourses]);
+      // Check programRequirements array
+      if (req && typeof req === 'object' && 'programRequirements' in req) {
+        const programReqs = (req as { programRequirements?: Array<{
+          type?: string;
+          description?: string;
+          courses?: Array<{ credits?: number }>;
+          constraints?: { minTotalCredits?: number; n?: number };
+        }> }).programRequirements;
 
-	// Persist (debounced) to localStorage
-	useEffect(() => {
-		if (!loadedKey) return;
-		if (!dirty) return;
-		const handle = setTimeout(() => {
-			try {
-				localStorage.setItem(loadedKey, JSON.stringify(data));
-				setDirty(false);
-			} catch (e) {
-				console.error('[AcademicHistory] save failed', e);
-			}
-		}, 600); // debounce 600ms
-		return () => clearTimeout(handle);
-	}, [data, dirty, loadedKey]);
+        if (Array.isArray(programReqs)) {
+          let totalCredits = 0;
+          let totalCourses = 0;
+          let useCreditBased = false;
 
-	const mutate = useCallback(<K extends keyof ColumnState>(col: K, fn: (arr: CourseEntry[]) => CourseEntry[]) => {
-		setData(prev => ({ ...prev, [col]: fn(prev[col]) }));
-		setDirty(true);
-	}, []);
+          programReqs.forEach((requirement) => {
+            if (requirement.type === 'creditBucket' && requirement.constraints?.minTotalCredits) {
+              useCreditBased = true;
+              totalCredits += requirement.constraints.minTotalCredits;
+            } else if (requirement.type === 'allOf' && Array.isArray(requirement.courses)) {
+              totalCourses += requirement.courses.length;
+            } else if (requirement.type === 'chooseNOf' && requirement.constraints?.n) {
+              totalCourses += requirement.constraints.n;
+            } else if (requirement.description) {
+              // Fallback: parse description
+              const creditMatch = /Complete (\d+) credits?/i.exec(requirement.description);
+              if (creditMatch) {
+                useCreditBased = true;
+                totalCredits += parseInt(creditMatch[1], 10);
+              } else {
+                const courseMatch = /Complete (\d+)(?:\s+(?:of\s+\d+\s+)?(?:courses?|classes?))?/i.exec(requirement.description);
+                if (courseMatch) {
+                  totalCourses += parseInt(courseMatch[1], 10);
+                }
+              }
+            }
+          });
 
-	const addCourse = (col: keyof ColumnState) => mutate(col, arr => [...arr, newCourse()]);
+          if (useCreditBased && totalCredits > 0) {
+            return { total: totalCredits, unit: 'credits' };
+          }
+          if (totalCourses > 0) {
+            return { total: totalCourses, unit: 'courses' };
+          }
+        }
+      }
 
-	const updateCourse = (col: keyof ColumnState, id: string, patch: Partial<CourseEntry>) => mutate(col, arr => arr.map(c => c.id === id ? { ...c, ...patch } : c));
+      return { total: 0, unit: 'credits' };
+    } catch (error) {
+      console.error('Error parsing requirements for totals:', error);
+      return { total: 0, unit: 'credits' };
+    }
+  };
 
-	const deleteCourse = (col: keyof ColumnState, id: string) => mutate(col, arr => arr.filter(c => c.id !== id));
+  // Fetch userId and university from session
+  useEffect(() => {
+    (async () => {
+      const { data: sess } = await supabase.auth.getSession();
+      const id = sess.session?.user?.id || null;
+      setUserId(id);
 
-	const totalCredits = (col: keyof ColumnState) => data[col].reduce((sum, c) => sum + (c.credits || 0), 0);
-	const grandTotal = totalCredits('general') + totalCredits('program') + totalCredits('minor') + totalCredits('religion') + totalCredits('electives');
+      if (id) {
+        // Fetch user's university from profiles table
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('university_id')
+          .eq('id', id)
+          .single();
 
-	const coursesByTerm = useMemo(() => {
-		if (!parsedCourses.length) return [];
-		const grouped = parsedCourses.reduce((acc, course) => {
-			const term = course.term || 'Unspecified Term';
-			if (!acc.has(term)) acc.set(term, []);
-			acc.get(term)!.push(course);
-			return acc;
-		}, new Map<string, FormattedCourse[]>());
-		return Array.from(grouped.entries());
-	}, [parsedCourses]);
+        if (profile?.university_id) {
+          setUniversityId(profile.university_id);
+        }
+      }
+    })();
+  }, [supabase]);
 
-	const exportJson = async () => {
-		try {
-			await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-			setCopyStatus('copied');
-			setTimeout(() => setCopyStatus('idle'), 2500);
-		} catch (e) {
-			console.error('Copy failed', e);
-		}
-	};
+  // Check if user has courses in user_courses table
+  useEffect(() => {
+    if (!userId) {
+      setUserCoursesLoading(false);
+      setHasUserCourses(false);
+      return;
+    }
 
-	const clearAll = () => {
-		if (!confirm('Clear all academic history entries? This cannot be undone.')) return;
-		setData(EMPTY);
-		setDirty(true);
-	};
+    (async () => {
+      try {
+        setUserCoursesLoading(true);
+        const coursesRecord = await fetchUserCourses(supabase, userId);
 
-	const saveToDatabase = async () => {
-		if (!userId) {
-			alert('Please log in to save courses');
-			return;
-		}
+        if (coursesRecord && coursesRecord.courses && coursesRecord.courses.length > 0) {
+          setHasUserCourses(true);
+          setUserCourses(coursesRecord.courses);
+        } else {
+          setHasUserCourses(false);
+          setUserCourses([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user courses:', error);
+        setHasUserCourses(false);
+        setUserCourses([]);
+      } finally {
+        setUserCoursesLoading(false);
+      }
+    })();
+  }, [userId, supabase]);
 
-		try {
-			// Collect all courses from all columns
-			const allCourses = [
-				...data.general,
-				...data.program,
-				...data.electives
-			];
+  // Fetch active grad plan if user has courses
+  useEffect(() => {
+    if (!userId || !hasUserCourses) {
+      setActiveGradPlan(null);
+      return;
+    }
 
-			// Save each course to user_courses table
-			for (const course of allCourses) {
-				if (!course.code) continue; // Skip empty courses
+    (async () => {
+      try {
+        const gradPlan = await GetActiveGradPlan(userId);
+        setActiveGradPlan(gradPlan as GradPlan | null);
 
-				// Parse code into subject and number
-				const match = course.code.match(/^([A-Z]+)\s*(\d+)$/i);
-				if (!match) continue;
+        if (!gradPlan) {
+          setSnackbar({
+            open: true,
+            message: 'No active graduation plan found. Create one to see course mappings.',
+            severity: 'info',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch active grad plan:', error);
+        setActiveGradPlan(null);
+      }
+    })();
+  }, [userId, hasUserCourses]);
 
-				const [, subject, number] = match;
+  // Fetch Gen Ed program when university is available (independent of grad plan)
+  useEffect(() => {
+    if (!universityId) {
+      setGenEdProgram(null);
+      return;
+    }
 
-				await supabase.from('user_courses').upsert({
-					user_id: userId,
-					subject: subject.toUpperCase(),
-					number: number,
-					title: course.title || null,
-					credits: course.credits || null,
-					term: course.term || null,
-					grade: null
-				}, {
-					onConflict: 'user_id,subject,number,term'
-				});
-			}
+    (async () => {
+      try {
+        const genEds = await GetGenEdsForUniversity(universityId);
+        if (genEds.length > 0) {
+          setGenEdProgram(genEds[0]);
+          console.log('✅ Loaded Gen Ed program:', genEds[0].name);
+        } else {
+          setGenEdProgram(null);
+          console.log('⚠️ No Gen Ed program found for university:', universityId);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Gen Ed program:', error);
+        setGenEdProgram(null);
+      }
+    })();
+  }, [universityId]);
 
-			alert(`Successfully saved ${allCourses.filter(c => c.code).length} courses to your profile!`);
-			await loadParsedCourses();
-		} catch (error) {
-			console.error('Error saving courses:', error);
-			alert('Failed to save courses to database');
-		}
-	};
+  // Fetch programs when grad plan is available
+  useEffect(() => {
+    if (!activeGradPlan || !universityId) {
+      setPrograms([]);
+      return;
+    }
 
-	const renderCourseRow = (col: keyof ColumnState, course: CourseEntry) => {
-		const editing = !!course.editing;
-		return (
-			<Box key={course.id} sx={{ display: 'grid', gridTemplateColumns: '90px 1fr 60px 100px 32px 32px', gap: 0.5, alignItems: 'center', mb: 0.5 }}>
-				{editing ? (
-					<Autocomplete
-						size="small"
-						freeSolo
-						options={availableCourses}
-						getOptionLabel={(option) => typeof option === 'string' ? option : option.code}
-						value={course.code || ''}
-						onInputChange={(_, newValue) => updateCourse(col, course.id, { code: newValue })}
-						onChange={(_, newValue) => {
-							if (newValue && typeof newValue !== 'string') {
-								updateCourse(col, course.id, {
-									code: newValue.code,
-									title: newValue.title,
-									credits: newValue.credits
-								});
-							}
-						}}
-						renderInput={(params) => <TextField {...params} placeholder="CODE" />}
-					/>
-				) : (
-					<Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.75rem' }}>{course.code || '—'}</Typography>
-				)}
-				{editing ? (
-					<TextField size="small" placeholder="Title" value={course.title} onChange={e => updateCourse(col, course.id, { title: e.target.value })} sx={{ '& input': { fontSize: '0.75rem', py: 0.5 } }} />
-				) : (
-					<Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{course.title || 'Untitled'}</Typography>
-				)}
-				{editing ? (
-					<TextField size="small" placeholder="Cr" type="number" value={course.credits ?? ''} onChange={e => updateCourse(col, course.id, { credits: e.target.value === '' ? null : Number(e.target.value) })} sx={{ '& input': { fontSize: '0.75rem', py: 0.5 } }} />
-				) : (
-					<Typography variant="body2" textAlign="center" sx={{ fontSize: '0.75rem' }}>{course.credits ?? '—'}</Typography>
-				)}
-				{editing ? (
-					<TextField size="small" placeholder="Requirement" value={course.requirement || ''} onChange={e => updateCourse(col, course.id, { requirement: e.target.value })} sx={{ '& input': { fontSize: '0.7rem', py: 0.5 } }} />
-				) : (
-					<Box sx={{ display: 'inline-flex', px: 0.75, py: 0.15, borderRadius: 0.75, bgcolor: 'var(--primary-15)', color: 'var(--primary)', fontSize: '0.6rem', fontWeight: 600, justifySelf: 'start', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-						{course.requirement || '—'}
-					</Box>
-				)}
-				<IconButton size="small" onClick={() => updateCourse(col, course.id, { editing: !editing })} aria-label={editing ? 'Save' : 'Edit'} sx={{ p: 0.5 }}>
-					{editing ? <Save sx={{ fontSize: '1rem' }} /> : <Edit sx={{ fontSize: '1rem' }} />}
-				</IconButton>
-				<IconButton size="small" onClick={() => deleteCourse(col, course.id)} aria-label="Delete" sx={{ p: 0.5 }}>
-					<Delete sx={{ fontSize: '1rem' }} />
-				</IconButton>
-			</Box>
-		);
-	};
+    (async () => {
+      try {
+        // Extract program IDs from grad plan
+        const programIds = activeGradPlan.programs_in_plan || [];
 
-	// Color scheme matching graduation-planner and academic-progress-card:
-	// General Education = blue (#2196f3) - default variant
-	// Program (Major) = primary green (var(--primary)) - success variant
-	// Minor = dark blue (#001F54) - navy variant
-	// Religion = purple (#5E35B1) - purple variant
-	// Electives = violet (#9C27B0) - violet variant
-	const progressMeta = useMemo(() => ([
-		{ variant: 'default' as const, value: Math.floor(10 + Math.random() * 86) },  // General Education (blue)
-		{ variant: 'success' as const, value: Math.floor(10 + Math.random() * 86) },  // Program Requirements (green/primary)
-		{ variant: 'navy' as const, value: Math.floor(10 + Math.random() * 86) },     // Minor (dark blue #001F54)
-		{ variant: 'purple' as const, value: Math.floor(10 + Math.random() * 86) },   // Religion (purple #5E35B1)
-		{ variant: 'violet' as const, value: Math.floor(10 + Math.random() * 86) },   // Electives (violet #9C27B0)
-	]), []);
+        if (programIds.length > 0) {
+          // Fetch program details
+          const programsData = await fetchProgramsBatch(
+            programIds.map(String),
+            universityId
+          );
+          setPrograms(programsData);
+          console.log('✅ Loaded programs:', programsData.map(p => p.name).join(', '));
+        } else {
+          setPrograms([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch programs:', error);
+        setPrograms([]);
+      }
+    })();
+  }, [activeGradPlan, universityId]);
 
-	const renderColumn = (col: keyof ColumnState, title: string, description: string, idx: number) => (
-		<Paper elevation={2} sx={{ p: 1.5, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minWidth: 0, overflow: 'hidden' }}>
-			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-				<ProgressCircle value={progressMeta[idx]?.value ?? 0} max={100} radius={18} strokeWidth={5} variant={progressMeta[idx]?.variant}>
-					<Typography variant='caption' sx={{ fontWeight: 600, fontSize: '0.6rem' }}>{progressMeta[idx]?.value ?? 0}%</Typography>
-				</ProgressCircle>
-				<Box sx={{ minWidth: 0, overflow: 'hidden' }}>
-					<Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1, fontSize: '0.875rem' }}>{title}</Typography>
-					<Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</Typography>
-				</Box>
-			</Box>
-			<Divider sx={{ mb: 0.5 }} />
-			<Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5, minHeight: 0 }}>
-				{data[col].length === 0 && (
-					<Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.75rem' }}>No courses added yet.</Typography>
-				)}
-				{data[col].map(c => renderCourseRow(col, c))}
-			</Box>
-			<Button startIcon={<Add />} size="small" onClick={() => addCourse(col)} sx={{ mt: 0.5, fontSize: '0.75rem', py: 0.5 }}>
-				Add Course
-			</Button>
-			<Divider sx={{ my: 0.5 }} />
-			<Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>Total Credits: {totalCredits(col)}</Typography>
-		</Paper>
-	);
+  // Match courses to programs when both are available
+  useEffect(() => {
+    if (userCourses.length === 0 || (programs.length === 0 && !genEdProgram)) {
+      setProgramMatches([]);
+      setGenEdMatches(null);
+      return;
+    }
 
-	return (
-		<Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
-			<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2, width: '100%' }}>
-				<Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
-					<Typography variant="h4" sx={{ fontWeight: 'bold' }}>Academic History</Typography>
-					<Typography variant="body2" color="text.secondary">Track previously completed coursework across your curriculum.</Typography>
-				</Box>
-				<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: '0 1 auto', justifyContent: 'flex-end' }}>
-					<Tooltip title="Save courses to your profile">
-						<Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase} color="primary" sx={{ minWidth: 'auto' }}>
-							Save
-						</Button>
-					</Tooltip>
-					<Tooltip title="Upload transcript PDF">
-						<Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)} sx={{ minWidth: 'auto' }}>
-							Upload
-						</Button>
-					</Tooltip>
-					<Tooltip title="Copy JSON to clipboard">
-						<Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson} sx={{ minWidth: 'auto' }}>{copyStatus === 'copied' ? 'Copied!' : 'Export'}</Button>
-					</Tooltip>
-					<Tooltip title="Clear all entries (local)" >
-						<Button variant="outlined" size="small" color="error" startIcon={<Refresh />} onClick={clearAll} sx={{ minWidth: 'auto' }}>
-							Clear
-						</Button>
-					</Tooltip>
-				</Box>
-			</Box>
-			<Box sx={{
-				display: 'grid',
-				gridTemplateColumns: {
-					xs: '1fr',
-					sm: 'repeat(2, 1fr)',
-					lg: 'repeat(3, 1fr)'
-				},
-				gap: 2,
-				flex: 1,
-				alignItems: 'stretch',
-				width: '100%',
-				maxWidth: '100%',
-				overflow: 'hidden'
-			}}>
-				{renderColumn('general', 'General Education', 'Core / general education / foundational courses already completed.', 0)}
-				{renderColumn('program', 'Major Requirements', 'Major / program-specific requirement courses completed.', 1)}
-				{renderColumn('minor', 'Minor Requirements', 'Minor program courses completed.', 2)}
-				{renderColumn('religion', 'Religion', 'Religion requirement courses completed.', 3)}
-				{renderColumn('electives', 'Electives', 'Elective or exploratory courses taken that count toward credit totals.', 4)}
-			</Box>
-			<Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-				<Typography variant="body2" color="text.secondary">Grand Total Credits: {grandTotal}</Typography>
-			</Box>
+    // Match courses to regular programs
+    if (programs.length > 0) {
+      const matches = matchCoursesToPrograms(userCourses, programs);
+      setProgramMatches(matches);
+    }
 
-			{/* Parsed Transcript Courses Section */}
-			<Box sx={{ mt: 4 }}>
-				<Divider sx={{ mb: 3 }} />
-				<Box sx={{ mb: 2 }}>
-					<Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-						Parsed Transcript Courses
-					</Typography>
-					{parsedCoursesLoading ? (
-						<Typography variant="body2" color="text.secondary">
-							Loading parsed courses...
-						</Typography>
-					) : parsedCoursesCount > 0 ? (
-						<>
-							<Typography variant="body2" color="text.secondary">
-								{parsedCoursesCount} course{parsedCoursesCount !== 1 ? 's' : ''} from uploaded transcripts
-							</Typography>
-							{parseReport && parseReport.lowConfidence > 0 && (
-								<Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
-									⚠️ {parseReport.lowConfidence} course{parseReport.lowConfidence !== 1 ? 's' : ''} flagged for review (low confidence)
-								</Typography>
-							)}
-						</>
-					) : (
-						<Typography variant="body2" color="text.secondary">
-							Upload a transcript above to see parsed courses here
-						</Typography>
-					)}
-				</Box>
-				{parsedCoursesLoading ? (
-					<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-						<CircularProgress size={24} />
-					</Box>
-				) : parsedCoursesError ? (
-					<Typography variant="body2" color="error">
-						{parsedCoursesError}
-					</Typography>
-				) : !parsedCourses.length ? (
-					<Typography variant="body2" color="text.secondary">
-						No parsed courses available yet.
-					</Typography>
-				) : (
-					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-						{coursesByTerm.map(([term, courses]) => (
-							<Box key={term} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-								<Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-									{term}
-								</Typography>
-								<Box
-									sx={{
-										display: 'grid',
-										gridTemplateColumns: {
-											xs: '1fr',
-											md: 'repeat(2, 1fr)',
-											lg: 'repeat(3, 1fr)',
-										},
-										gap: 2,
-									}}
-								>
-									{courses.map(course => (
-										<Paper key={course.id} elevation={1} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-											<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-												<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-													{course.code}
-												</Typography>
-												<Chip label={course.term} size="small" variant="outlined" />
-											</Box>
-											<Typography variant="body2" color="text.secondary">
-												{course.title}
-											</Typography>
-											<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-												<Chip label={`${course.credits} credit${course.credits === 1 ? '' : 's'}`} size="small" color="primary" variant="outlined" />
-												{course.grade && (
-													<Chip
-														label={course.grade}
-														size="small"
-														color={course.grade.toLowerCase().includes('in progress') ? 'default' : 'success'}
-														variant="outlined"
-													/>
-												)}
-											</Box>
-											{course.tags?.length ? (
-												<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-													{course.tags.map(tag => (
-														<Chip key={`${course.id}-${tag}`} label={tag} size="small" variant="outlined" />
-													))}
-												</Box>
-											) : null}
-										</Paper>
-									))}
-								</Box>
-							</Box>
-						))}
-					</Box>
-				)}
-			</Box>
+    // Match courses to Gen Ed program with subject-only matching enabled
+    if (genEdProgram) {
+      const genEdMatch = matchCoursesToProgram(userCourses, genEdProgram, { allowSubjectMatch: true });
+      setGenEdMatches(genEdMatch);
+    }
+  }, [userCourses, programs, genEdProgram]);
 
-			{/* Upload Transcript Dialog */}
-			<Dialog
-				open={uploadDialogOpen}
-				onClose={() => setUploadDialogOpen(false)}
-				maxWidth="md"
-				fullWidth
-			>
-				<DialogContent sx={{ p: 3 }}>
-					<TranscriptUpload
-						onTextExtracted={(text) => {
-							console.log('Extracted text:', text);
-							// For now, just log the extracted text
-							// In the future, we can parse it and add courses
-						}}
-					/>
-				</DialogContent>
-			</Dialog>
-		</Box>
-	);
+  const exportJson = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        JSON.stringify(
+          {
+            userCourses,
+            activeGradPlan,
+          },
+          null,
+          2
+        )
+      );
+      setCopyStatus('copied');
+      setTimeout(() => setCopyStatus('idle'), 2500);
+    } catch (error) {
+      console.error('Copy failed', error);
+    }
+  };
+
+  const clearAll = () => {
+    if (!confirm('Clear all academic history entries? This cannot be undone.')) return;
+    // TODO: Implement clear functionality
+    setSnackbar({
+      open: true,
+      message: 'Clear functionality will be implemented',
+      severity: 'info',
+    });
+  };
+
+  const saveToDatabase = async () => {
+    if (!userId) {
+      setSnackbar({
+        open: true,
+        message: 'User not authenticated',
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      const result = await updateUserCoursesAction(userId, userCourses);
+
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: `Successfully saved ${result.courseCount} course${result.courseCount !== 1 ? 's' : ''}`,
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.error || 'Failed to save courses',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving courses:', error);
+      setSnackbar({
+        open: true,
+        message: 'An error occurred while saving courses',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleEditCourse = (course: ParsedCourse) => {
+    setEditingCourse(course);
+    setEditForm({
+      subject: course.subject,
+      number: course.number,
+      title: course.title,
+      credits: String(course.credits || ''),
+      grade: course.grade || '',
+      term: course.term || '',
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingCourse) return;
+
+    const updatedCourses: ParsedCourse[] = userCourses.map((course) =>
+      course.id === editingCourse.id
+        ? {
+            ...course,
+            subject: editForm.subject.trim(),
+            number: editForm.number.trim(),
+            title: editForm.title.trim(),
+            credits: editForm.credits ? parseFloat(editForm.credits) : null,
+            grade: editForm.grade.trim() || null,
+            term: editForm.term.trim() || '',
+          }
+        : course
+    );
+
+    setUserCourses(updatedCourses);
+    setEditingCourse(null);
+    setSnackbar({
+      open: true,
+      message: 'Course updated successfully! Remember to save your changes.',
+      severity: 'success',
+    });
+  };
+
+  const handleParsingComplete = async () => {
+    setUploadDialogOpen(false);
+    // Reload user courses after transcript upload
+    if (userId) {
+      try {
+        const coursesRecord = await fetchUserCourses(supabase, userId);
+        if (coursesRecord && coursesRecord.courses) {
+          setHasUserCourses(true);
+          setUserCourses(coursesRecord.courses);
+        }
+      } catch (error) {
+        console.error('Failed to reload user courses:', error);
+      }
+    }
+    setSnackbar({
+      open: true,
+      message: 'Transcript parsed successfully!',
+      severity: 'success',
+    });
+  };
+
+  // Render a course card based on view mode
+  const renderCourseCard = (course: ParsedCourse, bgColor: string, borderColor: string, editable = true) => {
+    if (viewMode === 'compact') {
+      return (
+        <Tooltip
+          key={course.id}
+          title={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{course.title}</Typography>
+              <Typography variant="caption">{course.credits} credits • {course.grade || 'In Progress'}</Typography>
+              {course.term && <Typography variant="caption" sx={{ display: 'block' }}>{course.term}</Typography>}
+              {editable && <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>Click to edit</Typography>}
+            </Box>
+          }
+          arrow
+        >
+          <Paper
+            elevation={1}
+            onClick={editable ? () => handleEditCourse(course) : undefined}
+            sx={{
+              px: 1.5,
+              py: 1,
+              backgroundColor: bgColor,
+              border: '1px solid',
+              borderColor: borderColor,
+              cursor: editable ? 'pointer' : 'default',
+              transition: 'transform 0.2s',
+              '&:hover': {
+                transform: editable ? 'scale(1.05)' : 'none',
+                elevation: editable ? 2 : 1,
+              },
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+              {course.subject} {course.number}
+            </Typography>
+          </Paper>
+        </Tooltip>
+      );
+    }
+
+    // Full view mode
+    return (
+      <Paper
+        key={course.id}
+        elevation={1}
+        sx={{
+          p: 1.5,
+          minWidth: 250,
+          flex: '1 1 calc(33.333% - 12px)',
+          backgroundColor: bgColor,
+          border: '1px solid',
+          borderColor: borderColor,
+          position: 'relative',
+        }}
+      >
+        {editable && (
+          <IconButton
+            size="small"
+            onClick={() => handleEditCourse(course)}
+            sx={{ position: 'absolute', top: 4, right: 4 }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        )}
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {course.subject} {course.number}
+        </Typography>
+        <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+          {course.title}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+          <Chip label={`${course.credits} credits`} size="small" variant="outlined" />
+          {course.grade && <Chip label={course.grade} size="small" variant="outlined" />}
+          {course.term && <Chip label={course.term} size="small" variant="outlined" />}
+        </Box>
+      </Paper>
+    );
+  };
+
+  // Show loading state
+  if (userCoursesLoading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <CircularProgress />
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Loading academic history...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Show fallback if no user courses
+  if (!hasUserCourses) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+              Academic History
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Upload your transcript to get started.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Box sx={{ maxWidth: 600, width: '100%' }}>
+            <TranscriptUpload
+              onTextExtracted={(text) => {
+                console.log('Extracted text:', text);
+              }}
+              onParsingComplete={handleParsingComplete}
+            />
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Main view when user has courses
+  return (
+    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+            Academic History
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Your courses organized by program requirements.
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <Tooltip title={viewMode === 'compact' ? 'Switch to full view' : 'Switch to compact view'}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={viewMode === 'compact' ? <ViewList /> : <ViewModule />}
+              onClick={() => setViewMode(viewMode === 'compact' ? 'full' : 'compact')}
+            >
+              {viewMode === 'compact' ? 'Full View' : 'Compact'}
+            </Button>
+          </Tooltip>
+          <Tooltip title="Save courses to your profile">
+            <Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase}>
+              Save
+            </Button>
+          </Tooltip>
+          <Tooltip title="Upload transcript PDF">
+            <Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
+              Upload
+            </Button>
+          </Tooltip>
+          <Tooltip title="Copy JSON to clipboard">
+            <Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson}>
+              {copyStatus === 'copied' ? 'Copied!' : 'Export'}
+            </Button>
+          </Tooltip>
+          <Tooltip title="Clear all entries (local)">
+            <Button variant="outlined" size="small" color="error" startIcon={<Refresh />} onClick={clearAll}>
+              Clear
+            </Button>
+          </Tooltip>
+        </Box>
+      </Box>
+
+      <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Warning when no grad plan */}
+        {!activeGradPlan && (
+          <Paper sx={{ p: 3, backgroundColor: 'warning.light' }}>
+            <Typography variant="body1" color="warning.dark">
+              No active graduation plan found. Create one to see how your courses map to program requirements.
+            </Typography>
+          </Paper>
+        )}
+
+        {/* Gen Ed Program Container - Always show if we have matches */}
+        {genEdMatches && genEdMatches.matchedCourses.length > 0 && genEdProgram && (() => {
+          const { total: totalRequired, unit } = calculateProgramTotals(genEdProgram);
+          const earned = unit === 'credits'
+            ? genEdMatches.matchedCourses.reduce((sum, course) => sum + (course.credits || 0), 0)
+            : genEdMatches.matchedCourses.length;
+          const percentage = totalRequired > 0 ? Math.min((earned / totalRequired) * 100, 100) : 0;
+
+          return (
+            <Paper elevation={2} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1 }}>
+                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                    <CircularProgress
+                      variant="determinate"
+                      value={percentage}
+                      size={60}
+                      thickness={4}
+                      sx={{ color: 'success.main' }}
+                    />
+                    <Box
+                      sx={{
+                        top: 0,
+                        left: 0,
+                        bottom: 0,
+                        right: 0,
+                        position: 'absolute',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
+                        {Math.round(percentage)}%
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      General Education
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {earned} of {totalRequired} {unit}
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Chip
+                  label={`${genEdMatches.matchedCourses.length} course${genEdMatches.matchedCourses.length !== 1 ? 's' : ''}`}
+                  color="success"
+                  size="small"
+                />
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: viewMode === 'compact' ? 0.75 : 1.5 }}>
+                {genEdMatches.matchedCourses.map((course) =>
+                  renderCourseCard(course, 'success.light', 'success.main')
+                )}
+              </Box>
+            </Paper>
+          );
+        })()}
+
+        {/* Program Containers - Only show if grad plan exists */}
+        {activeGradPlan && programMatches.map((programMatch) => {
+          const { total: totalRequired, unit } = calculateProgramTotals(programMatch.program);
+          const earned = unit === 'credits'
+            ? programMatch.matchedCourses.reduce((sum, course) => sum + (course.credits || 0), 0)
+            : programMatch.matchedCourses.length;
+          const percentage = totalRequired > 0 ? Math.min((earned / totalRequired) * 100, 100) : 0;
+
+          return (
+            <Paper key={programMatch.program.id} elevation={2} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1 }}>
+                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                    <CircularProgress
+                      variant="determinate"
+                      value={percentage}
+                      size={60}
+                      thickness={4}
+                      sx={{ color: 'primary.main' }}
+                    />
+                    <Box
+                      sx={{
+                        top: 0,
+                        left: 0,
+                        bottom: 0,
+                        right: 0,
+                        position: 'absolute',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
+                        {Math.round(percentage)}%
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {programMatch.program.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      {programMatch.program.program_type}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {earned} of {totalRequired} {unit}
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Chip
+                  label={`${programMatch.matchedCourses.length} course${programMatch.matchedCourses.length !== 1 ? 's' : ''}`}
+                  color="primary"
+                  size="small"
+                />
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              {programMatch.matchedCourses.length > 0 ? (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: viewMode === 'compact' ? 0.75 : 1.5 }}>
+                  {programMatch.matchedCourses.map((course) =>
+                    renderCourseCard(course, 'primary.light', 'primary.main')
+                  )}
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No courses matched to this program yet.
+                </Typography>
+              )}
+            </Paper>
+          );
+        })}
+
+        {/* Display unmatched courses - Always show if there are any */}
+        {(() => {
+          const allMatchedIds = new Set(
+            [...programMatches, ...(genEdMatches ? [genEdMatches] : [])]
+              .flatMap((pm) => pm.matchedCourses.map((c) => c.id))
+          );
+          const unmatchedCourses = userCourses.filter((c) => !allMatchedIds.has(c.id));
+
+          return unmatchedCourses.length > 0 ? (
+            <Paper elevation={2} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  No Category Assigned
+                </Typography>
+                <Chip
+                  label={`${unmatchedCourses.length} course${unmatchedCourses.length !== 1 ? 's' : ''}`}
+                  color="default"
+                  size="small"
+                />
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                These courses did not match any program requirements. They may be electives or courses from other programs.
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: viewMode === 'compact' ? 0.75 : 1.5 }}>
+                {unmatchedCourses.map((course) =>
+                  renderCourseCard(course, 'grey.100', 'grey.400')
+                )}
+              </Box>
+            </Paper>
+          ) : null;
+        })()}
+      </Box>
+
+      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogContent sx={{ p: 3 }}>
+          <TranscriptUpload
+            onTextExtracted={(text) => {
+              console.log('Extracted text:', text);
+            }}
+            onParsingComplete={handleParsingComplete}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingCourse} onClose={() => setEditingCourse(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">Edit Course</Typography>
+            <IconButton onClick={() => setEditingCourse(null)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Subject"
+                value={editForm.subject}
+                onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                fullWidth
+                size="small"
+                helperText="e.g., CS, MATH, REL A"
+              />
+              <TextField
+                label="Number"
+                value={editForm.number}
+                onChange={(e) => setEditForm({ ...editForm, number: e.target.value })}
+                fullWidth
+                size="small"
+                helperText="e.g., 142, 112, 275"
+              />
+            </Box>
+            <TextField
+              label="Title"
+              value={editForm.title}
+              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              fullWidth
+              size="small"
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Credits"
+                value={editForm.credits}
+                onChange={(e) => setEditForm({ ...editForm, credits: e.target.value })}
+                type="number"
+                fullWidth
+                size="small"
+                inputProps={{ step: 0.5 }}
+              />
+              <TextField
+                label="Grade"
+                value={editForm.grade}
+                onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}
+                fullWidth
+                size="small"
+                helperText="e.g., A, B+, C-"
+              />
+            </Box>
+            <TextField
+              label="Term"
+              value={editForm.term}
+              onChange={(e) => setEditForm({ ...editForm, term: e.target.value })}
+              fullWidth
+              size="small"
+              helperText="e.g., Fall Semester 2023"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button onClick={() => setEditingCourse(null)}>Cancel</Button>
+          <Button onClick={handleSaveEdit} variant="contained">
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
 }
-
