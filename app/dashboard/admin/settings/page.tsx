@@ -10,11 +10,11 @@ import {
   MenuItem,
   Button,
   Alert,
-  CircularProgress,
   Card,
   CardContent,
   Snackbar
 } from '@mui/material';
+import { StuLoader } from '@/components/ui/StuLoader';
 import { SELECTION_MODES, SELECTION_MODE_DESCRIPTIONS, type SelectionMode } from '@/lib/selectionMode';
 
 export default function AdminSettingsPage() {
@@ -97,9 +97,9 @@ export default function AdminSettingsPage() {
 
   if (loading) {
     return (
-      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <StuLoader variant="page" text="Loading institution settings..." />
+      </div>
     );
   }
 
@@ -185,8 +185,12 @@ export default function AdminSettingsPage() {
               }
             }}
           >
-            {saving ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? (
+              <span className="inline-flex items-center gap-2">
+                <StuLoader variant="inline" />
+                Saving...
+              </span>
+            ) : 'Save Settings'}
           </Button>
         </CardContent>
       </Card>

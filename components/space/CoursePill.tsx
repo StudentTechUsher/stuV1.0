@@ -1,4 +1,8 @@
+"use client";
+
 import { ReqDot } from './ReqDot';
+import { useDraggable } from '@dnd-kit/core';
+import type { Course } from '../grad-planner/types';
 
 export interface CourseItem {
   id: string;
@@ -6,17 +10,47 @@ export interface CourseItem {
   title: string;
   credits: number;
   requirements: string[];
+  termIndex: number;
+  courseIndex: number;
+  rawCourse: Course;
 }
 
 interface CoursePillProps {
   course: CourseItem;
+  isEditMode?: boolean;
 }
 
-export function CoursePill({ course }: CoursePillProps) {
+export function CoursePill({ course, isEditMode = false }: CoursePillProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: course.id,
+    data: {
+      course: course.rawCourse,
+      termIndex: course.termIndex,
+      courseIndex: course.courseIndex,
+    },
+    disabled: !isEditMode,
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: isDragging ? 1000 : 'auto',
+      }
+    : { zIndex: isDragging ? 1000 : 'auto' };
+
   return (
     <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
       className="grid grid-cols-[1fr_auto] items-center gap-2 px-2 py-1 rounded-lg bg-white border border-gray-200 shadow-sm"
       title={`${course.code} - ${course.title}`}
+      style={{
+        ...style,
+        cursor: isEditMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+        opacity: isDragging ? 0.7 : 1,
+        userSelect: 'none',
+      }}
     >
       {/* Left: requirement dots + course info */}
       <div className="flex items-center gap-1.5 min-w-0">

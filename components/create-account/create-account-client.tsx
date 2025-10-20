@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { StuLoader } from "@/components/ui/StuLoader";
 import CreateAccountForm from "@/components/create-account/create-account-form";
 
 type Option = { id: number; name: string; university_id?: number | null };
@@ -52,7 +53,13 @@ export default function CreateAccountClient({
     });
   }, [router]);
 
-  if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <StuLoader variant="card" text="Loading your profile..." speed={2.5} />
+      </div>
+    );
+  }
   if (!userId) return null;
 
   return (

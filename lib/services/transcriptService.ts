@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { uploadPdfToOpenAI, extractCoursesWithOpenAI } from '@/lib/openaiTranscript';
 import { logError, logInfo } from '@/lib/logger';
+import { extractByuTranscriptText } from '@/lib/transcript/pdfExtractor';
+import { parseAndValidateByuTranscript, type ByuCourse } from '@/lib/transcript/byuParser';
 
 // Custom error types for better error handling
 export class TranscriptUploadError extends Error {
@@ -44,16 +46,16 @@ export interface TranscriptDocument {
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE (own transcripts only)
- * Parses a transcript using either Python parser or OpenAI fallback
+ * Parses a BYU transcript using native TypeScript parser with optional OpenAI fallback
  * @param documentId - The document ID to parse
  * @param userId - The user ID who owns the document
- * @param usePythonParser - Whether to use Python parser (default: true)
+ * @param useOpenAIFallback - Whether to use OpenAI if BYU parser fails (default: false)
  * @returns Parse result with course count
  */
 export async function parseTranscript(
   documentId: string,
   userId: string,
-  usePythonParser = true
+  useOpenAIFallback = false
 ): Promise<ParseTranscriptResult> {
   try {
     // Fetch document to get storage path
@@ -79,58 +81,7 @@ export async function parseTranscript(
       .update({ status: 'parsing' })
       .eq('id', documentId);
 
-    let coursesCount = 0;
-
-    if (usePythonParser) {
-      // Use Python FastAPI parser
-      const parserUrl = process.env.TRANSCRIPT_PARSER_URL || 'http://localhost:8787';
-
-      try {
-        const parseResponse = await fetch(`${parserUrl}/parse`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bucket: 'transcripts',
-            path: storagePath,
-            user_id: userId,
-          }),
-        });
-
-        if (!parseResponse.ok) {
-          const errorText = await parseResponse.text();
-          throw new TranscriptParseError(`Python parser failed: ${errorText}`);
-        }
-
-        const parseReport = await parseResponse.json();
-        logInfo('Python parser completed', {
-          userId,
-          action: 'transcript_parse_python',
-          count: parseReport.courses_upserted || 0,
-        });
-
-        coursesCount = parseReport.courses_upserted || 0;
-
-        // Update document status to 'parsed'
-        await supabase
-          .from('documents')
-          .update({ status: 'parsed' })
-          .eq('id', documentId);
-
-        return {
-          documentId,
-          status: 'parsed',
-          count: coursesCount,
-        };
-      } catch (pythonError) {
-        logError('Python parser failed, falling back to OpenAI', pythonError, {
-          userId,
-          action: 'python_parser_failure',
-        });
-        // Fall through to OpenAI parsing
-      }
-    }
-
-    // Use OpenAI parser (fallback or primary if Python disabled)
+    // Create admin client for database operations
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -153,31 +104,93 @@ export async function parseTranscript(
 
     const pdfBytes = Buffer.from(await downloadData.arrayBuffer());
 
-    // Upload PDF to OpenAI
-    const fileId = await uploadPdfToOpenAI(pdfBytes, `${documentId}.pdf`);
-    // Do NOT log fileId - it creates linkage between user and OpenAI
+    let courses: ByuCourse[] = [];
+    let usedByuParser = false;
 
-    // Extract courses using OpenAI
-    const courses = await extractCoursesWithOpenAI(fileId);
-    logInfo('Transcript parsing completed', {
+    // Try BYU native parser first
+    try {
+      const transcriptText = await extractByuTranscriptText(pdfBytes);
+      const parseResult = parseAndValidateByuTranscript(transcriptText);
+      courses = parseResult.courses;
+      usedByuParser = true;
+
+      logInfo('BYU transcript parsing completed', {
+        userId,
+        action: 'transcript_parse_byu',
+        count: courses.length,
+        termsFound: parseResult.metadata.termsFound.length,
+      });
+    } catch (byuParserError) {
+      logError('BYU parser failed', byuParserError, {
+        userId,
+        action: 'byu_parser_failure',
+      });
+
+      // Fall back to OpenAI if enabled
+      if (useOpenAIFallback) {
+        logInfo('Falling back to OpenAI parser', {
+          userId,
+          action: 'openai_fallback',
+        });
+
+        // Upload PDF to OpenAI
+        const fileId = await uploadPdfToOpenAI(pdfBytes, `${documentId}.pdf`);
+        // Do NOT log fileId - it creates linkage between user and OpenAI
+
+        // Extract courses using OpenAI
+        const openAICourses = await extractCoursesWithOpenAI(fileId);
+        logInfo('OpenAI transcript parsing completed', {
+          userId,
+          action: 'transcript_parse_openai',
+          count: openAICourses.length,
+        });
+
+        // Convert OpenAI format to BYU format
+        courses = openAICourses.map(c => ({
+          term: c.term ?? 'Unknown',
+          subject: c.subject,
+          number: c.number,
+          title: c.title ?? '',
+          credits: c.credits ?? 0,
+          grade: c.grade,
+        }));
+      } else {
+        // Re-throw error if fallback not enabled
+        throw new TranscriptParseError('BYU parser failed and OpenAI fallback is disabled', byuParserError);
+      }
+    }
+
+    // Delete all existing courses for this user
+    // This ensures we don't accumulate stale data from previous transcript uploads
+    const { error: deleteError } = await admin
+      .from('user_courses')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      logError('Failed to delete previous courses', deleteError, {
+        userId,
+        action: 'delete_previous_courses',
+      });
+      throw new TranscriptParseError('Failed to prepare for new course data');
+    }
+
+    logInfo('Deleted previous courses', {
       userId,
-      action: 'transcript_parse_openai',
-      count: courses.length,
+      action: 'delete_previous_courses',
     });
 
-    // Upsert courses into user_courses table
+    // Upsert courses into user_courses table (simplified schema)
     for (const course of courses) {
       const { error: upsertError } = await admin.from('user_courses').upsert(
         {
           user_id: userId,
-          term: course.term ?? null,
+          term: course.term,
           subject: course.subject,
           number: course.number,
-          title: course.title ?? null,
-          credits: course.credits ?? null,
-          grade: course.grade ?? null,
-          confidence: course.confidence ?? null,
-          source_document: documentId,
+          title: course.title,
+          credits: course.credits,
+          grade: course.grade,
         },
         { onConflict: 'user_id,subject,number,term' }
       );
@@ -198,12 +211,10 @@ export async function parseTranscript(
       .update({ status: 'parsed' })
       .eq('id', documentId);
 
-    coursesCount = courses.length;
-
     return {
       documentId,
       status: 'parsed',
-      count: coursesCount,
+      count: courses.length,
     };
   } catch (error) {
     // Mark document as failed
@@ -243,23 +254,16 @@ export async function fetchUserTranscripts(userId: string): Promise<TranscriptDo
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
- * Fetches parsed courses for a user from a specific document
+ * Fetches parsed courses for a user
  * @param userId - The user ID
- * @param documentId - Optional document ID to filter by
  * @returns Array of parsed courses
  */
-export async function fetchUserCourses(userId: string, documentId?: string): Promise<unknown[]> {
-  let query = supabase
+export async function fetchUserCourses(userId: string): Promise<unknown[]> {
+  const { data, error } = await supabase
     .from('user_courses')
     .select('*')
     .eq('user_id', userId)
     .order('term', { ascending: false });
-
-  if (documentId) {
-    query = query.eq('source_document', documentId);
-  }
-
-  const { data, error } = await query;
 
   if (error) {
     throw new TranscriptParseError('Failed to fetch user courses', error);
@@ -283,8 +287,6 @@ export interface CourseInput {
   title: string;
   credits: number;
   grade?: string | null;
-  source_document?: string | null;
-  confidence?: number | null;
 }
 
 /**
@@ -320,8 +322,6 @@ export async function bulkUpsertCourses(userId: string, courses: CourseInput[]) 
       title: course.title,
       credits: course.credits,
       grade: course.grade || null,
-      source_document: course.source_document || null,
-      confidence: course.confidence || null,
     }));
 
     // Bulk upsert courses

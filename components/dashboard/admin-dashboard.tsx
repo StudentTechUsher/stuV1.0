@@ -6,8 +6,6 @@ import { DashboardCard, type KpiOption } from "@/components/ui/dashboard-card"
 import { DashboardChart, type ChartData } from "@/components/ui/dashboard-chart"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { parseCSVData, calculateKPIs, getColleges, type StudentKPIData, type KPICalculations } from "@/lib/utils/csv-parser"
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import { IconButton, Tooltip } from '@mui/material'
 
 const KPI_OPTIONS: KpiOption[] = [
   { key: "studentsWithoutActivePlan", label: "Without Active Plans", description: "Students without a completed active grad plan" },
@@ -50,19 +48,15 @@ export function AdminDashboard() {
 
   // Load CSV data on component mount
   useEffect(() => {
-    console.log('Fetching CSV data...')
     fetch('/Mock_Student_KPI_Data.csv')
       .then(response => {
-        console.log('CSV response status:', response.status)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         return response.text()
       })
       .then(csvContent => {
-        console.log('CSV content length:', csvContent.length)
         const parsedData = parseCSVData(csvContent)
-        console.log('Parsed data length:', parsedData.length)
         setData(parsedData)
         setColleges(getColleges(parsedData))
       })
@@ -82,7 +76,7 @@ export function AdminDashboard() {
 
   const getKpiValue = (kpiKey: string): number => {
     if (!kpis) return 0
-    return kpis[kpiKey as keyof KPICalculations] as number
+    return kpis[kpiKey as keyof KPICalculations]
   }
 
   const getKpiTitle = (kpiKey: string): string => {
@@ -104,45 +98,52 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Institution/College Selector */}
-      <div className="flex items-center justify-between">
-        <h1 style={{
-          fontFamily: '"Red Hat Display", sans-serif',
-          fontWeight: 800,
-          color: 'black',
-          fontSize: '2rem',
-          margin: 0,
-          marginBottom: '24px'
-        }}>Admin Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <Tooltip title="Forecasting Tool">
-            <IconButton
-              onClick={() => router.push('/dashboard/admin/forecast')}
-              sx={{
-                bgcolor: 'var(--primary)',
-                color: 'var(--primary-dark)',
-                '&:hover': {
-                  bgcolor: 'var(--hover-green)'
-                }
-              }}
-            >
-              <TrendingUpIcon />
-            </IconButton>
-          </Tooltip>
-          <span className="text-sm font-medium">View:</span>
-          <Select value={selectedCollege} onValueChange={setSelectedCollege}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Institution-wide</SelectItem>
-              {colleges.map((college) => (
-                <SelectItem key={college} value={college}>
-                  {college}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Modern Header with College Selector and Forecasting Tool */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex-1">
+          <h1 className="font-header text-3xl font-bold text-[var(--foreground)]">
+            Admin Dashboard
+          </h1>
+          <p className="font-body mt-1.5 text-sm text-[var(--muted-foreground)]">
+            Institution-wide analytics and insights
+          </p>
+        </div>
+
+        {/* Actions and Filter Group */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Forecasting Tool Button */}
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/admin/forecast')}
+            className="group flex items-center gap-2 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] px-4 py-2.5 font-body-semi text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+            aria-label="Open forecasting tool"
+          >
+            <svg className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <span>Forecast</span>
+          </button>
+
+          {/* College Selector */}
+          <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm">
+            <svg className="h-4 w-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span className="font-body text-xs font-medium text-[var(--muted-foreground)]">View:</span>
+            <Select value={selectedCollege} onValueChange={setSelectedCollege}>
+              <SelectTrigger className="h-auto border-none bg-transparent p-0 font-body-semi text-sm font-semibold text-[var(--foreground)] shadow-none focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Institution-wide</SelectItem>
+                {colleges.map((college) => (
+                  <SelectItem key={college} value={college}>
+                    {college}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 

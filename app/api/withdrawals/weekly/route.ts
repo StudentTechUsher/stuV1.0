@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  fetchAdvisorWeeklyWithdrawals,
-  WithdrawalFetchError,
-  AdvisorNotFoundError,
-} from '@/lib/services/withdrawalService';
-import { logError } from '@/lib/logger';
+import { listAdvisorWeeklyWithdrawals, seedAll } from '@/lib/mocks/withdrawalSeed';
 
 /**
  * GET /api/withdrawals/weekly?advisorId=...&start=...&end=...
- * Fetches weekly withdrawals for an advisor within a date range
+ * Fetches weekly withdrawals for an advisor within a date range (using mock data)
  * AUTHORIZATION: ADVISORS ONLY
  */
 export async function GET(request: NextRequest) {
@@ -25,27 +20,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await fetchAdvisorWeeklyWithdrawals(advisorId, start, end);
+    // Ensure mock data is seeded
+    seedAll();
 
-    return NextResponse.json(result);
-  } catch (error) {
-    if (error instanceof AdvisorNotFoundError) {
-      return NextResponse.json({ error: 'Advisor not found' }, { status: 404 });
-    }
+    // Get withdrawal rows from mock data
+    const rows = listAdvisorWeeklyWithdrawals(advisorId, start, end);
 
-    if (error instanceof WithdrawalFetchError) {
-      logError('Failed to fetch weekly withdrawals', error, {
-        action: 'fetch_weekly_withdrawals',
-      });
-      return NextResponse.json(
-        { error: 'Failed to fetch withdrawals' },
-        { status: 500 }
-      );
-    }
+    // Calculate summary statistics
+    const byCollege: Record<string, number> = {};
+    const byDepartment: Record<string, number> = {};
+    const byMajor: Record<string, number> = {};
 
-    logError('Unexpected error fetching withdrawals', error, {
-      action: 'fetch_weekly_withdrawals',
+    rows.forEach((row) => {
+      const collegeId = row.student.collegeId || 'unknown';
+      const departmentId = row.student.departmentId || 'unknown';
+      const majorId = row.student.majorId || 'unknown';
+
+      byCollege[collegeId] = (byCollege[collegeId] || 0) + 1;
+      byDepartment[departmentId] = (byDepartment[departmentId] || 0) + 1;
+      byMajor[majorId] = (byMajor[majorId] || 0) + 1;
     });
+
+    return NextResponse.json({
+      rows,
+      summary: {
+        total: rows.length,
+        byCollege,
+        byDepartment,
+        byMajor,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching weekly withdrawals:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

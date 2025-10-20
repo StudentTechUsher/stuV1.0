@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { StuLoader } from '@/components/ui/StuLoader';
 import PlansToApproveTable from '@/components/approve-grad-plans/plans-to-approve-table';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
 import { fetchPendingGradPlans, issueGradPlanAccessId } from '@/lib/services/server-actions';
@@ -55,7 +55,6 @@ export default function SelectGradPlansPage() {
         const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
         
         if (role !== "advisor") {
-          console.log('Access denied: User is not an advisor');
           router.push('/home');
           return;
         }
@@ -116,20 +115,30 @@ export default function SelectGradPlansPage() {
   const renderContent = () => {
     if (isCheckingRole || loading) {
       return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3 }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
-            {isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
-          </Typography>
-        </Box>
+        <div className="flex items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-12 shadow-sm">
+          <StuLoader
+            variant="card"
+            text={isCheckingRole ? 'Checking permissions...' : 'Loading pending graduation plans...'}
+          />
+        </div>
       );
     }
 
     if (error) {
       return (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
+        <div className="rounded-2xl border-2 border-red-200 bg-red-50 p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-red-900">Error</h3>
+              <p className="mt-1 text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        </div>
       );
     }
 
@@ -137,23 +146,20 @@ export default function SelectGradPlansPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{
-        fontFamily: '"Red Hat Display", sans-serif',
-        fontWeight: 800,
-        color: 'black',
-        fontSize: '2rem',
-        margin: 0,
-        marginBottom: '24px'
-      }}>
-        Approve Graduation Plans
-      </Typography>
-      
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Review and approve graduation plans submitted by students.
-      </Typography>
+    <div className="min-h-screen bg-gradient-to-br from-[color-mix(in_srgb,var(--muted)_20%,transparent)] to-transparent">
+      <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
+        {/* Modern page header */}
+        <div className="space-y-2">
+          <h1 className="font-[family-name:var(--font-header)] font-extrabold text-4xl text-[var(--foreground)] tracking-tight">
+            Approve Graduation Plans
+          </h1>
+          <p className="text-base text-[var(--muted-foreground)] leading-relaxed">
+            Review and approve graduation plans submitted by students.
+          </p>
+        </div>
 
-      {renderContent()}
-    </Box>
+        {renderContent()}
+      </div>
+    </div>
   );
 }

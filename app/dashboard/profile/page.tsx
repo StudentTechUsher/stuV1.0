@@ -57,19 +57,25 @@ export default async function ProfilePage() {
   };
 
   return (
-    <main style={{ maxWidth: 720, margin: "3rem auto", padding: "0 1rem" }}>
-      <h1 style={{
-        fontFamily: '"Red Hat Display", sans-serif',
-        fontWeight: 800,
-        color: 'black',
-        fontSize: '2rem',
-        margin: 0,
-        marginBottom: '24px'
-      }}>Edit your profile</h1>
-      <p style={{ marginBottom: "2rem", color: "#666" }}>
-        Update your account information and preferences below. Note: Your university cannot be changed after account creation.
-      </p>
+    <main className="mx-auto max-w-4xl space-y-8 p-4 sm:p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)] shadow-sm">
+            <svg className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h1 className="font-header-bold text-3xl font-extrabold text-[var(--foreground)]">
+            Profile Settings
+          </h1>
+        </div>
+        <p className="font-body text-sm text-[var(--muted-foreground)] ml-[52px]">
+          Update your account information and preferences below. Note: Your university cannot be changed after account creation.
+        </p>
+      </div>
 
+      {/* Profile Form */}
       <CreateAccountClient
         nextHref="/dashboard"
         preload={{ universities, majorsAll, minorsAll, interests, careers, classPrefs }}
@@ -78,7 +84,7 @@ export default async function ProfilePage() {
       />
 
       {/* Transcript Upload Section */}
-      <div style={{ marginTop: '3rem' }}>
+      <div className="mt-8">
         <TranscriptUploadSectionWrapper />
       </div>
     </main>

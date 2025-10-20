@@ -31,9 +31,10 @@ async function handleExtractColors(request: NextRequest) {
     }
 
     const url = parsed.imageUrl;
+    const numColors = parsed.numColors || 5;
 
     // Extract colors using service layer
-    const colors = await extractColorsFromUrl(url);
+    const colors = await extractColorsFromUrl(url, numColors);
 
     if (colors.length === 0) {
       return NextResponse.json(
@@ -51,8 +52,19 @@ async function handleExtractColors(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof ColorExtractionError) {
-      if (error.message === 'Invalid URL') {
-        return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+      if (error.message === 'Invalid URL' || error.message === 'Invalid URL format') {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      if (error.message === 'No colors found on the page') {
+        return NextResponse.json(
+          {
+            error: 'No colors found',
+            details: 'The page may not contain visible color definitions, or they may be loaded dynamically.',
+            colors: [],
+          },
+          { status: 404 }
+        );
       }
 
       logError('Failed to extract colors', error, {

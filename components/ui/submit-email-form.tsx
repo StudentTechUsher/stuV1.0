@@ -61,7 +61,6 @@ export function SubmitEmailForm() {
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-    console.log("Submitting form data:", JSON.stringify(data, null, 2));
 
     try {
       const response = await fetch("/api/send-email", {

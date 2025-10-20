@@ -19,6 +19,8 @@ import WeeklySummaryChips from './WeeklySummaryChips';
 import WithdrawalTable from './WithdrawalTable';
 import StudentDrawer from './StudentDrawer';
 import EmailPreviewButton from './EmailPreviewButton';
+import WithdrawalDigestEmail from '@/emails/WithdrawalDigestEmail';
+import { exportWithdrawalsToCSV, downloadCSV } from '@/utils/csv';
 
 interface ReportsWithdrawalsPanelProps {
   advisorId: string;
@@ -36,6 +38,7 @@ export default function ReportsWithdrawalsPanel({
   const [selectedStudentRows, setSelectedStudentRows] = useState<WithdrawalRow[]>([]);
   const [isRunningJob, setIsRunningJob] = useState(false);
   const [jobMessage, setJobMessage] = useState<string | null>(null);
+  const [showReportPreview, setShowReportPreview] = useState(false);
 
   const { data, isLoading, error, refetch } = useWeeklyWithdrawals(
     advisorId,
@@ -79,184 +82,227 @@ export default function ReportsWithdrawalsPanel({
       }
     : null;
 
-  const handleRunWeeklyJob = async () => {
-    setIsRunningJob(true);
-    setJobMessage(null);
+  const handleGenerateReport = () => {
+    // Set date range to last 7 days
+    const range = getLast7Days();
+    setStartISO(range.startISO);
+    setEndISO(range.endISO);
+    setMinDaysAfter(0);
 
-    try {
-      const response = await fetch('/api/withdrawals/run-weekly-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startISO, endISO }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setJobMessage(`✓ ${result.message}`);
-        refetch();
-      } else {
-        setJobMessage(`✗ Error: ${result.error}`);
-      }
-    } catch (err) {
-      setJobMessage(`✗ Failed to run job: ${String(err)}`);
-    } finally {
-      setIsRunningJob(false);
-    }
+    // Show the report preview modal
+    setShowReportPreview(true);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-header text-[var(--foreground)]">
-            Weekly Withdrawals
-          </h1>
-          {advisor && (
-            <p className="text-sm text-[var(--muted-foreground)] mt-1">
-              {advisor.name} ({advisor.email}) • Scope: {advisor.scope}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={handleRunWeeklyJob}
-          disabled={isRunningJob}
-          className="px-4 py-2 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] font-body-semi text-sm hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-colors"
-          aria-label="Run weekly job to generate digests"
-        >
-          {isRunningJob ? 'Running...' : 'Run Weekly Job'}
-        </button>
-      </div>
-
-      {jobMessage && (
-        <div
-          className={`px-4 py-3 rounded-lg text-sm font-body ${
-            jobMessage.startsWith('✓')
-              ? 'bg-[var(--primary-15)] text-[var(--foreground)]'
-              : 'bg-[var(--destructive)] text-[var(--destructive-foreground)]'
-          }`}
-        >
-          {jobMessage}
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm space-y-4">
-        <h2 className="text-lg font-body-semi text-[var(--foreground)]">Filters</h2>
-
-        {/* Quick date buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              const range = getLast7Days();
-              setStartISO(range.startISO);
-              setEndISO(range.endISO);
-            }}
-            className="px-3 py-1.5 text-sm rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] font-body-semi hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-colors"
-          >
-            Last 7 Days
-          </button>
-          <button
-            onClick={() => {
-              const range = getCurrentWeek();
-              setStartISO(range.startISO);
-              setEndISO(range.endISO);
-            }}
-            className="px-3 py-1.5 text-sm rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] font-body-semi hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-colors"
-          >
-            This Week
-          </button>
-          <button
-            onClick={() => {
-              const range = getLastWeek();
-              setStartISO(range.startISO);
-              setEndISO(range.endISO);
-            }}
-            className="px-3 py-1.5 text-sm rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] font-body-semi hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-colors"
-          >
-            Last Week
-          </button>
+      {/* Premium Black Header Section - matches grad-plan style */}
+      <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)]">
+        <div className="bg-[#0A0A0A] rounded-t-[7px] border-b-2 border-[#0A0A0A] px-6 py-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex-1">
+              <h2 className="text-2xl font-semibold tracking-tight text-white">
+                Weekly Withdrawals
+              </h2>
+              {advisor && (
+                <p className="mt-2 text-sm text-white/80">
+                  {advisor.name} ({advisor.email}) •
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
+                    {advisor.scope}
+                  </span>
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleGenerateReport}
+              className="inline-flex items-center justify-center gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-2.5 font-body-semi text-sm text-[#0A0A0A] transition-all duration-150 hover:-translate-y-[1px] hover:bg-[var(--hover-green)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              aria-label="Run weekly job to generate withdrawal report"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              Run Weekly Job
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <DateRangePicker
-            startISO={startISO}
-            endISO={endISO}
-            onStartChange={setStartISO}
-            onEndChange={setEndISO}
-          />
-          <label className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-            <span className="font-body-semi">Min days after deadline:</span>
-            <input
-              type="number"
-              min="0"
-              value={minDaysAfter}
-              onChange={(e) => setMinDaysAfter(Number(e.target.value))}
-              className="w-20 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+
+        {/* Premium Filters Section - inside the card */}
+        <div className="px-6 py-5">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[color-mix(in_srgb,var(--muted-foreground)_60%,black_40%)]">
+              Filters
+            </span>
+            <div className="flex-1 h-px bg-[var(--border)]"></div>
+          </div>
+
+          {/* Quick date buttons with premium styling */}
+          <div className="mb-5 flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                const range = getLast7Days();
+                setStartISO(range.startISO);
+                setEndISO(range.endISO);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-white px-3.5 py-2 font-body-semi text-sm text-[#0a1f1a] transition-all duration-150 hover:-translate-y-[1px] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] hover:shadow-[0_10px_30px_-20px_rgba(10,31,26,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Last 7 Days
+            </button>
+            <button
+              onClick={() => {
+                const range = getCurrentWeek();
+                setStartISO(range.startISO);
+                setEndISO(range.endISO);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-white px-3.5 py-2 font-body-semi text-sm text-[#0a1f1a] transition-all duration-150 hover:-translate-y-[1px] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] hover:shadow-[0_10px_30px_-20px_rgba(10,31,26,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              This Week
+            </button>
+            <button
+              onClick={() => {
+                const range = getLastWeek();
+                setStartISO(range.startISO);
+                setEndISO(range.endISO);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-white px-3.5 py-2 font-body-semi text-sm text-[#0a1f1a] transition-all duration-150 hover:-translate-y-[1px] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] hover:shadow-[0_10px_30px_-20px_rgba(10,31,26,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Last Week
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <DateRangePicker
+              startISO={startISO}
+              endISO={endISO}
+              onStartChange={setStartISO}
+              onEndChange={setEndISO}
             />
-          </label>
+            <label className="flex items-center gap-3 text-sm">
+              <span className="font-body-semi text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
+                Min days after deadline:
+              </span>
+              <input
+                type="number"
+                min="0"
+                value={minDaysAfter}
+                onChange={(e) => setMinDaysAfter(Number(e.target.value))}
+                className="w-20 rounded-[7px] border border-[var(--border)] bg-white px-3 py-2 text-center font-body text-[#0a1f1a] transition-all duration-150 focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-1"
+              />
+            </label>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Loading / Error */}
+      {/* Premium Loading State */}
       {isLoading && (
-        <div className="p-8 text-center text-[var(--muted-foreground)] font-body">
-          Loading withdrawals...
-        </div>
+        <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)]">
+          <div className="flex min-h-[300px] items-center justify-center p-12">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+                <svg className="h-12 w-12 animate-spin text-[var(--primary)]" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </div>
+              <p className="font-body text-sm text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
+                Loading withdrawals...
+              </p>
+            </div>
+          </div>
+        </section>
       )}
 
+      {/* Premium Error State */}
       {error && (
-        <div className="p-8 text-center text-[var(--destructive)] font-body">
-          Error loading data: {error}
-        </div>
+        <section className="rounded-[7px] border-2 border-[color-mix(in_srgb,var(--destructive)_25%,transparent)] bg-white shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)]">
+          <div className="flex min-h-[300px] items-center justify-center p-12">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--destructive)_10%,transparent)]">
+                <svg className="h-8 w-8 text-[var(--destructive)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="font-body-semi mb-2 text-lg font-semibold text-[var(--destructive)]">
+                Error Loading Data
+              </h3>
+              <p className="font-body text-sm text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
+                {error}
+              </p>
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* Summary */}
+      {/* Premium Summary & Actions Section */}
       {!isLoading && !error && data && (
         <>
-          <div className="space-y-3">
-            <h2 className="text-lg font-body-semi text-[var(--foreground)]">
-              Summary
-            </h2>
-            <WeeklySummaryChips
-              summary={{
-                total: filteredRows.length,
-                byMajor: filteredRows.reduce((acc, row) => {
-                  acc[row.student.majorId] = (acc[row.student.majorId] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>),
-                byDepartment: filteredRows.reduce((acc, row) => {
-                  acc[row.student.departmentId] =
-                    (acc[row.student.departmentId] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>),
+          <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)]">
+            <div className="px-6 py-5">
+              {/* Header with count badge */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[color-mix(in_srgb,var(--muted-foreground)_60%,black_40%)]">
+                    Summary
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0A0A0A] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white shadow-[0_10px_30px_-20px_rgba(10,31,26,0.65)]">
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    {filteredRows.length} {filteredRows.length === 1 ? 'Student' : 'Students'}
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {digest && <EmailPreviewButton digest={digest} />}
+                  <ExportCsvButton
+                    rows={filteredRows}
+                    filename={`weekly-withdrawals-${startISO.split('T')[0]}-to-${
+                      endISO.split('T')[0]
+                    }.csv`}
+                  />
+                </div>
+              </div>
+
+              {/* Summary chips */}
+              <WeeklySummaryChips
+                summary={{
+                  total: filteredRows.length,
+                  byMajor: filteredRows.reduce((acc, row) => {
+                    acc[row.student.majorId] = (acc[row.student.majorId] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>),
+                  byDepartment: filteredRows.reduce((acc, row) => {
+                    acc[row.student.departmentId] =
+                      (acc[row.student.departmentId] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>),
+                }}
+              />
+            </div>
+          </section>
+
+          {/* Premium Table Section */}
+          <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] overflow-hidden">
+            <WithdrawalTable
+              rows={filteredRows}
+              onStudentClick={(studentId) => {
+                const studentWithdrawals = filteredRows.filter(
+                  (row) => row.student.id === studentId
+                );
+                setSelectedStudent(studentId);
+                setSelectedStudentRows(studentWithdrawals);
               }}
             />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            {digest && <EmailPreviewButton digest={digest} />}
-            <ExportCsvButton
-              rows={filteredRows}
-              filename={`weekly-withdrawals-${startISO.split('T')[0]}-to-${
-                endISO.split('T')[0]
-              }.csv`}
-            />
-          </div>
-
-          {/* Table */}
-          <WithdrawalTable
-            rows={filteredRows}
-            onStudentClick={(studentId) => {
-              const studentWithdrawals = filteredRows.filter(
-                (row) => row.student.id === studentId
-              );
-              setSelectedStudent(studentId);
-              setSelectedStudentRows(studentWithdrawals);
-            }}
-          />
+          </section>
         </>
       )}
 
@@ -270,6 +316,104 @@ export default function ReportsWithdrawalsPanel({
             setSelectedStudentRows([]);
           }}
         />
+      )}
+
+      {/* Weekly Report Preview Modal */}
+      {showReportPreview && digest && (
+        <>
+          {/* Premium Backdrop */}
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md transition-opacity"
+            onClick={() => setShowReportPreview(false)}
+            aria-hidden="true"
+          />
+
+          {/* Premium Report Modal */}
+          <div
+            className="fixed left-1/2 top-1/2 z-50 h-[90vh] w-[90vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[7px] border border-[color-mix(in_srgb,rgba(0,0,0,0.14)_18%,var(--border)_82%)] bg-white shadow-[0_52px_140px_-50px_rgba(10,31,26,0.75)]"
+            role="dialog"
+            aria-labelledby="report-preview-title"
+          >
+            {/* Premium Black Header with Actions */}
+            <div className="sticky top-0 z-10 bg-[#0A0A0A] px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2
+                    id="report-preview-title"
+                    className="font-body-semi text-xl font-semibold tracking-tight text-white"
+                  >
+                    Weekly Withdrawal Report
+                  </h2>
+                  <p className="mt-1 text-sm text-white/70">
+                    Last 7 Days • {filteredRows.length} {filteredRows.length === 1 ? 'withdrawal' : 'withdrawals'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Download Report Button */}
+                  <button
+                    onClick={() => {
+                      const csvContent = exportWithdrawalsToCSV(filteredRows);
+                      downloadCSV(
+                        `weekly-withdrawals-report-${new Date().toISOString().split('T')[0]}.csv`,
+                        csvContent
+                      );
+                    }}
+                    className="inline-flex items-center gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-2 font-body-semi text-sm text-[#0A0A0A] transition-all duration-150 hover:-translate-y-[1px] hover:bg-[var(--hover-green)]"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download CSV
+                  </button>
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setShowReportPreview(false)}
+                    className="rounded-[7px] p-2 text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white"
+                    aria-label="Close report"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Report Content */}
+            <div className="overflow-auto p-6" style={{ maxHeight: 'calc(90vh - 88px)' }}>
+              {/* Summary Stats */}
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="rounded-[7px] border border-[var(--border)] bg-white p-4">
+                  <div className="text-sm font-body-semi text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
+                    Total Withdrawals
+                  </div>
+                  <div className="mt-2 text-3xl font-semibold text-[#0A0A0A]">
+                    {filteredRows.length}
+                  </div>
+                </div>
+                <div className="rounded-[7px] border border-[var(--border)] bg-white p-4">
+                  <div className="text-sm font-body-semi text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
+                    Date Range
+                  </div>
+                  <div className="mt-2 text-sm font-body text-[#0A0A0A]">
+                    {new Date(startISO).toLocaleDateString()} - {new Date(endISO).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="rounded-[7px] border border-[var(--border)] bg-white p-4">
+                  <div className="text-sm font-body-semi text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
+                    Advisor Scope
+                  </div>
+                  <div className="mt-2 text-sm font-body text-[#0A0A0A]">
+                    {advisor?.scope}
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Preview */}
+              <WithdrawalDigestEmail digest={digest} />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

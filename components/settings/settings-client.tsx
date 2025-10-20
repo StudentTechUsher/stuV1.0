@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, User as UserIcon } from 'lucide-react';
+import { Loader2, User as UserIcon, Shield } from 'lucide-react';
 
 type Profile = {
   id: string;
@@ -20,9 +20,9 @@ interface SettingsClientProps {
 }
 
 const ROLE_OPTIONS = [
-  { value: '1', label: 'Admin' },
-  { value: '2', label: 'Advisor' },
-  { value: '3', label: 'Student' }
+  { value: '1', label: 'Admin', description: 'Full system access and control' },
+  { value: '2', label: 'Advisor', description: 'Student management and guidance' },
+  { value: '3', label: 'Student', description: 'Personal academic planning' }
 ];
 
 export default function SettingsClient({ user, profile }: SettingsClientProps) {
@@ -76,30 +76,77 @@ export default function SettingsClient({ user, profile }: SettingsClientProps) {
     }
   };
 
+  const currentRoleLabel = ROLE_OPTIONS.find(r => r.value === currentRole)?.label || 'Student';
+
   return (
     <>
-      {/* Role Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserIcon className="h-5 w-5" />
-            User Role (Dev Only)
-          </CardTitle>
-          <CardDescription>
-            Change your role in the system. This affects your permissions and available features.
+      {/* Role Settings - Modern card with clean design */}
+      <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
+        {/* Premium black header */}
+         <div className="bg-[#0A0A0A] w-full p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--primary)] shadow-lg">
+              <Shield className="h-6 w-6 text-black" strokeWidth={2.5} />
+            </div>
+            <div>
+              <CardTitle className="text-white font-[family-name:var(--font-header)] font-extrabold text-xl mb-1">
+                User Role
+              </CardTitle>
+              <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] border border-[color-mix(in_srgb,var(--primary)_30%,transparent)]">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--primary)]">Dev Only</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="p-6">
+          <CardDescription className="text-[var(--muted-foreground)] mb-6 text-sm leading-relaxed">
+            Change your role in the system. This affects your permissions and available features. Changes take effect immediately.
           </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="role-select">Current Role</Label>
+
+          {/* Current role display */}
+          <div className="mb-6 p-4 rounded-xl bg-[color-mix(in_srgb,var(--muted)_30%,transparent)] border border-[var(--border)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <UserIcon className="h-5 w-5 text-[var(--muted-foreground)]" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5">
+                    Current Role
+                  </p>
+                  <p className="text-base font-bold text-[var(--foreground)]">
+                    {currentRoleLabel}
+                  </p>
+                </div>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-[var(--primary)] shadow-sm">
+                <span className="text-xs font-bold text-black uppercase tracking-wide">Active</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Role selector */}
+          <div className="space-y-3">
+            <Label htmlFor="role-select" className="text-sm font-semibold text-[var(--foreground)]">
+              Select New Role
+            </Label>
             <Select value={currentRole} onValueChange={handleRoleChange} disabled={isUpdatingRole}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger
+                id="role-select"
+                className="w-full h-12 rounded-xl border-[var(--border)] hover:border-[var(--primary)] transition-colors duration-200 focus:ring-2 focus:ring-[var(--primary)] focus:ring-opacity-20"
+              >
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl">
                 {ROLE_OPTIONS.map((role) => (
-                  <SelectItem key={role.value} value={role.value}>
-                    {role.label}
+                  <SelectItem
+                    key={role.value}
+                    value={role.value}
+                    className="rounded-lg my-1 cursor-pointer"
+                  >
+                    <div className="flex flex-col py-1">
+                      <span className="font-semibold text-sm">{role.label}</span>
+                      <span className="text-xs text-[var(--muted-foreground)]">{role.description}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -107,26 +154,29 @@ export default function SettingsClient({ user, profile }: SettingsClientProps) {
           </div>
 
           {isUpdatingRole && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Updating role...
+            <div className="flex items-center justify-center gap-2 mt-6 p-3 rounded-xl bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] border border-[color-mix(in_srgb,var(--primary)_20%,transparent)]">
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--primary)]" />
+              <span className="text-sm font-medium text-[var(--foreground)]">Updating role...</span>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Toast notification */}
+      {/* Modern toast notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-sm">
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-in slide-in-from-bottom-5 duration-300">
           <div
             className={`
-              ${toastMessage.variant === 'destructive' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}
-              border rounded-lg p-4 shadow-lg
+              ${toastMessage.variant === 'destructive'
+                ? 'bg-red-50 border-red-200 text-red-900'
+                : 'bg-[var(--primary)] border-[color-mix(in_srgb,var(--primary)_50%,black)] text-black'
+              }
+              border-2 rounded-2xl p-4 shadow-2xl backdrop-blur-sm
             `}
           >
-            <h3 className="font-medium text-sm">{toastMessage.title}</h3>
+            <h3 className="font-bold text-base mb-1">{toastMessage.title}</h3>
             {toastMessage.description && (
-              <p className="text-sm opacity-90 mt-1">{toastMessage.description}</p>
+              <p className="text-sm opacity-90">{toastMessage.description}</p>
             )}
           </div>
         </div>

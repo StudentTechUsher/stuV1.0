@@ -19,6 +19,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EditIcon from '@mui/icons-material/Edit';
 import { GetGenEdsForUniversity } from '@/lib/services/programService';
+import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
 interface ProgramOption {
   id: string;
@@ -32,6 +33,7 @@ export interface ProgramSelections {
   genEdIds: string[];
   genEdStrategy: 'early' | 'balanced';
   planMode: 'AUTO' | 'MANUAL';
+  planName: string;
 }
 
 interface ProgramSelectionDialogProps {
@@ -59,6 +61,8 @@ export default function ProgramSelectionDialog({
   const [selectedMinors, setSelectedMinors] = useState<ProgramOption[]>([]);
   const [genEdStrategy, setGenEdStrategy] = useState<'early' | 'balanced'>('balanced');
   const [planMode, setPlanMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
+  const [planName, setPlanName] = useState('');
+  const [planNameError, setPlanNameError] = useState<string | null>(null);
 
   // Fetch majors and minors when dialog opens
   useEffect(() => {
@@ -121,12 +125,20 @@ export default function ProgramSelectionDialog({
       return;
     }
 
+    const nameValidation = validatePlanName(planName, { allowEmpty: true });
+    if (!nameValidation.isValid) {
+      setPlanNameError(nameValidation.error);
+      return;
+    }
+    setPlanNameError(null);
+
     onNext({
       majorIds: selectedMajors.map(m => m.id),
       minorIds: selectedMinors.map(m => m.id),
       genEdIds: genEds.map(g => g.id), // Include all GenEd programs for the university
       genEdStrategy,
-      planMode
+      planMode,
+      planName: nameValidation.sanitizedValue
     });
   };
 
@@ -137,6 +149,8 @@ export default function ProgramSelectionDialog({
     setGenEdStrategy('balanced');
     setPlanMode('AUTO');
     setError(null);
+    setPlanName('');
+    setPlanNameError(null);
     onClose();
   };
 
@@ -314,6 +328,27 @@ export default function ProgramSelectionDialog({
                 : 'Manually select courses from requirements before generating plan'
               }
             </Typography>
+          </Box>
+
+          {/* Plan Name */}
+          <Box>
+            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
+              Plan Name (optional)
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Ex: Biomedical Engineering Roadmap"
+              value={planName}
+              onChange={(event) => {
+                setPlanName(event.target.value);
+                if (planNameError) {
+                  setPlanNameError(null);
+                }
+              }}
+              error={Boolean(planNameError)}
+              helperText={planNameError ?? 'You can rename your plan at any time from the dashboard.'}
+              inputProps={{ maxLength: 100 }}
+            />
           </Box>
         </Box>
       </DialogContent>

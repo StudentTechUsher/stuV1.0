@@ -37,113 +37,6 @@ const DEFAULT_DATA = {
   optimization: "Moderate",
 };
 
-/** A white track with a green-filled pill and label inside the fill */
-function ProgressPill({
-  value,              // 0..1
-  label,
-  height = 44,
-}: Readonly<{
-  value: number;
-  label: string;
-  height?: number;
-}>) {
-  const pct = Math.round(value * 100);
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        height,
-        borderRadius: 999,
-        bgcolor: "var(--card)",
-        overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.25)",
-      }}
-      aria-label={`${pct}%`}
-      role="progressbar"
-      aria-valuenow={pct}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
-      <Box
-        sx={{
-          position: "absolute",
-          inset: 0,
-          width: `${pct}%`,
-          bgcolor: "var(--primary)",
-          display: "flex",
-          alignItems: "center",
-          px: 2,
-        }}
-      >
-        <Typography variant="body2" className="font-body-bold" sx={{ color: "var(--foreground)" }}>
-          {label}
-        </Typography>
-      </Box>
-    </Box>
-  );
-}
-
-/** A filled chip-like box */
-function FilledChip({
-  children,
-  bg = "#CFFDE8",
-  color = "#0A0A0A",
-  height = 40,
-}: Readonly<{
-  children: React.ReactNode;
-  bg?: string;
-  color?: string;
-  height?: number;
-}>) {
-  return (
-    <Box
-      sx={{
-        borderRadius: 999,
-        bgcolor: bg,
-        color,
-        height,
-        display: "inline-flex",
-        alignItems: "center",
-        px: 2,
-        fontWeight: 600,
-        border: "1px solid rgba(0,0,0,0.06)",
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-
-/** Clickable “Optimization” badge */
-function OptimizationBadge({ level }: Readonly<{ level: string }>) {
-  return (
-    <ButtonBase
-      focusRipple
-      sx={{
-        borderRadius: 999,
-        px: 2,
-        py: 1,
-        height: 40,
-        bgcolor: "#FFF8B8",
-        color: "#0A0A0A",
-        border: "1px solid rgba(0,0,0,0.08)",
-        boxShadow: "none",
-        textAlign: "left",
-      }}
-      onClick={() => {/* hook up later */}}
-    >
-      <Stack lineHeight={1}>
-        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
-          Optimization: {level}
-        </Typography>
-        <Typography sx={{ fontSize: 11, opacity: 0.75 }}>
-          Click here to view optimization suggestions
-        </Typography>
-      </Stack>
-    </ButtonBase>
-  );
-}
-
 export default function AcademicSummary({
   yearInSchool
 }: Readonly<{
@@ -152,7 +45,7 @@ export default function AcademicSummary({
   const [userData, setUserData] = useState(DEFAULT_DATA);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [gradDialogOpen, setGradDialogOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<"April" | "December">("December");
+  const [selectedMonth, setSelectedMonth] = useState<"April" | "June" | "August" | "December">("December");
   const [selectedYear, setSelectedYear] = useState(2028);
 
   useEffect(() => {
@@ -216,18 +109,26 @@ export default function AcademicSummary({
   // Initialize selected month and year from current estGradDate
   useEffect(() => {
     if (userData.estGradDate) {
-      const dateMatch = userData.estGradDate.match(/(April|December) \d+, (\d{4})/);
+      const dateMatch = userData.estGradDate.match(/(April|June|August|December) \d+, (\d{4})/);
       if (dateMatch) {
-        setSelectedMonth(dateMatch[1] as "April" | "December");
+        setSelectedMonth(dateMatch[1] as "April" | "June" | "August" | "December");
         setSelectedYear(parseInt(dateMatch[2]));
       }
     }
   }, [userData.estGradDate]);
 
   const handleSaveGradDate = () => {
-    const day = selectedMonth === "April" ? 21 : 21; // Both semesters end around the 21st
+    // Map semester end months to approximate graduation dates and semester names
+    const semesterMapping: Record<typeof selectedMonth, { day: number; semester: string }> = {
+      "April": { day: 21, semester: "Winter" },      // Winter semester ends in April
+      "June": { day: 21, semester: "Spring" },       // Spring semester ends in June
+      "August": { day: 21, semester: "Summer" },     // Summer semester ends in August
+      "December": { day: 21, semester: "Fall" }      // Fall semester ends in December
+    };
+
+    const { day, semester } = semesterMapping[selectedMonth];
     const newEstGradDate = `${selectedMonth} ${day}, ${selectedYear}`;
-    const newEstSemester = selectedMonth === "April" ? `Spring ${selectedYear}` : `Winter ${selectedYear}`;
+    const newEstSemester = `${semester} ${selectedYear}`;
 
     setUserData(prev => ({
       ...prev,
@@ -246,231 +147,369 @@ export default function AcademicSummary({
 
   return (
     <Card
-      elevation={10}
+      elevation={0}
       sx={{
-        borderRadius: 3,
-        bgcolor: "var(--foreground)",
-        color: "var(--background)",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: '16px',
+        bgcolor: "var(--card)",
+        border: "1px solid color-mix(in srgb, var(--muted-foreground) 10%, transparent)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
         height: "fit-content",
-        maxHeight: "200vh",
-        overflow: "auto"
+        overflow: "hidden",
+        transition: "all 0.2s ease-in-out",
+        "&:hover": {
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        }
       }}
     >
-      <CardContent sx={{ p: 2, pb: 2 }}>
-        {/* Header row */}
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1.5 }}>
-          <Avatar 
+      {/* Bold black header like semester-results-table */}
+      <Box sx={{
+        background: "#0A0A0A",
+        borderBottom: "2px solid #0A0A0A",
+        p: 3
+      }}>
+        <Stack direction="row" alignItems="center" spacing={3} sx={{ mb: 0 }}>
+          {/* Larger, more prominent avatar with white border for contrast */}
+          <Avatar
             src={avatarUrl || undefined}
-            sx={{ 
-              width: 40, 
-              height: 40, 
-              bgcolor: avatarUrl ? "transparent" : "rgba(255,255,255,0.12)" 
-            }} 
-          >
-            {!avatarUrl && d.name.charAt(0).toUpperCase()}
-          </Avatar>
-          <Stack sx={{ flex: 1 }} spacing={0.2}>
-            <Stack direction="row" spacing={1.5} alignItems="baseline">
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: 800, color: "#FFFFFF" }}
-              >
-                {d.name}
-              </Typography>
-              <Typography sx={{ opacity: 0.8 }}>{d.standing}</Typography>
-            </Stack>
-          </Stack>
-          <Typography sx={{ opacity: 0.9, fontWeight: 600 }}>
-            {d.requiredCredits} required credit hours
-          </Typography>
-        </Stack>
-
-        {/* Graduation Progress */}
-        <Typography sx={{ mb: 1, fontWeight: 700 }}>
-          Graduation Progress
-        </Typography>
-        <ProgressPill
-          value={d.gradProgress}
-          label={`${Math.round(d.gradProgress * 100)} % progress toward graduation`}
-        />
-
-        {/* Graduation Plan Progress */}
-        <Typography sx={{ mt: 2, mb: 1, fontWeight: 700 }}>
-          Graduation Plan Progress
-        </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <FilledChip>
-            Grad plan {Math.round(d.planProgress * 100)} % complete
-          </FilledChip>
-          <OptimizationBadge level={d.optimization} />
-        </Stack>
-
-        {/* Grad Plan Follow Through */}
-        <Box sx={{ mt: 2, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontWeight: 700 }}>
-            Grad Plan Follow Through
-          </Typography>
-          <Box sx={{ position: 'relative', display: 'inline-block', '&:hover .info-popup': { opacity: 1 } }}>
-            <Box
-              sx={{
-                width: 20,
-                height: 20,
-                borderRadius: '50%',
-                bgcolor: 'rgba(255,255,255,0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'help',
-              }}
-            >
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 16v-4"/>
-                <path d="M12 8h.01"/>
-              </svg>
-            </Box>
-            <Box
-              className="info-popup"
-              sx={{
-                position: 'absolute',
-                left: 0,
-                top: 28,
-                width: 280,
-                p: 1.5,
-                bgcolor: 'var(--card)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 1.5,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                fontSize: 13,
-                color: 'var(--foreground)',
-                opacity: 0,
-                transition: 'opacity 0.2s',
-                pointerEvents: 'none',
-                zIndex: 10,
-              }}
-            >
-              See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations, helping you stay on track toward graduation.
-            </Box>
-          </Box>
-        </Box>
-        <Box sx={{ position: 'relative', '&:hover .info-popup': { opacity: 1 } }}>
-          <ProgressPill
-            value={d.followThrough}
-            label={`Grad plan ${Math.round(d.followThrough * 100)}% similar to actual course completion`}
-          />
-          <Box
-            className="info-popup"
             sx={{
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              top: -100,
-              width: 280,
-              p: 1.5,
-              bgcolor: 'var(--card)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 1.5,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              fontSize: 13,
-              color: 'var(--foreground)',
-              opacity: 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none',
-              zIndex: 10,
+              width: 64,
+              height: 64,
+              border: "3px solid white",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              bgcolor: avatarUrl ? "transparent" : "var(--primary)"
             }}
           >
-            See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations, helping you stay on track toward graduation.
+            {!avatarUrl && <span className="font-header-bold text-2xl text-black">{d.name.charAt(0).toUpperCase()}</span>}
+          </Avatar>
+          <Stack sx={{ flex: 1 }} spacing={0.5}>
+            {/* White text on black background for maximum contrast */}
+            <Typography
+              className="font-header-bold"
+              sx={{ fontSize: "1.5rem", fontWeight: 800, color: "white" }}
+            >
+              {d.name}
+            </Typography>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              {/* Bright green badge to pop */}
+              <Box sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                px: 1.5,
+                py: 0.5,
+                borderRadius: "6px",
+                bgcolor: "var(--primary)",
+                boxShadow: "0 2px 8px rgba(18, 249, 135, 0.3)"
+              }}>
+                <Typography className="font-body-semi" sx={{ fontSize: "0.75rem", fontWeight: 700, color: "#0A0A0A" }}>
+                  {d.standing}
+                </Typography>
+              </Box>
+              <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>
+                {d.earnedCredits} / {d.requiredCredits} credits
+              </Typography>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Box>
+
+      <CardContent sx={{ p: 3, pb: 3 }}>
+        {/* Main progress section with bold circular progress */}
+        <Box sx={{ mb: 3 }}>
+          <Stack direction="row" alignItems="center" spacing={3}>
+            {/* Large circular progress indicator with bright green and strong shadow */}
+            <Box sx={{ position: "relative", display: "inline-flex" }}>
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: "50%",
+                  background: `conic-gradient(var(--primary) ${d.gradProgress * 360}deg, #e5e7eb 0deg)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                  boxShadow: `0 0 0 4px white, 0 4px 12px rgba(18, 249, 135, 0.3)`
+                }}
+              >
+                <Box sx={{
+                  width: 96,
+                  height: 96,
+                  borderRadius: "50%",
+                  bgcolor: "white",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <Typography className="font-header-bold" sx={{ fontSize: "2rem", fontWeight: 800, color: "#0A0A0A" }}>
+                    {Math.round(d.gradProgress * 100)}%
+                  </Typography>
+                  <Typography className="font-body" sx={{ fontSize: "0.625rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                    Complete
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+            <Stack spacing={1} sx={{ flex: 1 }}>
+              <Typography className="font-body text-xs uppercase tracking-wider" sx={{ color: "var(--muted-foreground)", fontWeight: 700 }}>
+                Graduation Progress
+              </Typography>
+              <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--foreground)", lineHeight: 1.5, fontWeight: 500 }}>
+                You&apos;ve completed <Box component="span" sx={{ fontWeight: 800, color: "#0A0A0A" }}>{Math.round(d.gradProgress * 100)}%</Box> of your degree requirements
+              </Typography>
+            </Stack>
+          </Stack>
+        </Box>
+
+        {/* Plan Progress Bars - Modern, clean design */}
+        <Box sx={{ mb: 3, p: 3, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--muted) 30%, transparent)", border: "1px solid var(--border)" }}>
+          <Typography className="font-body text-xs uppercase tracking-wider" sx={{ mb: 2.5, color: "var(--muted-foreground)", fontWeight: 600 }}>
+            Plan Progress
+          </Typography>
+
+          {/* Plan completion progress */}
+          <Box sx={{ mb: 3 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
+                Graduation Plan
+              </Typography>
+              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                {Math.round(d.planProgress * 100)}%
+              </Typography>
+            </Stack>
+            <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
+              <Box sx={{
+                width: `${Math.round(d.planProgress * 100)}%`,
+                height: "100%",
+                borderRadius: "999px",
+                background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
+                transition: "width 0.7s ease-out"
+              }} />
+            </Box>
+          </Box>
+
+          {/* Follow-through progress with info icon */}
+          <Box>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
+                  Plan Follow Through
+                </Typography>
+                <Box sx={{ position: "relative", display: "inline-block", "&:hover .info-popup": { opacity: 1 } }}>
+                  <Box sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    bgcolor: "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "help"
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 16v-4"/>
+                      <path d="M12 8h.01"/>
+                    </svg>
+                  </Box>
+                  <Box className="info-popup" sx={{
+                    position: "absolute",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    bottom: "calc(100% + 8px)",
+                    width: 280,
+                    p: 2,
+                    bgcolor: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    fontSize: 13,
+                    color: "var(--foreground)",
+                    opacity: 0,
+                    transition: "opacity 0.2s",
+                    pointerEvents: "none",
+                    zIndex: 10
+                  }}>
+                    See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations.
+                  </Box>
+                </Box>
+              </Stack>
+              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                {Math.round(d.followThrough * 100)}%
+              </Typography>
+            </Stack>
+            <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
+              <Box sx={{
+                width: `${Math.round(d.followThrough * 100)}%`,
+                height: "100%",
+                borderRadius: "999px",
+                background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
+                transition: "width 0.7s ease-out"
+              }} />
+            </Box>
           </Box>
         </Box>
 
-        {/* Footer stats */}
-        <Stack sx={{ mt: 1.5 }} spacing={0.5}>
-          <Typography sx={{ fontWeight: 700 }}>
-            {d.earnedCredits} credit hours complete
-          </Typography>
-          <Typography>
-            Estimated graduation semester:&nbsp;
-            <Box component="span" sx={{ fontWeight: 700 }}>
-              {d.estSemester}
+        {/* Optimization Badge - Interactive CTA */}
+        <ButtonBase
+          onClick={() => {/* hook up later */}}
+          sx={{
+            width: "100%",
+            p: 2.5,
+            borderRadius: "12px",
+            border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
+            bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              borderColor: "var(--primary)",
+              bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+              transform: "translateY(-1px)"
+            }
+          }}
+        >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
+            <Box>
+              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", textAlign: "left" }}>
+                Optimization: {d.optimization}
+              </Typography>
+              <Typography className="font-body" sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", textAlign: "left", mt: 0.5 }}>
+                Click to view optimization suggestions
+              </Typography>
             </Box>
-          </Typography>
-          <Typography>
-            Estimated Graduation Date:&nbsp;
-            <ButtonBase
-              onClick={() => setGradDialogOpen(true)}
-              sx={{
-                fontWeight: 700,
-                textDecoration: "underline",
-                cursor: "pointer",
-                "&:hover": { opacity: 0.8 },
-              }}
-            >
-              {d.estGradDate}
-            </ButtonBase>
-          </Typography>
-        </Stack>
+            <Box sx={{
+              width: 32,
+              height: 32,
+              borderRadius: "8px",
+              bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </Box>
+          </Stack>
+        </ButtonBase>
+
+        {/* Footer stats - Modern info cards */}
+        <Box sx={{ mt: 3, pt: 3, borderTop: "1px solid var(--border)" }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
+                Estimated Graduation
+              </Typography>
+              <ButtonBase
+                onClick={() => setGradDialogOpen(true)}
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderRadius: "8px",
+                  bgcolor: "color-mix(in srgb, var(--primary) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                    transform: "translateY(-1px)"
+                  }
+                }}
+              >
+                <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)" }}>
+                  {d.estGradDate}
+                </Typography>
+              </ButtonBase>
+            </Stack>
+          </Stack>
+        </Box>
       </CardContent>
 
-      {/* Edit Graduation Date Dialog */}
+      {/* Modern Edit Graduation Date Dialog */}
       <Dialog
         open={gradDialogOpen}
         onClose={() => setGradDialogOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 3,
-            p: 1,
-            bgcolor: "var(--background)",
+            borderRadius: '16px',
+            bgcolor: "var(--card)",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            maxWidth: '500px',
+            width: '100%',
+            m: 2
           },
         }}
       >
-        <DialogTitle sx={{ pb: 1 }}>
+        <DialogTitle sx={{ p: 4, pb: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="h6" className="font-header">
-              Edit Estimated Graduation Date
+            <Typography className="font-header-bold" sx={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--foreground)" }}>
+              Edit Graduation Date
             </Typography>
-            <IconButton onClick={() => setGradDialogOpen(false)} size="small">
+            <IconButton
+              onClick={() => setGradDialogOpen(false)}
+              size="small"
+              sx={{
+                transition: "all 0.2s",
+                "&:hover": {
+                  bgcolor: "var(--muted)",
+                  transform: "rotate(90deg)"
+                }
+              }}
+            >
               <X size={20} />
             </IconButton>
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 2 }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <DialogContent sx={{ px: 4, pt: 2, pb: 0, overflow: 'visible' }}>
+          <Stack spacing={4}>
             <FormControl fullWidth>
-              <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>
+              <InputLabel
+                className="font-body-semi"
+                sx={{
+                  color: 'var(--muted-foreground)',
+                  '&.Mui-focused': { color: 'var(--primary)' },
+                  fontSize: "0.875rem"
+                }}
+              >
                 Graduation Month
               </InputLabel>
               <Select
                 value={selectedMonth}
                 label="Graduation Month"
-                onChange={(e) => setSelectedMonth(e.target.value as "April" | "December")}
+                onChange={(e) => setSelectedMonth(e.target.value as "April" | "June" | "August" | "December")}
                 className="font-body"
                 sx={{
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--hover-green)' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' }
+                  borderRadius: '10px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--border)',
+                    transition: 'all 0.2s'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                    borderWidth: '2px'
+                  }
                 }}
               >
-                <MenuItem value="April" className="font-body">April (Spring Semester)</MenuItem>
-                <MenuItem value="December" className="font-body">December (Winter Semester)</MenuItem>
+                <MenuItem value="April" className="font-body">April (Winter Semester)</MenuItem>
+                <MenuItem value="June" className="font-body">June (Spring Semester)</MenuItem>
+                <MenuItem value="August" className="font-body">August (Summer Semester)</MenuItem>
+                <MenuItem value="December" className="font-body">December (Fall Semester)</MenuItem>
               </Select>
             </FormControl>
 
             <FormControl fullWidth>
-              <InputLabel sx={{ color: 'var(--primary)', '&.Mui-focused': { color: 'var(--primary)' } }}>
+              <InputLabel
+                className="font-body-semi"
+                sx={{
+                  color: 'var(--muted-foreground)',
+                  '&.Mui-focused': { color: 'var(--primary)' },
+                  fontSize: "0.875rem"
+                }}
+              >
                 Graduation Year
               </InputLabel>
               <Select
@@ -479,9 +518,18 @@ export default function AcademicSummary({
                 onChange={(e) => setSelectedYear(e.target.value as number)}
                 className="font-body"
                 sx={{
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--hover-green)' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary)' }
+                  borderRadius: '10px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--border)',
+                    transition: 'all 0.2s'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--primary)',
+                    borderWidth: '2px'
+                  }
                 }}
               >
                 {yearOptions.map((year) => (
@@ -491,27 +539,51 @@ export default function AcademicSummary({
                 ))}
               </Select>
             </FormControl>
-          </Box>
+          </Stack>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3, pt: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "flex-end", width: "100%", gap: 1 }}>
-            <Button onClick={() => setGradDialogOpen(false)} className="font-body-semi">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveGradDate}
-              variant="contained"
-              className="font-body-semi"
-              sx={{
-                bgcolor: "var(--primary)",
-                color: "var(--muted-foreground)",
-                "&:hover": { bgcolor: "var(--hover-green)" },
-              }}
-            >
-              Save
-            </Button>
-          </Box>
+        <DialogActions sx={{ px: 4, pt: 3, pb: 4, gap: 1.5 }}>
+          <Button
+            onClick={() => setGradDialogOpen(false)}
+            className="font-body-semi"
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: '10px',
+              color: 'var(--foreground)',
+              border: '1px solid var(--border)',
+              textTransform: 'none',
+              transition: 'all 0.2s',
+              "&:hover": {
+                bgcolor: "var(--muted)",
+                borderColor: 'var(--muted-foreground)'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveGradDate}
+            variant="contained"
+            className="font-body-semi"
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: '10px',
+              bgcolor: "var(--primary)",
+              color: "white",
+              textTransform: 'none',
+              boxShadow: 'none',
+              transition: 'all 0.2s',
+              "&:hover": {
+                bgcolor: "var(--hover-green)",
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+              },
+            }}
+          >
+            Save Changes
+          </Button>
         </DialogActions>
       </Dialog>
     </Card>

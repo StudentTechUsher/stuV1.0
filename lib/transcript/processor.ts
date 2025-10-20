@@ -31,13 +31,17 @@ export interface ParseTranscriptFromBufferOptions {
 }
 
 type LlmCourse = {
-  term: string;
   subject: string;
   number: string;
   title: string;
   credits: number;
   grade: string | null;
   confidence?: number;
+};
+
+type LlmTerm = {
+  term: string;
+  courses: LlmCourse[];
 };
 
 let cachedAdminClient: SupabaseClient | null = null;
@@ -69,18 +73,32 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 async function extractTextFromPdf(pdfBuffer: Buffer): Promise<{ text: string; usedOcr: boolean }> {
-  const { pdf: parsePdf } = await import('pdf-parse');
-  const result = await parsePdf(pdfBuffer);
+  // Use pdfjs-dist which works reliably in Next.js
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  const text =
-    typeof result === 'string'
-      ? result
-      : typeof result === 'object' && result !== null && 'text' in result
-        ? String((result as { text?: unknown }).text ?? '')
-        : '';
+  // Convert Buffer to Uint8Array
+  const uint8Array = new Uint8Array(pdfBuffer);
 
+  // Load the PDF document
+  const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+  const pdfDocument = await loadingTask.promise;
+
+  const textPages: string[] = [];
+
+  // Extract text from each page
+  for (let i = 1; i <= pdfDocument.numPages; i++) {
+    const page = await pdfDocument.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: { str?: string }) => item.str || '')
+      .join(' ');
+    textPages.push(pageText);
+  }
+
+  const text = textPages.join('\n');
   const trimmed = text.trim();
   const usedOcr = trimmed.length < 800;
+
   return { text, usedOcr };
 }
 
@@ -122,7 +140,7 @@ function shouldUseLlmFallback(
   return false;
 }
 
-async function extractCoursesWithLlm(rawText: string): Promise<LlmCourse[]> {
+async function extractCoursesWithLlm(rawText: string): Promise<Array<LlmCourse & { term: string }>> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY must be configured for LLM fallback');
@@ -134,37 +152,69 @@ async function extractCoursesWithLlm(rawText: string): Promise<LlmCourse[]> {
     type: 'object',
     additionalProperties: false,
     properties: {
-      courses: {
+      terms: {
         type: 'array',
         items: {
           type: 'object',
           additionalProperties: false,
           properties: {
             term: { type: 'string' },
-            subject: { type: 'string' },
-            number: { type: 'string' },
-            title: { type: 'string' },
-            credits: { type: 'number' },
-            grade: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+            courses: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  subject: { type: 'string' },
+                  number: { type: 'string' },
+                  title: { type: 'string' },
+                  credits: { type: 'number' },
+                  grade: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+                },
+                required: ['subject', 'number', 'title', 'credits'],
+              },
+            },
           },
-          required: ['term', 'subject', 'number', 'title', 'credits'],
+          required: ['term', 'courses'],
         },
       },
     },
-    required: ['courses'],
+    required: ['terms'],
   };
 
-  const userPrompt = `Extract all courses from this academic transcript.
+  const userPrompt = `Extract all courses from this academic transcript, organized by term/semester.
 
-For each course provide:
+Return a JSON structure with an array of terms, where each term contains:
 - term: full term label (e.g., "Fall Semester 2020", "Summer Term 2018")
+- courses: array of courses taken in that term
+
+For each course in the courses array provide:
 - subject: subject code verbatim (e.g., "MATH", "REL A")
 - number: catalog number (e.g., "112")
 - title: course title
 - credits: numeric credit hours
 - grade: letter grade (A+, A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F, CR, NC, P, I, W, T) or null if missing
 
+IMPORTANT: Group courses by the term/semester they occurred in. Each course should appear under its corresponding term.
+
 Skip summary lines, headers, and GPA totals. Include transfer/AP rows. Use null grade for current enrollment.
+
+Expected JSON structure:
+{
+  "terms": [
+    {
+      "term": "Fall Semester 2020",
+      "courses": [
+        {"subject": "MATH", "number": "112", "title": "Calculus I", "credits": 3, "grade": "A"},
+        {"subject": "ENG", "number": "101", "title": "Writing", "credits": 3, "grade": "B+"}
+      ]
+    },
+    {
+      "term": "Winter Semester 2021",
+      "courses": [...]
+    }
+  ]
+}
 
 Transcript text:
 ${rawText}`;
@@ -181,7 +231,7 @@ ${rawText}`;
         {
           role: 'system',
           content:
-            'You are a precise transcript parser. Return courses exactly as they appear without inventing new data.',
+            'You are a precise transcript parser. Group courses by term/semester and return them exactly as they appear without inventing new data.',
         },
         {
           role: 'user',
@@ -212,11 +262,22 @@ ${rawText}`;
   }
 
   try {
-    const parsed = JSON.parse(content) as { courses?: LlmCourse[] };
-    return (parsed.courses ?? []).map((course) => ({
-      ...course,
-      confidence: course.confidence ?? 0.6,
-    }));
+    const parsed = JSON.parse(content) as { terms?: LlmTerm[] };
+    const terms = parsed.terms ?? [];
+
+    // Flatten terms into individual courses with term attached
+    const courses: Array<LlmCourse & { term: string }> = [];
+    for (const termObj of terms) {
+      for (const course of termObj.courses) {
+        courses.push({
+          term: termObj.term,
+          ...course,
+          confidence: course.confidence ?? 0.6,
+        });
+      }
+    }
+
+    return courses;
   } catch (error) {
     logError('Failed to parse LLM JSON payload', error, {
       action: 'transcript_llm_fallback_parse',
@@ -225,7 +286,7 @@ ${rawText}`;
   }
 }
 
-function convertLlmCourses(courses: LlmCourse[]): CourseRow[] {
+function convertLlmCourses(courses: Array<LlmCourse & { term: string }>): CourseRow[] {
   return courses.map((course) => ({
     term: course.term,
     subject: course.subject.toUpperCase(),
@@ -260,6 +321,26 @@ async function upsertCourses(
 
   const client = supabaseClient ?? getSupabaseAdmin();
 
+  // Delete all existing courses for this user
+  // This ensures we don't accumulate stale data from previous transcript uploads
+  const { error: deleteError } = await client
+    .from('user_courses')
+    .delete()
+    .eq('user_id', userId);
+
+  if (deleteError) {
+    logError('Failed to delete previous courses', deleteError, {
+      userId,
+      action: 'delete_previous_courses',
+    });
+    throw new Error('Failed to prepare for new course data');
+  }
+
+  logInfo('Deleted previous courses', {
+    userId,
+    action: 'delete_previous_courses',
+  });
+
   const payload = courses.map((course) => ({
     user_id: userId,
     term: course.term,
@@ -268,13 +349,11 @@ async function upsertCourses(
     title: course.title,
     credits: course.credits,
     grade: course.grade,
-    confidence: course.confidence,
-    source_document: documentId ?? null,
   }));
 
   const { data, error } = await client
     .from('user_courses')
-    .upsert(payload, { onConflict: 'user_id,term,subject,number' })
+    .upsert(payload, { onConflict: 'user_id,subject,number,term' })
     .select('id');
 
   if (error) {

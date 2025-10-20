@@ -72,7 +72,6 @@ export async function middleware(request: NextRequest) {
 
   if (university) {
     response.headers.set('x-university', JSON.stringify(university))
-    console.log('University found:', university.name)
   }
 
   // Get session and handle auth errors

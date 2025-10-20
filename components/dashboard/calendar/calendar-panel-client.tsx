@@ -3,8 +3,7 @@
 
 import dynamic from "next/dynamic";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import { Card, CardContent, Box, Typography, Button } from "@mui/material";
-import type { SxProps, Theme } from "@mui/material/styles";
+import { Box, Button } from "@mui/material";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -39,13 +38,6 @@ type Props = {
   hiddenDays?: number[]; // [0] to hide Sunday
   semester?: string;     // e.g. "Winter 2025 Schedule"
   showSchedulerButton?: boolean;
-};
-
-const getPrimaryColor = () => {
-  if (typeof window !== 'undefined') {
-    return getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#12F987';
-  }
-  return '#12F987'; // fallback for SSR
 };
 
 function convertSchedulerEventsToCalendarEvents(schedulerEvents: SchedulerEvent[]): CalendarEvent[] {
@@ -124,36 +116,14 @@ export default function CalendarPanelClient({
     }
   }, [initialEvents, showSchedulerButton]);
   return (
-    <Card 
-      elevation={0} 
-      sx={{ 
-        borderRadius: 3, 
-        overflowY: "auto", 
-        display: "flex", 
-        flexDirection: "column",
-        // Glassmorphism effect
-        backgroundColor: "rgba(255, 255, 255, 0.1)",
-        backdropFilter: "blur(10px)",
-        border: "1px solid rgba(255, 255, 255, 0.2)",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-      }}
-    >
-      <CardContent
-        sx={{
-          p: 2,
-          // Make the content area also transparent with glassmorphism
-          background: `linear-gradient(135deg, ${getPrimaryColor()}1a 0%, ${getPrimaryColor()}0d 100%)`,
-          backdropFilter: "blur(5px)",
-          border: `1px solid ${getPrimaryColor()}33`,
-          borderRadius: 2,
-          boxShadow: "inset 0 1px 3px rgba(255, 255, 255, 0.1)",
-        }}
-      >
-        {/* Title / Semester block with scheduler button */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-          <Typography variant="h5" className="font-header-bold" sx={{ color: "var(--primary-dark, #003228)", fontWeight: 800 }}>
+    // Modern card layout with rounded corners and bold header
+    <div className="flex flex-col overflow-y-auto rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
+      {/* Bold black header like semester-results-table */}
+      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-header-bold text-xl font-extrabold text-white">
             {semester}
-          </Typography>
+          </h2>
           {showSchedulerButton && (
             <Link href="/dashboard/semester-scheduler" passHref>
               <Button
@@ -162,16 +132,14 @@ export default function CalendarPanelClient({
                 startIcon={<Calendar size={16} />}
                 className="font-body-semi"
                 sx={{
-                  background: `linear-gradient(135deg, var(--primary-dark, #003228) 0%, ${getPrimaryColor()}f0 100%)`,
-                  backdropFilter: "blur(8px)",
-                  border: `2px solid ${getPrimaryColor()}80`,
-                  boxShadow: `0 4px 16px ${getPrimaryColor()}66, inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
-                  color: "white",
-                  fontWeight: 600,
-                  "&:hover": { 
-                    background: `linear-gradient(135deg, var(--primary-dark, #003228) 0%, ${getPrimaryColor()} 100%)`,
-                    boxShadow: `0 6px 20px ${getPrimaryColor()}80, inset 0 1px 3px rgba(255, 255, 255, 0.3)`,
-                    transform: "translateY(-1px)",
+                  backgroundColor: "var(--primary)",
+                  color: "#0A0A0A",
+                  fontWeight: 700,
+                  borderRadius: "7px",
+                  textTransform: "none",
+                  boxShadow: "0 2px 8px rgba(18, 249, 135, 0.3)",
+                  "&:hover": {
+                    backgroundColor: "var(--hover-green)",
                   },
                 }}
               >
@@ -179,31 +147,29 @@ export default function CalendarPanelClient({
               </Button>
             </Link>
           )}
-        </Box>
+        </div>
+      </div>
 
-        {/* Calendar with "mock" look */}
+      <div className="p-4 sm:p-6">
+
+        {/* Calendar */}
         <Box
           sx={{
-            // Outer frame like the mock
             p: 0,
-            border: `2px solid ${getPrimaryColor()}4d`,
+            border: "1px solid var(--border)",
             borderRadius: 2,
             overflow: "hidden",
-            // Glassmorphic container
-            background: `linear-gradient(135deg, ${getPrimaryColor()}33 0%, ${getPrimaryColor()}1a 100%)`,
-            backdropFilter: "blur(8px)",
-            boxShadow: "inset 0 2px 4px rgba(255, 255, 255, 0.1)",
+            backgroundColor: "var(--background)",
 
             // FullCalendar theme overrides
-            "--fc-border-color": `${getPrimaryColor()}66`,
-            "& .fc": { 
-              background: `linear-gradient(135deg, ${getPrimaryColor()}26 0%, ${getPrimaryColor()}14 100%)`,
-              backdropFilter: "blur(6px)",
+            "--fc-border-color": "var(--border)",
+            "& .fc": {
+              backgroundColor: "var(--background)",
             },
 
             // Make grid lines thicker / clearer
             "& .fc-theme-standard td, & .fc-theme-standard th": {
-              borderColor: "rgba(0,0,0,0.55)",
+              borderColor: "var(--border)",
               borderWidth: "1px",
             },
             // Hide all-day row and divider spacing artifacts
@@ -213,45 +179,38 @@ export default function CalendarPanelClient({
             "& .fc-col-header-cell-cushion": {
               textTransform: "uppercase",
               fontWeight: 800,
-              color: "#003228",
+              color: "var(--dark)",
             },
 
             // Hour labels (8 AM, 9 AM …)
             "& .fc-timegrid-axis-cushion": {
               fontWeight: 700,
-              color: "#003228",
+              color: "var(--dark)",
             },
 
-            // Row height (taller slots, like the mock)
+            // Row height (taller slots)
             "& .fc-timegrid-slot": { height: "48px" },
 
             // Event "pills"
             "& .fc-event": {
               border: "none",
               borderRadius: 1.5,
-              boxShadow: "0 2px 0 rgba(0,0,0,0.25)",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
               overflow: "hidden",
             },
             "& .evt-registered .fc-event-main": {
-              background: `linear-gradient(135deg, ${getPrimaryColor()}cc 0%, var(--primary-dark, #003228)e6 100%)`,
-              backdropFilter: "blur(8px)",
-              border: `1px solid ${getPrimaryColor()}66`,
-              boxShadow: `0 4px 12px ${getPrimaryColor()}4d, inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
+              backgroundColor: "var(--primary)",
               color: "#fff",
             },
             "& .evt-waitlisted .fc-event-main": {
-              background: "linear-gradient(135deg, rgba(230, 230, 230, 0.7) 0%, rgba(200, 200, 200, 0.8) 100%)",
-              backdropFilter: "blur(6px)",
-              border: "1px solid rgba(180, 180, 180, 0.5)",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
-              color: "#333",
+              backgroundColor: "var(--muted)",
+              color: "var(--muted-foreground)",
+              border: "1px solid var(--border)",
             },
 
-            // Tweak today background with glassmorphism
+            // Today background
             "& .fc-timegrid .fc-timegrid-col.fc-day-today": {
-              background: `linear-gradient(180deg, ${getPrimaryColor()}1f 0%, ${getPrimaryColor()}0f 100%)`,
-              backdropFilter: "blur(4px)",
-              boxShadow: `inset 0 1px 2px ${getPrimaryColor()}33`,
+              backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--background))",
             },
           }}
         >
@@ -291,27 +250,19 @@ export default function CalendarPanelClient({
           />
         </Box>
 
-        {/* Legend */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1.5 }}>
-          <LegendDot sx={{ bgcolor: "#000" }} /> Registered
-          <LegendDot sx={{ bgcolor: "#e6e6e6", border: "1px solid #cfcfcf" }} /> Waitlisted
-        </Box>
-      </CardContent>
-    </Card>
+        {/* Legend - visual key for event status colors */}
+        <div className="mt-4 flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-[var(--primary)]" />
+            <span className="font-body text-[var(--foreground)]">Registered</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full border border-[var(--border)] bg-[var(--muted)]" />
+            <span className="font-body text-[var(--foreground)]">Waitlisted</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function LegendDot({ sx }: Readonly<{ sx?: SxProps<Theme> }>) {
-  return (
-    <Box
-      sx={{
-        width: 12,
-        height: 12,
-        borderRadius: "50%",
-        display: "inline-block",
-        mr: 1,
-        ...(typeof sx === "object" && !Array.isArray(sx) ? sx : {}),
-      }}
-    />
-  );
-}

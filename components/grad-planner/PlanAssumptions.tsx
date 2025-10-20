@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 
 interface PlanAssumptionsProps {
   assumptions: string[];
@@ -12,17 +10,17 @@ export function PlanAssumptions({ assumptions }: PlanAssumptionsProps) {
   if (!assumptions || assumptions.length === 0) return null;
 
   return (
-    <Box sx={{ mb: 3, p: 2, backgroundColor: 'var(--primary-15)', borderRadius: 3, border: '1px solid var(--primary)' }}>
-      <Typography variant="h6" className="font-header-bold" gutterBottom>
-        Plan Assumptions:
-      </Typography>
-      <Box component="ul" sx={{ m: 0, pl: 2 }}>
+    <section className="mt-6 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_42%,transparent)] bg-white px-5 py-4 shadow-[0_32px_90px_-60px_rgba(18,249,135,0.25)]">
+      <h3 className="font-header text-lg font-semibold text-[#0a1f1a]">
+        Plan assumptions
+      </h3>
+      <ul className="mt-3 space-y-2 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)]">
         {assumptions.map((assumption) => (
-          <Typography key={assumption} component="li" variant="body2" className="font-body">
+          <li key={assumption} className="rounded-[7px] border border-transparent bg-white/40 px-3 py-2 backdrop-blur-sm">
             {assumption}
-          </Typography>
+          </li>
         ))}
-      </Box>
-    </Box>
+      </ul>
+    </section>
   );
 }
