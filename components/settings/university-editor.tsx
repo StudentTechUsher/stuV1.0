@@ -164,9 +164,9 @@ export default function UniversityEditor() {
   // Helper function to adjust brightness
   const adjustBrightness = (hexColor: string, amount: number): string => {
     const hex = hexColor.replace('#', '');
-    const r = Math.max(0, Math.min(255, parseInt(hex.substring(0, 2), 16) + amount));
-    const g = Math.max(0, Math.min(255, parseInt(hex.substring(2, 4), 16) + amount));
-    const b = Math.max(0, Math.min(255, parseInt(hex.substring(4, 6), 16) + amount));
+    const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+    const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+    const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
 
     return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
   };
@@ -368,7 +368,7 @@ export default function UniversityEditor() {
 
   if (isLoading) {
     return (
-      <Card className="border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] shadow-sm rounded-2xl">
+      <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
         <CardContent className="flex items-center justify-center p-12">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
@@ -380,7 +380,7 @@ export default function UniversityEditor() {
   }
 
   return (
-    <Card className="border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden">
+    <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
       {/* Bold black header like academic-summary */}
       <div className="bg-[#0A0A0A] border-b-2 border-[#0A0A0A] p-6">
         <div className="flex items-center gap-3">

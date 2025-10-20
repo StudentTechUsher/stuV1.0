@@ -81,9 +81,9 @@ export default function SettingsClient({ user, profile }: SettingsClientProps) {
   return (
     <>
       {/* Role Settings - Modern card with clean design */}
-      <Card className="border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden">
-        {/* Bold black header like academic-summary */}
-        <div className="bg-[#0A0A0A] border-b-2 border-[#0A0A0A] p-6">
+      <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
+        {/* Premium black header */}
+         <div className="bg-[#0A0A0A] w-full p-6">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--primary)] shadow-lg">
               <Shield className="h-6 w-6 text-black" strokeWidth={2.5} />
