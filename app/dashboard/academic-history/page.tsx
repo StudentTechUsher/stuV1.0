@@ -1,27 +1,9 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Tooltip,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogActions,
-  TextField,
-  Snackbar,
-  Alert,
-  CircularProgress,
-  Paper,
-  Chip,
-  Divider,
-  IconButton,
-  Stack,
-} from '@mui/material';
-import { Save, FileCopy, Refresh, Upload, ViewModule, ViewList, Edit as EditIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Upload, Save, Download, RefreshCw, Grid3x3, List, Edit2, X, ExternalLink, FileText } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { StuLoader } from '@/components/ui/StuLoader';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
 import {
   fetchUserCourses,
@@ -75,6 +57,16 @@ export default function AcademicHistoryPage() {
     grade: '',
     term: '',
   });
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+
+  const loadingMessages = [
+    'Loading your academic history...',
+    'Organizing courses by program...',
+    'Calculating progress metrics...',
+    'Matching courses to requirements...',
+  ];
 
   // Helper function to calculate total required credits or courses from program requirements
   const calculateProgramTotals = (program: ProgramRow): { total: number; unit: 'credits' | 'courses' } => {
@@ -236,6 +228,26 @@ export default function AcademicHistoryPage() {
     })();
   }, [userId, supabase]);
 
+  // Check for PDF URL in sessionStorage on initial load only
+  useEffect(() => {
+    // Check sessionStorage for the uploaded PDF (only available during current session before save)
+    const storedPdfUrl = sessionStorage.getItem('transcript_pdf_url');
+    if (storedPdfUrl) {
+      setPdfUrl(storedPdfUrl);
+    }
+  }, []); // Run only once on mount
+
+  // Rotate loading messages every 7 seconds when loading
+  useEffect(() => {
+    if (!userCoursesLoading) return;
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [userCoursesLoading, loadingMessages.length]);
+
   // Fetch active grad plan if user has courses
   useEffect(() => {
     if (!userId || !hasUserCourses) {
@@ -380,9 +392,13 @@ export default function AcademicHistoryPage() {
       const result = await updateUserCoursesAction(userId, userCourses);
 
       if (result.success) {
+        // Clear the PDF from sessionStorage after saving (FERPA compliance)
+        sessionStorage.removeItem('transcript_pdf_url');
+        setPdfUrl(null);
+
         setSnackbar({
           open: true,
-          message: `Successfully saved ${result.courseCount} course${result.courseCount !== 1 ? 's' : ''}`,
+          message: `Successfully saved ${result.courseCount} course${result.courseCount !== 1 ? 's' : ''}. Transcript PDF removed for privacy.`,
           severity: 'success',
         });
       } else {
@@ -442,6 +458,13 @@ export default function AcademicHistoryPage() {
 
   const handleParsingComplete = async () => {
     setUploadDialogOpen(false);
+
+    // Get the PDF URL from sessionStorage after upload
+    const storedPdfUrl = sessionStorage.getItem('transcript_pdf_url');
+    if (storedPdfUrl) {
+      setPdfUrl(storedPdfUrl);
+    }
+
     // Reload user courses after transcript upload
     if (userId) {
       try {
@@ -456,7 +479,7 @@ export default function AcademicHistoryPage() {
     }
     setSnackbar({
       open: true,
-      message: 'Transcript parsed successfully!',
+      message: 'Transcript parsed successfully! You can now view and verify your courses.',
       severity: 'success',
     });
   };
@@ -465,177 +488,244 @@ export default function AcademicHistoryPage() {
   const renderCourseCard = (course: ParsedCourse, bgColor: string, borderColor: string, editable = true) => {
     if (viewMode === 'compact') {
       return (
-        <Tooltip
-          key={course.id}
-          title={
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{course.title}</Typography>
-              <Typography variant="caption">{course.credits} credits • {course.grade || 'In Progress'}</Typography>
-              {course.term && <Typography variant="caption" sx={{ display: 'block' }}>{course.term}</Typography>}
-              {editable && <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>Click to edit</Typography>}
-            </Box>
-          }
-          arrow
-        >
-          <Paper
-            elevation={1}
+        <div key={course.id} className="group relative">
+          <button
+            type="button"
             onClick={editable ? () => handleEditCourse(course) : undefined}
-            sx={{
-              px: 1.5,
-              py: 1,
+            disabled={!editable}
+            className="rounded-lg border px-3 py-2 shadow-sm transition-all duration-200 hover:shadow-md disabled:cursor-default"
+            style={{
               backgroundColor: bgColor,
-              border: '1px solid',
               borderColor: borderColor,
-              cursor: editable ? 'pointer' : 'default',
-              transition: 'transform 0.2s',
-              '&:hover': {
-                transform: editable ? 'scale(1.05)' : 'none',
-                elevation: editable ? 2 : 1,
-              },
             }}
           >
-            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+            <span className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
               {course.subject} {course.number}
-            </Typography>
-          </Paper>
-        </Tooltip>
+            </span>
+          </button>
+
+          {/* Tooltip on hover - auto-width to fit content */}
+          <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden min-w-max -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-lg group-hover:block">
+            <div className="space-y-0.5">
+              <p className="font-body-semi text-xs font-semibold text-[var(--foreground)]">{course.title}</p>
+              <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                <span className="font-body">{course.credits} credits</span>
+                <span>•</span>
+                <span className="font-body">{course.grade || 'In Progress'}</span>
+                {course.term && (
+                  <>
+                    <span>•</span>
+                    <span className="font-body">{course.term}</span>
+                  </>
+                )}
+              </div>
+              {editable && (
+                <p className="font-body text-xs italic text-[var(--muted-foreground)]">Click to edit</p>
+              )}
+            </div>
+            {/* Tooltip arrow */}
+            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[var(--card)]" />
+          </div>
+        </div>
       );
     }
 
     // Full view mode
     return (
-      <Paper
+      <div
         key={course.id}
-        elevation={1}
-        sx={{
-          p: 1.5,
-          minWidth: 250,
-          flex: '1 1 calc(33.333% - 12px)',
+        className="relative min-w-[250px] flex-1 rounded-lg border p-4 shadow-sm"
+        style={{
           backgroundColor: bgColor,
-          border: '1px solid',
           borderColor: borderColor,
-          position: 'relative',
         }}
       >
         {editable && (
-          <IconButton
-            size="small"
+          <button
+            type="button"
             onClick={() => handleEditCourse(course)}
-            sx={{ position: 'absolute', top: 4, right: 4 }}
+            className="absolute right-2 top-2 rounded-md p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
           >
-            <EditIcon fontSize="small" />
-          </IconButton>
+            <Edit2 size={14} />
+          </button>
         )}
-        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        <h4 className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
           {course.subject} {course.number}
-        </Typography>
-        <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+        </h4>
+        <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">
           {course.title}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
-          <Chip label={`${course.credits} credits`} size="small" variant="outlined" />
-          {course.grade && <Chip label={course.grade} size="small" variant="outlined" />}
-          {course.term && <Chip label={course.term} size="small" variant="outlined" />}
-        </Box>
-      </Paper>
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
+            {course.credits} credits
+          </span>
+          {course.grade && (
+            <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
+              {course.grade}
+            </span>
+          )}
+          {course.term && (
+            <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
+              {course.term}
+            </span>
+          )}
+        </div>
+      </div>
     );
   };
 
   // Show loading state
   if (userCoursesLoading) {
     return (
-      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <CircularProgress />
-        <Typography variant="body2" sx={{ mt: 2 }}>
-          Loading academic history...
-        </Typography>
-      </Box>
+      <div className="flex h-full flex-col items-center justify-center p-6">
+        <StuLoader
+          variant="page"
+          text={loadingMessages[loadingMessageIndex]}
+          speed={2.5}
+        />
+      </div>
     );
   }
 
   // Show fallback if no user courses
   if (!hasUserCourses) {
     return (
-      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-              Academic History
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Upload your transcript to get started.
-            </Typography>
-          </Box>
-        </Box>
+      <div className="flex h-full max-w-full flex-col p-4 sm:p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-[var(--foreground)]">
+            Academic History
+          </h1>
+          <div className="font-body space-y-2 text-sm text-[var(--muted-foreground)]">
+            <p>Upload your transcript to get started:</p>
+            <ol className="ml-4 list-decimal space-y-1">
+              <li>Download your transcript from your university (print to PDF if needed)</li>
+              <li>Upload the transcript PDF below</li>
+            </ol>
+          </div>
+        </div>
 
-        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Box sx={{ maxWidth: 600, width: '100%' }}>
+        {/* BYU Transcript Download Button */}
+        <a
+          href="https://y.byu.edu/ry/ae/prod/records/cgi/stdCourseWork.cgi"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-8 inline-flex w-fit items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+        >
+          <ExternalLink size={16} />
+          Download BYU Transcript
+        </a>
+
+        {/* Upload Area */}
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-2xl">
             <TranscriptUpload
               onTextExtracted={(text) => {
                 console.log('Extracted text:', text);
               }}
               onParsingComplete={handleParsingComplete}
             />
-          </Box>
-        </Box>
-      </Box>
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Main view when user has courses
   return (
-    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', overflow: 'hidden' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+    <div className="flex h-full max-w-full flex-col overflow-hidden p-4 sm:p-6">
+      {/* Header Section */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-[var(--foreground)]">
             Academic History
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
+          </h1>
+          <p className="font-body text-sm text-[var(--muted-foreground)]">
             Your courses organized by program requirements.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <Tooltip title={viewMode === 'compact' ? 'Switch to full view' : 'Switch to compact view'}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={viewMode === 'compact' ? <ViewList /> : <ViewModule />}
-              onClick={() => setViewMode(viewMode === 'compact' ? 'full' : 'compact')}
-            >
-              {viewMode === 'compact' ? 'Full View' : 'Compact'}
-            </Button>
-          </Tooltip>
-          <Tooltip title="Save courses to your profile">
-            <Button variant="contained" size="small" startIcon={<Save />} onClick={saveToDatabase}>
-              Save
-            </Button>
-          </Tooltip>
-          <Tooltip title="Upload transcript PDF">
-            <Button variant="outlined" size="small" startIcon={<Upload />} onClick={() => setUploadDialogOpen(true)}>
-              Upload
-            </Button>
-          </Tooltip>
-          <Tooltip title="Copy JSON to clipboard">
-            <Button variant="outlined" size="small" startIcon={<FileCopy />} onClick={exportJson}>
-              {copyStatus === 'copied' ? 'Copied!' : 'Export'}
-            </Button>
-          </Tooltip>
-          <Tooltip title="Clear all entries (local)">
-            <Button variant="outlined" size="small" color="error" startIcon={<Refresh />} onClick={clearAll}>
-              Clear
-            </Button>
-          </Tooltip>
-        </Box>
-      </Box>
+          </p>
+        </div>
 
-      <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Transcript Button - only show if PDF exists */}
+          {pdfUrl && (
+            <button
+              type="button"
+              onClick={() => setShowPdfViewer(true)}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+              title="View original transcript"
+            >
+              <FileText size={16} />
+              <span className="hidden sm:inline">View Transcript</span>
+            </button>
+          )}
+
+          {/* View Toggle */}
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'compact' ? 'full' : 'compact')}
+            className="group flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            title={viewMode === 'compact' ? 'Switch to full view' : 'Switch to compact view'}
+          >
+            {viewMode === 'compact' ? <List size={16} /> : <Grid3x3 size={16} />}
+            <span className="hidden sm:inline">{viewMode === 'compact' ? 'Full View' : 'Compact'}</span>
+          </button>
+
+          {/* Save Button */}
+          <button
+            type="button"
+            onClick={saveToDatabase}
+            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+            title="Save courses to your profile"
+          >
+            <Save size={16} />
+            <span className="hidden sm:inline">Save</span>
+          </button>
+
+          {/* Upload Button */}
+          <button
+            type="button"
+            onClick={() => setUploadDialogOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            title="Upload transcript PDF"
+          >
+            <Upload size={16} />
+            <span className="hidden sm:inline">Upload</span>
+          </button>
+
+          {/* Export Button */}
+          <button
+            type="button"
+            onClick={exportJson}
+            className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            title="Copy JSON to clipboard"
+          >
+            <Download size={16} />
+            <span className="hidden sm:inline">{copyStatus === 'copied' ? 'Copied!' : 'Export'}</span>
+          </button>
+
+          {/* Clear Button */}
+          <button
+            type="button"
+            onClick={clearAll}
+            className="flex items-center gap-2 rounded-lg border border-red-200 bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-red-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400 hover:bg-red-50 hover:shadow-md"
+            title="Clear all entries (local)"
+          >
+            <RefreshCw size={16} />
+            <span className="hidden sm:inline">Clear</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable Content Area */}
+      <div className="flex flex-1 flex-col gap-6 overflow-auto">
         {/* Warning when no grad plan */}
         {!activeGradPlan && (
-          <Paper sx={{ p: 3, backgroundColor: 'warning.light' }}>
-            <Typography variant="body1" color="warning.dark">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <p className="font-body text-sm font-medium text-amber-900">
               No active graduation plan found. Create one to see how your courses map to program requirements.
-            </Typography>
-          </Paper>
+            </p>
+          </div>
         )}
 
         {/* Gen Ed Program Container - Always show if we have matches */}
@@ -647,56 +737,65 @@ export default function AcademicHistoryPage() {
           const percentage = totalRequired > 0 ? Math.min((earned / totalRequired) * 100, 100) : 0;
 
           return (
-            <Paper elevation={2} sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1 }}>
-                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                    <CircularProgress
-                      variant="determinate"
-                      value={percentage}
-                      size={60}
-                      thickness={4}
-                      sx={{ color: 'success.main' }}
-                    />
-                    <Box
-                      sx={{
-                        top: 0,
-                        left: 0,
-                        bottom: 0,
-                        right: 0,
-                        position: 'absolute',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
-                        {Math.round(percentage)}%
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      General Education
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {earned} of {totalRequired} {unit}
-                    </Typography>
-                  </Box>
-                </Stack>
-                <Chip
-                  label={`${genEdMatches.matchedCourses.length} course${genEdMatches.matchedCourses.length !== 1 ? 's' : ''}`}
-                  color="success"
-                  size="small"
-                />
-              </Box>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: viewMode === 'compact' ? 0.75 : 1.5 }}>
-                {genEdMatches.matchedCourses.map((course) =>
-                  renderCourseCard(course, 'success.light', 'success.main')
-                )}
-              </Box>
-            </Paper>
+            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+              {/* Bold black header matching other dashboard components */}
+              <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* Circular Progress Indicator */}
+                    <div className="relative flex h-14 w-14 items-center justify-center">
+                      <svg className="h-14 w-14 -rotate-90 transform">
+                        <circle
+                          cx="28"
+                          cy="28"
+                          r="24"
+                          stroke="rgba(255,255,255,0.2)"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <circle
+                          cx="28"
+                          cy="28"
+                          r="24"
+                          stroke="var(--primary)"
+                          strokeWidth="4"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 24}`}
+                          strokeDashoffset={`${2 * Math.PI * 24 * (1 - percentage / 100)}`}
+                          strokeLinecap="round"
+                          className="transition-all duration-700"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="font-header-bold text-sm font-bold text-white">
+                          {Math.round(percentage)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-header text-lg font-bold text-white">
+                        General Education
+                      </h3>
+                      <p className="font-body text-xs text-white/70">
+                        {earned} of {totalRequired} {unit}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-black">
+                    {genEdMatches.matchedCourses.length} course{genEdMatches.matchedCourses.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* Courses Grid */}
+              <div className="p-6">
+                <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '2' : '4'}`}>
+                  {genEdMatches.matchedCourses.map((course) =>
+                    renderCourseCard(course, 'rgba(34, 197, 94, 0.1)', 'rgb(34, 197, 94)')
+                  )}
+                </div>
+              </div>
+            </div>
           );
         })()}
 
@@ -709,65 +808,74 @@ export default function AcademicHistoryPage() {
           const percentage = totalRequired > 0 ? Math.min((earned / totalRequired) * 100, 100) : 0;
 
           return (
-            <Paper key={programMatch.program.id} elevation={2} sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1 }}>
-                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                    <CircularProgress
-                      variant="determinate"
-                      value={percentage}
-                      size={60}
-                      thickness={4}
-                      sx={{ color: 'primary.main' }}
-                    />
-                    <Box
-                      sx={{
-                        top: 0,
-                        left: 0,
-                        bottom: 0,
-                        right: 0,
-                        position: 'absolute',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
-                        {Math.round(percentage)}%
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      {programMatch.program.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      {programMatch.program.program_type}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {earned} of {totalRequired} {unit}
-                    </Typography>
-                  </Box>
-                </Stack>
-                <Chip
-                  label={`${programMatch.matchedCourses.length} course${programMatch.matchedCourses.length !== 1 ? 's' : ''}`}
-                  color="primary"
-                  size="small"
-                />
-              </Box>
-              <Divider sx={{ mb: 2 }} />
-              {programMatch.matchedCourses.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: viewMode === 'compact' ? 0.75 : 1.5 }}>
-                  {programMatch.matchedCourses.map((course) =>
-                    renderCourseCard(course, 'primary.light', 'primary.main')
-                  )}
-                </Box>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No courses matched to this program yet.
-                </Typography>
-              )}
-            </Paper>
+            <div key={programMatch.program.id} className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+              {/* Bold black header */}
+              <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* Circular Progress Indicator */}
+                    <div className="relative flex h-14 w-14 items-center justify-center">
+                      <svg className="h-14 w-14 -rotate-90 transform">
+                        <circle
+                          cx="28"
+                          cy="28"
+                          r="24"
+                          stroke="rgba(255,255,255,0.2)"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <circle
+                          cx="28"
+                          cy="28"
+                          r="24"
+                          stroke="var(--primary)"
+                          strokeWidth="4"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 24}`}
+                          strokeDashoffset={`${2 * Math.PI * 24 * (1 - percentage / 100)}`}
+                          strokeLinecap="round"
+                          className="transition-all duration-700"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="font-header-bold text-sm font-bold text-white">
+                          {Math.round(percentage)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-header text-lg font-bold text-white">
+                        {programMatch.program.name}
+                      </h3>
+                      <p className="font-body text-xs text-white/60">
+                        {programMatch.program.program_type}
+                      </p>
+                      <p className="font-body text-xs text-white/70">
+                        {earned} of {totalRequired} {unit}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-black">
+                    {programMatch.matchedCourses.length} course{programMatch.matchedCourses.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* Courses Grid */}
+              <div className="p-6">
+                {programMatch.matchedCourses.length > 0 ? (
+                  <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '2' : '4'}`}>
+                    {programMatch.matchedCourses.map((course) =>
+                      renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
+                    )}
+                  </div>
+                ) : (
+                  <p className="font-body text-sm text-[var(--muted-foreground)]">
+                    No courses matched to this program yet.
+                  </p>
+                )}
+              </div>
+            </div>
           );
         })}
 
@@ -780,130 +888,265 @@ export default function AcademicHistoryPage() {
           const unmatchedCourses = userCourses.filter((c) => !allMatchedIds.has(c.id));
 
           return unmatchedCourses.length > 0 ? (
-            <Paper elevation={2} sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  No Category Assigned
-                </Typography>
-                <Chip
-                  label={`${unmatchedCourses.length} course${unmatchedCourses.length !== 1 ? 's' : ''}`}
-                  color="default"
-                  size="small"
-                />
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                These courses did not match any program requirements. They may be electives or courses from other programs.
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: viewMode === 'compact' ? 0.75 : 1.5 }}>
-                {unmatchedCourses.map((course) =>
-                  renderCourseCard(course, 'grey.100', 'grey.400')
-                )}
-              </Box>
-            </Paper>
+            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+              {/* Header */}
+              <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-header text-lg font-bold text-white">
+                    No Category Assigned
+                  </h3>
+                  <span className="rounded-lg bg-gray-200 px-3 py-1.5 font-body-semi text-xs font-semibold text-gray-700">
+                    {unmatchedCourses.length} course{unmatchedCourses.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <p className="font-body mb-4 text-sm text-[var(--muted-foreground)]">
+                  These courses did not match any program requirements. They may be electives or courses from other programs.
+                </p>
+                <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '2' : '4'}`}>
+                  {unmatchedCourses.map((course) =>
+                    renderCourseCard(course, 'rgba(0,0,0,0.03)', 'rgba(0,0,0,0.2)')
+                  )}
+                </div>
+              </div>
+            </div>
           ) : null;
         })()}
-      </Box>
+      </div>
 
-      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogContent sx={{ p: 3 }}>
-          <TranscriptUpload
-            onTextExtracted={(text) => {
-              console.log('Extracted text:', text);
-            }}
-            onParsingComplete={handleParsingComplete}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Upload Dialog */}
+      {uploadDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setUploadDialogOpen(false)}
+              className="absolute right-4 top-4 rounded-lg p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+            >
+              <X size={20} />
+            </button>
+            <div className="p-6">
+              <TranscriptUpload
+                onTextExtracted={(text) => {
+                  console.log('Extracted text:', text);
+                }}
+                onParsingComplete={handleParsingComplete}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
-      <Dialog open={!!editingCourse} onClose={() => setEditingCourse(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">Edit Course</Typography>
-            <IconButton onClick={() => setEditingCourse(null)} size="small">
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Subject"
-                value={editForm.subject}
-                onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
-                fullWidth
-                size="small"
-                helperText="e.g., CS, MATH, REL A"
-              />
-              <TextField
-                label="Number"
-                value={editForm.number}
-                onChange={(e) => setEditForm({ ...editForm, number: e.target.value })}
-                fullWidth
-                size="small"
-                helperText="e.g., 142, 112, 275"
-              />
-            </Box>
-            <TextField
-              label="Title"
-              value={editForm.title}
-              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-              fullWidth
-              size="small"
-            />
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Credits"
-                value={editForm.credits}
-                onChange={(e) => setEditForm({ ...editForm, credits: e.target.value })}
-                type="number"
-                fullWidth
-                size="small"
-                inputProps={{ step: 0.5 }}
-              />
-              <TextField
-                label="Grade"
-                value={editForm.grade}
-                onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}
-                fullWidth
-                size="small"
-                helperText="e.g., A, B+, C-"
-              />
-            </Box>
-            <TextField
-              label="Term"
-              value={editForm.term}
-              onChange={(e) => setEditForm({ ...editForm, term: e.target.value })}
-              fullWidth
-              size="small"
-              helperText="e.g., Fall Semester 2023"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 1 }}>
-          <Button onClick={() => setEditingCourse(null)}>Cancel</Button>
-          <Button onClick={handleSaveEdit} variant="contained">
-            Save Changes
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Edit Course Dialog */}
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+              <h2 className="font-header text-xl font-bold text-[var(--foreground)]">Edit Course</h2>
+              <button
+                type="button"
+                onClick={() => setEditingCourse(null)}
+                className="rounded-lg p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+            {/* Form */}
+            <div className="space-y-4 p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.subject}
+                    onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                    className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    placeholder="e.g., CS, MATH"
+                  />
+                  <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">e.g., CS, MATH, REL A</p>
+                </div>
+                <div>
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                    Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.number}
+                    onChange={(e) => setEditForm({ ...editForm, number: e.target.value })}
+                    className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    placeholder="e.g., 142"
+                  />
+                  <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">e.g., 142, 112, 275</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                  placeholder="Course title"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                    Credits
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={editForm.credits}
+                    onChange={(e) => setEditForm({ ...editForm, credits: e.target.value })}
+                    className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    placeholder="3.0"
+                  />
+                </div>
+                <div>
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                    Grade
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.grade}
+                    onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}
+                    className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    placeholder="A, B+, C-"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  Term
+                </label>
+                <input
+                  type="text"
+                  value={editForm.term}
+                  onChange={(e) => setEditForm({ ...editForm, term: e.target.value })}
+                  className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                  placeholder="e.g., Fall Semester 2023"
+                />
+                <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">e.g., Fall Semester 2023</p>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setEditingCourse(null)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] transition-all duration-200 hover:bg-[var(--muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {showPdfViewer && pdfUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="relative flex h-[90vh] w-full max-w-7xl flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <FileText size={24} className="text-[var(--primary)]" />
+                <h2 className="font-header text-xl font-bold text-[var(--foreground)]">Original Transcript</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] transition-all duration-200 hover:bg-[var(--muted)]"
+                >
+                  <ExternalLink size={16} />
+                  <span className="hidden sm:inline">Open in New Tab</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowPdfViewer(false)}
+                  className="rounded-lg p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* PDF Content */}
+            <div className="flex-1 overflow-hidden p-4">
+              <iframe
+                src={pdfUrl}
+                className="h-full w-full rounded-lg border border-[var(--border)]"
+                title="Transcript PDF"
+              />
+            </div>
+
+            {/* Footer with helpful info */}
+            <div className="border-t border-[var(--border)] bg-amber-50 px-6 py-3">
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-amber-200">
+                  <span className="text-xs font-bold text-amber-900">i</span>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-body-semi text-xs font-semibold text-amber-900">
+                    Temporary Transcript View
+                  </p>
+                  <p className="font-body text-xs text-amber-800">
+                    Compare the PDF with your parsed courses above. Click on any course to edit if you find discrepancies.
+                    <strong className="font-semibold"> This PDF will be automatically removed when you click "Save" to comply with FERPA privacy regulations.</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar Notification */}
+      {snackbar.open && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in slide-in-from-bottom-4">
+          <div
+            className={`flex min-w-[300px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${
+              snackbar.severity === 'success'
+                ? 'border-green-200 bg-green-50 text-green-900'
+                : snackbar.severity === 'error'
+                ? 'border-red-200 bg-red-50 text-red-900'
+                : 'border-blue-200 bg-blue-50 text-blue-900'
+            }`}
+          >
+            <p className="font-body-semi flex-1 text-sm font-medium">{snackbar.message}</p>
+            <button
+              type="button"
+              onClick={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+              className="rounded-md p-1 transition-colors hover:bg-black/5"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -101,6 +101,24 @@ export default function DemoPage() {
                 Request a demo
               </Button>
 
+            <div className="flex justify-center">
+              <Link
+                href="/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button className="hover:bg-primary-hover text-zinc-900 border-primary font-medium px-6 py-2.5 flex items-center gap-2">
+                  Try
+                  <img
+                    src="/stu_icon_black.png"
+                    alt="stu logo"
+                    className="w-5 h-5"
+                  />
+                  <span className="font-semibold">stu.</span>for FREE
+                </Button>
+              </Link>
+            </div>
+
               <p className="text-xs text-center text-zinc-500">
                 By requesting a demo, you agree to our{" "}
                 <Link href="#" className="underline underline-offset-2 hover:text-primary">

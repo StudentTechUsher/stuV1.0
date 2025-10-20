@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { StuLoader } from "@/components/ui/StuLoader";
 import {
   parseTranscriptText,
@@ -40,6 +40,15 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
   const [isAiParsing, setIsAiParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const [parsingMessageIndex, setParsingMessageIndex] = useState(0);
+
+  const parsingMessages = [
+    'Extracting text from your transcript...',
+    'Analyzing course information...',
+    'Identifying course codes and titles...',
+    'Processing grades and credits...',
+    'Organizing courses by semester...',
+  ];
 
   const formatCredits = (credits: number) =>
     Number.isInteger(credits) ? credits.toFixed(0) : credits.toFixed(2);
@@ -63,6 +72,17 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
     return [...metadataTerms, ...extras].filter((term, index, arr) => arr.indexOf(term) === index);
   }, [coursesByTerm, parseResult]);
 
+  // Rotate parsing messages every 7 seconds
+  useEffect(() => {
+    if (status !== "extracting") return;
+
+    const interval = setInterval(() => {
+      setParsingMessageIndex((prev) => (prev + 1) % parsingMessages.length);
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [status, parsingMessages.length]);
+
   const handleFileUpload = async (file: File) => {
     setStatus("extracting");
     setError(null);
@@ -77,7 +97,18 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
     setShowRaw(false);
 
     try {
-      // Read file as array buffer
+      // Store the PDF file locally as a data URL for viewing later
+      const reader = new FileReader();
+      const pdfDataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Store PDF URL in sessionStorage for this session
+      sessionStorage.setItem('transcript_pdf_url', pdfDataUrl);
+
+      // Read file as array buffer for parsing
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
@@ -233,9 +264,12 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
       ) : (
         <div className="py-8">
           {status === "extracting" && (
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2" />
-              <p className="text-blue-600">Extracting text from PDF...</p>
+            <div className="flex items-center justify-center">
+              <StuLoader
+                variant="card"
+                text={parsingMessages[parsingMessageIndex]}
+                speed={2.5}
+              />
             </div>
           )}
           {status === "extracted" && cleanedText && (
