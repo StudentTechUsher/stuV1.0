@@ -27,7 +27,7 @@ export default async function SettingsPage() {
             Settings
           </h1>
           <p className="text-base text-[var(--muted-foreground)] leading-relaxed">
-            Manage your account preferences and theme customization
+            Manage your account preferences and theme customization here
           </p>
         </div>
 
