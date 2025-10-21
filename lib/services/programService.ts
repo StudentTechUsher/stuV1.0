@@ -25,7 +25,7 @@ export class ProgramFetchError extends Error {
 export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
     const { data, error } = await db
     .from('program')
-    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
+    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed')
     .eq('university_id', universityId)
     .order('created_at', { ascending: false });
 
