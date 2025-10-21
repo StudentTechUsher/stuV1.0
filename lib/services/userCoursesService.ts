@@ -271,7 +271,6 @@ export async function updateUserCourseTags(
     if (!record?.courses) {
       logError('No course record found for user when updating tags', null, {
         userId,
-        courseId,
         action: 'update_user_course_tags',
       });
       return { success: false, tags: [] };
@@ -284,9 +283,6 @@ export async function updateUserCourseTags(
         updated = true;
         logInfo('Updating tags for course', {
           userId,
-          courseId,
-          oldTags: course.tags || [],
-          newTags: cleanedTags,
           action: 'update_user_course_tags',
         });
         return {
@@ -302,8 +298,6 @@ export async function updateUserCourseTags(
     if (!updated) {
       logError('Course ID not found in user courses', null, {
         userId,
-        courseId,
-        availableCourseIds: record.courses.map((c, idx) => c.id ?? generateCourseId(idx)),
         action: 'update_user_course_tags',
       });
       return { success: false, tags: [] };
@@ -317,20 +311,13 @@ export async function updateUserCourseTags(
     if (error) {
       logError('Failed to update user course tags in database', error, {
         userId,
-        courseId,
-        tags: cleanedTags,
         action: 'update_user_course_tags',
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorDetails: error.details,
       });
       throw new CourseTagUpdateError('Failed to update course tags', error);
     }
 
     logInfo('Successfully updated course tags', {
       userId,
-      courseId,
-      tags: cleanedTags,
       action: 'update_user_course_tags',
     });
 
@@ -341,7 +328,6 @@ export async function updateUserCourseTags(
     }
     logError('Unexpected error updating course tags', error, {
       userId,
-      courseId,
       action: 'update_user_course_tags',
     });
     throw new CourseTagUpdateError('Unexpected error updating course tags', error);

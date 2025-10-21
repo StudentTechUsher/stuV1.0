@@ -1653,8 +1653,8 @@ function extractCourseCodesFromRequirement(requirement: unknown): string[] {
  * Fetches Gen Ed requirements and user's active programs (majors/minors)
  */
 async function fetchUserProgramContext(userId: string): Promise<{
-  genEdPrograms: Array<{ id: number; name: string; courseCodes: string[] }>;
-  userPrograms: Array<{ id: number; name: string; program_type: string; courseCodes: string[] }>;
+  genEdPrograms: Array<{ id: string; name: string; courseCodes: string[] }>;
+  userPrograms: Array<{ id: string; name: string; program_type: string; courseCodes: string[] }>;
   universityId: number | null;
 }> {
   try {
@@ -1672,7 +1672,7 @@ async function fetchUserProgramContext(userId: string): Promise<{
     }
 
     // 2. Get General Education programs for the university
-    let genEdPrograms: Array<{ id: number; name: string; courseCodes: string[] }> = [];
+    let genEdPrograms: Array<{ id: string; name: string; courseCodes: string[] }> = [];
     if (universityId) {
       try {
         const genEds = await GetGenEdsForUniversity(universityId);
@@ -1687,7 +1687,7 @@ async function fetchUserProgramContext(userId: string): Promise<{
     }
 
     // 3. Get user's active grad plan to find their programs
-    let userPrograms: Array<{ id: number; name: string; program_type: string; courseCodes: string[] }> = [];
+    let userPrograms: Array<{ id: string; name: string; program_type: string; courseCodes: string[] }> = [];
     try {
       const activePlan = await GetActiveGradPlan(userId);
       if (activePlan && activePlan.programs_in_plan && Array.isArray(activePlan.programs_in_plan)) {
@@ -1750,7 +1750,11 @@ export async function parseTranscriptCourses_ServerAction(args: {
     }
 
     // Fetch user's program context if userId is provided
-    let programContext = { genEdPrograms: [], userPrograms: [], universityId: null };
+    let programContext: {
+      genEdPrograms: Array<{ id: string; name: string; courseCodes: string[] }>;
+      userPrograms: Array<{ id: string; name: string; program_type: string; courseCodes: string[] }>;
+      universityId: number | null;
+    } = { genEdPrograms: [], userPrograms: [], universityId: null };
     if (userId) {
       programContext = await fetchUserProgramContext(userId);
     }
