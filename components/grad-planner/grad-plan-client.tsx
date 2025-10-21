@@ -11,14 +11,13 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import TextField from '@mui/material/TextField';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
 import ProgramSelectionDialog, { type ProgramSelections } from "@/components/grad-planner/ProgramSelectionDialog";
+import InlineEditableTitle from "@/components/grad-planner/inline-editable-title";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 import { updateGradPlanNameAction } from '@/lib/services/server-actions';
-import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
 interface Term {
   term: string;
@@ -70,10 +69,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
   const [gradPlans, setGradPlans] = useState<GradPlanRecord[]>(allGradPlans);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameInput, setRenameInput] = useState('');
-  const [renameError, setRenameError] = useState<string | null>(null);
-  const [isSavingRename, setIsSavingRename] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -99,9 +94,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     const selectedId = event.target.value;
     const selectedPlan = gradPlans.find(plan => plan.id === selectedId);
     setSelectedGradPlan(selectedPlan || null);
-    setIsRenaming(false);
-    setRenameInput('');
-    setRenameError(null);
   };
 
   const handleCreatePlan = () => {
@@ -126,82 +118,46 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     setProgramSelections(null);
   };
 
-  const handleStartRename = () => {
-    if (!selectedGradPlan) return;
-    const existingName = typeof selectedGradPlan.plan_name === 'string'
-      ? (selectedGradPlan.plan_name ?? '').trim()
-      : '';
-    setRenameInput(existingName);
-    setRenameError(null);
-    setIsRenaming(true);
-  };
-
-  const handleRenameCancel = () => {
-    setIsRenaming(false);
-    setRenameInput('');
-    setRenameError(null);
-  };
-
-  const handleRenameSave = async () => {
-    if (!selectedGradPlan) return;
-
-    const validation = validatePlanName(renameInput, { allowEmpty: false });
-    if (!validation.isValid) {
-      setRenameError(validation.error);
-      return;
+  const handleTitleSave = async (newName: string): Promise<{ success: boolean; error?: string }> => {
+    if (!selectedGradPlan) {
+      return { success: false, error: 'No plan selected' };
     }
-
-    const sanitizedName = validation.sanitizedValue;
-    const currentName = typeof selectedGradPlan.plan_name === 'string'
-      ? (selectedGradPlan.plan_name ?? '').trim()
-      : '';
-
-    if (currentName === sanitizedName) {
-      setIsRenaming(false);
-      return;
-    }
-
-    setIsSavingRename(true);
 
     try {
-      const result = await updateGradPlanNameAction(selectedGradPlan.id, sanitizedName);
-      if (!result.success) {
-        const message = result.error ?? 'Failed to rename plan. Please try again.';
-        setRenameError(message);
+      const result = await updateGradPlanNameAction(selectedGradPlan.id, newName);
+
+      if (result.success) {
+        // Update local state - create new objects to trigger re-render
+        const updatedPlan = { ...selectedGradPlan, plan_name: newName };
+
+        setGradPlans(prev =>
+          prev.map(plan => (plan.id === selectedGradPlan.id ? updatedPlan : plan))
+        );
+        setSelectedGradPlan(updatedPlan);
+
         setNotification({
           open: true,
-          message,
+          message: 'Plan name updated.',
+          severity: 'success'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: result.error ?? 'Failed to update plan name.',
           severity: 'error'
         });
-        return;
       }
 
-      setGradPlans(prev =>
-        prev.map(plan => (plan.id === selectedGradPlan.id ? { ...plan, plan_name: sanitizedName } : plan))
-      );
-      setSelectedGradPlan(prev => {
-        const updated = prev ? { ...prev, plan_name: sanitizedName } : prev;
-        console.log('Updated selectedGradPlan:', updated);
-        return updated;
-      });
-      setIsRenaming(false);
-      setRenameInput('');
-      setNotification({
-        open: true,
-        message: 'Plan name updated.',
-        severity: 'success'
-      });
+      return result;
     } catch (error) {
       console.error('Error updating plan name:', error);
-      const message = 'Error updating plan name. Please try again.';
-      setRenameError(message);
+      const errorMessage = 'Error updating plan name. Please try again.';
       setNotification({
         open: true,
-        message,
+        message: errorMessage,
         severity: 'error'
       });
-    } finally {
-      setIsSavingRename(false);
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -229,10 +185,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   const selectedPlanName = selectedGradPlan && typeof selectedGradPlan.plan_name === 'string'
     ? selectedGradPlan.plan_name.trim()
     : '';
-  const selectedPlanTitle = selectedPlanName || 'Untitled Graduation Plan';
-
-  console.log('Rendering with selectedGradPlan.plan_name:', selectedGradPlan?.plan_name);
-  console.log('Computed selectedPlanTitle:', selectedPlanTitle);
 
   const selectedPlanCreatedAt = (() => {
     if (!selectedGradPlan?.created_at) return null;
@@ -246,8 +198,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     }
     return null;
   })();
-  const renameTrimmed = renameInput.trim();
-  const renameSaveDisabled = isSavingRename || renameTrimmed.length === 0 || renameTrimmed === selectedPlanName;
 
   const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string, _planName?: string) => {
     // Close all dialogs
@@ -317,18 +267,26 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                   Graduation Plan
                 </span>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-semibold tracking-tight text-[#0a1f1a]">
-                    {selectedPlanTitle}
-                  </h1>
+                  {selectedGradPlan ? (
+                    <InlineEditableTitle
+                      value={selectedPlanName}
+                      placeholder="Untitled Graduation Plan"
+                      onSave={handleTitleSave}
+                    />
+                  ) : (
+                    <h1 className="text-2xl font-semibold tracking-tight text-[#0a1f1a]">
+                      Untitled Graduation Plan
+                    </h1>
+                  )}
                   {selectedPlanCreatedAt && (
                     <span className="inline-flex items-center rounded-full bg-[#0a1f1a] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_-20px_rgba(10,31,26,0.65)]">
                       Created {selectedPlanCreatedAt}
                     </span>
                   )}
                 </div>
-                {!selectedPlanName && (
+                {selectedGradPlan && !selectedPlanName && (
                   <p className="max-w-xl text-sm leading-relaxed text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
-                    Give this plan a name to make it easier to find later.
+                    Click on the title above to give this plan a name.
                   </p>
                 )}
               </div>
@@ -373,133 +331,77 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex flex-col gap-3 lg:flex-1">
-                {allGradPlans.length > 1 && (
-                  <FormControl sx={{ minWidth: 260 }} size="small">
-                    <InputLabel
-                      id="grad-plan-select-label"
-                      className="font-body"
-                      sx={{
-                        color: '#0a1f1a',
-                        '&.Mui-focused': { color: '#043322' }
-                      }}
-                    >
-                      Select Graduation Plan
-                    </InputLabel>
-                    <Select
-                      labelId="grad-plan-select-label"
-                      value={selectedGradPlan?.id || ''}
-                      label="Select Graduation Plan"
-                      onChange={handleGradPlanSelection}
-                      className="font-body"
-                      sx={{
-                        borderRadius: '7px',
-                        fontWeight: 500,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(10,31,26,0.2)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#0a1f1a',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'var(--primary)',
-                        },
-                      }}
-                    >
-                      {gradPlans.map((plan) => {
-                        const planName = typeof plan.plan_name === 'string'
-                          ? (plan.plan_name ?? '').trim()
-                          : '';
-                        try {
-                          const createdAt = plan.created_at
-                            ? new Date(plan.created_at as string).toLocaleString()
-                            : 'Unknown Date';
-                          const label = planName.length > 0
-                            ? planName
-                            : `Plan made on ${createdAt}`;
-                          return (
-                            <MenuItem key={plan.id} value={plan.id} className="font-body">
-                              {label}
-                            </MenuItem>
-                          );
-                        } catch (error) {
-                          console.error('Error accessing plan data:', error);
-                          const fallbackCreatedAt = plan.created_at
-                            ? (() => {
-                                try { return new Date(plan.created_at as string).toLocaleString(); }
-                                catch { return 'Unknown Date'; }
-                              })()
-                            : 'Unknown Date';
-                          const fallbackLabel = planName.length > 0
-                            ? planName
-                            : `Plan ${String(plan.id).slice(0, 8)} • ${fallbackCreatedAt}`;
-                          return (
-                            <MenuItem key={plan.id} value={plan.id} className="font-body">
-                              {fallbackLabel}
-                            </MenuItem>
-                          );
-                        }
-                      })}
-                    </Select>
-                  </FormControl>
-                )}
-
-                {selectedGradPlan && !isRenaming && (
-                  <button
-                    type="button"
-                    onClick={handleStartRename}
-                    className="inline-flex w-fit items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)] transition-all duration-150 hover:-translate-y-[1px] hover:bg-[color-mix(in_srgb,var(--primary)_16%,white)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-                  >
-                    {selectedPlanName ? 'Rename Plan' : 'Add Plan Name'}
-                  </button>
-                )}
-              </div>
-
-              {selectedGradPlan && isRenaming && (
-                <div className="flex flex-col gap-3 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,white)] p-4 lg:max-w-md">
-                  <TextField
-                    label="Plan Name"
-                    value={renameInput}
-                    onChange={(event) => {
-                      setRenameInput(event.target.value);
-                      if (renameError) {
-                        setRenameError(null);
-                      }
+            {allGradPlans.length > 1 && (
+              <div className="flex flex-col gap-3">
+                <FormControl sx={{ minWidth: 260 }} size="small">
+                  <InputLabel
+                    id="grad-plan-select-label"
+                    className="font-body"
+                    sx={{
+                      color: '#0a1f1a',
+                      '&.Mui-focused': { color: '#043322' }
                     }}
-                    fullWidth
-                    autoFocus
-                    size="small"
-                    inputProps={{ maxLength: 100 }}
-                    error={Boolean(renameError)}
-                    helperText={renameError ?? 'Keep it professional – avoid slang or informal names.'}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="contained"
-                      onClick={handleRenameSave}
-                      disabled={renameSaveDisabled}
-                      className="font-body-semi"
-                      sx={{
-                        backgroundColor: '#0a1f1a',
-                        '&:hover': { backgroundColor: '#043322' }
-                      }}
-                    >
-                      {isSavingRename ? 'Saving…' : 'Save'}
-                    </Button>
-                    <Button
-                      variant="text"
-                      onClick={handleRenameCancel}
-                      disabled={isSavingRename}
-                      className="font-body-semi"
-                      sx={{ color: '#0a1f1a', fontWeight: 600 }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+                  >
+                    Select Graduation Plan
+                  </InputLabel>
+                  <Select
+                    labelId="grad-plan-select-label"
+                    value={selectedGradPlan?.id || ''}
+                    label="Select Graduation Plan"
+                    onChange={handleGradPlanSelection}
+                    className="font-body"
+                    sx={{
+                      borderRadius: '7px',
+                      fontWeight: 500,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(10,31,26,0.2)',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#0a1f1a',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--primary)',
+                      },
+                    }}
+                  >
+                    {gradPlans.map((plan) => {
+                      const planName = typeof plan.plan_name === 'string'
+                        ? (plan.plan_name ?? '').trim()
+                        : '';
+                      try {
+                        const createdAt = plan.created_at
+                          ? new Date(plan.created_at as string).toLocaleString()
+                          : 'Unknown Date';
+                        const label = planName.length > 0
+                          ? planName
+                          : `Plan made on ${createdAt}`;
+                        return (
+                          <MenuItem key={plan.id} value={plan.id} className="font-body">
+                            {label}
+                          </MenuItem>
+                        );
+                      } catch (error) {
+                        console.error('Error accessing plan data:', error);
+                        const fallbackCreatedAt = plan.created_at
+                          ? (() => {
+                              try { return new Date(plan.created_at as string).toLocaleString(); }
+                              catch { return 'Unknown Date'; }
+                            })()
+                          : 'Unknown Date';
+                        const fallbackLabel = planName.length > 0
+                          ? planName
+                          : `Plan ${String(plan.id).slice(0, 8)} • ${fallbackCreatedAt}`;
+                        return (
+                          <MenuItem key={plan.id} value={plan.id} className="font-body">
+                            {fallbackLabel}
+                          </MenuItem>
+                        );
+                      }
+                    })}
+                  </Select>
+                </FormControl>
+              </div>
+            )}
           </div>
         </section>
 
