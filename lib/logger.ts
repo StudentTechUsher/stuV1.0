@@ -21,21 +21,16 @@ interface LogContext {
 
 /**
  * Hash user ID for logging - allows correlation without exposing actual ID
- * Uses a lightweight FNV-1a hash implementation that works in both Node and browsers.
+ * Uses a simple hash function compatible with ES2017.
  */
 function hashUserId(userId: string): string {
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(userId);
-
-  let hash = 0xcbf29ce484222325n; // 64-bit offset basis
-  const prime = 0x100000001b3n; // 64-bit FNV prime
-
-  for (const byte of bytes) {
-    hash ^= BigInt(byte);
-    hash = (hash * prime) & 0xffffffffffffffffn; // Ensure 64-bit overflow
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    const char = userId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
   }
-
-  return hash.toString(16).padStart(16, '0').slice(0, 16);
+  return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
 /**

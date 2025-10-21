@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { uploadPdfToOpenAI, extractCoursesWithOpenAI } from '@/lib/openaiTranscript';
 import { logError, logInfo } from '@/lib/logger';
 import { extractByuTranscriptText } from '@/lib/transcript/pdfExtractor';
-import { parseAndValidateByuTranscript, type ByuCourse } from '@/lib/transcript/byuParser';
+import { parseTranscriptText, type CourseRow } from '@/lib/transcript/byuParser';
 
 // Custom error types for better error handling
 export class TranscriptUploadError extends Error {
@@ -104,13 +104,13 @@ export async function parseTranscript(
 
     const pdfBytes = Buffer.from(await downloadData.arrayBuffer());
 
-    let courses: ByuCourse[] = [];
+    let courses: CourseRow[] = [];
     let usedByuParser = false;
 
     // Try BYU native parser first
     try {
       const transcriptText = await extractByuTranscriptText(pdfBytes);
-      const parseResult = parseAndValidateByuTranscript(transcriptText);
+      const parseResult = parseTranscriptText(transcriptText);
       courses = parseResult.courses;
       usedByuParser = true;
 
@@ -118,7 +118,6 @@ export async function parseTranscript(
         userId,
         action: 'transcript_parse_byu',
         count: courses.length,
-        termsFound: parseResult.metadata.termsFound.length,
       });
     } catch (byuParserError) {
       logError('BYU parser failed', byuParserError, {
@@ -153,6 +152,7 @@ export async function parseTranscript(
           title: c.title ?? '',
           credits: c.credits ?? 0,
           grade: c.grade,
+          confidence: 0.8, // Default confidence for OpenAI parsed courses
         }));
       } else {
         // Re-throw error if fallback not enabled
