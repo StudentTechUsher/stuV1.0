@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ProgramRow } from '@/types/program';
 import type { ProgramRequirement, Course, ProgramRequirementsStructure } from '@/types/programRequirements';
 import { getCourses, getSubRequirements } from '@/types/programRequirements';
+import { saveCourseFlowMinor, saveCourseFlowMajor, type CourseFlowData } from '@/lib/services/programService';
 
 interface ProgramFlowDetailClientProps {
   program: ProgramRow;
@@ -21,20 +22,102 @@ interface PlacedCourse {
   id: string;
 }
 
+type RelationshipType = 'prerequisite' | 'corequisite' | 'optional_prereq' | 'concurrent' | 'either_or';
+
+interface ConnectionNode {
+  id: string;
+  x: number;
+  y: number;
+  requiredCount: number; // How many of the connected courses are required
+}
+
 interface Connection {
   id: string;
   fromCourseId: string;
-  toCourseId: string;
+  toCourseId: string | null; // null if connecting to a connection node
+  toNodeId: string | null; // ID of connection node if applicable
   fromSide: 'top' | 'right' | 'bottom' | 'left';
   toSide: 'top' | 'right' | 'bottom' | 'left';
+  relationshipType?: RelationshipType;
 }
 
 export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlowDetailClientProps>) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('courseFlow');
 
+  // Shared state for course flow that persists across view changes
+  const [placedCourses, setPlacedCourses] = useState<PlacedCourse[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connectionNodes, setConnectionNodes] = useState<ConnectionNode[]>([]);
+
+  // Save state
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const handleBack = () => {
     router.push('/dashboard/program-flow');
+  };
+
+  const handleSave = async (isMajorVersion: boolean) => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      // Prepare the course flow data
+      const flowData: CourseFlowData = {
+        courses: placedCourses.map(pc => ({
+          id: pc.id,
+          courseCode: pc.course.code,
+          courseTitle: pc.course.title,
+          position: { x: pc.x, y: pc.y },
+          isRequired: pc.isRequired,
+          requirementDesc: pc.requirementDesc
+        })),
+        connections: connections.map(conn => ({
+          id: conn.id,
+          fromCourseId: conn.fromCourseId,
+          toCourseId: conn.toCourseId,
+          toNodeId: conn.toNodeId,
+          fromSide: conn.fromSide,
+          toSide: conn.toSide,
+          relationshipType: conn.relationshipType
+        })),
+        connectionNodes: connectionNodes.map(node => ({
+          id: node.id,
+          x: node.x,
+          y: node.y,
+          requiredCount: node.requiredCount
+        }))
+      };
+
+      // Save based on version type
+      if (isMajorVersion) {
+        await saveCourseFlowMajor(program.id, flowData);
+      } else {
+        await saveCourseFlowMinor(program.id, flowData);
+      }
+
+      setSaveSuccess(true);
+      setShowSaveDialog(false);
+
+      // Refresh the page to show updated version
+      setTimeout(() => {
+        router.refresh();
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to save course flow:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to save course flow');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleQuickSave = async () => {
+    // Quick save always does minor version
+    await handleSave(false);
   };
 
   const typeColors: Record<string, { bg: string; text: string; gradient: string }> = {
@@ -180,58 +263,200 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
         </div>
       </div>
 
-      {/* View Mode Toggle Button Bar - Always visible */}
-      <div className="relative z-10 flex items-center justify-center">
-        <div className="inline-flex rounded-lg border border-[var(--border)] bg-white p-1 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setViewMode('courseFlow')}
-            className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${
-              viewMode === 'courseFlow'
-                ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
-                : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            Course Flow
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('classic')}
-            className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${
-              viewMode === 'classic'
-                ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
-                : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            Classic View
-          </button>
+      {/* View Mode Toggle and Save Buttons */}
+      <div className="flex items-center justify-between gap-4">
+        {/* View Mode Toggle */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="inline-flex rounded-lg border border-[var(--border)] bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode('courseFlow')}
+              className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${
+                viewMode === 'courseFlow'
+                  ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              Course Flow
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('classic')}
+              className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${
+                viewMode === 'classic'
+                  ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              Classic View
+            </button>
+          </div>
         </div>
+
+        {/* Save Buttons - only show if there are placed courses */}
+        {placedCourses.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleQuickSave}
+              disabled={isSaving}
+              className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-white transition-all hover:bg-[var(--hover-green)] disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSaveDialog(true)}
+              disabled={isSaving}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-white px-4 py-2 font-body-semi text-sm font-semibold text-[var(--foreground)] transition-all hover:bg-[var(--background)] disabled:opacity-50"
+            >
+              Save As...
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+          <p className="font-body-semi text-sm font-semibold text-green-800">
+            ✓ Course flow saved successfully!
+          </p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {saveError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="font-body-semi text-sm font-semibold text-red-800">
+            Error: {saveError}
+          </p>
+        </div>
+      )}
 
       {/* View Content */}
       {viewMode === 'courseFlow' ? (
-        <CourseFlowView courses={allCourses} programName={program.name} />
+        <CourseFlowView
+          courses={allCourses}
+          programName={program.name}
+          placedCourses={placedCourses}
+          setPlacedCourses={setPlacedCourses}
+          connections={connections}
+          setConnections={setConnections}
+          connectionNodes={connectionNodes}
+          setConnectionNodes={setConnectionNodes}
+        />
       ) : (
-        <ClassicView program={program} colors={colors} />
+        <ClassicView
+          _program={program}
+          colors={colors}
+          courses={allCourses}
+        />
+      )}
+
+      {/* Save Dialog Modal */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h2 className="mb-4 font-header text-2xl font-bold text-[var(--foreground)]">
+              Save Course Flow
+            </h2>
+            <p className="mb-6 font-body text-sm text-[var(--muted-foreground)]">
+              Choose how you want to save your changes:
+            </p>
+
+            <div className="space-y-4">
+              {/* Minor Version Option */}
+              <button
+                type="button"
+                onClick={() => handleSave(false)}
+                disabled={isSaving}
+                className="w-full rounded-lg border-2 border-[var(--primary)] bg-white p-4 text-left transition-all hover:bg-[var(--primary)] hover:bg-opacity-5 disabled:opacity-50"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="font-body-semi text-lg font-semibold text-[var(--foreground)]">
+                    Minor Update
+                  </span>
+                  <span className="rounded-full bg-[var(--primary)] bg-opacity-10 px-3 py-1 font-body-semi text-xs font-semibold text-[var(--primary)]">
+                    +0.1
+                  </span>
+                </div>
+                <p className="font-body text-sm text-[var(--muted-foreground)]">
+                  Small changes, bug fixes, or refinements. Updates the current version.
+                </p>
+              </button>
+
+              {/* Major Version Option */}
+              <button
+                type="button"
+                onClick={() => handleSave(true)}
+                disabled={isSaving}
+                className="w-full rounded-lg border-2 border-[var(--primary)] bg-white p-4 text-left transition-all hover:bg-[var(--primary)] hover:bg-opacity-5 disabled:opacity-50"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="font-body-semi text-lg font-semibold text-[var(--foreground)]">
+                    Major Update
+                  </span>
+                  <span className="rounded-full bg-[var(--primary)] px-3 py-1 font-body-semi text-xs font-semibold text-white">
+                    +1.0
+                  </span>
+                </div>
+                <p className="font-body text-sm text-[var(--muted-foreground)]">
+                  Significant changes or new requirements. Creates a new version.
+                </p>
+              </button>
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={() => setShowSaveDialog(false)}
+              disabled={isSaving}
+              className="mt-4 w-full rounded-lg border border-[var(--border)] bg-white px-4 py-2 font-body-semi text-sm font-semibold text-[var(--muted-foreground)] transition-all hover:bg-[var(--background)] disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 // Course Flow View Component
-function CourseFlowView({ courses, programName }: { courses: Array<{ course: Course; isRequired: boolean; requirementDesc: string }>; programName: string }) {
-  const [placedCourses, setPlacedCourses] = useState<PlacedCourse[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
+function CourseFlowView({
+  courses,
+  programName,
+  placedCourses,
+  setPlacedCourses,
+  connections,
+  setConnections,
+  connectionNodes,
+  setConnectionNodes
+}: {
+  courses: Array<{ course: Course; isRequired: boolean; requirementDesc: string }>;
+  programName: string;
+  placedCourses: PlacedCourse[];
+  setPlacedCourses: React.Dispatch<React.SetStateAction<PlacedCourse[]>>;
+  connections: Connection[];
+  setConnections: React.Dispatch<React.SetStateAction<Connection[]>>;
+  connectionNodes: ConnectionNode[];
+  setConnectionNodes: React.Dispatch<React.SetStateAction<ConnectionNode[]>>;
+}) {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isDraggingConnection, setIsDraggingConnection] = useState(false);
-  const [dragConnectionStart, setDragConnectionStart] = useState<{ courseId: string; side: 'top' | 'right' | 'bottom' | 'left'; x: number; y: number } | null>(null);
+  const [dragConnectionStart, setDragConnectionStart] = useState<{ courseId: string; side: 'top' | 'right' | 'bottom' | 'left'; x: number; y: number; fromNodeId?: string } | null>(null);
   const [dragConnectionEnd, setDragConnectionEnd] = useState<{ x: number; y: number } | null>(null);
+  const [pendingConnection, setPendingConnection] = useState<{ fromCourseId: string; toCourseId: string | null; toNodeId: string | null; fromSide: 'top' | 'right' | 'bottom' | 'left'; toSide: 'top' | 'right' | 'bottom' | 'left'; x: number; y: number; fromNodeId?: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -280,9 +505,9 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
     );
   };
 
-  const handleConnectionDragStart = (courseId: string, side: 'top' | 'right' | 'bottom' | 'left', x: number, y: number) => {
+  const handleConnectionDragStart = (courseId: string, side: 'top' | 'right' | 'bottom' | 'left', x: number, y: number, fromNodeId?: string) => {
     setIsDraggingConnection(true);
-    setDragConnectionStart({ courseId, side, x, y });
+    setDragConnectionStart({ courseId, side, x, y, fromNodeId });
     setDragConnectionEnd({ x, y });
   };
 
@@ -296,22 +521,140 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
     });
   };
 
-  const handleConnectionDragEnd = (targetCourseId?: string, targetSide?: 'top' | 'right' | 'bottom' | 'left') => {
-    if (isDraggingConnection && dragConnectionStart && targetCourseId && targetSide) {
-      // Create a new connection
-      const newConnection: Connection = {
-        id: `${dragConnectionStart.courseId}-${targetCourseId}-${Date.now()}`,
-        fromCourseId: dragConnectionStart.courseId,
-        toCourseId: targetCourseId,
-        fromSide: dragConnectionStart.side,
-        toSide: targetSide
-      };
-      setConnections(prev => [...prev, newConnection]);
+  const handleConnectionDragEnd = (targetCourseId?: string, targetSide?: 'top' | 'right' | 'bottom' | 'left', targetNodeId?: string) => {
+    if (isDraggingConnection && dragConnectionStart && canvasRef.current) {
+      // Connecting to a course
+      if (targetCourseId && targetSide) {
+        const fromCourse = placedCourses.find(c => c.id === dragConnectionStart.courseId);
+        const toCourse = placedCourses.find(c => c.id === targetCourseId);
+
+        if (fromCourse && toCourse) {
+          const fromPoint = getConnectionPoint(fromCourse, dragConnectionStart.side);
+          const toPoint = getConnectionPoint(toCourse, targetSide);
+          const midX = (fromPoint.x + toPoint.x) / 2;
+          const midY = (fromPoint.y + toPoint.y) / 2;
+
+          // Show tooltip for relationship type selection
+          setPendingConnection({
+            fromCourseId: dragConnectionStart.courseId,
+            toCourseId: targetCourseId,
+            toNodeId: null,
+            fromSide: dragConnectionStart.side,
+            toSide: targetSide,
+            x: midX,
+            y: midY,
+            fromNodeId: dragConnectionStart.fromNodeId
+          });
+        }
+      }
+      // Connecting to a connection node
+      else if (targetNodeId) {
+        const node = connectionNodes.find(n => n.id === targetNodeId);
+        if (node) {
+          setPendingConnection({
+            fromCourseId: dragConnectionStart.courseId,
+            toCourseId: null,
+            toNodeId: targetNodeId,
+            fromSide: dragConnectionStart.side,
+            toSide: 'top', // Default side for node connections
+            x: node.x,
+            y: node.y - 40,
+            fromNodeId: dragConnectionStart.fromNodeId
+          });
+        }
+      }
     }
 
     setIsDraggingConnection(false);
     setDragConnectionStart(null);
     setDragConnectionEnd(null);
+  };
+
+  const handleRelationshipTypeSelect = (relationshipType: RelationshipType, requiredCount?: number, connectToNodeId?: string) => {
+    if (pendingConnection) {
+      // For either-or with connectToNodeId, connect the course to an existing node
+      if (relationshipType === 'either_or' && connectToNodeId && pendingConnection.toCourseId) {
+        const newConnection: Connection = {
+          id: `${pendingConnection.toCourseId}-${connectToNodeId}-${Date.now()}`,
+          fromCourseId: pendingConnection.toCourseId,
+          toCourseId: null,
+          toNodeId: connectToNodeId,
+          fromSide: pendingConnection.toSide,
+          toSide: 'right',
+          relationshipType
+        };
+        setConnections(prev => [...prev, newConnection]);
+      }
+      // For either-or without connectToNodeId, create a new connection node in the middle
+      else if (relationshipType === 'either_or' && pendingConnection.toCourseId) {
+        const nodeId = `node-${Date.now()}`;
+        const newNode: ConnectionNode = {
+          id: nodeId,
+          x: pendingConnection.x,
+          y: pendingConnection.y,
+          requiredCount: requiredCount || 1
+        };
+        setConnectionNodes(prev => [...prev, newNode]);
+
+        // Create two connections: from course to node, and from node to target course
+        const conn1: Connection = {
+          id: `${pendingConnection.fromCourseId}-${nodeId}-${Date.now()}`,
+          fromCourseId: pendingConnection.fromCourseId,
+          toCourseId: null,
+          toNodeId: nodeId,
+          fromSide: pendingConnection.fromSide,
+          toSide: 'left',
+          relationshipType
+        };
+
+        const conn2: Connection = {
+          id: `${nodeId}-${pendingConnection.toCourseId}-${Date.now()}`,
+          fromCourseId: pendingConnection.toCourseId,
+          toCourseId: null,
+          toNodeId: nodeId,
+          fromSide: pendingConnection.toSide,
+          toSide: 'right',
+          relationshipType
+        };
+
+        setConnections(prev => [...prev, conn1, conn2]);
+      } else {
+        // Regular connection
+        const newConnection: Connection = {
+          id: `${pendingConnection.fromCourseId}-${pendingConnection.toCourseId || pendingConnection.toNodeId}-${Date.now()}`,
+          fromCourseId: pendingConnection.fromCourseId,
+          toCourseId: pendingConnection.toCourseId,
+          toNodeId: pendingConnection.toNodeId,
+          fromSide: pendingConnection.fromSide,
+          toSide: pendingConnection.toSide,
+          relationshipType
+        };
+        setConnections(prev => [...prev, newConnection]);
+      }
+      setPendingConnection(null);
+    }
+  };
+
+  const handleCancelConnection = () => {
+    setPendingConnection(null);
+  };
+
+  const handleUpdateNodePosition = (nodeId: string, x: number, y: number) => {
+    setConnectionNodes(prev =>
+      prev.map(n => (n.id === nodeId ? { ...n, x, y } : n))
+    );
+  };
+
+  const handleRemoveNode = (nodeId: string) => {
+    setConnectionNodes(prev => prev.filter(n => n.id !== nodeId));
+    // Remove all connections involving this node
+    setConnections(prev => prev.filter(conn => conn.toNodeId !== nodeId));
+  };
+
+  const handleUpdateNodeRequiredCount = (nodeId: string, count: number) => {
+    setConnectionNodes(prev =>
+      prev.map(n => (n.id === nodeId ? { ...n, requiredCount: count } : n))
+    );
   };
 
   // Mouse move listener for connection dragging
@@ -338,12 +681,54 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
         from: placedCourses.find(c => c.id === conn.fromCourseId)?.course.code,
         to: placedCourses.find(c => c.id === conn.toCourseId)?.course.code,
         fromSide: conn.fromSide,
-        toSide: conn.toSide
+        toSide: conn.toSide,
+        relationshipType: conn.relationshipType || 'prerequisite'
       }))
     };
 
     console.log('📊 Course Flow JSON:', JSON.stringify(courseFlowData, null, 2));
   }, [placedCourses, connections]);
+
+  // Helper function to get visual styles for relationship types
+  const getRelationshipStyles = (type: RelationshipType = 'prerequisite') => {
+    switch (type) {
+      case 'prerequisite':
+        return {
+          color: '#2563eb', // Blue
+          strokeWidth: 2,
+          markerEnd: 'url(#arrowhead-prerequisite)',
+          strokeDasharray: ''
+        };
+      case 'optional_prereq':
+        return {
+          color: '#8b5cf6', // Purple
+          strokeWidth: 2,
+          markerEnd: 'url(#arrowhead-optional)',
+          strokeDasharray: ''
+        };
+      case 'corequisite':
+        return {
+          color: '#dc2626', // Red
+          strokeWidth: 3,
+          markerEnd: '',
+          strokeDasharray: ''
+        };
+      case 'concurrent':
+        return {
+          color: '#f59e0b', // Amber
+          strokeWidth: 3,
+          markerEnd: '',
+          strokeDasharray: '8,4'
+        };
+      case 'either_or':
+        return {
+          color: '#059669', // Emerald green
+          strokeWidth: 2,
+          markerEnd: '',
+          strokeDasharray: ''
+        };
+    }
+  };
 
   // Filter out courses that are already placed on canvas
   const availableCourses = courses.filter(
@@ -399,11 +784,25 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
               {/* Render existing connections */}
               {connections.map(conn => {
                 const fromCourse = placedCourses.find(c => c.id === conn.fromCourseId);
-                const toCourse = placedCourses.find(c => c.id === conn.toCourseId);
-                if (!fromCourse || !toCourse) return null;
+                let toPoint;
+
+                // Connection to a course
+                if (conn.toCourseId) {
+                  const toCourse = placedCourses.find(c => c.id === conn.toCourseId);
+                  if (!fromCourse || !toCourse) return null;
+                  toPoint = getConnectionPoint(toCourse, conn.toSide);
+                }
+                // Connection to a node
+                else if (conn.toNodeId) {
+                  const toNode = connectionNodes.find(n => n.id === conn.toNodeId);
+                  if (!fromCourse || !toNode) return null;
+                  toPoint = { x: toNode.x, y: toNode.y };
+                } else {
+                  return null;
+                }
 
                 const fromPoint = getConnectionPoint(fromCourse, conn.fromSide);
-                const toPoint = getConnectionPoint(toCourse, conn.toSide);
+                const styles = getRelationshipStyles(conn.relationshipType);
 
                 return (
                   <g key={conn.id}>
@@ -412,9 +811,10 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
                       y1={fromPoint.y}
                       x2={toPoint.x}
                       y2={toPoint.y}
-                      stroke="var(--primary)"
-                      strokeWidth="2"
-                      markerEnd="url(#arrowhead)"
+                      stroke={styles.color}
+                      strokeWidth={styles.strokeWidth}
+                      strokeDasharray={styles.strokeDasharray}
+                      markerEnd={styles.markerEnd}
                     />
                   </g>
                 );
@@ -427,17 +827,18 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
                   y1={dragConnectionStart.y}
                   x2={dragConnectionEnd.x}
                   y2={dragConnectionEnd.y}
-                  stroke="var(--primary)"
+                  stroke="#6b7280"
                   strokeWidth="2"
                   strokeDasharray="5,5"
-                  markerEnd="url(#arrowhead)"
+                  markerEnd="url(#arrowhead-dragging)"
                 />
               )}
 
-              {/* Arrow marker definition */}
+              {/* Arrow marker definitions */}
               <defs>
+                {/* Prerequisite arrow (blue) */}
                 <marker
-                  id="arrowhead"
+                  id="arrowhead-prerequisite"
                   markerWidth="10"
                   markerHeight="10"
                   refX="9"
@@ -445,10 +846,128 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
                   orient="auto"
                   markerUnits="strokeWidth"
                 >
-                  <path d="M0,0 L0,6 L9,3 z" fill="var(--primary)" />
+                  <path d="M0,0 L0,6 L9,3 z" fill="#2563eb" />
+                </marker>
+
+                {/* Optional prerequisite arrow (purple) */}
+                <marker
+                  id="arrowhead-optional"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M0,0 L0,6 L9,3 z" fill="#8b5cf6" />
+                </marker>
+
+                {/* Dragging arrow (gray) */}
+                <marker
+                  id="arrowhead-dragging"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M0,0 L0,6 L9,3 z" fill="#6b7280" />
                 </marker>
               </defs>
             </svg>
+
+            {/* Relationship Type Selection Tooltip */}
+            {pendingConnection && (
+              <div
+                className="absolute z-50 rounded-lg border-2 border-[var(--border)] bg-white p-4 shadow-2xl"
+                style={{
+                  left: `${pendingConnection.x}px`,
+                  top: `${pendingConnection.y}px`,
+                  transform: 'translate(-50%, -50%)'
+                }}
+              >
+                <div className="mb-3">
+                  <h4 className="font-header-semi text-sm font-semibold text-[var(--foreground)]">
+                    Select Relationship Type
+                  </h4>
+                  <p className="mt-1 font-body text-xs text-[var(--muted-foreground)]">
+                    Choose how these courses relate
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleRelationshipTypeSelect('prerequisite')}
+                    className="flex w-full items-start gap-3 rounded-lg border-2 border-transparent bg-blue-50 p-3 text-left transition-all hover:border-blue-500 hover:shadow-sm"
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-body-semi text-sm font-semibold text-blue-900">Prerequisite</div>
+                      <div className="font-body text-xs text-blue-700">Must be taken before (required)</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleRelationshipTypeSelect('optional_prereq')}
+                    className="flex w-full items-start gap-3 rounded-lg border-2 border-transparent bg-purple-50 p-3 text-left transition-all hover:border-purple-500 hover:shadow-sm"
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" strokeDasharray="4,4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-body-semi text-sm font-semibold text-purple-900">Optional Prereq</div>
+                      <div className="font-body text-xs text-purple-700">Recommended to take before</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleRelationshipTypeSelect('corequisite')}
+                    className="flex w-full items-start gap-3 rounded-lg border-2 border-transparent bg-red-50 p-3 text-left transition-all hover:border-red-500 hover:shadow-sm"
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-body-semi text-sm font-semibold text-red-900">Corequisite</div>
+                      <div className="font-body text-xs text-red-700">Must be taken together (required)</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleRelationshipTypeSelect('concurrent')}
+                    className="flex w-full items-start gap-3 rounded-lg border-2 border-transparent bg-amber-50 p-3 text-left transition-all hover:border-amber-500 hover:shadow-sm"
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" strokeDasharray="8,4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-body-semi text-sm font-semibold text-amber-900">Concurrent</div>
+                      <div className="font-body text-xs text-amber-700">Recommended to take together</div>
+                    </div>
+                  </button>
+
+                  <EitherOrButton onSelect={handleRelationshipTypeSelect} existingNodes={connectionNodes} />
+                </div>
+
+                <button
+                  onClick={handleCancelConnection}
+                  className="mt-3 w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 font-body-semi text-sm font-semibold text-[var(--muted-foreground)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
             {placedCourses.length === 0 ? (
               // Empty state - show message
@@ -476,18 +995,32 @@ function CourseFlowView({ courses, programName }: { courses: Array<{ course: Cou
                 </div>
               )
             ) : (
-              // Render placed courses (always visible, even when dragging over)
-              placedCourses.map(placedCourse => (
-                <PlacedCourseCard
-                  key={placedCourse.id}
-                  placedCourse={placedCourse}
-                  onRemove={handleRemoveCourse}
-                  onUpdatePosition={handleUpdateCoursePosition}
-                  onConnectionDragStart={handleConnectionDragStart}
-                  onConnectionDragEnd={handleConnectionDragEnd}
-                  canvasRef={canvasRef}
-                />
-              ))
+              // Render placed courses and connection nodes (always visible, even when dragging over)
+              <>
+                {placedCourses.map(placedCourse => (
+                  <PlacedCourseCard
+                    key={placedCourse.id}
+                    placedCourse={placedCourse}
+                    onRemove={handleRemoveCourse}
+                    onUpdatePosition={handleUpdateCoursePosition}
+                    onConnectionDragStart={handleConnectionDragStart}
+                    onConnectionDragEnd={handleConnectionDragEnd}
+                    canvasRef={canvasRef}
+                  />
+                ))}
+                {connectionNodes.map(node => (
+                  <ConnectionNodeCard
+                    key={node.id}
+                    node={node}
+                    onRemove={handleRemoveNode}
+                    onUpdatePosition={handleUpdateNodePosition}
+                    onUpdateRequiredCount={handleUpdateNodeRequiredCount}
+                    onConnectionDragStart={handleConnectionDragStart}
+                    onConnectionDragEnd={handleConnectionDragEnd}
+                    canvasRef={canvasRef}
+                  />
+                ))}
+              </>
             )}
           </div>
 
@@ -631,7 +1164,7 @@ function PlacedCourseCard({
   onUpdatePosition: (id: string, x: number, y: number) => void;
   onConnectionDragStart: (courseId: string, side: 'top' | 'right' | 'bottom' | 'left', x: number, y: number) => void;
   onConnectionDragEnd: (targetCourseId?: string, targetSide?: 'top' | 'right' | 'bottom' | 'left') => void;
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { course, isRequired, x, y, id } = placedCourse;
   const [isDragging, setIsDragging] = useState(false);
@@ -802,85 +1335,448 @@ function PlacedCourseCard({
   );
 }
 
-// Classic View Component (original requirements view)
-function ClassicView({ program, colors }: { program: ProgramRow; colors: { bg: string; text: string; gradient: string } }) {
+// Either-Or Button Component with Required Count Input
+function EitherOrButton({
+  onSelect,
+  existingNodes
+}: {
+  onSelect: (type: RelationshipType, requiredCount?: number, connectToNodeId?: string) => void;
+  existingNodes: ConnectionNode[];
+}) {
+  const [showOptions, setShowOptions] = useState(false);
+  const [showCreateInput, setShowCreateInput] = useState(false);
+  const [requiredCount, setRequiredCount] = useState(1);
+
+  const handleCreateClick = () => {
+    if (!showCreateInput) {
+      setShowCreateInput(true);
+    } else {
+      onSelect('either_or', requiredCount);
+      setShowOptions(false);
+      setShowCreateInput(false);
+      setRequiredCount(1);
+    }
+  };
+
+  const handleConnectToNode = (nodeId: string) => {
+    onSelect('either_or', undefined, nodeId);
+    setShowOptions(false);
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Requirements Section */}
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
-        <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--background)] to-white px-6 py-4">
-          <h2 className="font-header-semi text-xl font-semibold text-[var(--foreground)]">
-            Program Requirements
-          </h2>
+    <div>
+      <button
+        onClick={() => setShowOptions(!showOptions)}
+        className="flex w-full items-start gap-3 rounded-lg border-2 border-transparent bg-emerald-50 p-3 text-left transition-all hover:border-emerald-500 hover:shadow-sm"
+      >
+        <div className="mt-0.5 flex-shrink-0">
+          <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12M8 12h12M8 17h12M3 7h.01M3 12h.01M3 17h.01" />
+          </svg>
         </div>
-        <div className="p-6">
-          {program.requirements ? (
-            <div className="space-y-4">
-              <pre className="overflow-x-auto rounded-lg bg-[var(--background)] p-4 font-mono text-sm text-[var(--foreground)]">
-                {JSON.stringify(program.requirements, null, 2)}
-              </pre>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <svg className="mb-4 h-12 w-12 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <div className="flex-1">
+          <div className="font-body-semi text-sm font-semibold text-emerald-900">Either-Or Choice</div>
+          <div className="font-body text-xs text-emerald-700">Choose N of M courses (creates connection node)</div>
+        </div>
+        <div className="mt-0.5">
+          <svg
+            className={`h-4 w-4 text-emerald-600 transition-transform ${showOptions ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {showOptions && (
+        <div className="mt-2 space-y-2 rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3">
+          {/* Create New Node Option */}
+          <div>
+            <button
+              onClick={() => setShowCreateInput(!showCreateInput)}
+              className="flex w-full items-center justify-between rounded-lg border border-emerald-300 bg-white px-3 py-2 text-left transition-colors hover:bg-emerald-100"
+            >
+              <span className="font-body-semi text-xs font-semibold text-emerald-900">
+                Create New Node
+              </span>
+              <svg
+                className={`h-3 w-3 text-emerald-600 transition-transform ${showCreateInput ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
-              <p className="font-body text-sm text-[var(--muted-foreground)]">
-                No requirements defined for this program yet.
-              </p>
+            </button>
+
+            {showCreateInput && (
+              <div className="mt-2 rounded-lg border border-emerald-300 bg-white p-2">
+                <label className="block font-body-semi text-xs font-semibold text-emerald-900 mb-1">
+                  Required Count
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={requiredCount}
+                  onChange={(e) => setRequiredCount(parseInt(e.target.value) || 1)}
+                  className="w-full rounded border border-emerald-300 px-2 py-1 font-body text-sm text-emerald-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="How many courses required?"
+                  autoFocus
+                />
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={handleCreateClick}
+                    className="flex-1 rounded bg-emerald-600 px-3 py-1.5 font-body-semi text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+                  >
+                    Create
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateInput(false);
+                      setRequiredCount(1);
+                    }}
+                    className="rounded border border-emerald-300 px-3 py-1.5 font-body-semi text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Existing Nodes List */}
+          {existingNodes.length > 0 && (
+            <div>
+              <div className="mb-2 font-body-semi text-xs font-semibold text-emerald-900">
+                Connect to Existing Node:
+              </div>
+              <div className="space-y-1">
+                {existingNodes.map((node) => (
+                  <button
+                    key={node.id}
+                    onClick={() => handleConnectToNode(node.id)}
+                    className="flex w-full items-center justify-between rounded-lg border border-emerald-300 bg-white px-3 py-2 text-left transition-colors hover:bg-emerald-100"
+                  >
+                    <span className="font-body text-xs text-emerald-900">
+                      Node (requires {node.requiredCount})
+                    </span>
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-emerald-600 bg-emerald-50">
+                      <span className="font-body-semi text-xs font-bold text-emerald-900">
+                        {node.requiredCount}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
-      </div>
+      )}
+    </div>
+  );
+}
 
-      {/* Program Details */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Metadata Card */}
+// Connection Node Card Component
+function ConnectionNodeCard({
+  node,
+  onRemove,
+  onUpdatePosition,
+  onUpdateRequiredCount,
+  onConnectionDragStart,
+  onConnectionDragEnd,
+  canvasRef,
+}: {
+  node: ConnectionNode;
+  onRemove: (id: string) => void;
+  onUpdatePosition: (id: string, x: number, y: number) => void;
+  onUpdateRequiredCount: (id: string, count: number) => void;
+  onConnectionDragStart: (courseId: string, side: 'top' | 'right' | 'bottom' | 'left', x: number, y: number, fromNodeId?: string) => void;
+  onConnectionDragEnd: (targetCourseId?: string, targetSide?: 'top' | 'right' | 'bottom' | 'left', targetNodeId?: string) => void;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempCount, setTempCount] = useState(node.requiredCount);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+    if ((e.target as HTMLElement).classList.contains('connection-dot')) return;
+
+    if (!canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - rect.left - node.x,
+      y: e.clientY - rect.top - node.y
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging || !canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const newX = e.clientX - rect.left - dragOffset.x;
+    const newY = e.clientY - rect.top - dragOffset.y;
+
+    const boundedX = Math.max(20, Math.min(newX, rect.width - 20));
+    const boundedY = Math.max(20, Math.min(newY, rect.height - 20));
+
+    onUpdatePosition(node.id, boundedX, boundedY);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleDotMouseDown = (e: React.MouseEvent, side: 'top' | 'right' | 'bottom' | 'left') => {
+    e.stopPropagation();
+    onConnectionDragStart(node.id, side, node.x, node.y, node.id);
+  };
+
+  const handleDotMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConnectionDragEnd(undefined, undefined, node.id);
+  };
+
+  const handleSaveCount = () => {
+    onUpdateRequiredCount(node.id, tempCount);
+    setIsEditing(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset]);
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className={`absolute flex h-10 w-10 items-center justify-center rounded-full border-4 border-emerald-600 bg-white shadow-lg ${
+        isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab hover:shadow-xl'
+      }`}
+      style={{ left: `${node.x - 20}px`, top: `${node.y - 20}px`, zIndex: 10 }}
+    >
+      {/* Connection dots */}
+      <div
+        className="connection-dot absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
+        onMouseDown={(e) => handleDotMouseDown(e, 'top')}
+        onMouseUp={handleDotMouseUp}
+        title="Connect"
+      />
+      <div
+        className="connection-dot absolute -right-2 top-1/2 h-3 w-3 -translate-y-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
+        onMouseDown={(e) => handleDotMouseDown(e, 'right')}
+        onMouseUp={handleDotMouseUp}
+        title="Connect"
+      />
+      <div
+        className="connection-dot absolute -bottom-2 left-1/2 h-3 w-3 -translate-x-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
+        onMouseDown={(e) => handleDotMouseDown(e, 'bottom')}
+        onMouseUp={handleDotMouseUp}
+        title="Connect"
+      />
+      <div
+        className="connection-dot absolute -left-2 top-1/2 h-3 w-3 -translate-y-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
+        onMouseDown={(e) => handleDotMouseDown(e, 'left')}
+        onMouseUp={handleDotMouseUp}
+        title="Connect"
+      />
+
+      <button
+        onClick={() => onRemove(node.id)}
+        className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+        title="Remove node"
+      >
+        <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      {isEditing ? (
+        <input
+          type="number"
+          min="1"
+          value={tempCount}
+          onChange={(e) => setTempCount(parseInt(e.target.value) || 1)}
+          onBlur={handleSaveCount}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSaveCount();
+            if (e.key === 'Escape') {
+              setTempCount(node.requiredCount);
+              setIsEditing(false);
+            }
+          }}
+          className="h-6 w-6 rounded border border-emerald-600 text-center font-body-semi text-xs font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          autoFocus
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsEditing(true);
+          }}
+          className="font-body-semi text-sm font-bold text-emerald-900 hover:text-emerald-600"
+          title="Click to edit required count"
+        >
+          {node.requiredCount}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Classic View Component - displays courses organized by requirements
+function ClassicView({
+  _program,
+  colors,
+  courses
+}: {
+  _program: ProgramRow;
+  colors: { bg: string; text: string; gradient: string };
+  courses: Array<{ course: Course; isRequired: boolean; requirementDesc: string }>;
+}) {
+  // Group courses by requirement description
+  const groupedByRequirement = courses.reduce((acc, item) => {
+    const key = item.requirementDesc || 'Other Requirements';
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(item);
+    return acc;
+  }, {} as Record<string, Array<{ course: Course; isRequired: boolean; requirementDesc: string }>>);
+
+  const requirementEntries = Object.entries(groupedByRequirement);
+
+  return (
+    <div className="space-y-6">
+      {requirementEntries.length === 0 ? (
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
-          <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--background)] to-white px-6 py-4">
-            <h3 className="font-header-semi text-lg font-semibold text-[var(--foreground)]">
-              Program Metadata
-            </h3>
-          </div>
-          <div className="divide-y divide-[var(--border)] p-6">
-            <div className="flex justify-between py-3">
-              <span className="font-body-semi text-sm font-semibold text-[var(--muted-foreground)]">Program ID</span>
-              <span className="font-mono text-sm text-[var(--foreground)]">{program.id}</span>
-            </div>
-            <div className="flex justify-between py-3">
-              <span className="font-body-semi text-sm font-semibold text-[var(--muted-foreground)]">Type</span>
-              <span className={`font-body-semi text-sm font-semibold ${colors.text}`}>
-                {program.is_general_ed ? 'General Education' : program.program_type}
-              </span>
-            </div>
-            <div className="flex justify-between py-3">
-              <span className="font-body-semi text-sm font-semibold text-[var(--muted-foreground)]">Version</span>
-              <span className="font-body text-sm text-[var(--foreground)]">{program.version || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between py-3">
-              <span className="font-body-semi text-sm font-semibold text-[var(--muted-foreground)]">University ID</span>
-              <span className="font-mono text-sm text-[var(--foreground)]">{program.university_id}</span>
-            </div>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <svg className="mb-4 h-16 w-16 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+            <p className="font-body text-sm text-[var(--muted-foreground)]">
+              No courses defined in program requirements
+            </p>
           </div>
         </div>
+      ) : (
+        requirementEntries.map(([requirementDesc, coursesInReq], reqIndex) => (
+          <div key={reqIndex} className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
+            {/* Requirement Number Header */}
+            <div className={`border-b-2 ${colors.bg} px-6 py-3`}>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm">
+                  <span className={`font-header-semi text-lg font-bold ${colors.text}`}>
+                    {reqIndex + 1}
+                  </span>
+                </div>
+                <span className="font-header-semi text-xl font-bold text-white">
+                  Requirement {reqIndex + 1}
+                </span>
+              </div>
+            </div>
 
-        {/* Statistics Card (Placeholder) */}
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
-          <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--background)] to-white px-6 py-4">
-            <h3 className="font-header-semi text-lg font-semibold text-[var(--foreground)]">
-              Program Statistics
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <svg className="mb-3 h-12 w-12 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <p className="font-body text-sm text-[var(--muted-foreground)]">
-                Statistics data will be displayed here
-              </p>
+            {/* Requirement Description Header */}
+            <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--background)] to-white px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-header-semi text-lg font-semibold text-[var(--foreground)]">
+                  {requirementDesc}
+                </h3>
+                <span className="rounded-full bg-[var(--background)] px-3 py-1 font-body-semi text-xs font-semibold text-[var(--muted-foreground)]">
+                  {coursesInReq.length} {coursesInReq.length === 1 ? 'course' : 'courses'}
+                </span>
+              </div>
+            </div>
+
+            {/* Courses Grid - wraps to multiple rows */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {coursesInReq.map((item, courseIndex) => (
+                  <ClassicCourseCard
+                    key={`${item.course.code}-${courseIndex}`}
+                    course={item.course}
+                    isRequired={item.isRequired}
+                  />
+                ))}
+              </div>
             </div>
           </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+// Classic Course Card Component
+function ClassicCourseCard({ course, isRequired }: { course: Course; isRequired: boolean }) {
+  const cardStyles = isRequired
+    ? {
+        bg: 'bg-[#fee2e2]',
+        border: 'border-[#ef4444]',
+        titleText: 'text-[#991b1b]',
+        bodyText: 'text-[#7f1d1d]',
+        badge: 'bg-[#ef4444] text-white',
+        infoBg: 'bg-[#fecaca]',
+        infoText: 'text-[#7f1d1d]'
+      }
+    : {
+        bg: 'bg-[#d1fae5]',
+        border: 'border-[#10b981]',
+        titleText: 'text-[#065f46]',
+        bodyText: 'text-[#064e3b]',
+        badge: 'bg-[#10b981] text-white',
+        infoBg: 'bg-[#a7f3d0]',
+        infoText: 'text-[#064e3b]'
+      };
+
+  return (
+    <div
+      className={`overflow-hidden rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md`}
+    >
+      <div className="p-4">
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <h4 className={`font-header-semi text-base font-semibold ${cardStyles.titleText}`}>
+            {course.code}
+          </h4>
+          <span className={`flex-shrink-0 rounded-full ${cardStyles.badge} px-2 py-0.5 font-mono text-xs font-semibold`}>
+            {course.credits} {course.credits === 1 ? 'cr' : 'cr'}
+          </span>
+        </div>
+
+        <p className={`mb-3 font-body text-sm ${cardStyles.bodyText}`}>
+          {course.title}
+        </p>
+
+        <div className="space-y-2">
+          <div className={`rounded ${cardStyles.infoBg} px-2 py-1 font-body text-xs font-semibold ${cardStyles.infoText}`}>
+            {isRequired ? '🔒 Required' : '✓ Elective'}
+          </div>
+
+          {course.prerequisite && (
+            <div className={`rounded ${cardStyles.infoBg} px-2 py-1 font-body text-xs ${cardStyles.infoText}`}>
+              <span className="font-semibold">Prereq:</span> {course.prerequisite}
+            </div>
+          )}
+
+          {course.terms && course.terms.length > 0 && (
+            <div className={`rounded ${cardStyles.infoBg} px-2 py-1 font-body text-xs ${cardStyles.infoText}`}>
+              <span className="font-semibold">Offered:</span> {course.terms.join(', ')}
+            </div>
+          )}
         </div>
       </div>
     </div>
