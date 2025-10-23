@@ -264,7 +264,7 @@ export interface CourseFlowData {
     toNodeId: string | null;
     fromSide: 'top' | 'right' | 'bottom' | 'left';
     toSide: 'top' | 'right' | 'bottom' | 'left';
-    relationshipType?: 'prerequisite' | 'corequisite' | 'optional_prereq' | 'concurrent' | 'either_or';
+    relationshipType?: 'prerequisite' | 'corequisite' | 'optional_prereq' | 'concurrent' | 'either_or' | 'do_not_take_together';
   }>;
   connectionNodes: Array<{
     id: string;

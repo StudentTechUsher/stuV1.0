@@ -22,7 +22,7 @@ interface PlacedCourse {
   id: string;
 }
 
-type RelationshipType = 'prerequisite' | 'corequisite' | 'optional_prereq' | 'concurrent' | 'either_or';
+type RelationshipType = 'prerequisite' | 'corequisite' | 'optional_prereq' | 'concurrent' | 'either_or' | 'do_not_take_together';
 
 interface ConnectionNode {
   id: string;
@@ -49,6 +49,61 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
   const [placedCourses, setPlacedCourses] = useState<PlacedCourse[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectionNodes, setConnectionNodes] = useState<ConnectionNode[]>([]);
+
+  // Load course_flow data from program when component mounts
+  useEffect(() => {
+    if (program.course_flow) {
+      try {
+        const flowData = program.course_flow as CourseFlowData;
+
+        // Load courses
+        if (flowData.courses && Array.isArray(flowData.courses)) {
+          const loadedCourses: PlacedCourse[] = flowData.courses.map(savedCourse => ({
+            id: savedCourse.id,
+            course: {
+              code: savedCourse.courseCode,
+              title: savedCourse.courseTitle,
+              credits: 0, // Will be populated from existing course data if available
+              prerequisite: '',
+              terms: []
+            },
+            isRequired: savedCourse.isRequired,
+            requirementDesc: savedCourse.requirementDesc || '',
+            x: savedCourse.position.x,
+            y: savedCourse.position.y
+          }));
+          setPlacedCourses(loadedCourses);
+        }
+
+        // Load connections
+        if (flowData.connections && Array.isArray(flowData.connections)) {
+          const loadedConnections: Connection[] = flowData.connections.map(savedConn => ({
+            id: savedConn.id,
+            fromCourseId: savedConn.fromCourseId,
+            toCourseId: savedConn.toCourseId,
+            toNodeId: savedConn.toNodeId,
+            fromSide: savedConn.fromSide,
+            toSide: savedConn.toSide,
+            relationshipType: savedConn.relationshipType
+          }));
+          setConnections(loadedConnections);
+        }
+
+        // Load connection nodes
+        if (flowData.connectionNodes && Array.isArray(flowData.connectionNodes)) {
+          const loadedNodes: ConnectionNode[] = flowData.connectionNodes.map(savedNode => ({
+            id: savedNode.id,
+            x: savedNode.x,
+            y: savedNode.y,
+            requiredCount: savedNode.requiredCount
+          }));
+          setConnectionNodes(loadedNodes);
+        }
+      } catch (error) {
+        console.error('Failed to load course flow data:', error);
+      }
+    }
+  }, [program.course_flow]);
 
   // Save state
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -360,6 +415,7 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
           _program={program}
           colors={colors}
           courses={allCourses}
+          courseFlow={program.course_flow as CourseFlowData | null}
         />
       )}
 
@@ -457,6 +513,11 @@ function CourseFlowView({
   const [dragConnectionStart, setDragConnectionStart] = useState<{ courseId: string; side: 'top' | 'right' | 'bottom' | 'left'; x: number; y: number; fromNodeId?: string } | null>(null);
   const [dragConnectionEnd, setDragConnectionEnd] = useState<{ x: number; y: number } | null>(null);
   const [pendingConnection, setPendingConnection] = useState<{ fromCourseId: string; toCourseId: string | null; toNodeId: string | null; fromSide: 'top' | 'right' | 'bottom' | 'left'; toSide: 'top' | 'right' | 'bottom' | 'left'; x: number; y: number; fromNodeId?: string } | null>(null);
+  const [isDraggingModal, setIsDraggingModal] = useState(false);
+  const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
+  const [modalDragOffset, setModalDragOffset] = useState({ x: 0, y: 0 });
+  const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -545,6 +606,8 @@ function CourseFlowView({
             y: midY,
             fromNodeId: dragConnectionStart.fromNodeId
           });
+          // Initialize modal position
+          setModalPosition({ x: midX, y: midY });
         }
       }
       // Connecting to a connection node
@@ -561,6 +624,8 @@ function CourseFlowView({
             y: node.y - 40,
             fromNodeId: dragConnectionStart.fromNodeId
           });
+          // Initialize modal position
+          setModalPosition({ x: node.x, y: node.y - 40 });
         }
       }
     }
@@ -637,6 +702,32 @@ function CourseFlowView({
 
   const handleCancelConnection = () => {
     setPendingConnection(null);
+    setModalPosition(null);
+  };
+
+  const handleModalMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
+
+    setIsDraggingModal(true);
+    const modalElement = (e.currentTarget as HTMLElement);
+    const rect = modalElement.getBoundingClientRect();
+    setModalDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  const handleModalMouseMove = (e: MouseEvent) => {
+    if (!isDraggingModal) return;
+
+    setModalPosition({
+      x: e.clientX - modalDragOffset.x,
+      y: e.clientY - modalDragOffset.y
+    });
+  };
+
+  const handleModalMouseUp = () => {
+    setIsDraggingModal(false);
   };
 
   const handleUpdateNodePosition = (nodeId: string, x: number, y: number) => {
@@ -657,6 +748,37 @@ function CourseFlowView({
     );
   };
 
+  const handleConnectionClick = (connectionId: string) => {
+    setSelectedConnection(connectionId);
+  };
+
+  const handleDeleteConnection = () => {
+    if (selectedConnection) {
+      setConnections(prev => prev.filter(conn => conn.id !== selectedConnection));
+      setSelectedConnection(null);
+    }
+  };
+
+  const handleDeselectConnection = () => {
+    setSelectedConnection(null);
+  };
+
+  const handleNodeClick = (nodeId: string) => {
+    setSelectedNode(nodeId);
+    setSelectedConnection(null); // Deselect any selected connection
+  };
+
+  const handleDeleteNode = () => {
+    if (selectedNode) {
+      handleRemoveNode(selectedNode);
+      setSelectedNode(null);
+    }
+  };
+
+  const handleDeselectNode = () => {
+    setSelectedNode(null);
+  };
+
   // Mouse move listener for connection dragging
   useEffect(() => {
     if (isDraggingConnection) {
@@ -666,6 +788,40 @@ function CourseFlowView({
       };
     }
   }, [isDraggingConnection]);
+
+  // Mouse move listener for modal dragging
+  useEffect(() => {
+    if (isDraggingModal) {
+      document.addEventListener('mousemove', handleModalMouseMove);
+      document.addEventListener('mouseup', handleModalMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleModalMouseMove);
+        document.removeEventListener('mouseup', handleModalMouseUp);
+      };
+    }
+  }, [isDraggingModal, modalDragOffset]);
+
+  // Keyboard listener for deleting selected connection or node
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedConnection) {
+          handleDeleteConnection();
+        } else if (selectedNode) {
+          handleDeleteNode();
+        }
+      }
+      if (e.key === 'Escape') {
+        handleDeselectConnection();
+        handleDeselectNode();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedConnection, selectedNode]);
 
   // Log course_flow JSON structure whenever connections change
   useEffect(() => {
@@ -727,6 +883,13 @@ function CourseFlowView({
           markerEnd: '',
           strokeDasharray: ''
         };
+      case 'do_not_take_together':
+        return {
+          color: '#dc2626', // Red
+          strokeWidth: 3,
+          markerEnd: '',
+          strokeDasharray: '5,5'
+        };
     }
   };
 
@@ -749,6 +912,94 @@ function CourseFlowView({
         return { x: course.x + cardWidth / 2, y: course.y + cardHeight };
       case 'left':
         return { x: course.x, y: course.y + cardHeight / 2 };
+    }
+  };
+
+  // Helper function to create orthogonal path with rounded corners
+  const createOrthogonalPath = (
+    fromPoint: { x: number; y: number },
+    toPoint: { x: number; y: number },
+    fromSide: 'top' | 'right' | 'bottom' | 'left',
+    toSide: 'top' | 'right' | 'bottom' | 'left'
+  ) => {
+    const maxRadius = 20; // Maximum corner radius
+    const dx = toPoint.x - fromPoint.x;
+    const dy = toPoint.y - fromPoint.y;
+
+    // Determine the midpoint
+    let midX = fromPoint.x + dx / 2;
+    let midY = fromPoint.y + dy / 2;
+
+    // Adjust midpoint based on connection sides
+    if ((fromSide === 'left' || fromSide === 'right') && (toSide === 'left' || toSide === 'right')) {
+      // Horizontal to horizontal (two corners)
+      midX = fromPoint.x + dx / 2;
+
+      // Calculate proportional radius based on available space
+      const horizontalDist1 = Math.abs(midX - fromPoint.x);
+      const horizontalDist2 = Math.abs(toPoint.x - midX);
+      const verticalDist = Math.abs(dy);
+      const radius = Math.min(maxRadius, horizontalDist1 / 2, horizontalDist2 / 2, Math.abs(verticalDist) / 2);
+
+      // First segment: horizontal from start
+      const seg1End = { x: midX - (dx > 0 ? radius : -radius), y: fromPoint.y };
+      // Corner 1
+      const corner1 = { x: midX, y: fromPoint.y };
+      // Second segment: vertical
+      const seg2Start = { x: midX, y: fromPoint.y + (dy > 0 ? radius : -radius) };
+      const seg2End = { x: midX, y: toPoint.y - (dy > 0 ? radius : -radius) };
+      // Corner 2
+      const corner2 = { x: midX, y: toPoint.y };
+      // Final segment: horizontal to end
+      const seg3Start = { x: midX + (dx > 0 ? radius : -radius), y: toPoint.y };
+
+      return `M ${fromPoint.x},${fromPoint.y} L ${seg1End.x},${seg1End.y} Q ${corner1.x},${corner1.y} ${seg2Start.x},${seg2Start.y} L ${seg2End.x},${seg2End.y} Q ${corner2.x},${corner2.y} ${seg3Start.x},${seg3Start.y} L ${toPoint.x},${toPoint.y}`;
+    } else if ((fromSide === 'top' || fromSide === 'bottom') && (toSide === 'top' || toSide === 'bottom')) {
+      // Vertical to vertical (two corners)
+      midY = fromPoint.y + dy / 2;
+
+      // Calculate proportional radius based on available space
+      const verticalDist1 = Math.abs(midY - fromPoint.y);
+      const verticalDist2 = Math.abs(toPoint.y - midY);
+      const horizontalDist = Math.abs(dx);
+      const radius = Math.min(maxRadius, verticalDist1 / 2, verticalDist2 / 2, Math.abs(horizontalDist) / 2);
+
+      // First segment: vertical from start
+      const seg1End = { x: fromPoint.x, y: midY - (dy > 0 ? radius : -radius) };
+      // Corner 1
+      const corner1 = { x: fromPoint.x, y: midY };
+      // Second segment: horizontal
+      const seg2Start = { x: fromPoint.x + (dx > 0 ? radius : -radius), y: midY };
+      const seg2End = { x: toPoint.x - (dx > 0 ? radius : -radius), y: midY };
+      // Corner 2
+      const corner2 = { x: toPoint.x, y: midY };
+      // Final segment: vertical to end
+      const seg3Start = { x: toPoint.x, y: midY + (dy > 0 ? radius : -radius) };
+
+      return `M ${fromPoint.x},${fromPoint.y} L ${seg1End.x},${seg1End.y} Q ${corner1.x},${corner1.y} ${seg2Start.x},${seg2Start.y} L ${seg2End.x},${seg2End.y} Q ${corner2.x},${corner2.y} ${seg3Start.x},${seg3Start.y} L ${toPoint.x},${toPoint.y}`;
+    } else {
+      // Mixed: one corner needed
+      if (fromSide === 'right' || fromSide === 'left') {
+        // Start horizontal, end vertical
+        const horizontalDist = Math.abs(dx);
+        const verticalDist = Math.abs(dy);
+        const radius = Math.min(maxRadius, horizontalDist / 2, verticalDist / 2);
+
+        const cornerX = toPoint.x - (dx > 0 ? radius : -radius);
+        const cornerY = fromPoint.y + (dy > 0 ? radius : -radius);
+
+        return `M ${fromPoint.x},${fromPoint.y} L ${cornerX},${fromPoint.y} Q ${toPoint.x},${fromPoint.y} ${toPoint.x},${cornerY} L ${toPoint.x},${toPoint.y}`;
+      } else {
+        // Start vertical, end horizontal
+        const horizontalDist = Math.abs(dx);
+        const verticalDist = Math.abs(dy);
+        const radius = Math.min(maxRadius, horizontalDist / 2, verticalDist / 2);
+
+        const cornerX = fromPoint.x + (dx > 0 ? radius : -radius);
+        const cornerY = toPoint.y - (dy > 0 ? radius : -radius);
+
+        return `M ${fromPoint.x},${fromPoint.y} L ${fromPoint.x},${cornerY} Q ${fromPoint.x},${toPoint.y} ${cornerX},${toPoint.y} L ${toPoint.x},${toPoint.y}`;
+      }
     }
   };
 
@@ -780,7 +1031,7 @@ function CourseFlowView({
             }`}
           >
             {/* SVG layer for connections */}
-            <svg className="pointer-events-none absolute inset-0 h-full w-full" style={{ zIndex: 0 }}>
+            <svg className="absolute inset-0 h-full w-full" style={{ zIndex: 0 }}>
               {/* Render existing connections */}
               {connections.map(conn => {
                 const fromCourse = placedCourses.find(c => c.id === conn.fromCourseId);
@@ -803,19 +1054,58 @@ function CourseFlowView({
 
                 const fromPoint = getConnectionPoint(fromCourse, conn.fromSide);
                 const styles = getRelationshipStyles(conn.relationshipType);
+                const isSelected = selectedConnection === conn.id;
+                const pathData = createOrthogonalPath(fromPoint, toPoint, conn.fromSide, conn.toSide);
+
+                // Calculate midpoint for X icon (for do_not_take_together)
+                const midX = (fromPoint.x + toPoint.x) / 2;
+                const midY = (fromPoint.y + toPoint.y) / 2;
 
                 return (
                   <g key={conn.id}>
-                    <line
-                      x1={fromPoint.x}
-                      y1={fromPoint.y}
-                      x2={toPoint.x}
-                      y2={toPoint.y}
-                      stroke={styles.color}
-                      strokeWidth={styles.strokeWidth}
-                      strokeDasharray={styles.strokeDasharray}
-                      markerEnd={styles.markerEnd}
+                    {/* Invisible thicker path for easier clicking */}
+                    <path
+                      d={pathData}
+                      stroke="transparent"
+                      strokeWidth={20}
+                      fill="none"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      className="pointer-events-auto cursor-pointer"
+                      onClick={() => handleConnectionClick(conn.id)}
                     />
+                    {/* Visible path */}
+                    <path
+                      d={pathData}
+                      stroke={isSelected ? '#10b981' : styles.color}
+                      strokeWidth={isSelected ? styles.strokeWidth + 2 : styles.strokeWidth}
+                      strokeDasharray={styles.strokeDasharray}
+                      fill="none"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      markerEnd={styles.markerEnd}
+                      className="pointer-events-auto cursor-pointer"
+                      onClick={() => handleConnectionClick(conn.id)}
+                    />
+                    {/* X icon for "do not take together" relationship */}
+                    {conn.relationshipType === 'do_not_take_together' && (
+                      <g>
+                        <circle
+                          cx={midX}
+                          cy={midY}
+                          r={10}
+                          fill="white"
+                          stroke="#dc2626"
+                          strokeWidth={2}
+                        />
+                        <path
+                          d={`M ${midX - 4},${midY - 4} L ${midX + 4},${midY + 4} M ${midX + 4},${midY - 4} L ${midX - 4},${midY + 4}`}
+                          stroke="#dc2626"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    )}
                   </g>
                 );
               })}
@@ -874,20 +1164,45 @@ function CourseFlowView({
                 >
                   <path d="M0,0 L0,6 L9,3 z" fill="#6b7280" />
                 </marker>
+
+                {/* X marker for "do not take together" (red) */}
+                <marker
+                  id="x-marker-do-not-take"
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="6"
+                  refY="6"
+                  orient="auto"
+                >
+                  <circle cx="6" cy="6" r="5" fill="white" stroke="#dc2626" strokeWidth="1" />
+                  <path d="M3,3 L9,9 M9,3 L3,9" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" />
+                </marker>
               </defs>
             </svg>
 
             {/* Relationship Type Selection Tooltip */}
-            {pendingConnection && (
+            {pendingConnection && modalPosition && (
               <div
-                className="absolute z-50 rounded-lg border-2 border-[var(--border)] bg-white p-4 shadow-2xl"
+                onMouseDown={handleModalMouseDown}
+                className={`absolute rounded-lg border-2 border-[var(--border)] bg-white p-4 shadow-2xl overflow-y-auto ${
+                  isDraggingModal ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
                 style={{
-                  left: `${pendingConnection.x}px`,
-                  top: `${pendingConnection.y}px`,
-                  transform: 'translate(-50%, -50%)'
+                  left: `${modalPosition.x}px`,
+                  top: `${modalPosition.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 9999,
+                  userSelect: 'none',
+                  width: '320px',
+                  maxHeight: '650px'
                 }}
               >
                 <div className="mb-3">
+                  <div className="mb-2 flex items-center justify-center">
+                    <div className="flex gap-1">
+                      <div className="h-1 w-8 rounded-full bg-[var(--muted-foreground)] opacity-30"></div>
+                    </div>
+                  </div>
                   <h4 className="font-header-semi text-sm font-semibold text-[var(--foreground)]">
                     Select Relationship Type
                   </h4>
@@ -957,6 +1272,22 @@ function CourseFlowView({
                     </div>
                   </button>
 
+                  <button
+                    onClick={() => handleRelationshipTypeSelect('do_not_take_together')}
+                    className="flex w-full items-start gap-3 rounded-lg border-2 border-transparent bg-red-50 p-3 text-left transition-all hover:border-red-500 hover:shadow-sm"
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeDasharray="5,5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 9l-6 6m0-6l6 6" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-body-semi text-sm font-semibold text-red-900">Do Not Take Together</div>
+                      <div className="font-body text-xs text-red-700">Not recommended to take in the same term/semester</div>
+                    </div>
+                  </button>
+
                   <EitherOrButton onSelect={handleRelationshipTypeSelect} existingNodes={connectionNodes} />
                 </div>
 
@@ -1017,6 +1348,8 @@ function CourseFlowView({
                     onUpdateRequiredCount={handleUpdateNodeRequiredCount}
                     onConnectionDragStart={handleConnectionDragStart}
                     onConnectionDragEnd={handleConnectionDragEnd}
+                    onNodeClick={handleNodeClick}
+                    isSelected={selectedNode === node.id}
                     canvasRef={canvasRef}
                   />
                 ))}
@@ -1488,6 +1821,8 @@ function ConnectionNodeCard({
   onUpdateRequiredCount,
   onConnectionDragStart,
   onConnectionDragEnd,
+  onNodeClick,
+  isSelected,
   canvasRef,
 }: {
   node: ConnectionNode;
@@ -1496,6 +1831,8 @@ function ConnectionNodeCard({
   onUpdateRequiredCount: (id: string, count: number) => void;
   onConnectionDragStart: (courseId: string, side: 'top' | 'right' | 'bottom' | 'left', x: number, y: number, fromNodeId?: string) => void;
   onConnectionDragEnd: (targetCourseId?: string, targetSide?: 'top' | 'right' | 'bottom' | 'left', targetNodeId?: string) => void;
+  onNodeClick: (nodeId: string) => void;
+  isSelected: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -1534,12 +1871,9 @@ function ConnectionNodeCard({
     setIsDragging(false);
   };
 
-  const handleDotMouseDown = (e: React.MouseEvent, side: 'top' | 'right' | 'bottom' | 'left') => {
-    e.stopPropagation();
-    onConnectionDragStart(node.id, side, node.x, node.y, node.id);
-  };
-
-  const handleDotMouseUp = (e: React.MouseEvent) => {
+  // For nodes, we don't use side-specific connection points
+  // Connections terminate at the center of the node
+  const handleNodeConnectionEnd = (e: React.MouseEvent) => {
     e.stopPropagation();
     onConnectionDragEnd(undefined, undefined, node.id);
   };
@@ -1563,46 +1897,15 @@ function ConnectionNodeCard({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className={`absolute flex h-10 w-10 items-center justify-center rounded-full border-4 border-emerald-600 bg-white shadow-lg ${
+      onMouseUp={handleNodeConnectionEnd}
+      onClick={() => onNodeClick(node.id)}
+      className={`absolute flex h-10 w-10 items-center justify-center rounded-full border-4 bg-white shadow-lg ${
+        isSelected ? 'border-[#10b981]' : 'border-emerald-600'
+      } ${
         isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab hover:shadow-xl'
       }`}
-      style={{ left: `${node.x - 20}px`, top: `${node.y - 20}px`, zIndex: 10 }}
+      style={{ left: `${node.x - 20}px`, top: `${node.y - 20}px`, zIndex: 100 }}
     >
-      {/* Connection dots */}
-      <div
-        className="connection-dot absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
-        onMouseDown={(e) => handleDotMouseDown(e, 'top')}
-        onMouseUp={handleDotMouseUp}
-        title="Connect"
-      />
-      <div
-        className="connection-dot absolute -right-2 top-1/2 h-3 w-3 -translate-y-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
-        onMouseDown={(e) => handleDotMouseDown(e, 'right')}
-        onMouseUp={handleDotMouseUp}
-        title="Connect"
-      />
-      <div
-        className="connection-dot absolute -bottom-2 left-1/2 h-3 w-3 -translate-x-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
-        onMouseDown={(e) => handleDotMouseDown(e, 'bottom')}
-        onMouseUp={handleDotMouseUp}
-        title="Connect"
-      />
-      <div
-        className="connection-dot absolute -left-2 top-1/2 h-3 w-3 -translate-y-1/2 cursor-pointer rounded-full border-2 border-emerald-600 bg-white transition-all hover:scale-125 hover:bg-emerald-600"
-        onMouseDown={(e) => handleDotMouseDown(e, 'left')}
-        onMouseUp={handleDotMouseUp}
-        title="Connect"
-      />
-
-      <button
-        onClick={() => onRemove(node.id)}
-        className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-red-600 transition-colors hover:bg-red-600 hover:text-white"
-        title="Remove node"
-      >
-        <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
 
       {isEditing ? (
         <input
@@ -1642,12 +1945,183 @@ function ConnectionNodeCard({
 function ClassicView({
   _program,
   colors,
-  courses
+  courses,
+  courseFlow
 }: {
   _program: ProgramRow;
   colors: { bg: string; text: string; gradient: string };
   courses: Array<{ course: Course; isRequired: boolean; requirementDesc: string }>;
+  courseFlow: CourseFlowData | null;
 }) {
+  const [selectedCourseCode, setSelectedCourseCode] = useState<string | null>(null);
+
+  // Helper function to get relationship insights for a course
+  const getRelationshipInsights = (courseCode: string) => {
+    if (!courseFlow || !courseFlow.courses || !courseFlow.connections) {
+      return [];
+    }
+
+    // Find the course in the flow data
+    const flowCourse = courseFlow.courses.find(c => c.courseCode === courseCode);
+    if (!flowCourse) {
+      return [];
+    }
+
+    // Find all connections involving this course
+    const relatedConnections = courseFlow.connections.filter(
+      conn => conn.fromCourseId === flowCourse.id || conn.toCourseId === flowCourse.id
+    );
+
+    // Build insights
+    const insights: Array<{ type: string; description: string; color: string }> = [];
+
+    // Track nodes we've already processed to avoid duplicates
+    const processedNodes = new Set<string>();
+
+    relatedConnections.forEach(conn => {
+      const isFromCourse = conn.fromCourseId === flowCourse.id;
+      const relatedCourseId = isFromCourse ? conn.toCourseId : conn.fromCourseId;
+
+      // Handle connection to a node (Either-Or relationships)
+      if (conn.toNodeId && courseFlow.connectionNodes) {
+        // Only process either-or relationships, not prerequisite connections to nodes
+        if (conn.relationshipType !== 'either_or') {
+          // This is a prerequisite or other relationship TO the node group
+          // We'll handle it separately below
+          return;
+        }
+
+        // Skip if we've already processed this node
+        if (processedNodes.has(conn.toNodeId)) return;
+        processedNodes.add(conn.toNodeId);
+
+        const node = courseFlow.connectionNodes.find(n => n.id === conn.toNodeId);
+        if (!node) return;
+
+        // Find all courses connected to this node with either_or relationship
+        const coursesInNode = courseFlow.connections
+          .filter(c => c.toNodeId === conn.toNodeId && c.relationshipType === 'either_or')
+          .map(c => {
+            const courseId = c.fromCourseId;
+            return courseFlow.courses.find(course => course.id === courseId);
+          })
+          .filter(Boolean);
+
+        if (coursesInNode.length > 0) {
+          const allCourseCodes = coursesInNode.map(c => c!.courseCode);
+
+          insights.push({
+            type: 'Either-Or Choice',
+            description: `Choose ${node.requiredCount} of ${coursesInNode.length}: ${allCourseCodes.join(', ')}`,
+            color: '#059669'
+          });
+        }
+        return;
+      }
+
+      // Handle connections to nodes with non-either_or relationships (like prerequisites to a group)
+      if (conn.toNodeId && conn.relationshipType !== 'either_or' && courseFlow.connectionNodes) {
+        const node = courseFlow.connectionNodes.find(n => n.id === conn.toNodeId);
+        if (!node) return;
+
+        // Find all courses in the either-or group
+        const coursesInNode = courseFlow.connections
+          .filter(c => c.toNodeId === conn.toNodeId && c.relationshipType === 'either_or')
+          .map(c => {
+            const courseId = c.fromCourseId;
+            return courseFlow.courses.find(course => course.id === courseId);
+          })
+          .filter(Boolean);
+
+        if (coursesInNode.length > 0) {
+          const groupCourseCodes = coursesInNode.map(c => c!.courseCode).join(', ');
+          const relationshipType = conn.relationshipType || 'prerequisite';
+
+          if (relationshipType === 'prerequisite') {
+            if (isFromCourse) {
+              insights.push({
+                type: 'Prerequisite',
+                description: `Required before taking any of: ${groupCourseCodes}`,
+                color: '#2563eb'
+              });
+            } else {
+              insights.push({
+                type: 'Prerequisite',
+                description: `Requires one of: ${groupCourseCodes}`,
+                color: '#2563eb'
+              });
+            }
+          }
+        }
+        return;
+      }
+
+      // Handle direct course-to-course connections
+      if (!relatedCourseId) return;
+
+      const relatedCourse = courseFlow.courses.find(c => c.id === relatedCourseId);
+      if (!relatedCourse) return;
+
+      const relationshipType = conn.relationshipType || 'prerequisite';
+
+      switch (relationshipType) {
+        case 'prerequisite':
+          if (isFromCourse) {
+            insights.push({
+              type: 'Prerequisite',
+              description: `${relatedCourse.courseCode} requires this course`,
+              color: '#2563eb'
+            });
+          } else {
+            insights.push({
+              type: 'Prerequisite',
+              description: `Requires ${relatedCourse.courseCode}`,
+              color: '#2563eb'
+            });
+          }
+          break;
+        case 'optional_prereq':
+          if (isFromCourse) {
+            insights.push({
+              type: 'Optional Prerequisite',
+              description: `Recommended before ${relatedCourse.courseCode}`,
+              color: '#8b5cf6'
+            });
+          } else {
+            insights.push({
+              type: 'Optional Prerequisite',
+              description: `${relatedCourse.courseCode} recommended before this`,
+              color: '#8b5cf6'
+            });
+          }
+          break;
+        case 'corequisite':
+          insights.push({
+            type: 'Corequisite',
+            description: `Must be taken with ${relatedCourse.courseCode}`,
+            color: '#dc2626'
+          });
+          break;
+        case 'concurrent':
+          insights.push({
+            type: 'Concurrent',
+            description: `Recommended to take with ${relatedCourse.courseCode}`,
+            color: '#f59e0b'
+          });
+          break;
+        case 'do_not_take_together':
+          insights.push({
+            type: 'Do Not Take Together',
+            description: `Not recommended in same term as ${relatedCourse.courseCode}`,
+            color: '#dc2626'
+          });
+          break;
+      }
+    });
+
+    return insights;
+  };
+
   // Group courses by requirement description
   const groupedByRequirement = courses.reduce((acc, item) => {
     const key = item.requirementDesc || 'Other Requirements';
@@ -1710,6 +2184,9 @@ function ClassicView({
                     key={`${item.course.code}-${courseIndex}`}
                     course={item.course}
                     isRequired={item.isRequired}
+                    onClick={() => setSelectedCourseCode(item.course.code)}
+                    isSelected={selectedCourseCode === item.course.code}
+                    insights={getRelationshipInsights(item.course.code)}
                   />
                 ))}
               </div>
@@ -1722,7 +2199,19 @@ function ClassicView({
 }
 
 // Classic Course Card Component
-function ClassicCourseCard({ course, isRequired }: { course: Course; isRequired: boolean }) {
+function ClassicCourseCard({
+  course,
+  isRequired,
+  onClick,
+  isSelected,
+  insights
+}: {
+  course: Course;
+  isRequired: boolean;
+  onClick: () => void;
+  isSelected: boolean;
+  insights: Array<{ type: string; description: string; color: string }>;
+}) {
   const cardStyles = isRequired
     ? {
         bg: 'bg-[#fee2e2]',
@@ -1745,7 +2234,10 @@ function ClassicCourseCard({ course, isRequired }: { course: Course; isRequired:
 
   return (
     <div
-      className={`overflow-hidden rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md`}
+      onClick={onClick}
+      className={`overflow-hidden rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer ${
+        isSelected ? 'ring-4 ring-blue-500 ring-opacity-50' : ''
+      }`}
     >
       <div className="p-4">
         <div className="mb-2 flex items-start justify-between gap-2">
@@ -1778,6 +2270,44 @@ function ClassicCourseCard({ course, isRequired }: { course: Course; isRequired:
             </div>
           )}
         </div>
+
+        {/* Relationship Insights - show when selected */}
+        {isSelected && insights.length > 0 && (
+          <div className="mt-3 space-y-2 border-t-2 border-gray-300 pt-3">
+            <p className="font-body-semi text-xs font-bold text-gray-700">Course Relationships:</p>
+            {insights.map((insight, idx) => (
+              <div
+                key={idx}
+                className="rounded-md border-l-4 bg-white p-2 shadow-sm"
+                style={{ borderLeftColor: insight.color }}
+              >
+                <div className="flex items-start gap-2">
+                  <div
+                    className="mt-0.5 h-2 w-2 flex-shrink-0 rounded-full"
+                    style={{ backgroundColor: insight.color }}
+                  />
+                  <div>
+                    <p className="font-body-semi text-xs font-semibold" style={{ color: insight.color }}>
+                      {insight.type}
+                    </p>
+                    <p className="font-body text-xs text-gray-600">
+                      {insight.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* No relationships message */}
+        {isSelected && insights.length === 0 && (
+          <div className="mt-3 border-t-2 border-gray-300 pt-3">
+            <p className="font-body text-xs italic text-gray-500">
+              No relationships defined in course flow
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

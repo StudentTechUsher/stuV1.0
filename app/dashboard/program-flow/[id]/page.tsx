@@ -38,7 +38,7 @@ export default async function ProgramFlowDetailPage({ params }: Readonly<PagePro
   // Fetch the specific program
   const { data: program, error: programError } = await db
     .from('program')
-    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed')
+    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed, course_flow')
     .eq('id', id)
     .eq('university_id', profile.university_id) // Ensure advisor can only view programs from their university
     .single();
