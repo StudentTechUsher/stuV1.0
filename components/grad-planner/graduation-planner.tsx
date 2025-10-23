@@ -30,7 +30,6 @@ import { DraggableCourseOverlay } from './DraggableCourseOverlay';
 import { EditModeBanner } from './EditModeBanner';
 import { PlanHeader } from './PlanHeader';
 import { DetailView } from './DetailView';
-import ChangesSummaryBox from './ChangesSummaryBox';
 
 // Import hooks
 import { usePlanParser } from './usePlanParser';
@@ -367,73 +366,60 @@ export default function GraduationPlanner({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <Box sx={{ p: 2, display: 'flex', gap: 3 }}>
-        {/* Main plan content */}
-        <Box sx={{ flex: advisorChanges ? '1 1 70%' : '1 1 100%' }}>
-          {isEditMode && (
-            <EditModeBanner
-              editablePlanData={editablePlanData}
+      <Box sx={{ p: 2 }}>
+        {isEditMode && (
+          <EditModeBanner
+            editablePlanData={editablePlanData}
+            events={events}
+            onSave={onSave}
+            role={editorRole}
+          />
+        )}
+
+        {/* Trash Zone - Only visible when dragging */}
+        {activeCourse && isEditMode && <TrashZone />}
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <PlanHeader
+            currentPlanData={currentPlanData}
+            durationYears={durationYears}
+            isEditMode={isEditMode}
+            isSpaceView={isSpaceView}
+            onToggleView={() => setIsSpaceView(!isSpaceView)}
+            onAddEvent={() => handleOpenEventDialog()}
+          />
+
+          <PlanSummary
+            planData={currentPlanData}
+            durationYears={durationYears}
+            fulfilledRequirements={fulfilledRequirements}
+          />
+
+          {/* Display terms with events between them */}
+          {isSpaceView ? (
+            <SpaceView
+              plan={spaceViewData}
+              isEditMode={isEditMode}
+              modifiedTerms={modifiedTerms}
+              onEditEvent={handleOpenEventDialog}
+              onDeleteEvent={handleDeleteEvent}
+            />
+          ) : (
+            <DetailView
+              currentPlanData={currentPlanData}
               events={events}
-              onSave={onSave}
-              role={editorRole}
+              isEditMode={isEditMode}
+              modifiedTerms={modifiedTerms}
+              movedCourses={movedCourses}
+              onMoveCourse={moveCourse}
+              onEditEvent={handleOpenEventDialog}
+              onDeleteEvent={handleDeleteEvent}
             />
           )}
-
-          {/* Trash Zone - Only visible when dragging */}
-          {activeCourse && isEditMode && <TrashZone />}
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <PlanHeader
-              currentPlanData={currentPlanData}
-              durationYears={durationYears}
-              isEditMode={isEditMode}
-              isSpaceView={isSpaceView}
-              onToggleView={() => setIsSpaceView(!isSpaceView)}
-              onAddEvent={() => handleOpenEventDialog()}
-            />
-
-            <PlanSummary
-              planData={currentPlanData}
-              durationYears={durationYears}
-              fulfilledRequirements={fulfilledRequirements}
-            />
-
-            {/* Display terms with events between them */}
-            {isSpaceView ? (
-              <SpaceView
-                plan={spaceViewData}
-                isEditMode={isEditMode}
-                modifiedTerms={modifiedTerms}
-                onEditEvent={handleOpenEventDialog}
-                onDeleteEvent={handleDeleteEvent}
-              />
-            ) : (
-              <DetailView
-                currentPlanData={currentPlanData}
-                events={events}
-                isEditMode={isEditMode}
-                modifiedTerms={modifiedTerms}
-                movedCourses={movedCourses}
-                onMoveCourse={moveCourse}
-                onEditEvent={handleOpenEventDialog}
-                onDeleteEvent={handleDeleteEvent}
-              />
-            )}
-          </Box>
-
-          <br />
-          <PlanAssumptions assumptions={assumptions ?? []} />
         </Box>
 
-        {/* Changes summary sidebar - only show when there are advisor changes */}
-        {advisorChanges && (
-          <Box sx={{ flex: '0 0 28%' }}>
-            <ChangesSummaryBox
-              movedCourses={advisorChanges.movedCourses}
-              hasSuggestions={advisorChanges.hasSuggestions}
-            />
-          </Box>
-        )}
+        <br />
+        <PlanAssumptions assumptions={assumptions ?? []} />
       </Box>
 
       {/* Drag Overlay for visual feedback */}

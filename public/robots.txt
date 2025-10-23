@@ -1,0 +1,31 @@
+# robots.txt for stuplanning.com
+# This file tells search engines what to crawl and what to avoid
+
+# Allow all search engines
+User-agent: *
+
+# Allow all public pages
+Allow: /
+Allow: /about-us
+Allow: /students
+Allow: /how-it-works
+Allow: /demo
+Allow: /privacy-policy
+
+# Disallow authenticated/private areas
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /login
+Disallow: /signup
+Disallow: /create-account
+
+# Disallow API routes
+Disallow: /api/
+
+# Disallow development/test pages
+Disallow: /loader-demo
+Disallow: /four-year-plan-sandbox
+Disallow: /demo/demo-thanks
+
+# Sitemap location
+Sitemap: https://stuplanning.com/sitemap.xml
