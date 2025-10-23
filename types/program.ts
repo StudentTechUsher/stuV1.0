@@ -7,4 +7,6 @@ export type ProgramRow = {
     created_at: string;
     modified_at: string | null;
     requirements: unknown;
+    is_general_ed?: boolean;
+    course_flow?: unknown;
 };

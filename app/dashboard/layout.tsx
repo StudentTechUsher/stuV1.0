@@ -45,7 +45,8 @@ type IconKey =
   | "programs"
   | "system"
   | "forecast"
-  | "careers";
+  | "careers"
+  | "programFlow";
 
 export type NavItem = {
   href: string;
@@ -208,6 +209,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
         { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
         { href: "/dashboard/maintain-programs",  segment: "maintain programs",  label: "Maintain Programs",      icon: "programs" },
+        { href: "/dashboard/program-flow",       segment: "program-flow",       label: "Program Flow",   icon: "programFlow" },
         { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
         { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
         { href: "/dashboard/careers/manage",     segment: "careers",            label: "Manage Careers", icon: "careers" },
