@@ -885,6 +885,14 @@ export default function EditGradPlanPage() {
               transition: 'all 0.3s ease',
             }}
           >
+            {/* Advisor Suggestions - shown at top when present */}
+            {gradPlan.advisor_notes && (
+              <AdvisorNotesBox
+                advisorNotes={gradPlan.advisor_notes}
+                advisorChanges={advisorChanges}
+              />
+            )}
+
             {/* Progress Panel - shown for both students and advisors */}
             {currentPlanData && (
               <AdvisorProgressPanel
@@ -898,10 +906,6 @@ export default function EditGradPlanPage() {
                 plannedCredits={plannedCredits}
                 expandableCategories={mockExpandableCategories}
               />
-            )}
-
-            {gradPlan.advisor_notes && (
-              <AdvisorNotesBox advisorNotes={gradPlan.advisor_notes} />
             )}
           </Box>
         )}
