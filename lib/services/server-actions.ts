@@ -209,14 +209,18 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
     if (trimmedNotes.length > 4000) {
         return { success: false, error: 'Advisor notes exceed 4000 characters' };
     }
+    // Basic validation: ensure planDetails is provided and is an object or array
+    if (!planDetails || (typeof planDetails !== 'object')) {
+        return { success: false, error: 'Plan details are required' };
+    }
     try {
-        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planDetails, VALIDATION_OPTIONS);
-        return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, sanitizedPlan, trimmedNotes);
+        return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, planDetails, trimmedNotes);
     } catch (error) {
-        if (error instanceof ValidationError) {
-            return { success: false, error: error.errors.join('; ') };
-        }
-        throw error;
+        console.error('Error updating grad plan details and advisor notes:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update plan'
+        };
     }
 }
 
