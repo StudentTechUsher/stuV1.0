@@ -16,6 +16,13 @@ export class ProgramFetchError extends Error {
   }
 }
 
+export class CourseFlowSaveError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'CourseFlowSaveError';
+  }
+}
+
 /**
  * AUTHORIZED FOR ANONYMOUS USERS AND ABOVE
  * Fetches all programs for a given university
@@ -25,7 +32,7 @@ export class ProgramFetchError extends Error {
 export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
     const { data, error } = await db
     .from('program')
-    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements')
+    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed')
     .eq('university_id', universityId)
     .order('created_at', { ascending: false });
 
@@ -237,5 +244,147 @@ export async function fetchProgramsBatch(ids: string[], universityId?: number): 
       throw error;
     }
     throw new ProgramFetchError('Unexpected error fetching programs batch', error);
+  }
+}
+
+// Types for course flow data
+export interface CourseFlowData {
+  courses: Array<{
+    id: string;
+    courseCode: string;
+    courseTitle: string;
+    position: { x: number; y: number };
+    isRequired: boolean;
+    requirementDesc?: string;
+  }>;
+  connections: Array<{
+    id: string;
+    fromCourseId: string;
+    toCourseId: string | null;
+    toNodeId: string | null;
+    fromSide: 'top' | 'right' | 'bottom' | 'left';
+    toSide: 'top' | 'right' | 'bottom' | 'left';
+    relationshipType?: 'prerequisite' | 'corequisite' | 'optional_prereq' | 'concurrent' | 'either_or' | 'do_not_take_together';
+  }>;
+  connectionNodes: Array<{
+    id: string;
+    x: number;
+    y: number;
+    requiredCount: number;
+  }>;
+}
+
+/**
+ * AUTHORIZED FOR ADVISORS ONLY
+ * Saves course flow data with a minor version increment (e.g., 1.0 -> 1.1)
+ * @param programId - ID of the program to update
+ * @param flowData - Course flow data to save
+ * @returns Updated program
+ */
+export async function saveCourseFlowMinor(
+  programId: string,
+  flowData: CourseFlowData
+): Promise<ProgramRow> {
+  try {
+    // First, fetch the current program to get the version
+    const { data: currentProgram, error: fetchError } = await db
+      .from('program')
+      .select('version')
+      .eq('id', programId)
+      .single();
+
+    if (fetchError) {
+      throw new CourseFlowSaveError('Failed to fetch current program version', fetchError);
+    }
+
+    // Calculate new minor version
+    const currentVersion = currentProgram?.version ?? 1.0;
+    const newVersion = typeof currentVersion === 'number'
+      ? Number((currentVersion + 0.1).toFixed(1))
+      : Number((parseFloat(String(currentVersion)) + 0.1).toFixed(1));
+
+    // Update the program with new course flow and version
+    const { data, error } = await db
+      .from('program')
+      .update({
+        course_flow: flowData,
+        version: newVersion,
+        modified_at: new Date().toISOString()
+      })
+      .eq('id', programId)
+      .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed')
+      .single();
+
+    if (error) {
+      throw new CourseFlowSaveError('Failed to save course flow with minor version update', error);
+    }
+
+    return data as ProgramRow;
+  } catch (error) {
+    if (error instanceof CourseFlowSaveError) {
+      throw error;
+    }
+    throw new CourseFlowSaveError('Unexpected error saving course flow', error);
+  }
+}
+
+/**
+ * AUTHORIZED FOR ADVISORS ONLY
+ * Saves course flow data as a new major version (creates duplicate with version + 1)
+ * @param programId - ID of the program to duplicate
+ * @param flowData - Course flow data to save
+ * @returns New program with major version increment
+ */
+export async function saveCourseFlowMajor(
+  programId: string,
+  flowData: CourseFlowData
+): Promise<ProgramRow> {
+  try {
+    // First, fetch the current program
+    const { data: currentProgram, error: fetchError } = await db
+      .from('program')
+      .select('*')
+      .eq('id', programId)
+      .single();
+
+    if (fetchError || !currentProgram) {
+      throw new CourseFlowSaveError('Failed to fetch current program', fetchError);
+    }
+
+    // Calculate new major version
+    const currentVersion = currentProgram.version ?? 1.0;
+    const newVersion = typeof currentVersion === 'number'
+      ? Math.floor(currentVersion) + 1
+      : Math.floor(parseFloat(String(currentVersion))) + 1;
+
+    // Create a new program entry with the incremented version
+    const newProgramData = {
+      university_id: currentProgram.university_id,
+      name: currentProgram.name,
+      program_type: currentProgram.program_type,
+      version: newVersion,
+      requirements: currentProgram.requirements,
+      is_general_ed: currentProgram.is_general_ed,
+      course_flow: flowData,
+      created_at: new Date().toISOString(),
+      modified_at: new Date().toISOString()
+    };
+
+    const { data, error } = await db
+      .from('program')
+      .insert(newProgramData)
+      .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed')
+      .single();
+
+    if (error) {
+      throw new CourseFlowSaveError('Failed to create new program with major version', error);
+    }
+
+    return data as ProgramRow;
+  } catch (error) {
+    if (error instanceof CourseFlowSaveError) {
+      throw error;
+    }
+    throw new CourseFlowSaveError('Unexpected error creating new major version', error);
   }
 }
