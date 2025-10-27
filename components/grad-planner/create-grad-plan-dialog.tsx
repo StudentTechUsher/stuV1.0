@@ -103,6 +103,7 @@ interface CreateGradPlanDialogProps {
   onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string, planName?: string) => void;
   prompt: string;
   initialPlanName?: string;
+  isGraduateStudent?: boolean;
 }
 
 export default function CreateGradPlanDialog({
@@ -115,7 +116,8 @@ export default function CreateGradPlanDialog({
   universityId,
   onPlanCreated,
   prompt,
-  initialPlanName
+  initialPlanName,
+  isGraduateStudent = false
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: program data (loaded dynamically)
@@ -167,7 +169,7 @@ useEffect(() => {
     setDataLoadError(null);
 
     try {
-      // Fetch selected programs (majors + minors) with full requirements
+      // Fetch selected programs (majors + minors OR graduate programs) with full requirements
       if (selectedProgramIds.length > 0) {
         const programsRes = await fetch(`/api/programs/batch?ids=${selectedProgramIds.join(',')}&universityId=${universityId}`);
         if (!programsRes.ok) throw new Error('Failed to fetch program data');
@@ -175,8 +177,8 @@ useEffect(() => {
         setProgramsData(programsJson);
       }
 
-      // Fetch GenEd programs with full requirements
-      if (genEdProgramIds.length > 0) {
+      // Fetch GenEd programs with full requirements (skip for graduate students)
+      if (!isGraduateStudent && genEdProgramIds.length > 0) {
         const genEdRes = await fetch(`/api/programs/batch?ids=${genEdProgramIds.join(',')}&universityId=${universityId}`);
         if (!genEdRes.ok) throw new Error('Failed to fetch GenEd data');
         const genEdJson = await genEdRes.json();
@@ -192,7 +194,7 @@ useEffect(() => {
   }
 
   fetchProgramData();
-}, [open, selectedProgramIds, genEdProgramIds, universityId]);
+}, [open, selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
 
 // --- User-added elective courses & GenEd strategy ---
 interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
@@ -609,12 +611,41 @@ const handleRemoveElective = (id: string) => {
     setPlanCreationError(null);
 
     try {
-      // Step 1: Send the course data to AI for semester organization
-      // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
-      const strategyText = genEdStrategy === 'early'
+      // Step 1: Calculate total target credits from all selected programs
+      // For graduate students, only use program data (no GenEd)
+      const allSelectedProgramData = isGraduateStudent ? programsData : [...programsData, ...genEdData];
+      const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
+        const credits = prog.target_total_credits ?? 0;
+        return sum + credits;
+      }, 0);
+
+      // Default credits: 120 for undergrad, 30-36 for graduate (using 30 as default)
+      const defaultCredits = isGraduateStudent ? 30 : 120;
+      const effectiveTargetCredits = totalTargetCredits > 0 ? totalTargetCredits : defaultCredits;
+
+      console.log('📊 Credit calculation:', {
+        isGraduateStudent,
+        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: p.target_total_credits })),
+        selectedPrograms: programsData.map(p => ({ name: p.name, credits: p.target_total_credits })),
+        totalTargetCredits,
+        effectiveTargetCredits
+      });
+
+      // Step 2: Send the course data to AI for semester organization
+      // For undergrad: augment prompt with GenEd strategy
+      // For graduate: skip GenEd strategy since there are no GenEd requirements
+      const strategyText = !isGraduateStudent && genEdStrategy === 'early'
         ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
-        : 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.';
-      const augmentedPrompt = `${prompt}\n\nGenEd Sequencing Preference:\n${strategyText}`;
+        : !isGraduateStudent
+        ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
+        : '';
+
+      // Replace any mentions of "120 credits" in the prompt with the calculated target
+      const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
+
+      const augmentedPrompt = isGraduateStudent
+        ? `${promptWithCredits}\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ${effectiveTargetCredits}`
+        : `${promptWithCredits}\n\nGenEd Sequencing Preference:\n${strategyText}\n\nTarget Total Credits: ${effectiveTargetCredits}`;
       const plannerPayload = generateSelectedClassesJson;
       if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
         setPlanCreationError('Course selection data is invalid. Please review your selections and try again.');
@@ -935,8 +966,8 @@ const handleRemoveElective = (id: string) => {
             )}
           </Box>
 
-          {/* General Education Requirements */}
-          {effectiveMode === 'MANUAL' && (
+          {/* General Education Requirements (Undergraduate Only) */}
+          {!isGraduateStudent && effectiveMode === 'MANUAL' && (
             <Box>
               <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
 

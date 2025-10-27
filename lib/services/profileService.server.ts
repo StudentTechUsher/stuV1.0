@@ -217,23 +217,66 @@ export async function updateProfile(userId: string, updates: Record<string, stri
 /**
  * AUTHORIZATION: AUTHENTICATED USERS (completing their own onboarding)
  * Completes the onboarding process by setting university and marking as onboarded
+ * If no profile exists, creates one first
  * @param userId - The authenticated user's ID
  * @param universityId - The university ID to set
+ * @param fname - The user's first name (optional)
+ * @param lname - The user's last name (optional)
  */
-export async function completeOnboarding(userId: string, universityId: number) {
+export async function completeOnboarding(userId: string, universityId: number, fname?: string, lname?: string) {
   try {
     const supabase = await createSupabaseServerComponentClient();
 
-    const { error } = await supabase
+    // First, check if profile exists
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .update({
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      // Profile doesn't exist, create it with the university and name
+      const profileData: Record<string, unknown> = {
+        id: userId,
+        role_id: 3, // Default to student role
         university_id: universityId,
         onboarded: true,
-      })
-      .eq('id', userId);
+      };
 
-    if (error) {
-      throw new ProfileUpdateError('Failed to complete onboarding', error);
+      if (fname) profileData.fname = fname;
+      if (lname) profileData.lname = lname;
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+
+      if (insertError) {
+        console.error('Profile insert error details:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+        });
+        throw new ProfileUpdateError('Failed to create profile during onboarding', insertError);
+      }
+    } else {
+      // Profile exists, update it
+      const updateData: Record<string, unknown> = {
+        university_id: universityId,
+        onboarded: true,
+      };
+
+      if (fname) updateData.fname = fname;
+      if (lname) updateData.lname = lname;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (updateError) {
+        throw new ProfileUpdateError('Failed to complete onboarding', updateError);
+      }
     }
   } catch (error) {
     if (error instanceof ProfileUpdateError) {

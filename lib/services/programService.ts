@@ -32,7 +32,7 @@ export class CourseFlowSaveError extends Error {
 export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
     const { data, error } = await db
     .from('program')
-    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed')
+    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed, target_total_credits')
     .eq('university_id', universityId)
     .order('created_at', { ascending: false });
 
@@ -224,7 +224,7 @@ export async function fetchProgramsBatch(ids: string[], universityId?: number): 
 
     let query = db
       .from('program')
-      .select('id, name, university_id, program_type, version, created_at, modified_at, requirements, is_general_ed')
+      .select('id, name, university_id, program_type, version, created_at, modified_at, requirements, is_general_ed, target_total_credits')
       .in('id', ids)
       .order('name');
 
