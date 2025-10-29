@@ -889,30 +889,8 @@ const handleRemoveElective = (id: string) => {
         )}
         
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Plan Name */}
-          <Box>
-            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-              Name Your Plan
-            </Typography>
-            <TextField
-              fullWidth
-              placeholder="Ex: First Year STEM Roadmap"
-              value={planName}
-              onChange={(event) => {
-                setPlanName(event.target.value);
-                if (planNameError) {
-                  setPlanNameError(null);
-                }
-              }}
-              disabled={isCreatingPlan}
-              error={Boolean(planNameError)}
-              helperText={planNameError ?? 'Optional, but helpful! You can change this later.'}
-              inputProps={{ maxLength: 100 }}
-            />
-          </Box>
           {/* Available Programs */}
           <Box>
-            <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>Available Programs:</Typography>
             {programsData?.length ? (
               <Box>
                 {/* Group programs by type */}

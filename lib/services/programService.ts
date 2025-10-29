@@ -26,8 +26,8 @@ export class CourseFlowSaveError extends Error {
 /**
  * AUTHORIZED FOR ANONYMOUS USERS AND ABOVE
  * Fetches all programs for a given university
- * @param universityId 
- * @returns 
+ * @param universityId
+ * @returns
  */
 export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
     const { data, error } = await db
@@ -38,6 +38,29 @@ export async function fetchProgramsByUniversity(universityId: number): Promise<P
 
     if (error) throw error;
     return (data ?? []) as ProgramRow[];
+}
+
+/**
+ * AUTHORIZED FOR ADVISORS AND ABOVE
+ * Fetches a single program by ID
+ * @param programId - The ID of the program to fetch
+ * @returns The program data
+ */
+export async function fetchProgramById(programId: string): Promise<ProgramRow> {
+  const { data, error } = await db
+    .from('program')
+    .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed, target_total_credits, course_flow')
+    .eq('id', programId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new ProgramNotFoundError();
+    }
+    throw new ProgramFetchError('Failed to fetch program', error);
+  }
+
+  return data as ProgramRow;
 }
 
 export default async function GetProgramsForUniversity(university_id: number): Promise<ProgramRow[]> {

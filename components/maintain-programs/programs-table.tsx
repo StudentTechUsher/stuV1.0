@@ -1,18 +1,23 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import type { ProgramRow } from '@/types/program';
 
 export type ProgramsTableProps = {
   rows: ProgramRow[];
-  onEdit: (row: ProgramRow) => void;
   onDelete: (row: ProgramRow) => void;
   canDelete?: boolean;
 };
 
-export default function ProgramsTable({ rows, onEdit, onDelete, canDelete = true }: Readonly<ProgramsTableProps>) {
+export default function ProgramsTable({ rows, onDelete, canDelete = true }: Readonly<ProgramsTableProps>) {
+  const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [programToDelete, setProgramToDelete] = React.useState<ProgramRow | null>(null);
+
+  const handleEdit = (row: ProgramRow) => {
+    router.push(`/dashboard/maintain-programs/${row.id}`);
+  };
 
   const getBadgeClasses = (programType: string) => {
     // Case-insensitive comparison - match colors from academic-progress-card
@@ -145,7 +150,7 @@ export default function ProgramsTable({ rows, onEdit, onDelete, canDelete = true
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => onEdit(row)}
+                    onClick={() => handleEdit(row)}
                     className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-[var(--foreground)] transition-all duration-200 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] hover:text-[var(--primary)]"
                     aria-label="Edit requirements"
                   >

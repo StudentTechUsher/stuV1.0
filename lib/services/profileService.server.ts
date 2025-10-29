@@ -29,6 +29,30 @@ import type { AdvisorStudentRow } from './profileService';
 import { ProfileNotFoundError, ProfileUpdateError, ProfileFetchError } from './errors/profileErrors';
 
 /**
+ * AUTHORIZATION: AUTHENTICATED USERS
+ * Gets the university ID for a given user (server-side)
+ * @param userId - The user's ID
+ * @returns The university ID
+ */
+export async function getUserUniversityId(userId: string): Promise<number> {
+  const supabase = await createSupabaseServerComponentClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('university_id')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw new ProfileFetchError('Failed to fetch university ID', error);
+
+  const raw = data?.university_id;
+  if (raw === undefined || raw === null) {
+    throw new ProfileNotFoundError('profiles.university_id not set for this user');
+  }
+
+  return typeof raw === 'string' ? Number(raw) : raw;
+}
+
+/**
  * AUTHORIZATION: SYSTEM ONLY (called from auth callback)
  * Ensures a profile exists for a user. Creates one if it doesn't exist.
  * This is a safe operation that won't overwrite existing profiles.

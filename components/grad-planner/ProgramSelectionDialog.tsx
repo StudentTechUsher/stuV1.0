@@ -442,27 +442,6 @@ export default function ProgramSelectionDialog({
               }
             </Typography>
           </Box>
-
-          {/* Plan Name */}
-          <Box>
-            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-              Plan Name (optional)
-            </Typography>
-            <TextField
-              fullWidth
-              placeholder="Ex: Biomedical Engineering Roadmap"
-              value={planName}
-              onChange={(event) => {
-                setPlanName(event.target.value);
-                if (planNameError) {
-                  setPlanNameError(null);
-                }
-              }}
-              error={Boolean(planNameError)}
-              helperText={planNameError ?? 'You can rename your plan at any time from the dashboard.'}
-              inputProps={{ maxLength: 100 }}
-            />
-          </Box>
         </Box>
       </DialogContent>
 
