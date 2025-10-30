@@ -199,12 +199,14 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave, uni
         <>
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
             <DialogTitle>
-              <Typography variant="h5" className="font-header">
-                {row ? 'Edit Program' : 'Add New Program'}
-              </Typography>
-              <Typography variant="subtitle2" className="font-body" color="text.secondary">
-                {row ? `${row.name} (${row.program_type})` : 'Create a new program for your university'}
-              </Typography>
+              <Box>
+                <Typography variant="h5" className="font-header" component="div">
+                  {row ? 'Edit Program' : 'Add New Program'}
+                </Typography>
+                <Typography variant="subtitle2" className="font-body" color="text.secondary" component="div">
+                  {row ? `${row.name} (${row.program_type})` : 'Create a new program for your university'}
+                </Typography>
+              </Box>
             </DialogTitle>
             
             <DialogContent dividers>

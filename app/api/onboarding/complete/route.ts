@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 async function handleCompleteOnboarding(request: NextRequest) {
   try {
     const body = await request.json();
-    const { university_id } = body;
+    const { university_id, fname, lname } = body;
 
     if (!university_id || typeof university_id !== 'number') {
       return NextResponse.json(
@@ -52,8 +52,8 @@ async function handleCompleteOnboarding(request: NextRequest) {
       );
     }
 
-    // Update the profile using service layer
-    await completeOnboarding(user.id, university_id);
+    // Update the profile using service layer (pass name fields in case profile needs to be created)
+    await completeOnboarding(user.id, university_id, fname, lname);
 
     return NextResponse.json({ success: true });
   } catch (error) {
