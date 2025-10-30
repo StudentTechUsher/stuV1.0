@@ -2,14 +2,16 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { StuLoader } from '@/components/ui/StuLoader';
 import { getSessionUser } from '@/lib/services/auth';
 import { getUserUniversityId } from '@/lib/services/profileService';
 import { fetchMyProfile } from '@/lib/services/profileService.server';
 import type { ProgramRow } from '@/types/program';
-import EditRequirementsDialog from '@/components/maintain-programs/edit-requirements-dialog';
 import ProgramsTable from '@/components/maintain-programs/programs-table';
 import { fetchProgramsByUniversity, deleteProgram } from '@/lib/services/server-actions';
+import { Button } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 
 export default function MaintainProgramsPage() {
   const router = useRouter();
@@ -18,9 +20,6 @@ export default function MaintainProgramsPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [universityId, setUniversityId] = React.useState<number>(0);
   const [userRole, setUserRole] = React.useState<number | null>(null);
-
-  const [editOpen, setEditOpen] = React.useState(false);
-  const [editingRow, setEditingRow] = React.useState<ProgramRow | null>(null);
 
   React.useEffect(() => {
     let active = true;
@@ -63,47 +62,6 @@ export default function MaintainProgramsPage() {
     };
   }, [router]);
 
-  const handleOpenEdit = (row: ProgramRow) => {
-    setEditingRow(row);
-    setEditOpen(true);
-  };
-
-  const handleAdd = () => {
-    setEditingRow(null); // null indicates creating a new program
-    setEditOpen(true);
-  };
-
-  const handleCloseEdit = () => {
-    setEditOpen(false);
-    setEditingRow(null);
-  };
-
-  // matches EditRequirementsDialog onSave signature (updatedProgram)
-  const handleSaveEdit = async (savedProgram: ProgramRow) => {
-    try {
-      if (editingRow) {
-        // Updating existing program
-        setRows(prevRows => 
-          prevRows.map(row => 
-            row.id === savedProgram.id ? savedProgram : row
-          )
-        );
-      } else {
-        // Adding new program
-        setRows(prevRows => [savedProgram, ...prevRows]);
-      }
-      
-      // Clear any existing error
-      setError(null);
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError('Failed to save program');
-      }
-    }
-  };
-
   const handleDeleteProgram = async (program: ProgramRow) => {
     try {
       setError(null);
@@ -135,21 +93,32 @@ export default function MaintainProgramsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="group flex items-center gap-2 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] px-5 py-2.5 font-body-semi text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        <Button
+          component={Link}
+          href="/dashboard/maintain-programs/new"
+          startIcon={<AddIcon />}
+          sx={{
+            backgroundColor: '#12F987',
+            color: '#0A0A0A',
+            fontWeight: 600,
+            textTransform: 'none',
+            px: 3,
+            py: 1.5,
+            '&:hover': {
+              backgroundColor: '#0ed676',
+              transform: 'translateY(-2px)',
+              boxShadow: 2
+            },
+            transition: 'all 0.2s'
+          }}
         >
-          <svg className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
           Add Program
-        </button>
+        </Button>
       </div>
 
       {/* Stats Cards */}
       {!loading && !error && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Total Programs */}
           <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-center gap-3">
@@ -200,6 +169,25 @@ export default function MaintainProgramsPage() {
               </div>
             </div>
           </div>
+
+          {/* Graduate Programs */}
+          <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#F59E0B]">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Graduate</p>
+                <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">
+                  {rows.filter(r => r.program_type === 'graduate_no_gen_ed' || r.program_type === 'graduate_with_gen_ed').length}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -221,19 +209,10 @@ export default function MaintainProgramsPage() {
       ) : (
         <ProgramsTable
           rows={rows}
-          onEdit={handleOpenEdit}
           onDelete={handleDeleteProgram}
           canDelete={userRole === 1} // Only admins (role 1) can delete
         />
       )}
-
-      <EditRequirementsDialog
-        open={editOpen}
-        row={editingRow}
-        onClose={handleCloseEdit}
-        onSave={handleSaveEdit}
-        university_id={universityId}
-      />
     </div>
   );
 }

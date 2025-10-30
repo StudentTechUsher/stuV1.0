@@ -582,7 +582,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         <CreateGradPlanDialog
           open={showCourseSelection}
           onClose={handleCourseSelectionClose}
-          selectedProgramIds={[...programSelections.majorIds, ...programSelections.minorIds]}
+          selectedProgramIds={
+            programSelections.isGraduateStudent
+              ? programSelections.graduateProgramIds
+              : [...programSelections.majorIds, ...programSelections.minorIds]
+          }
           genEdProgramIds={programSelections.genEdIds}
           genEdStrategy={programSelections.genEdStrategy}
           planMode={programSelections.planMode}
@@ -590,6 +594,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           onPlanCreated={handlePlanCreated}
           initialPlanName={programSelections.planName}
           prompt={prompt}
+          isGraduateStudent={programSelections.isGraduateStudent}
         />
       )}
       

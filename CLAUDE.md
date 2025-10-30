@@ -287,6 +287,49 @@ export async function GET(req: NextRequest) {
 
 ### 3. React Best Practices
 
+**Prefer Link component with href over programmatic navigation**
+
+For navigation in Next.js applications, prefer using the Link component with href over programmatic router.push() calls, especially for buttons that trigger navigation.
+
+- ❌ **Bad:**
+  ```typescript
+  import { useRouter } from 'next/navigation';
+
+  const router = useRouter();
+  const handleClick = () => {
+    router.push('/some-route');
+  };
+
+  <button onClick={handleClick}>Go to Page</button>
+  ```
+
+- ✅ **Good:**
+  ```typescript
+  import Link from 'next/link';
+  import { Button } from '@mui/material';
+
+  <Button
+    component={Link}
+    href="/some-route"
+    sx={{ /* styles */ }}
+  >
+    Go to Page
+  </Button>
+  ```
+
+**Benefits:**
+- Works with browser's native navigation (right-click to open in new tab)
+- Better accessibility
+- Improved SEO
+- Cleaner code without handler functions
+
+**When to use router.push():**
+- After form submissions or async operations
+- Conditional redirects based on data
+- Redirects after successful mutations
+
+---
+
 **Page components (page.tsx) should ALWAYS be Server Components**
 
 Next.js route page files should be Server Components by default for optimal performance and SEO.
