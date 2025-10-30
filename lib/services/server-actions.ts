@@ -23,7 +23,11 @@ import {
     updateGradPlanDetails as _updateGradPlanDetails,
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
     updateGradPlanName as _updateGradPlanName,
+    deleteGradPlan as _deleteGradPlan,
 } from './gradPlanService';
+import {
+    fetchProfileBasicInfo as _fetchProfileBasicInfo,
+} from './profileService.server';
 import {
     ChatbotSendMessage_ServerAction as _chatbotSendMessage,
     parseTranscriptCourses_ServerAction as _parseTranscriptCourses,
@@ -142,8 +146,14 @@ export async function submitGradPlanForApproval(userId: string, planData: unknow
             planName = nameValidation.sanitizedValue;
         }
 
-        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planData, VALIDATION_OPTIONS);
-        return await _submitGradPlanForApproval(userId, sanitizedPlan, programIds, planName);
+        // The planData is just the array of terms, not the full object expected by graduationPlanPayloadSchema
+        // We'll just validate that it's an array and pass it through
+        if (!Array.isArray(planData)) {
+            return { success: false, message: 'Invalid plan data format. Expected an array of terms.' };
+        }
+
+        // Pass the raw planData (array of terms) directly to the service
+        return await _submitGradPlanForApproval(userId, planData, programIds, planName);
     } catch (error) {
         if (error instanceof ValidationError) {
             return { success: false, message: error.errors.join('; ') };
@@ -301,6 +311,56 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
     }
 }
 
+// Delete graduation plan (students can delete their own non-active plans)
+export async function deleteGradPlanAction(gradPlanId: string) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id, is_active')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only delete their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to delete this plan' };
+            }
+        }
+
+        // Call the service function to delete
+        return await _deleteGradPlan(gradPlanId);
+    } catch (error) {
+        console.error('❌ Unexpected error deleting grad plan:', error);
+        return { success: false, error: 'Unable to delete plan. Please try again.' };
+    }
+}
+
 // Program related
 export async function fetchProgramsByUniversity(universityId: number) {
     return await _fetchProgramsByUniversity(universityId);
@@ -452,4 +512,9 @@ export async function updateUserCoursesAction(
         console.error('Error updating user courses:', error);
         return { success: false, error: 'Failed to update courses' };
     }
+}
+
+// Profile related
+export async function fetchProfileBasicInfoAction(userId: string) {
+    return await _fetchProfileBasicInfo(userId);
 }

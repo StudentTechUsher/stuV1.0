@@ -40,7 +40,9 @@ export default function EditProgramPage({ program }: Readonly<EditProgramPagePro
     name: program.name,
     program_type: program.program_type,
     version: program.version,
-    requirements: program.requirements || ''
+    requirements: (program.requirements && typeof program.requirements === 'object' && Object.keys(program.requirements).length > 0)
+      ? program.requirements as ProgramRequirementsStructure
+      : ''
   });
 
   const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});

@@ -98,7 +98,7 @@ export default function RequirementForm({
       setRequirement({
         ...baseRequirement,
         type: newType
-      });
+      } as ProgramRequirement);
     }
   };
 

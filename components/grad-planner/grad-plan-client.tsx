@@ -12,12 +12,16 @@ import InputLabel from '@mui/material/InputLabel';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import IconButton from '@mui/material/IconButton';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
 import ProgramSelectionDialog, { type ProgramSelections } from "@/components/grad-planner/ProgramSelectionDialog";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
-import { updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { updateGradPlanNameAction, deleteGradPlanAction } from '@/lib/services/server-actions';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
 interface Term {
@@ -70,6 +74,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
   const [gradPlans, setGradPlans] = useState<GradPlanRecord[]>(allGradPlans);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
+  const [planNameInput, setPlanNameInput] = useState('');
+  const [planNameError, setPlanNameError] = useState<string | null>(null);
+  const [isSavingPlanName, setIsSavingPlanName] = useState(false);
+  const [isEditingPlanName, setIsEditingPlanName] = useState(false);
+  const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameInput, setRenameInput] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -80,20 +89,27 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     severity: 'success'
   });
 
+  // Initialize gradPlans only once on mount
   useEffect(() => {
     setGradPlans(allGradPlans);
-  }, [allGradPlans]);
+  }, []); // Only run on mount
 
+  // Update selected plan when it changes in the list, but preserve it during editing
   useEffect(() => {
-    if (selectedGradPlan) {
-      const updated = allGradPlans.find(plan => plan.id === selectedGradPlan.id);
-      if (updated && updated !== selectedGradPlan) {
-        setSelectedGradPlan(updated);
-      }
-    } else if (activeGradPlan) {
+    if (!selectedGradPlan && activeGradPlan) {
       setSelectedGradPlan(activeGradPlan);
     }
-  }, [allGradPlans, activeGradPlan, selectedGradPlan]);
+  }, [activeGradPlan, selectedGradPlan]);
+
+  // Update planNameInput when selectedGradPlan changes
+  useEffect(() => {
+    if (selectedGradPlan) {
+      const currentName = typeof selectedGradPlan.plan_name === 'string'
+        ? selectedGradPlan.plan_name.trim()
+        : '';
+      setPlanNameInput(currentName);
+    }
+  }, [selectedGradPlan]);
 
   const handleGradPlanSelection = (event: SelectChangeEvent<string>) => {
     const selectedId = event.target.value;
@@ -222,17 +238,137 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     }
   };
 
+  const handlePlanNameBlur = async () => {
+    if (!selectedGradPlan || isSavingPlanName) return;
+
+    const trimmedName = planNameInput.trim();
+    const currentName = typeof selectedGradPlan.plan_name === 'string'
+      ? selectedGradPlan.plan_name.trim()
+      : '';
+
+    // If unchanged, just exit edit mode
+    if (trimmedName === currentName) {
+      setIsEditingPlanName(false);
+      setPlanNameError(null);
+      return;
+    }
+
+    // Validate the new name
+    const validation = validatePlanName(trimmedName, { allowEmpty: false });
+    if (!validation.isValid) {
+      setPlanNameError(validation.error);
+      // Revert to original name
+      setPlanNameInput(currentName);
+      setIsEditingPlanName(false);
+      setNotification({ open: true, message: validation.error, severity: 'error' });
+      return;
+    }
+
+    const sanitizedName = validation.sanitizedValue;
+
+    // Save the new name
+    setIsSavingPlanName(true);
+    try {
+      const result = await updateGradPlanNameAction(selectedGradPlan.id, sanitizedName);
+      if (!result.success) {
+        const message = result.error ?? 'Failed to update plan name.';
+        setPlanNameError(message);
+        setPlanNameInput(currentName); // Revert
+        setNotification({ open: true, message, severity: 'error' });
+        return;
+      }
+
+      // Update local state
+      setGradPlans(prev =>
+        prev.map(plan => (plan.id === selectedGradPlan.id ? { ...plan, plan_name: sanitizedName } : plan))
+      );
+      setSelectedGradPlan(prev => prev ? { ...prev, plan_name: sanitizedName } : prev);
+      setPlanNameInput(sanitizedName);
+      setPlanNameError(null);
+      setNotification({ open: true, message: 'Plan name updated!', severity: 'success' });
+    } catch (error) {
+      console.error('Error updating plan name:', error);
+      setPlanNameInput(currentName); // Revert
+      setNotification({ open: true, message: 'Failed to update plan name.', severity: 'error' });
+    } finally {
+      setIsSavingPlanName(false);
+      setIsEditingPlanName(false);
+    }
+  };
+
+  const handlePlanNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.currentTarget.blur(); // Trigger onBlur to save
+    } else if (event.key === 'Escape') {
+      // Revert to original name
+      const currentName = typeof selectedGradPlan?.plan_name === 'string'
+        ? selectedGradPlan.plan_name.trim()
+        : '';
+      setPlanNameInput(currentName);
+      setPlanNameError(null);
+      setIsEditingPlanName(false);
+      event.currentTarget.blur();
+    }
+  };
+
+  const handleDeletePlan = async (planId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering the plan selection
+
+    const planToDelete = gradPlans.find(p => p.id === planId);
+    if (!planToDelete) return;
+
+    const planName = typeof planToDelete.plan_name === 'string' && planToDelete.plan_name.trim()
+      ? planToDelete.plan_name.trim()
+      : 'Untitled Plan';
+
+    if (!confirm(`Are you sure you want to delete "${planName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const result = await deleteGradPlanAction(planId);
+
+      if (result.success) {
+        // Remove the plan from the local state
+        const updatedPlans = gradPlans.filter(p => p.id !== planId);
+        setGradPlans(updatedPlans);
+
+        // If the deleted plan was selected, select the first remaining plan or null
+        if (selectedGradPlan?.id === planId) {
+          const newSelectedPlan = updatedPlans.length > 0 ? updatedPlans[0] : null;
+          setSelectedGradPlan(newSelectedPlan);
+        }
+
+        setNotification({
+          open: true,
+          message: 'Graduation plan deleted successfully!',
+          severity: 'success'
+        });
+
+        // Close the dialog if no plans remain
+        if (updatedPlans.length === 0) {
+          setShowPlanSwitcher(false);
+        }
+      } else {
+        setNotification({
+          open: true,
+          message: result.error || 'Failed to delete graduation plan',
+          severity: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting graduation plan:', error);
+      setNotification({
+        open: true,
+        message: 'An unexpected error occurred while deleting the plan',
+        severity: 'error'
+      });
+    }
+  };
+
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
-
-  const selectedPlanName = selectedGradPlan && typeof selectedGradPlan.plan_name === 'string'
-    ? selectedGradPlan.plan_name.trim()
-    : '';
-  const selectedPlanTitle = selectedPlanName || 'Untitled Graduation Plan';
-
-  console.log('Rendering with selectedGradPlan.plan_name:', selectedGradPlan?.plan_name);
-  console.log('Computed selectedPlanTitle:', selectedPlanTitle);
 
   const selectedPlanCreatedAt = (() => {
     if (!selectedGradPlan?.created_at) return null;
@@ -246,8 +382,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     }
     return null;
   })();
-  const renameTrimmed = renameInput.trim();
-  const renameSaveDisabled = isSavingRename || renameTrimmed.length === 0 || renameTrimmed === selectedPlanName;
 
   const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string, _planName?: string) => {
     // Close all dialogs
@@ -317,18 +451,80 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                   Graduation Plan
                 </span>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-semibold tracking-tight text-[#0a1f1a]">
-                    {selectedPlanTitle}
-                  </h1>
+                  <div className="flex items-center gap-2">
+                    <TextField
+                      value={planNameInput}
+                      onChange={(e) => {
+                        setPlanNameInput(e.target.value);
+                        setPlanNameError(null);
+                      }}
+                      onFocus={() => setIsEditingPlanName(true)}
+                      onBlur={handlePlanNameBlur}
+                      onKeyDown={handlePlanNameKeyDown}
+                      placeholder="Untitled Graduation Plan"
+                      disabled={isSavingPlanName}
+                      variant="outlined"
+                      inputProps={{
+                        maxLength: 100,
+                        style: {
+                          fontSize: '1.5rem',
+                          fontWeight: 600,
+                          color: '#0a1f1a',
+                          padding: '10px 14px'
+                        }
+                      }}
+                      sx={{
+                        minWidth: '350px',
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '7px',
+                          backgroundColor: 'rgba(10,31,26,0.02)',
+                          transition: 'all 0.2s ease',
+                          '& fieldset': {
+                            borderColor: 'rgba(10,31,26,0.15)',
+                            borderWidth: '1.5px',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: 'rgba(10,31,26,0.3)',
+                            backgroundColor: 'rgba(10,31,26,0.04)',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: 'var(--primary)',
+                            borderWidth: '2px',
+                          },
+                        },
+                      }}
+                    />
+                    {allGradPlans.length > 1 && (
+                      <IconButton
+                        onClick={() => setShowPlanSwitcher(true)}
+                        sx={{
+                          borderRadius: '7px',
+                          backgroundColor: 'rgba(10,31,26,0.06)',
+                          border: '1.5px solid rgba(10,31,26,0.15)',
+                          width: '48px',
+                          height: '48px',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            backgroundColor: 'rgba(10,31,26,0.1)',
+                            borderColor: 'rgba(10,31,26,0.3)',
+                          },
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </IconButton>
+                    )}
+                  </div>
                   {selectedPlanCreatedAt && (
                     <span className="inline-flex items-center rounded-full bg-[#0a1f1a] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_-20px_rgba(10,31,26,0.65)]">
                       Created {selectedPlanCreatedAt}
                     </span>
                   )}
                 </div>
-                {!selectedPlanName && (
+                {!planNameInput.trim() && !isEditingPlanName && (
                   <p className="max-w-xl text-sm leading-relaxed text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
-                    Give this plan a name to make it easier to find later.
+                    Click the field above to give this plan a name.
                   </p>
                 )}
               </div>
@@ -373,133 +569,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex flex-col gap-3 lg:flex-1">
-                {allGradPlans.length > 1 && (
-                  <FormControl sx={{ minWidth: 260 }} size="small">
-                    <InputLabel
-                      id="grad-plan-select-label"
-                      className="font-body"
-                      sx={{
-                        color: '#0a1f1a',
-                        '&.Mui-focused': { color: '#043322' }
-                      }}
-                    >
-                      Select Graduation Plan
-                    </InputLabel>
-                    <Select
-                      labelId="grad-plan-select-label"
-                      value={selectedGradPlan?.id || ''}
-                      label="Select Graduation Plan"
-                      onChange={handleGradPlanSelection}
-                      className="font-body"
-                      sx={{
-                        borderRadius: '7px',
-                        fontWeight: 500,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'rgba(10,31,26,0.2)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#0a1f1a',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'var(--primary)',
-                        },
-                      }}
-                    >
-                      {gradPlans.map((plan) => {
-                        const planName = typeof plan.plan_name === 'string'
-                          ? (plan.plan_name ?? '').trim()
-                          : '';
-                        try {
-                          const createdAt = plan.created_at
-                            ? new Date(plan.created_at as string).toLocaleString()
-                            : 'Unknown Date';
-                          const label = planName.length > 0
-                            ? planName
-                            : `Plan made on ${createdAt}`;
-                          return (
-                            <MenuItem key={plan.id} value={plan.id} className="font-body">
-                              {label}
-                            </MenuItem>
-                          );
-                        } catch (error) {
-                          console.error('Error accessing plan data:', error);
-                          const fallbackCreatedAt = plan.created_at
-                            ? (() => {
-                                try { return new Date(plan.created_at as string).toLocaleString(); }
-                                catch { return 'Unknown Date'; }
-                              })()
-                            : 'Unknown Date';
-                          const fallbackLabel = planName.length > 0
-                            ? planName
-                            : `Plan ${String(plan.id).slice(0, 8)} • ${fallbackCreatedAt}`;
-                          return (
-                            <MenuItem key={plan.id} value={plan.id} className="font-body">
-                              {fallbackLabel}
-                            </MenuItem>
-                          );
-                        }
-                      })}
-                    </Select>
-                  </FormControl>
-                )}
-
-                {selectedGradPlan && !isRenaming && (
-                  <button
-                    type="button"
-                    onClick={handleStartRename}
-                    className="inline-flex w-fit items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)] transition-all duration-150 hover:-translate-y-[1px] hover:bg-[color-mix(in_srgb,var(--primary)_16%,white)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-                  >
-                    {selectedPlanName ? 'Rename Plan' : 'Add Plan Name'}
-                  </button>
-                )}
-              </div>
-
-              {selectedGradPlan && isRenaming && (
-                <div className="flex flex-col gap-3 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,white)] p-4 lg:max-w-md">
-                  <TextField
-                    label="Plan Name"
-                    value={renameInput}
-                    onChange={(event) => {
-                      setRenameInput(event.target.value);
-                      if (renameError) {
-                        setRenameError(null);
-                      }
-                    }}
-                    fullWidth
-                    autoFocus
-                    size="small"
-                    inputProps={{ maxLength: 100 }}
-                    error={Boolean(renameError)}
-                    helperText={renameError ?? 'Keep it professional – avoid slang or informal names.'}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="contained"
-                      onClick={handleRenameSave}
-                      disabled={renameSaveDisabled}
-                      className="font-body-semi"
-                      sx={{
-                        backgroundColor: '#0a1f1a',
-                        '&:hover': { backgroundColor: '#043322' }
-                      }}
-                    >
-                      {isSavingRename ? 'Saving…' : 'Save'}
-                    </Button>
-                    <Button
-                      variant="text"
-                      onClick={handleRenameCancel}
-                      disabled={isSavingRename}
-                      className="font-body-semi"
-                      sx={{ color: '#0a1f1a', fontWeight: 600 }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </section>
 
@@ -511,6 +580,8 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               if (Array.isArray(planDetails)) {
                 return {
                   plan: planDetails,
+                  plan_name: selectedGradPlan.plan_name,
+                  programs: selectedGradPlan.programs,
                   est_grad_sem: studentRecord?.est_grad_sem,
                   est_grad_date: studentRecord?.est_grad_date
                 };
@@ -518,6 +589,8 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               // Otherwise, spread it and add graduation fields
               return {
                 ...(planDetails as Record<string, unknown>),
+                plan_name: selectedGradPlan.plan_name,
+                programs: selectedGradPlan.programs,
                 est_grad_sem: studentRecord?.est_grad_sem,
                 est_grad_date: studentRecord?.est_grad_date
               };
@@ -597,7 +670,155 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           isGraduateStudent={programSelections.isGraduateStudent}
         />
       )}
-      
+
+      {/* Plan Switcher Dialog */}
+      <Dialog
+        open={showPlanSwitcher}
+        onClose={() => setShowPlanSwitcher(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(10,31,26,0.2)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1f1a' }}>
+              Switch Graduation Plan
+            </Typography>
+            <IconButton
+              onClick={() => setShowPlanSwitcher(false)}
+              size="small"
+              sx={{ color: 'rgba(10,31,26,0.6)' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </IconButton>
+          </Box>
+          <Typography variant="body2" sx={{ color: 'rgba(10,31,26,0.6)', mt: 0.5 }}>
+            Select a graduation plan to view
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {gradPlans.map((plan) => {
+              const planName = typeof plan.plan_name === 'string'
+                ? (plan.plan_name ?? '').trim()
+                : '';
+              const isSelected = plan.id === selectedGradPlan?.id;
+
+              let createdAt = 'Unknown Date';
+              try {
+                createdAt = plan.created_at
+                  ? new Date(plan.created_at as string).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : 'Unknown Date';
+              } catch {
+                createdAt = 'Unknown Date';
+              }
+
+              const displayName = planName.length > 0 ? planName : 'Untitled Plan';
+
+              return (
+                <Box
+                  key={plan.id}
+                  onClick={() => {
+                    const event = { target: { value: plan.id } } as SelectChangeEvent<string>;
+                    handleGradPlanSelection(event);
+                    setShowPlanSwitcher(false);
+                  }}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: '7px',
+                    border: '1.5px solid',
+                    borderColor: isSelected ? 'var(--primary)' : 'rgba(10,31,26,0.15)',
+                    backgroundColor: isSelected ? 'rgba(18,249,135,0.08)' : 'rgba(10,31,26,0.02)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: isSelected ? 'var(--primary)' : 'rgba(10,31,26,0.3)',
+                      backgroundColor: isSelected ? 'rgba(18,249,135,0.12)' : 'rgba(10,31,26,0.04)',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 600,
+                          color: '#0a1f1a',
+                          mb: 0.5,
+                        }}
+                      >
+                        {displayName}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'rgba(10,31,26,0.6)',
+                          display: 'block',
+                        }}
+                      >
+                        Created {createdAt}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {!isSelected && (
+                        <IconButton
+                          onClick={(e) => handleDeletePlan(plan.id, e)}
+                          size="small"
+                          sx={{
+                            color: 'rgba(244, 67, 54, 0.7)',
+                            '&:hover': {
+                              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                              color: 'rgb(244, 67, 54)',
+                            },
+                          }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.25 4.5h13.5M7.5 8.25v4.5M10.5 8.25v4.5M3 4.5h12l-.75 9.75a1.5 1.5 0 01-1.5 1.5h-7.5a1.5 1.5 0 01-1.5-1.5L3 4.5zM6.75 4.5v-1.5a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </IconButton>
+                      )}
+                      {isSelected && (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '4px',
+                            backgroundColor: 'var(--primary)',
+                            color: 'white',
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.667 3.5L5.25 9.917 2.333 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                            ACTIVE
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}

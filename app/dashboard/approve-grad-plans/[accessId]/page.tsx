@@ -7,8 +7,9 @@ import { CheckCircle, Save } from '@mui/icons-material';
 import { Add, Remove } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { StuLoader } from '@/components/ui/StuLoader';
-import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction } from '@/lib/services/server-actions';
+import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction, fetchProfileBasicInfoAction } from '@/lib/services/server-actions';
 import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
+import { sendGradPlanApprovalEmail } from '@/lib/services/emailService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Course, Term } from '@/components/grad-planner/types';
@@ -429,6 +430,22 @@ export default function ApproveGradPlanPage() {
             } else {
               console.warn('⚠️ Could not resolve target_user_id for approval notification.');
             }
+
+          // Send approval email to student
+          if (targetUserId) {
+            const studentProfile = await fetchProfileBasicInfoAction(targetUserId);
+            const advisorProfile = advisorUserId ? await fetchProfileBasicInfoAction(advisorUserId) : null;
+
+            if (studentProfile && studentProfile.email) {
+              const accessId = params.accessId as string;
+              await sendGradPlanApprovalEmail({
+                studentFirstName: studentProfile.fname || 'Student',
+                studentEmail: studentProfile.email,
+                planAccessId: accessId,
+                advisorName: advisorProfile ? `${advisorProfile.fname} ${advisorProfile.lname}` : undefined,
+              });
+            }
+          }
         } catch (notifyErr) {
           console.error('Approval notification dispatch failed (non-blocking):', notifyErr);
         }
