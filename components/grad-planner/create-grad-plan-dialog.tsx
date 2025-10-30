@@ -609,9 +609,9 @@ const handleRemoveElective = (id: string) => {
     try {
       // Step 1: Calculate total target credits from all selected programs
       // For graduate students, only use program data (no GenEd)
-      const allSelectedProgramData = isGraduateStudent ? programsData : [...programsData, ...genEdData];
+      const allSelectedProgramData: ProgramRow[] = isGraduateStudent ? programsData : [...programsData, ...genEdData];
       const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
-        const credits = prog.target_total_credits ?? 0;
+        const credits = (prog.target_total_credits as number | null | undefined) ?? 0;
         return sum + credits;
       }, 0);
 
@@ -621,8 +621,8 @@ const handleRemoveElective = (id: string) => {
 
       console.log('📊 Credit calculation:', {
         isGraduateStudent,
-        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: p.target_total_credits })),
-        selectedPrograms: programsData.map(p => ({ name: p.name, credits: p.target_total_credits })),
+        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
+        selectedPrograms: programsData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
         totalTargetCredits,
         effectiveTargetCredits
       });
