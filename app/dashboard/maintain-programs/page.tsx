@@ -18,7 +18,6 @@ export default function MaintainProgramsPage() {
   const [rows, setRows] = React.useState<ProgramRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [universityId, setUniversityId] = React.useState<number>(0);
   const [userRole, setUserRole] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -43,7 +42,6 @@ export default function MaintainProgramsPage() {
 
         if (!active) return;
         setUserRole(profile.role_id);
-        setUniversityId(universityId);
         setRows(programs);
       } catch (e: unknown) {
         if (!active) return;

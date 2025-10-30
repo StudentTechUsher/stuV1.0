@@ -9,4 +9,5 @@ export type ProgramRow = {
     requirements: unknown;
     is_general_ed?: boolean;
     course_flow?: unknown;
+    target_total_credits?: number | null;
 };

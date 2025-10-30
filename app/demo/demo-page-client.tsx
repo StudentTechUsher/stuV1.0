@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function DemoPageClient() {
   return (
@@ -109,10 +110,11 @@ export default function DemoPageClient() {
               >
                 <Button className="hover:bg-primary-hover text-zinc-900 border-primary font-medium px-6 py-2.5 flex items-center gap-2">
                   Try
-                  <img
+                  <Image
                     src="/stu_icon_black.png"
                     alt="stu logo"
-                    className="w-5 h-5"
+                    width={20}
+                    height={20}
                   />
                   <span className="font-semibold">stu.</span>for FREE
                 </Button>

@@ -139,7 +139,6 @@ export default function CreateGradPlanDialog({
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
   const [planName, setPlanName] = useState(initialPlanName ?? '');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
   // Snackbar for success/error feedback
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>(
     { open: false, message: '', severity: 'info' }
@@ -156,7 +155,6 @@ export default function CreateGradPlanDialog({
   useEffect(() => {
     if (open) {
       setPlanName(initialPlanName ?? '');
-      setPlanNameError(null);
     }
   }, [open, initialPlanName]);
 
@@ -599,11 +597,9 @@ const handleRemoveElective = (id: string) => {
 
     const nameValidation = validatePlanName(planName, { allowEmpty: true });
     if (!nameValidation.isValid) {
-      setPlanNameError(nameValidation.error);
       showSnackbar(nameValidation.error, 'error');
       return;
     }
-    setPlanNameError(null);
     const sanitizedPlanName = nameValidation.sanitizedValue;
     setPlanName(sanitizedPlanName);
 
@@ -1128,8 +1124,8 @@ const handleRemoveElective = (id: string) => {
                                           onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
                                         >
                                           <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
-                                          {validCourses.map((course) => (
-                                            <MenuItem key={`${key}-slot-${slot}-${course.code}`} value={course.code}>
+                                          {validCourses.map((course, courseIdx) => (
+                                            <MenuItem key={`${key}-slot-${slot}-${course.code}-${courseIdx}`} value={course.code}>
                                               {course.code} — {course.title} ({course.credits} credits)
                                             </MenuItem>
                                           ))}

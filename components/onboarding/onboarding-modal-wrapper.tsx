@@ -22,7 +22,7 @@ function decodeJwtPayload(token?: string): Record<string, unknown> | null {
   }
 }
 
-export async function OnboardingModalWrapper({ userName }: OnboardingModalWrapperProps) {
+export async function OnboardingModalWrapper({ userName }: Readonly<OnboardingModalWrapperProps>) {
   // Fetch universities from the database
   const cookieStore = await cookies()
   const supabase = createServerClient(

@@ -20,8 +20,11 @@ import {
   MenuItem,
   IconButton,
 } from "@mui/material";
-import { X } from "lucide-react";
+import { X, Plus, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import Link from "next/link";
+import { fetchUserCourses } from "@/lib/services/userCoursesService";
+import { GetActiveGradPlan } from "@/lib/services/gradPlanService";
 
 /** ----- Default data for the PoC ----- */
 const DEFAULT_DATA = {
@@ -47,6 +50,8 @@ export default function AcademicSummary({
   const [gradDialogOpen, setGradDialogOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<"April" | "June" | "August" | "December">("December");
   const [selectedYear, setSelectedYear] = useState(2028);
+  const [hasTranscript, setHasTranscript] = useState(true);
+  const [hasActiveGradPlan, setHasActiveGradPlan] = useState(true);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -55,6 +60,41 @@ export default function AcademicSummary({
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
+          // Check if user has transcript data
+          const userCoursesData = await fetchUserCourses(supabase, user.id);
+          const hasUserCourses = !!userCoursesData && userCoursesData.courses.length > 0;
+          setHasTranscript(hasUserCourses);
+
+          // Check if user has an active grad plan
+          const activeGradPlan = await GetActiveGradPlan(user.id);
+          const hasGradPlan = !!activeGradPlan;
+          setHasActiveGradPlan(hasGradPlan);
+
+          // Calculate earned credits from user courses
+          let earnedCredits = DEFAULT_DATA.earnedCredits;
+          if (hasUserCourses && userCoursesData) {
+            earnedCredits = userCoursesData.courses.reduce((total, course) => {
+              const credits = typeof course.credits === 'number' ? course.credits : 0;
+              return total + credits;
+            }, 0);
+          }
+
+          // Calculate required credits from active grad plan programs
+          let requiredCredits = DEFAULT_DATA.requiredCredits;
+          if (hasGradPlan && activeGradPlan?.programs_in_plan && Array.isArray(activeGradPlan.programs_in_plan)) {
+            const { data: programsData } = await supabase
+              .from('program')
+              .select('target_total_credits')
+              .in('id', activeGradPlan.programs_in_plan);
+
+            if (programsData && programsData.length > 0) {
+              requiredCredits = programsData.reduce((total, program) => {
+                const credits = typeof program.target_total_credits === 'number' ? program.target_total_credits : 0;
+                return total + credits;
+              }, 0);
+            }
+          }
+
           // Fetch profile data for graduation timeline
           const { data: profileData } = await supabase
             .from("profiles")
@@ -93,6 +133,8 @@ export default function AcademicSummary({
             standing: yearInSchool || prev.standing,
             estSemester: profileData?.est_grad_sem || prev.estSemester,
             estGradDate: formattedGradDate,
+            earnedCredits,
+            requiredCredits,
           }));
 
           setAvatarUrl(profilePicture);
@@ -204,9 +246,15 @@ export default function AcademicSummary({
                   {d.standing}
                 </Typography>
               </Box>
-              <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>
-                {d.earnedCredits} / {d.requiredCredits} credits
-              </Typography>
+              {(hasTranscript || hasActiveGradPlan) ? (
+                <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>
+                  {hasTranscript ? d.earnedCredits : "—"} / {hasActiveGradPlan ? d.requiredCredits : "—"} credits
+                </Typography>
+              ) : (
+                <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.6)", fontWeight: 500, fontStyle: "italic" }}>
+                  Upload transcript & create plan
+                </Typography>
+              )}
             </Stack>
           </Stack>
         </Stack>
@@ -215,182 +263,283 @@ export default function AcademicSummary({
       <CardContent sx={{ p: 3, pb: 3 }}>
         {/* Main progress section with bold circular progress */}
         <Box sx={{ mb: 3 }}>
-          <Stack direction="row" alignItems="center" spacing={3}>
-            {/* Large circular progress indicator with bright green and strong shadow */}
-            <Box sx={{ position: "relative", display: "inline-flex" }}>
-              <Box
-                sx={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: "50%",
-                  background: `conic-gradient(var(--primary) ${d.gradProgress * 360}deg, #e5e7eb 0deg)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  position: "relative",
-                  boxShadow: `0 0 0 4px white, 0 4px 12px rgba(18, 249, 135, 0.3)`
-                }}
-              >
-                <Box sx={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: "50%",
-                  bgcolor: "white",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  <Typography className="font-header-bold" sx={{ fontSize: "2rem", fontWeight: 800, color: "#0A0A0A" }}>
-                    {Math.round(d.gradProgress * 100)}%
-                  </Typography>
-                  <Typography className="font-body" sx={{ fontSize: "0.625rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                    Complete
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-            <Stack spacing={1} sx={{ flex: 1 }}>
-              <Typography className="font-body text-xs uppercase tracking-wider" sx={{ color: "var(--muted-foreground)", fontWeight: 700 }}>
-                Graduation Progress
-              </Typography>
-              <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--foreground)", lineHeight: 1.5, fontWeight: 500 }}>
-                You&apos;ve completed <Box component="span" sx={{ fontWeight: 800, color: "#0A0A0A" }}>{Math.round(d.gradProgress * 100)}%</Box> of your degree requirements
-              </Typography>
-            </Stack>
-          </Stack>
-        </Box>
-
-        {/* Plan Progress Bars - Modern, clean design */}
-        <Box sx={{ mb: 3, p: 3, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--muted) 30%, transparent)", border: "1px solid var(--border)" }}>
-          <Typography className="font-body text-xs uppercase tracking-wider" sx={{ mb: 2.5, color: "var(--muted-foreground)", fontWeight: 600 }}>
-            Plan Progress
-          </Typography>
-
-          {/* Plan completion progress */}
-          <Box sx={{ mb: 3 }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
-                Graduation Plan
-              </Typography>
-              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
-                {Math.round(d.planProgress * 100)}%
-              </Typography>
-            </Stack>
-            <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
-              <Box sx={{
-                width: `${Math.round(d.planProgress * 100)}%`,
-                height: "100%",
-                borderRadius: "999px",
-                background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
-                transition: "width 0.7s ease-out"
-              }} />
-            </Box>
-          </Box>
-
-          {/* Follow-through progress with info icon */}
-          <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
-                  Plan Follow Through
-                </Typography>
-                <Box sx={{ position: "relative", display: "inline-block", "&:hover .info-popup": { opacity: 1 } }}>
-                  <Box sx={{
-                    width: 16,
-                    height: 16,
+          {hasTranscript ? (
+            <Stack direction="row" alignItems="center" spacing={3}>
+              {/* Large circular progress indicator with bright green and strong shadow */}
+              <Box sx={{ position: "relative", display: "inline-flex" }}>
+                <Box
+                  sx={{
+                    width: 120,
+                    height: 120,
                     borderRadius: "50%",
-                    bgcolor: "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
+                    background: `conic-gradient(var(--primary) ${d.gradProgress * 360}deg, #e5e7eb 0deg)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "help"
+                    position: "relative",
+                    boxShadow: `0 0 0 4px white, 0 4px 12px rgba(18, 249, 135, 0.3)`
+                  }}
+                >
+                  <Box sx={{
+                    width: 96,
+                    height: 96,
+                    borderRadius: "50%",
+                    bgcolor: "white",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center"
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <path d="M12 16v-4"/>
-                      <path d="M12 8h.01"/>
-                    </svg>
-                  </Box>
-                  <Box className="info-popup" sx={{
-                    position: "absolute",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    bottom: "calc(100% + 8px)",
-                    width: 280,
-                    p: 2,
-                    bgcolor: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    fontSize: 13,
-                    color: "var(--foreground)",
-                    opacity: 0,
-                    transition: "opacity 0.2s",
-                    pointerEvents: "none",
-                    zIndex: 10
-                  }}>
-                    See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations.
+                    <Typography className="font-header-bold" sx={{ fontSize: "2rem", fontWeight: 800, color: "#0A0A0A" }}>
+                      {Math.round(d.gradProgress * 100)}%
+                    </Typography>
+                    <Typography className="font-body" sx={{ fontSize: "0.625rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                      Complete
+                    </Typography>
                   </Box>
                 </Box>
+              </Box>
+              <Stack spacing={1} sx={{ flex: 1 }}>
+                <Typography className="font-body text-xs uppercase tracking-wider" sx={{ color: "var(--muted-foreground)", fontWeight: 700 }}>
+                  Graduation Progress
+                </Typography>
+                <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--foreground)", lineHeight: 1.5, fontWeight: 500 }}>
+                  You&apos;ve completed <Box component="span" sx={{ fontWeight: 800, color: "#0A0A0A" }}>{Math.round(d.gradProgress * 100)}%</Box> of your degree requirements
+                </Typography>
               </Stack>
-              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
-                {Math.round(d.followThrough * 100)}%
-              </Typography>
             </Stack>
-            <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
-              <Box sx={{
-                width: `${Math.round(d.followThrough * 100)}%`,
-                height: "100%",
-                borderRadius: "999px",
-                background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
-                transition: "width 0.7s ease-out"
-              }} />
-            </Box>
-          </Box>
+          ) : (
+            <Link href="/dashboard/academic-history" passHref style={{ textDecoration: 'none' }}>
+              <ButtonBase
+                sx={{
+                  width: "100%",
+                  p: 3,
+                  borderRadius: "12px",
+                  border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
+                  bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    borderColor: "var(--primary)",
+                    bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                    transform: "translateY(-1px)"
+                  }
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ width: "100%" }}>
+                  <Box sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "12px",
+                    bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <Upload size={24} color="var(--primary)" />
+                  </Box>
+                  <Stack spacing={0.5} sx={{ flex: 1, textAlign: "left" }}>
+                    <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--foreground)" }}>
+                      Graduation Progress
+                    </Typography>
+                    <Typography className="font-body" sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>
+                      Upload a transcript to view progress
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </ButtonBase>
+            </Link>
+          )}
         </Box>
 
-        {/* Optimization Badge - Interactive CTA */}
-        <ButtonBase
-          onClick={() => {/* hook up later */}}
-          sx={{
-            width: "100%",
-            p: 2.5,
-            borderRadius: "12px",
-            border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
-            bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
-            transition: "all 0.2s ease-in-out",
-            "&:hover": {
-              borderColor: "var(--primary)",
-              bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
-              transform: "translateY(-1px)"
-            }
-          }}
-        >
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
-            <Box>
-              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", textAlign: "left" }}>
-                Optimization: {d.optimization}
+        {/* Plan Progress Bars - Modern, clean design */}
+        {hasActiveGradPlan ? (
+          <>
+            <Box sx={{ mb: 3, p: 3, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--muted) 30%, transparent)", border: "1px solid var(--border)" }}>
+              <Typography className="font-body text-xs uppercase tracking-wider" sx={{ mb: 2.5, color: "var(--muted-foreground)", fontWeight: 600 }}>
+                Plan Progress
               </Typography>
-              <Typography className="font-body" sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", textAlign: "left", mt: 0.5 }}>
-                Click to view optimization suggestions
-              </Typography>
+
+              {/* Plan completion progress */}
+              <Box sx={{ mb: 3 }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
+                    Graduation Plan
+                  </Typography>
+                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                    {Math.round(d.planProgress * 100)}%
+                  </Typography>
+                </Stack>
+                <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
+                  <Box sx={{
+                    width: `${Math.round(d.planProgress * 100)}%`,
+                    height: "100%",
+                    borderRadius: "999px",
+                    background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
+                    transition: "width 0.7s ease-out"
+                  }} />
+                </Box>
+              </Box>
+
+              {/* Follow-through progress with info icon */}
+              <Box>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
+                      Plan Follow Through
+                    </Typography>
+                    <Box sx={{ position: "relative", display: "inline-block", "&:hover .info-popup": { opacity: 1 } }}>
+                      <Box sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: "50%",
+                        bgcolor: "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "help"
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M12 16v-4"/>
+                          <path d="M12 8h.01"/>
+                        </svg>
+                      </Box>
+                      <Box className="info-popup" sx={{
+                        position: "absolute",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        bottom: "calc(100% + 8px)",
+                        width: 280,
+                        p: 2,
+                        bgcolor: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        fontSize: 13,
+                        color: "var(--foreground)",
+                        opacity: 0,
+                        transition: "opacity 0.2s",
+                        pointerEvents: "none",
+                        zIndex: 10
+                      }}>
+                        See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations.
+                      </Box>
+                    </Box>
+                  </Stack>
+                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                    {Math.round(d.followThrough * 100)}%
+                  </Typography>
+                </Stack>
+                <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
+                  <Box sx={{
+                    width: `${Math.round(d.followThrough * 100)}%`,
+                    height: "100%",
+                    borderRadius: "999px",
+                    background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
+                    transition: "width 0.7s ease-out"
+                  }} />
+                </Box>
+              </Box>
             </Box>
-            <Box sx={{
-              width: 32,
-              height: 32,
-              borderRadius: "8px",
-              bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </Box>
-          </Stack>
-        </ButtonBase>
+
+            {/* Optimization Badge - Interactive CTA */}
+            <ButtonBase
+              onClick={() => {/* hook up later */}}
+              sx={{
+                width: "100%",
+                p: 2.5,
+                borderRadius: "12px",
+                border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
+                bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  borderColor: "var(--primary)",
+                  bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                  transform: "translateY(-1px)"
+                }
+              }}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
+                <Box>
+                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", textAlign: "left" }}>
+                    Optimization: {d.optimization}
+                  </Typography>
+                  <Typography className="font-body" sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", textAlign: "left", mt: 0.5 }}>
+                    Click to view optimization suggestions
+                  </Typography>
+                </Box>
+                <Box sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "8px",
+                  bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </Box>
+              </Stack>
+            </ButtonBase>
+          </>
+        ) : (
+          <Link href="/dashboard/grad-plan" passHref style={{ textDecoration: 'none' }}>
+            <ButtonBase
+              sx={{
+                width: "100%",
+                p: 2.5,
+                borderRadius: "12px",
+                border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
+                bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  borderColor: "var(--primary)",
+                  bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                  transform: "translateY(-1px)"
+                }
+              }}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Box sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "10px",
+                    bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <Plus size={20} color="var(--primary)" />
+                  </Box>
+                  <Box>
+                    <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", textAlign: "left" }}>
+                      Plan Progress
+                    </Typography>
+                    <Typography className="font-body" sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", textAlign: "left", mt: 0.5 }}>
+                      Create a grad plan and submit it for approval
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Box sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "8px",
+                  bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </Box>
+              </Stack>
+            </ButtonBase>
+          </Link>
+        )}
 
         {/* Footer stats - Modern info cards */}
         <Box sx={{ mt: 3, pt: 3, borderTop: "1px solid var(--border)" }}>

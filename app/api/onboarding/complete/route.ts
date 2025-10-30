@@ -14,11 +14,26 @@ export async function POST(request: NextRequest) {
 async function handleCompleteOnboarding(request: NextRequest) {
   try {
     const body = await request.json();
-    const { university_id, fname, lname } = body;
+    const { university_id, fname, lname, role, est_grad_sem, est_grad_date } = body;
 
     if (!university_id || typeof university_id !== 'number') {
       return NextResponse.json(
         { success: false, error: 'University ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!role || !['student', 'advisor', 'admin'].includes(role)) {
+      return NextResponse.json(
+        { success: false, error: 'Valid role is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate graduation fields for students
+    if (role === 'student' && (!est_grad_sem || !est_grad_date)) {
+      return NextResponse.json(
+        { success: false, error: 'Graduation semester is required for students' },
         { status: 400 }
       );
     }
@@ -53,7 +68,7 @@ async function handleCompleteOnboarding(request: NextRequest) {
     }
 
     // Update the profile using service layer (pass name fields in case profile needs to be created)
-    await completeOnboarding(user.id, university_id, fname, lname);
+    await completeOnboarding(user.id, university_id, role, fname, lname, est_grad_sem, est_grad_date);
 
     return NextResponse.json({ success: true });
   } catch (error) {

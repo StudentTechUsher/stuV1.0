@@ -1,5 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Upload } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { fetchUserCourses } from "@/lib/services/userCoursesService";
+
 type RequirementProgress = {
   label: string;
   percentage: number;
@@ -48,6 +54,25 @@ function ProgressBar({
 }
 
 export default function AcademicProgressCard() {
+  const [hasTranscript, setHasTranscript] = useState(true);
+
+  useEffect(() => {
+    const checkTranscript = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          const userCoursesData = await fetchUserCourses(supabase, user.id);
+          setHasTranscript(!!userCoursesData && userCoursesData.courses.length > 0);
+        }
+      } catch (error) {
+        console.error('Error checking transcript data:', error);
+      }
+    };
+
+    checkTranscript();
+  }, []);
+
   return (
     // Modern card with clean hierarchy and better spacing
     <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
@@ -58,7 +83,8 @@ export default function AcademicProgressCard() {
         </h3>
       </div>
 
-      <div className="p-6">
+      <div className="p-6">{hasTranscript ? (
+        <>
         {/* Stats Grid - larger, more prominent cards */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {/* GPA Card - standout design with gradient */}
@@ -118,6 +144,22 @@ export default function AcademicProgressCard() {
             />
           ))}
         </div>
+        </>
+      ) : (
+        <Link href="/dashboard/academic-history" style={{ textDecoration: 'none' }}>
+          <div className="flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_25%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] p-8 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--primary)_15%,transparent)]">
+              <Upload size={32} color="var(--primary)" />
+            </div>
+            <h4 className="font-body-semi mb-2 text-base font-bold text-[var(--foreground)]">
+              Upload a Transcript
+            </h4>
+            <p className="font-body text-sm text-[var(--muted-foreground)]">
+              Upload your transcript to view detailed academic progress and requirement completion
+            </p>
+          </div>
+        </Link>
+      )}
       </div>
     </div>
   );

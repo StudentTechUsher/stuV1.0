@@ -9,7 +9,6 @@ import { upsertUserEntry } from "./upsert-user-entry-action";
 import { Option } from "@/types/option";
 import SearchableMultiSelect from "@/helpers/searchable-multi-select";
 import SingleSelect from "@/helpers/single-select";
-import { TextField, Select, MenuItem, FormControl, InputLabel, FormHelperText } from "@mui/material";
 import TranscriptUploadSection from "@/components/transcript/TranscriptUploadSection";
 import { Term, termYearToDate, termYearToSem } from "@/lib/gradDate";
 

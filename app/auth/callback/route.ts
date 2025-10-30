@@ -33,12 +33,11 @@ async function verifySessionReadable(
  * Return an HTML page that performs a client-side redirect
  * This ensures cookies are fully persisted before navigation
  */
-function _htmlRedirect(destinationUrl: string): NextResponse {
+function htmlRedirect(destinationUrl: string): NextResponse {
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
-        <meta http-equiv="refresh" content="0;url=${destinationUrl}">
         <title>Redirecting...</title>
         <style>
           body {
@@ -80,11 +79,38 @@ function _htmlRedirect(destinationUrl: string): NextResponse {
           <h1>Authentication Successful!</h1>
           <p>Redirecting you to your dashboard...</p>
         </div>
-        <script>
-          // Fallback in case meta refresh doesn't work
-          setTimeout(() => {
-            window.location.href = '${destinationUrl}';
-          }, 100);
+        <script type="module">
+          // Wait for Supabase session to be readable, then redirect
+          import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+          const supabase = createClient(
+            '${process.env.NEXT_PUBLIC_SUPABASE_URL}',
+            '${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}'
+          )
+
+          async function verifyAndRedirect() {
+            let attempts = 0
+            const maxAttempts = 10
+
+            while (attempts < maxAttempts) {
+              const { data: { session } } = await supabase.auth.getSession()
+
+              if (session) {
+                // Session is readable, safe to redirect
+                window.location.href = '${destinationUrl}'
+                return
+              }
+
+              // Wait 100ms before trying again
+              await new Promise(resolve => setTimeout(resolve, 100))
+              attempts++
+            }
+
+            // Fallback: redirect anyway after timeout
+            window.location.href = '${destinationUrl}'
+          }
+
+          verifyAndRedirect()
         </script>
       </body>
     </html>
@@ -99,7 +125,6 @@ function _htmlRedirect(destinationUrl: string): NextResponse {
 }
 
 export async function GET(req: Request) {
-  const startTime = Date.now();
   const url = new URL(req.url);
   const { searchParams } = url;
   const code = searchParams.get("code");
@@ -163,7 +188,6 @@ export async function GET(req: Request) {
   const dest = next;
   const finalUrl = new URL(dest, origin);
 
-  // Try server-side redirect after verification
-  // If this still doesn't work, the issue is in middleware or dashboard auth checks
-  return NextResponse.redirect(finalUrl);
+  // Use client-side redirect to ensure cookies are fully persisted before navigation
+  return htmlRedirect(finalUrl.toString());
 }
