@@ -842,9 +842,15 @@ export default function EditGradPlanPage() {
                 est_grad_sem: gradPlan.est_grad_sem,
                 est_grad_date: gradPlan.est_grad_date,
               });
+              // Include plan name and programs in the plan data
+              const enrichedPlan = {
+                ...raw,
+                plan_name: gradPlan.plan_name,
+                programs: gradPlan.programs,
+              };
               return (
                 <GraduationPlanner
-                  plan={raw}
+                  plan={enrichedPlan}
                   isEditMode={isEditMode}
                   onPlanUpdate={handlePlanUpdate}
                   onSave={handleSave}

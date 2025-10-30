@@ -117,9 +117,9 @@ export default function CalendarPanelClient({
   }, [initialEvents, showSchedulerButton]);
   return (
     // Modern card layout with rounded corners and bold header
-    <div className="flex flex-col overflow-y-auto rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
+    <div className="flex h-full max-h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
       {/* Bold black header like semester-results-table */}
-      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+      <div className="flex-shrink-0 border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-header-bold text-xl font-extrabold text-white">
             {semester}
@@ -150,7 +150,7 @@ export default function CalendarPanelClient({
         </div>
       </div>
 
-      <div className="p-4 sm:p-6">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
 
         {/* Calendar */}
         <Box
@@ -158,8 +158,10 @@ export default function CalendarPanelClient({
             p: 0,
             border: "1px solid var(--border)",
             borderRadius: 2,
-            overflow: "hidden",
+            overflow: "auto",
             backgroundColor: "var(--background)",
+            flex: 1,
+            minHeight: 0,
 
             // FullCalendar theme overrides
             "--fc-border-color": "var(--border)",
@@ -234,7 +236,7 @@ export default function CalendarPanelClient({
             headerToolbar={false}
             expandRows
             nowIndicator
-            height="auto"
+            height="100%"
             events={allEvents}
             eventClassNames={(arg) => {
               const s = arg.event.extendedProps.status as Props["events"][number]["status"];
@@ -251,7 +253,7 @@ export default function CalendarPanelClient({
         </Box>
 
         {/* Legend - visual key for event status colors */}
-        <div className="mt-4 flex items-center gap-4 text-sm">
+        <div className="mt-4 flex flex-shrink-0 items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-[var(--primary)]" />
             <span className="font-body text-[var(--foreground)]">Registered</span>

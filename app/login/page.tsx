@@ -138,7 +138,7 @@ function LoginContent() {
         {/* Social Login Buttons */}
         <div className="space-y-3">
           {/* SSO Button (non-functional for now) */}
-          <button className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          {/* <button className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
             <Image
               src="/stu_icon_black.png"
               alt="Stu logo"
@@ -149,7 +149,7 @@ function LoginContent() {
             <span className="text-black font-body-medium">
               Sign in with School SSO
             </span>
-          </button>
+          </button> */}
 
           {/* Google Button */}
           <button
@@ -185,7 +185,7 @@ function LoginContent() {
           </button>
 
           {/* Facebook Button */}
-          <button
+          {/* <button
             onClick={() =>
               supabase.auth.signInWithOAuth({
                 provider: 'facebook',
@@ -203,10 +203,10 @@ function LoginContent() {
             <span className="text-black font-body-medium">
               Sign in with Facebook
             </span>
-          </button>
+          </button> */}
 
           {/* Apple Button (placeholder) */}
-          <button className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          {/* <button className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path
                 d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
@@ -216,7 +216,7 @@ function LoginContent() {
             <span className="text-black font-body-medium">
               Sign in with Apple
             </span>
-          </button>
+          </button> */}
         </div>
 
         {/* Hidden Supabase Auth for fallback / server config */}

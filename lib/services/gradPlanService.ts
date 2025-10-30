@@ -13,10 +13,10 @@ export class GradPlanFetchError extends Error {
  * AUTHORIZED FOR STUDENTS AND ABOVE
  * Fetches all graduation plans produced by a user
  * @param profile_id - the unique id of the user's profile
- * @returns 
+ * @returns
  */
 export async function GetAllGradPlans(profile_id: string) {
-  
+
   // First, get the student record to get the numeric student_id
   const { data: studentData, error: studentError } = await supabase
     .from('student')
@@ -49,7 +49,29 @@ export async function GetAllGradPlans(profile_id: string) {
     return [];
   }
 
-  return data || [];
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Fetch program names for all plans
+  const enrichedPlans = await Promise.all(
+    data.map(async (plan) => {
+      let programs: Array<{ id: number; name: string }> = [];
+      if (Array.isArray(plan.programs_in_plan) && plan.programs_in_plan.length > 0) {
+        const { data: programsData, error: programsError } = await supabase
+          .from('program')
+          .select('id, name')
+          .in('id', plan.programs_in_plan);
+
+        if (!programsError && programsData) {
+          programs = programsData;
+        }
+      }
+      return { ...plan, programs };
+    })
+  );
+
+  return enrichedPlans;
 }
 
 /**
@@ -510,13 +532,27 @@ export async function submitGradPlanForApproval(
 
         if (error) {
             console.error('Error submitting graduation plan for approval:', {
-                error: error,
                 errorMessage: error.message,
-                errorDetails: error.details,
-                errorHint: error.hint,
                 errorCode: error.code,
+                errorHint: error.hint,
             });
-            throw error;
+
+            // Return user-friendly error message
+            let userMessage = 'Failed to submit graduation plan.';
+
+            if (error.code === '23505') { // Duplicate key violation
+                userMessage = 'A graduation plan with this information already exists.';
+            } else if (error.code === '23503') { // Foreign key violation
+                userMessage = 'Invalid program or student reference. Please refresh and try again.';
+            } else if (error.message) {
+                // Use the database error message if it's not too technical
+                userMessage = `Database error: ${error.message}`;
+            }
+
+            return {
+                success: false,
+                message: userMessage
+            };
         }
 
         // Encode the grad plan ID to generate the accessId
@@ -524,16 +560,27 @@ export async function submitGradPlanForApproval(
 
         return { success: true, accessId };
     } catch (error) {
-        console.error('Caught error in submitGradPlanForApproval:', error);
-        console.error('Error type:', typeof error);
-        console.error('Error constructor:', error?.constructor?.name);
+        // Log minimal error info (avoid logging entire plan data)
+        console.error('Caught error in submitGradPlanForApproval:', {
+            errorType: error?.constructor?.name,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        // Return user-friendly error message
+        let userMessage = 'Failed to submit graduation plan. Please try again.';
+
         if (error instanceof Error) {
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
+            // Check for common error patterns
+            if (error.message.includes('student record')) {
+                userMessage = 'Your student account is not properly set up. Please contact support.';
+            } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                userMessage = 'Network error. Please check your connection and try again.';
+            }
         }
+
         return {
             success: false,
-            message: 'Failed to submit graduation plan for approval. Please try again.'
+            message: userMessage
         };
     }
 }
@@ -613,6 +660,50 @@ export async function updateGradPlanName(
         return { success: true };
     } catch (err) {
         console.error('❌ Unexpected error updating plan_name:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Deletes a graduation plan
+ * @param gradPlanId - The ID of the graduation plan to delete
+ * @returns Success status and optional error message
+ */
+export async function deleteGradPlan(
+    gradPlanId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // First check if the plan exists and is not active
+        const { data: planData, error: fetchError } = await supabase
+            .from('grad_plan')
+            .select('is_active')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (fetchError) {
+            console.error('❌ Error fetching grad plan for deletion:', fetchError);
+            return { success: false, error: 'Plan not found' };
+        }
+
+        if (planData.is_active) {
+            return { success: false, error: 'Cannot delete the active graduation plan' };
+        }
+
+        // Delete the plan
+        const { error: deleteError } = await supabase
+            .from('grad_plan')
+            .delete()
+            .eq('id', gradPlanId);
+
+        if (deleteError) {
+            console.error('❌ Error deleting grad plan:', deleteError);
+            return { success: false, error: deleteError.message };
+        }
+
+        return { success: true };
+    } catch (err) {
+        console.error('❌ Unexpected error deleting grad plan:', err);
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }

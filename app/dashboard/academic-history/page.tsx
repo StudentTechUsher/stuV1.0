@@ -1115,7 +1115,7 @@ export default function AcademicHistoryPage() {
                   </p>
                   <p className="font-body text-xs text-amber-800">
                     Compare the PDF with your parsed courses above. Click on any course to edit if you find discrepancies.
-                    <strong className="font-semibold"> This PDF will be automatically removed when you click "Save" to comply with FERPA privacy regulations.</strong>
+                    <strong className="font-semibold"> This PDF will be automatically removed when you click &ldquo;Save&rdquo; to comply with FERPA privacy regulations.</strong>
                   </p>
                 </div>
               </div>

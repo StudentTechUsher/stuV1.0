@@ -68,7 +68,6 @@ export default function ProgramSelectionDialog({
   const [genEdStrategy, setGenEdStrategy] = useState<'early' | 'balanced'>('balanced');
   const [planMode, setPlanMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
   const [planName, setPlanName] = useState('');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
 
   // Fetch programs when dialog opens or student type changes
   useEffect(() => {
@@ -154,10 +153,9 @@ export default function ProgramSelectionDialog({
 
     const nameValidation = validatePlanName(planName, { allowEmpty: true });
     if (!nameValidation.isValid) {
-      setPlanNameError(nameValidation.error);
+      setError(nameValidation.error);
       return;
     }
-    setPlanNameError(null);
 
     onNext({
       majorIds: studentType === 'undergraduate' ? selectedMajors.map(m => m.id) : [],
@@ -181,7 +179,6 @@ export default function ProgramSelectionDialog({
     setPlanMode('AUTO');
     setError(null);
     setPlanName('');
-    setPlanNameError(null);
     onClose();
   };
 

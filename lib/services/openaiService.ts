@@ -1760,41 +1760,41 @@ export async function parseTranscriptCourses_ServerAction(args: {
     }
 
     // Build program context string for the AI
-    let programContextStr = '';
+    let _programContextStr = '';
     const hasPrograms = programContext.genEdPrograms.length > 0 || programContext.userPrograms.length > 0;
 
     if (hasPrograms) {
-      programContextStr = '\n\nSTUDENT PROGRAM CONTEXT:\n';
+      _programContextStr = '\n\nSTUDENT PROGRAM CONTEXT:\n';
 
       if (programContext.genEdPrograms.length > 0) {
-        programContextStr += '\nGeneral Education Programs:\n';
+        _programContextStr += '\nGeneral Education Programs:\n';
         programContext.genEdPrograms.forEach((prog) => {
-          programContextStr += `- ${prog.name}`;
+          _programContextStr += `- ${prog.name}`;
           if (prog.courseCodes.length > 0) {
             // Limit course codes to prevent context overflow
             const codes = prog.courseCodes.slice(0, 100); // Limit to first 100 courses
-            programContextStr += `\n  Required courses: ${codes.join(', ')}`;
+            _programContextStr += `\n  Required courses: ${codes.join(', ')}`;
             if (prog.courseCodes.length > 100) {
-              programContextStr += ` ... (${prog.courseCodes.length - 100} more)`;
+              _programContextStr += ` ... (${prog.courseCodes.length - 100} more)`;
             }
           }
-          programContextStr += '\n';
+          _programContextStr += '\n';
         });
       }
 
       if (programContext.userPrograms.length > 0) {
-        programContextStr += '\nStudent\'s Programs (Majors/Minors):\n';
+        _programContextStr += '\nStudent\'s Programs (Majors/Minors):\n';
         programContext.userPrograms.forEach((prog) => {
-          programContextStr += `- ${prog.name} (${prog.program_type})`;
+          _programContextStr += `- ${prog.name} (${prog.program_type})`;
           if (prog.courseCodes.length > 0) {
             // Limit course codes to prevent context overflow
             const codes = prog.courseCodes.slice(0, 100); // Limit to first 100 courses
-            programContextStr += `\n  Required courses: ${codes.join(', ')}`;
+            _programContextStr += `\n  Required courses: ${codes.join(', ')}`;
             if (prog.courseCodes.length > 100) {
-              programContextStr += ` ... (${prog.courseCodes.length - 100} more)`;
+              _programContextStr += ` ... (${prog.courseCodes.length - 100} more)`;
             }
           }
-          programContextStr += '\n';
+          _programContextStr += '\n';
         });
       }
     }

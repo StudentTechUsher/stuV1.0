@@ -313,7 +313,13 @@ export default function GraduationPlanner({
 
     const planRecord = plan as Record<string, unknown>;
     const planName = (planRecord.plan_name as string) || 'My Graduation Plan';
-    const degree = 'Degree Program'; // Simplified since sourceData is not available
+
+    // Extract and format program names
+    const programs = planRecord.programs as Array<{ id: number; name: string }> | undefined;
+    const degree = programs && programs.length > 0
+      ? programs.map(p => p.name).join(', ')
+      : 'No programs selected';
+
     const gradSemester = (planRecord.est_grad_sem as string) || 'Not set';
 
     const terms: TermBlock[] = currentPlanData.map((term, index) => {

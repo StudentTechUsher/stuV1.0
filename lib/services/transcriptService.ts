@@ -105,14 +105,14 @@ export async function parseTranscript(
     const pdfBytes = Buffer.from(await downloadData.arrayBuffer());
 
     let courses: CourseRow[] = [];
-    let usedByuParser = false;
+    let _usedByuParser = false;
 
     // Try BYU native parser first
     try {
       const transcriptText = await extractByuTranscriptText(pdfBytes);
       const parseResult = parseTranscriptText(transcriptText);
       courses = parseResult.courses;
-      usedByuParser = true;
+      _usedByuParser = true;
 
       logInfo('BYU transcript parsing completed', {
         userId,

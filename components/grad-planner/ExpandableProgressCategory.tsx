@@ -44,10 +44,9 @@ export interface ExpandableCategoryData {
 
 interface CourseItemProps {
   course: CourseDetail;
-  categoryColor: string;
 }
 
-function CourseItem({ course, categoryColor }: CourseItemProps) {
+function CourseItem({ course }: CourseItemProps) {
   const statusConfig = {
     'completed': {
       icon: '✓',
@@ -222,7 +221,7 @@ export function RequirementGroup({ requirement, requirementNumber, categoryColor
         >
           {requirement.courses.length > 0 ? (
             requirement.courses.map((course) => (
-              <CourseItem key={course.id} course={course} categoryColor={categoryColor} />
+              <CourseItem key={course.id} course={course} />
             ))
           ) : (
             <p className="text-sm text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">

@@ -103,7 +103,7 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-0.5">
-            Degree
+            Programs
           </label>
           <input
             type="text"

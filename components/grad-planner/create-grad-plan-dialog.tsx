@@ -139,7 +139,6 @@ export default function CreateGradPlanDialog({
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
   const [planName, setPlanName] = useState(initialPlanName ?? '');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
   // Snackbar for success/error feedback
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>(
     { open: false, message: '', severity: 'info' }
@@ -156,7 +155,6 @@ export default function CreateGradPlanDialog({
   useEffect(() => {
     if (open) {
       setPlanName(initialPlanName ?? '');
-      setPlanNameError(null);
     }
   }, [open, initialPlanName]);
 
@@ -599,11 +597,9 @@ const handleRemoveElective = (id: string) => {
 
     const nameValidation = validatePlanName(planName, { allowEmpty: true });
     if (!nameValidation.isValid) {
-      setPlanNameError(nameValidation.error);
       showSnackbar(nameValidation.error, 'error');
       return;
     }
-    setPlanNameError(null);
     const sanitizedPlanName = nameValidation.sanitizedValue;
     setPlanName(sanitizedPlanName);
 
@@ -613,9 +609,9 @@ const handleRemoveElective = (id: string) => {
     try {
       // Step 1: Calculate total target credits from all selected programs
       // For graduate students, only use program data (no GenEd)
-      const allSelectedProgramData = isGraduateStudent ? programsData : [...programsData, ...genEdData];
+      const allSelectedProgramData: ProgramRow[] = isGraduateStudent ? programsData : [...programsData, ...genEdData];
       const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
-        const credits = prog.target_total_credits ?? 0;
+        const credits = (prog.target_total_credits as number | null | undefined) ?? 0;
         return sum + credits;
       }, 0);
 
@@ -625,8 +621,8 @@ const handleRemoveElective = (id: string) => {
 
       console.log('📊 Credit calculation:', {
         isGraduateStudent,
-        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: p.target_total_credits })),
-        selectedPrograms: programsData.map(p => ({ name: p.name, credits: p.target_total_credits })),
+        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
+        selectedPrograms: programsData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
         totalTargetCredits,
         effectiveTargetCredits
       });
@@ -1128,8 +1124,8 @@ const handleRemoveElective = (id: string) => {
                                           onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
                                         >
                                           <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
-                                          {validCourses.map((course) => (
-                                            <MenuItem key={`${key}-slot-${slot}-${course.code}`} value={course.code}>
+                                          {validCourses.map((course, courseIdx) => (
+                                            <MenuItem key={`${key}-slot-${slot}-${course.code}-${courseIdx}`} value={course.code}>
                                               {course.code} — {course.title} ({course.credits} credits)
                                             </MenuItem>
                                           ))}
