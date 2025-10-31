@@ -19,6 +19,7 @@ import IconButton from '@mui/material/IconButton';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
 import ProgramSelectionDialog, { type ProgramSelections } from "@/components/grad-planner/ProgramSelectionDialog";
+import EditablePlanTitle from "@/components/EditablePlanTitle";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 import { updateGradPlanNameAction, deleteGradPlanAction } from '@/lib/services/server-actions';
@@ -452,48 +453,17 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                 </span>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <TextField
-                      value={planNameInput}
-                      onChange={(e) => {
-                        setPlanNameInput(e.target.value);
-                        setPlanNameError(null);
-                      }}
-                      onFocus={() => setIsEditingPlanName(true)}
-                      onBlur={handlePlanNameBlur}
-                      onKeyDown={handlePlanNameKeyDown}
-                      placeholder="Untitled Graduation Plan"
-                      disabled={isSavingPlanName}
-                      variant="outlined"
-                      inputProps={{
-                        maxLength: 100,
-                        style: {
-                          fontSize: '1.5rem',
-                          fontWeight: 600,
-                          color: '#0a1f1a',
-                          padding: '10px 14px'
-                        }
-                      }}
-                      sx={{
-                        minWidth: '350px',
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '7px',
-                          backgroundColor: 'rgba(10,31,26,0.02)',
-                          transition: 'all 0.2s ease',
-                          '& fieldset': {
-                            borderColor: 'rgba(10,31,26,0.15)',
-                            borderWidth: '1.5px',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: 'rgba(10,31,26,0.3)',
-                            backgroundColor: 'rgba(10,31,26,0.04)',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: 'var(--primary)',
-                            borderWidth: '2px',
-                          },
-                        },
-                      }}
-                    />
+                    {selectedGradPlan && (
+                      <EditablePlanTitle
+                        planId={selectedGradPlan.id}
+                        initialName={selectedGradPlan.plan_name || ''}
+                        onSaved={(newName: string) => {
+                          setPlanNameInput(newName);
+                          setNotification({ open: true, message: 'Plan name updated!', severity: 'success' });
+                        }}
+                        className="text-4xl font-semibold text-[#0a1f1a]"
+                      />
+                    )}
                     {allGradPlans.length > 1 && (
                       <IconButton
                         onClick={() => setShowPlanSwitcher(true)}
@@ -737,14 +707,14 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                   sx={{
                     p: 2.5,
                     borderRadius: '7px',
-                    border: '1.5px solid',
-                    borderColor: isSelected ? 'var(--primary)' : 'rgba(10,31,26,0.15)',
-                    backgroundColor: isSelected ? 'rgba(18,249,135,0.08)' : 'rgba(10,31,26,0.02)',
+                    border: isSelected ? '1.5px solid' : 'none',
+                    borderColor: isSelected ? 'var(--primary)' : undefined,
+                    backgroundColor: isSelected ? 'rgba(18,249,135,0.08)' : 'transparent',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     '&:hover': {
-                      borderColor: isSelected ? 'var(--primary)' : 'rgba(10,31,26,0.3)',
-                      backgroundColor: isSelected ? 'rgba(18,249,135,0.12)' : 'rgba(10,31,26,0.04)',
+                      borderColor: isSelected ? 'var(--primary)' : undefined,
+                      backgroundColor: isSelected ? 'rgba(18,249,135,0.12)' : 'transparent',
                       transform: 'translateY(-1px)',
                     },
                   }}
