@@ -25,10 +25,14 @@ const getGlobalUniversityId = (): number | undefined => {
 
 interface PathfinderClientProps {
   courses: FormattedCourse[];
-  currentMajor: string;
+  currentPrograms: Array<{ id: number; name: string }>;
 }
 
-export default function PathfinderClient({ courses, currentMajor }: PathfinderClientProps) {
+export default function PathfinderClient({ courses, currentPrograms }: PathfinderClientProps) {
+  // Convert currentPrograms array to string for backward compatibility
+  const currentMajor = currentPrograms.length > 0
+    ? currentPrograms.map(p => p.name).join(', ')
+    : 'Undeclared';
   const pivotOptions = useDefaultPivotOptions();
   const [selectedCourse, setSelectedCourse] = React.useState<string | null>(null);
   const [lastAction, setLastAction] = React.useState<string | null>(null);
@@ -490,6 +494,43 @@ export default function PathfinderClient({ courses, currentMajor }: PathfinderCl
     } finally {
       setMinorAuditLoading(false);
     }
+  }
+
+  // Show empty state if no courses
+  if (courses.length === 0) {
+    return (
+      <div className="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center px-4 py-12">
+        <div className="max-w-md text-center">
+          <div className="mb-6">
+            <svg
+              className="mx-auto h-16 w-16 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-3">No Course History Found</h2>
+          <p className="text-sm text-gray-600 mb-8">
+            Pathfinder uses your completed coursework to suggest alternative academic and career paths.
+            Upload your transcript to get started with personalized recommendations.
+          </p>
+          <a
+            href="/dashboard/academic-history"
+            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
+          >
+            Upload Transcript
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (

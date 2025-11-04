@@ -9,16 +9,15 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useCareer } from '@/lib/hooks/useCareers';
-import { saveCareerDraft, publishCareer as publishCareerFn } from '@/lib/hooks/useCareers';
+import { saveCareerDraft, publishCareer as publishCareerFn, useCareer } from '@/lib/hooks/useCareers';
 import CareerEditForm from '@/components/pathfinder/CareerEditForm';
 import type { Career } from '@/types/career';
 
 export default function CareerEditPage({
   params,
-}: {
+}: Readonly<{
   params: { slug: string };
-}) {
+}>) {
   const router = useRouter();
   const { data: career, isLoading, error } = useCareer(params.slug);
 

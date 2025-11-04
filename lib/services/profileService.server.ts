@@ -295,6 +295,7 @@ export async function updateProfile(userId: string, updates: Record<string, stri
  * @param role - The user's role ('student', 'advisor', or 'admin')
  * @param fname - The user's first name (optional)
  * @param lname - The user's last name (optional)
+ * @param email - The user's email address (optional)
  * @param estGradSem - Expected graduation semester (required for students)
  * @param estGradDate - Expected graduation date (required for students)
  */
@@ -304,6 +305,7 @@ export async function completeOnboarding(
   role: 'student' | 'advisor' | 'admin',
   fname?: string,
   lname?: string,
+  email?: string,
   estGradSem?: string,
   estGradDate?: string
 ) {
@@ -339,6 +341,7 @@ export async function completeOnboarding(
 
       if (fname) profileData.fname = fname;
       if (lname) profileData.lname = lname;
+      if (email) profileData.email = email;
       if (estGradSem) profileData.est_grad_sem = estGradSem;
       if (estGradDate) profileData.est_grad_date = estGradDate;
 
@@ -365,6 +368,7 @@ export async function completeOnboarding(
 
       if (fname) updateData.fname = fname;
       if (lname) updateData.lname = lname;
+      if (email) updateData.email = email;
       if (estGradSem) updateData.est_grad_sem = estGradSem;
       if (estGradDate) updateData.est_grad_date = estGradDate;
 

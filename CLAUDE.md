@@ -511,6 +511,70 @@ When you encounter patterns that need project-wide policy decisions, update the 
 
 ---
 
+### 7. Environment Configuration Standards
+
+**Development vs Production Database Setup**
+
+The application supports using a local development Supabase instance when in development mode. This is configured through environment variables.
+
+**Environment Variables:**
+```bash
+# Production Supabase (always required)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-production-anon-key
+
+# Development Supabase (optional - only used when NEXT_PUBLIC_ENV=development)
+SUPABASE_DEV_URL=http://localhost:54321
+SUPABASE_DEV_ANON_KEY=your-dev-anon-key
+
+# Environment mode
+NEXT_PUBLIC_ENV=development  # or production
+```
+
+**Client Configuration Pattern:**
+
+All Supabase client creation functions must support automatic environment-based switching:
+
+```typescript
+function getSupabaseConfig() {
+  const isDevelopment = process.env.NEXT_PUBLIC_ENV === 'development'
+  const hasDevConfig = !!(process.env.SUPABASE_DEV_URL && process.env.SUPABASE_DEV_ANON_KEY)
+
+  const supabaseUrl = (isDevelopment && hasDevConfig)
+    ? process.env.SUPABASE_DEV_URL!
+    : process.env.NEXT_PUBLIC_SUPABASE_URL!
+
+  const supabaseAnonKey = (isDevelopment && hasDevConfig)
+    ? process.env.SUPABASE_DEV_ANON_KEY!
+    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  return { supabaseUrl, supabaseAnonKey }
+}
+```
+
+**Affected Files:**
+- `lib/supabase.ts` - Shared Supabase client
+- `lib/supabase/client.ts` - Browser client factory
+- `lib/supabase/server.ts` - Server client factories
+
+**Behavior:**
+- When `NEXT_PUBLIC_ENV=development` AND both dev variables are set → uses dev database
+- Otherwise → falls back to production database
+- This ensures graceful degradation if dev config is incomplete
+
+**Getting Dev Keys:**
+
+For local Supabase instance:
+```bash
+# If using Supabase CLI
+npx supabase status
+
+# Default local anon key (if using standard setup)
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+```
+
+---
+
 ## Quick Checklist
 
 When writing code, Claude should:
@@ -556,6 +620,6 @@ When in doubt, check these files for patterns to follow!
 
 ---
 
-**Last Updated:** 2025-10-12
+**Last Updated:** 2025-11-03
 
 
