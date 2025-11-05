@@ -127,6 +127,7 @@ import { searchForContactsWithAI } from '@/lib/services/webScraperService';
 
 /**
  * Background task to discover contacts for all institutions
+ * Processes institutions sequentially to avoid rate limiting
  */
 async function discoverContactsInBackground(
   sessionId: string,
@@ -135,60 +136,60 @@ async function discoverContactsInBackground(
   const state = contactDiscoveryState[sessionId];
   if (!state) return;
 
-  const batchSize = 2; // Process 2 schools at a time
-  const delayBetweenBatches = 1500; // 1.5 seconds between batches
+  // Process sequentially to respect Gemini API rate limits
+  // Each institution makes 2 API calls (registrar + provost)
+  const delayBetweenInstitutions = 3000; // 3 seconds between institutions
 
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
 
-    await Promise.all(
-      batch.map(async (row) => {
-        try {
-          // Search for registrar
-          const registrarDept = await searchForContactsWithAI(row.name, 'Registrar');
-          if (registrarDept.main_email || registrarDept.contacts.length > 0) {
-            state.withRegistrar++;
-            const primary = registrarDept.contacts[0];
-            if (primary) {
-              row.registrar_name = primary.name || null;
-              row.registrar_email = primary.email || null;
-            } else {
-              row.registrar_email = registrarDept.main_email;
-            }
-          }
-
-          // Search for provost
-          const provostDept = await searchForContactsWithAI(row.name, 'Provost');
-          if (provostDept.main_email || provostDept.contacts.length > 0) {
-            state.withProvost++;
-            const primary = provostDept.contacts[0];
-            if (primary) {
-              row.provost_name = primary.name || null;
-              row.provost_email = primary.email || null;
-            } else {
-              row.provost_email = provostDept.main_email;
-            }
-          }
-
-          // Check if has both
-          if (
-            (row.registrar_email || row.registrar_name) &&
-            (row.provost_email || row.provost_name)
-          ) {
-            state.withBoth++;
-          }
-
-          state.processed++;
-        } catch (error) {
-          console.error(`Contact discovery failed for ${row.name}:`, error);
-          state.processed++;
+    try {
+      // Search for registrar
+      const registrarDept = await searchForContactsWithAI(row.name, 'Registrar');
+      if (registrarDept.main_email || registrarDept.contacts.length > 0) {
+        state.withRegistrar++;
+        const primary = registrarDept.contacts[0];
+        if (primary) {
+          row.registrar_name = primary.name || null;
+          row.registrar_email = primary.email || null;
+        } else {
+          row.registrar_email = registrarDept.main_email;
         }
-      })
-    );
+      }
 
-    // Delay between batches
-    if (i + batchSize < rows.length) {
-      await new Promise((resolve) => setTimeout(resolve, delayBetweenBatches));
+      // Add delay between registrar and provost searches for same institution
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Search for provost
+      const provostDept = await searchForContactsWithAI(row.name, 'Provost');
+      if (provostDept.main_email || provostDept.contacts.length > 0) {
+        state.withProvost++;
+        const primary = provostDept.contacts[0];
+        if (primary) {
+          row.provost_name = primary.name || null;
+          row.provost_email = primary.email || null;
+        } else {
+          row.provost_email = provostDept.main_email;
+        }
+      }
+
+      // Check if has both
+      if (
+        (row.registrar_email || row.registrar_name) &&
+        (row.provost_email || row.provost_name)
+      ) {
+        state.withBoth++;
+      }
+
+      state.processed++;
+
+      // Delay before next institution
+      if (i < rows.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayBetweenInstitutions));
+      }
+    } catch (error) {
+      console.error(`Contact discovery failed for ${row.name}:`, error);
+      state.processed++;
     }
   }
 }

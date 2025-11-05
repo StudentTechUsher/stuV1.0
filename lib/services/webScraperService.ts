@@ -504,141 +504,21 @@ function deduplicateInstitutions(institutions: ScrapedInstitution[]): ScrapedIns
 
 /**
  * AUTHORIZATION: PUBLIC
- * Uses Google Gemini AI with web search to find registrar/provost contact information
- * This method works for all institutions regardless of website availability
+ * Searches for contact information using Google Gemini API with web search
+ * Includes exponential backoff for rate limit handling
  * @param institutionName - Name of the institution
  * @param department - 'Registrar' or 'Provost'
- * @returns Contact information discovered via AI search
+ * @param retries - Number of retry attempts (default: 3)
+ * @returns Department contact information
  */
 export async function searchForContactsWithAI(
   institutionName: string,
-  department: 'Registrar' | 'Provost'
+  department: 'Registrar' | 'Provost',
+  retries = 3
 ): Promise<DepartmentContacts> {
-  try {
-    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn('GOOGLE_GEMINI_API_KEY not configured, skipping AI contact search');
-      return {
-        department_name: department,
-        main_email: null,
-        main_phone: null,
-        contacts: [],
-      };
-    }
-
-    const prompt = `You are an expert research assistant finding contact information for university staff.
-
-TASK: Find the ${department} contact information for ${institutionName}.
-
-Search for and extract:
-1. The official ${department} email address
-2. Main phone number for the ${department} office
-3. The ${department}'s name and title (e.g., "Dr. Jane Smith, Registrar")
-4. Any other ${department} staff members' contact info if available
-
-Use web search to find current, verified information from official university sources.
-
-Return ONLY valid JSON in this exact format with no markdown or extra text:
-{
-  "main_email": "registrar@university.edu or null",
-  "main_phone": "+1-555-123-4567 or null",
-  "contacts": [
-    {
-      "name": "Full Name",
-      "title": "${department}",
-      "email": "email@university.edu or null",
-      "phone": "+1-555-123-4567 or null"
-    }
-  ]
-}
-
-CRITICAL:
-- Do NOT invent or guess information
-- Only extract ACTUAL verified contact information found through search
-- If you cannot find something, use null (not empty string)
-- Institutional emails must be .edu domains
-- Phone numbers should be formatted as +1-XXX-XXX-XXXX
-- Return contacts array with at least the ${department} if found`;
-
-    // Call Google Gemini API with web search
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: 1500,
-          temperature: 0.2, // Low temp for factual accuracy
-        },
-        tools: [
-          {
-            googleSearch: {},
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as Record<string, unknown>;
-    const candidates = data.candidates as Array<{content?: {parts?: Array<{text?: string}>}}> | undefined;
-
-    if (!candidates || candidates.length === 0) {
-      console.log(`No results found for ${institutionName} ${department}`);
-      return {
-        department_name: department,
-        main_email: null,
-        main_phone: null,
-        contacts: [],
-      };
-    }
-
-    const responseText = candidates[0]?.content?.parts?.[0]?.text || '';
-
-    // Parse JSON response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.log(`Could not parse JSON for ${institutionName} ${department}`);
-      return {
-        department_name: department,
-        main_email: null,
-        main_phone: null,
-        contacts: [],
-      };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-
-    return {
-      department_name: department,
-      main_email: (parsed.main_email as string | null) || null,
-      main_phone: (parsed.main_phone as string | null) || null,
-      contacts: ((parsed.contacts as Array<Record<string, unknown>>) || []).map(
-        (c) =>
-          ({
-            name: (c.name as string) || '',
-            title: (c.title as string) || department,
-            email: (c.email as string | null) || null,
-            phone: (c.phone as string | null) || null,
-            department,
-          } as ContactPerson)
-      ),
-    };
-  } catch (error) {
-    console.error(`AI contact search failed for ${institutionName} ${department}:`, error);
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn('GOOGLE_GEMINI_API_KEY not configured, skipping AI contact search');
     return {
       department_name: department,
       main_email: null,
@@ -646,6 +526,175 @@ CRITICAL:
       contacts: [],
     };
   }
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const prompt = `You are an expert research assistant. Your ONLY task is to find and extract contact information.
+
+INSTITUTION: ${institutionName}
+DEPARTMENT: ${department}
+
+SEARCH STRATEGY:
+1. Search: "${institutionName} ${department} contact"
+2. Search: "${institutionName} ${department} office"
+3. Search: "${institutionName} ${department.toLowerCase()} email"
+4. Search: "${institutionName} ${department.toLowerCase()} phone"
+5. Visit the official university website and find the ${department} office page
+6. Extract the ${department}'s name, email, and phone from official sources
+
+WHAT TO FIND:
+- Primary ${department} name (e.g., "Dr. Jane Smith", "John Doe")
+- ${department} email address (usually firstname@university.edu or registrar@university.edu)
+- ${department} office phone number (main department phone)
+- Any assistant ${department} or deputy ${department} contact info
+
+LOCATION TIPS:
+- Check: university.edu/${department.toLowerCase()}
+- Check: university.edu/offices/${department.toLowerCase()}
+- Check: university.edu/academics/${department.toLowerCase()}
+- Look for "Contact Us" or "Staff Directory" pages
+- Check LinkedIn or official staff directories
+
+RETURN ONLY THIS JSON (no markdown, no explanation, just the JSON):
+{
+  "main_email": "email@university.edu",
+  "main_phone": "+1-555-123-4567",
+  "contacts": [
+    {
+      "name": "Full Name",
+      "title": "${department}",
+      "email": "email@university.edu",
+      "phone": "+1-555-123-4567"
+    }
+  ]
+}
+
+RULES:
+- Only include information you actually found
+- Use null for missing information (not empty string)
+- Do NOT fabricate any contact details
+- Emails must be .edu domains (or institution domain)
+- Phone format: +1-XXX-XXX-XXXX or (XXX) XXX-XXXX
+- Search the web thoroughly - EVERY institution has a ${department}
+- If primary ${department} not found, include deputy or assistant ${department}`;
+
+      // Call Google Gemini API with web search
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              maxOutputTokens: 1500,
+              temperature: 0.2, // Low temp for factual accuracy
+            },
+            tools: [
+              {
+                googleSearch: {},
+              },
+            ],
+          }),
+        }
+      );
+
+      // Handle rate limiting with exponential backoff
+      if (response.status === 429 && attempt < retries) {
+        const backoffMs = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+        console.log(
+          `Rate limited for ${institutionName} ${department}. Retrying in ${Math.round(
+            backoffMs
+          )}ms (attempt ${attempt + 1}/${retries})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as Record<string, unknown>;
+      const candidates = data.candidates as
+        | Array<{ content?: { parts?: Array<{ text?: string }> } }>
+        | undefined;
+
+      if (!candidates || candidates.length === 0) {
+        console.log(`No results found for ${institutionName} ${department}`);
+        return {
+          department_name: department,
+          main_email: null,
+          main_phone: null,
+          contacts: [],
+        };
+      }
+
+      const responseText = candidates[0]?.content?.parts?.[0]?.text || '';
+
+      // Parse JSON response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.log(`Could not parse JSON for ${institutionName} ${department}`);
+        return {
+          department_name: department,
+          main_email: null,
+          main_phone: null,
+          contacts: [],
+        };
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+
+      return {
+        department_name: department,
+        main_email: (parsed.main_email as string | null) || null,
+        main_phone: (parsed.main_phone as string | null) || null,
+        contacts: ((parsed.contacts as Array<Record<string, unknown>>) || []).map(
+          (c) =>
+            ({
+              name: (c.name as string) || '',
+              title: (c.title as string) || department,
+              email: (c.email as string | null) || null,
+              phone: (c.phone as string | null) || null,
+              department,
+            } as ContactPerson)
+        ),
+      };
+    } catch (error) {
+      if (attempt === retries) {
+        console.error(
+          `AI contact search failed for ${institutionName} ${department} after ${retries} retries:`,
+          error
+        );
+        return {
+          department_name: department,
+          main_email: null,
+          main_phone: null,
+          contacts: [],
+        };
+      }
+      // Continue to next retry
+    }
+  }
+
+  return {
+    department_name: department,
+    main_email: null,
+    main_phone: null,
+    contacts: [],
+  };
 }
 
 /**

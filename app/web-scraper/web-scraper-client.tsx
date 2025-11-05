@@ -1,426 +1,752 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect, useRef } from 'react';
+import { SchoolRow } from '@/lib/gemini';
 import { StuLoader } from '@/components/ui/StuLoader';
-import { InstitutionRow } from '@/lib/services/webScraperService';
-import { UrlInput } from './components/url-input';
-import { ProgressIndicator } from './components/progress-indicator';
-import { SummaryStats } from './components/summary-stats';
-import { ResultsDataTable } from './components/results-data-table';
-import { ContactDiscoveryProgress } from './components/contact-discovery-progress';
-import { AlertCircle, Search, Download, Zap } from 'lucide-react';
 
-interface ScraperResponse {
-  rows: InstitutionRow[];
-  eta: {
-    scrape: number;
-    organize: number;
-    search: number;
-    contacts: number;
-    total: number;
-  };
-  xlsx_base64: string;
-  summary: string;
-  table_markdown: string;
+interface StoredData {
+  lastUrl: string;
+  lastSchools: string[];
+  lastResult: {
+    rows: SchoolRow[];
+    timestamp: number;
+  } | null;
 }
 
-type SortField = keyof InstitutionRow;
+const STORAGE_KEY = 'stu-gemini-scan-v1';
 
-export function WebScraperClient() {
-  const [urls, setUrls] = useState<string[]>([]);
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 0.8) return 'bg-green-100 text-green-900';
+  if (confidence >= 0.6) return 'bg-emerald-100 text-emerald-900';
+  if (confidence >= 0.4) return 'bg-yellow-100 text-yellow-900';
+  if (confidence >= 0.2) return 'bg-orange-100 text-orange-900';
+  return 'bg-red-100 text-red-900';
+}
+
+function getICPScore(school: SchoolRow): { score: number; tier: string; color: string } {
+  const name = (school.name || '').toLowerCase();
+  let score = 50;
+
+  const avoidKeywords = ['for-profit', 'western governors', 'university of phoenix', 'online'];
+
+  if (avoidKeywords.some(kw => name.includes(kw))) {
+    return { score: 0, tier: 'Not Fit', color: 'bg-gray-100 text-gray-700' };
+  }
+
+  const eliteKeywords = ['harvard', 'stanford', 'yale', 'princeton', 'mit', 'penn', 'duke', 'dartmouth', 'columbia', 'cornell'];
+  if (eliteKeywords.some(kw => name.includes(kw))) {
+    score -= 30;
+  }
+
+  const communityCollegeKeywords = ['community college', 'cc', 'junior college'];
+  if (communityCollegeKeywords.some(kw => name.includes(kw))) {
+    score += 35;
+  }
+
+  const specificHighPriority = ['slcc', 'snow college', 'northern arizona', 'boise state', 'uvu', 'weber state', 'southern utah'];
+  if (specificHighPriority.some(kw => name.includes(kw))) {
+    score += 25;
+  }
+
+  const stateUniversityKeywords = ['state university', 'state college', 'university of'];
+  if (stateUniversityKeywords.some(kw => name.includes(kw))) {
+    score += 15;
+  }
+
+  const privateKeywords = ['institute', 'academy'];
+  if (privateKeywords.some(kw => name.includes(kw))) {
+    score -= 15;
+  }
+
+  score += Math.min(20, Math.round((school.state_confidence || 0) * 20));
+  score += Math.min(30, Math.round((school.contact_confidence || 0) * 30));
+
+  if (school.registrar_email || school.registrar_name) score += 15;
+  if (school.provost_email || school.provost_name) score += 15;
+
+  const finalScore = Math.max(0, Math.min(100, score));
+
+  if (finalScore >= 80) return { score: finalScore, tier: '🔥 Ideal Target', color: 'bg-green-100 text-green-900 font-bold' };
+  if (finalScore >= 65) return { score: finalScore, tier: '✅ Excellent Fit', color: 'bg-emerald-100 text-emerald-900' };
+  if (finalScore >= 50) return { score: finalScore, tier: '✅ Good Fit', color: 'bg-emerald-100 text-emerald-900' };
+  if (finalScore >= 35) return { score: finalScore, tier: '⚪ Neutral', color: 'bg-yellow-100 text-yellow-900' };
+  if (finalScore >= 20) return { score: finalScore, tier: '⚠️ Explore', color: 'bg-orange-100 text-orange-900' };
+  return { score: finalScore, tier: '❌ Skip', color: 'bg-red-100 text-red-900' };
+}
+
+export default function WebScraperClient() {
+  const [step, setStep] = useState<'input' | 'review' | 'contact-scan'>('input');
+  const [url, setUrl] = useState('');
+  const [schools, setSchools] = useState<string[]>([]);
+  const [rows, setRows] = useState<SchoolRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<{
-    stage: 'idle' | 'scraping' | 'organizing' | 'contacts' | 'complete';
-    percentage: number;
-  }>({ stage: 'idle', percentage: 0 });
-  const [contactProgress, setContactProgress] = useState({
-    totalSchools: 0,
-    processed: 0,
-    withRegistrar: 0,
-    withProvost: 0,
-    withBoth: 0,
-  });
-  const [contactDiscoverySessionId, setContactDiscoverySessionId] = useState<string | null>(null);
-  const [results, setResults] = useState<ScraperResponse | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [queued, setQueued] = useState(0);
+  const [running, setRunning] = useState(0);
+  const [done, setDone] = useState(0);
+  const [failed, setFailed] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('name' as SortField);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [stateFilter, setStateFilter] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleScrape = useCallback(async () => {
-    if (urls.length === 0) {
-      setError('Please enter at least one URL');
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setInterval(() => {
+      if (startTime) {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [loading, startTime]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const data: StoredData = JSON.parse(stored);
+        setUrl(data.lastUrl || '');
+        setSchools(data.lastSchools || []);
+        if (data.lastResult?.rows) {
+          setRows(data.lastResult.rows);
+          setDone(data.lastResult.rows.length);
+        }
+      } catch (error) {
+        console.error('Error loading from localStorage:', error);
+      }
+    }
+  }, []);
+
+  const handleExtractSchools = async () => {
+    if (!url.trim()) {
+      setError('Please enter a valid URL');
+      return;
+    }
+
+    setExtracting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/web-scraper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seedUrls: [url] }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to extract schools');
+      }
+
+      const data = (await response.json()) as {
+        rows: Array<{ name: string }>;
+      };
+
+      const extractedSchools = data.rows.map((r) => r.name).filter(Boolean);
+      if (extractedSchools.length === 0) {
+        setError('No schools found on the page');
+        setExtracting(false);
+        return;
+      }
+
+      setSchools(extractedSchools);
+      setStep('review');
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          lastUrl: url,
+          lastSchools: extractedSchools,
+          lastResult: null,
+        } as StoredData)
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(message);
+      console.error('Error extracting schools:', err);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  const estimateRemainingTime = (): number => {
+    if (done === 0) return 0;
+    const avgTimePerSchool = elapsedTime / done;
+    const remaining = (queued + running) * avgTimePerSchool;
+    return Math.ceil(remaining);
+  };
+
+  const getProgressPercentage = (): number => {
+    const total = queued + running + done;
+    return total === 0 ? 0 : Math.round((done / total) * 100);
+  };
+
+  const handleScanContacts = async () => {
+    if (schools.length === 0) {
+      setError('No schools to scan');
       return;
     }
 
     setLoading(true);
     setError(null);
-    setProgress({ stage: 'scraping', percentage: 10 });
-    setContactProgress({ totalSchools: 0, processed: 0, withRegistrar: 0, withProvost: 0, withBoth: 0 });
+    setStep('contact-scan');
+    setQueued(schools.length);
+    setRunning(1);
+    setDone(0);
+    setFailed(0);
+    setStartTime(Date.now());
+    setElapsedTime(0);
 
     try {
-      setTimeout(() => setProgress({ stage: 'organizing', percentage: 35 }), 800);
-      setTimeout(() => setProgress({ stage: 'contacts', percentage: 70 }), 2000);
-
-      const response = await fetch('/api/web-scraper', {
+      const response = await fetch('/api/gemini-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seedUrls: urls }),
+        body: JSON.stringify({ schools }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Scraping failed');
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const data: ScraperResponse = await response.json();
-      setResults(data);
-      setProgress({ stage: 'contacts', percentage: 70 });
+      const data = (await response.json()) as {
+        rows: SchoolRow[];
+        xlsxBase64: string;
+      };
 
-      // Initialize contact progress
-      const totalSchools = data.rows.length;
-      setContactProgress({
-        totalSchools,
-        processed: 0,
-        withRegistrar: 0,
-        withProvost: 0,
-        withBoth: 0,
-      });
+      setRows(data.rows);
+      setDone(data.rows.length);
+      setQueued(0);
+      setRunning(0);
 
-      // Start background contact discovery
-      const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      setContactDiscoverySessionId(sessionId);
-
-      // Start discovery in background
-      fetch('/api/web-scraper-contacts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: data.rows, sessionId }),
-      }).catch((err) => console.error('Failed to start contact discovery:', err));
-
-      // Poll for progress
-      const pollInterval = setInterval(async () => {
-        try {
-          const progressRes = await fetch(
-            `/api/web-scraper-contacts?sessionId=${sessionId}`
-          );
-          if (progressRes.ok) {
-            const progressData = await progressRes.json();
-            setContactProgress({
-              totalSchools: progressData.total,
-              processed: progressData.processed,
-              withRegistrar: progressData.withRegistrar,
-              withProvost: progressData.withProvost,
-              withBoth: progressData.withBoth,
-            });
-
-            // Update results with new contact info
-            if (progressData.rows) {
-              setResults((prev) =>
-                prev ? { ...prev, rows: progressData.rows } : null
-              );
-            }
-
-            if (progressData.isComplete) {
-              clearInterval(pollInterval);
-              setProgress({ stage: 'complete', percentage: 100 });
-            }
-          }
-        } catch (err) {
-          console.error('Failed to get contact discovery progress:', err);
-        }
-      }, 500); // Poll every 500ms
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          lastUrl: url,
+          lastSchools: schools,
+          lastResult: {
+            rows: data.rows,
+            timestamp: Date.now(),
+          },
+        } as StoredData)
+      );
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'An error occurred';
+      const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
-      setProgress({ stage: 'idle', percentage: 0 });
+      setFailed(1);
+      console.error('Error during scan:', err);
     } finally {
       setLoading(false);
     }
-  }, [urls]);
-
-  // Deduplicate schools by name and normalize for comparison
-  const deduplicateRows = (rows: InstitutionRow[]): InstitutionRow[] => {
-    const seen = new Map<string, InstitutionRow>();
-
-    rows.forEach((row) => {
-      // Create a normalized key for comparison (lowercase name, trimmed)
-      const normalizedName = row.name.trim().toLowerCase();
-      const key = normalizedName;
-
-      // Keep the first occurrence, skip duplicates
-      if (!seen.has(key)) {
-        seen.set(key, row);
-      }
-    });
-
-    return Array.from(seen.values());
   };
 
-  const filteredAndSortedRows = useMemo(() => {
-    if (!results?.rows) return [];
-
-    // First deduplicate the results
-    const dedupedRows = deduplicateRows(results.rows);
-
-    const filtered = dedupedRows.filter((row) => {
-      if (stateFilter && row.state !== stateFilter) return false;
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        return (
-          row.name.toLowerCase().includes(term) ||
-          row.city?.toLowerCase().includes(term) ||
-          row.website?.toLowerCase().includes(term)
-        );
-      }
-      return true;
-    });
-
-    return filtered.sort((a, b) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
-
-      if (aVal === null || aVal === undefined) return 1;
-      if (bVal === null || bVal === undefined) return -1;
-
-      if (typeof aVal === 'string') {
-        return sortDirection === 'asc'
-          ? (aVal as string).localeCompare(bVal as string)
-          : (bVal as string).localeCompare(aVal as string);
-      }
-
-      return 0;
-    });
-  }, [results?.rows, sortField, sortDirection, stateFilter, searchTerm]);
-
-  const states = useMemo(
-    () => [...new Set((results?.rows.map((r) => r.state).filter(Boolean) || []) as string[])].sort(),
-    [results?.rows]
-  );
-
-  const handleDownloadExcel = useCallback(() => {
-    if (!results?.xlsx_base64) {
-      setError('Excel file not available');
+  const handleDownload = async () => {
+    if (rows.length === 0) {
+      setError('No data to download');
       return;
     }
 
     try {
-      const link = document.createElement('a');
-      link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${results.xlsx_base64}`;
-      link.download = `institutions_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (_err) {
-      setError('Failed to download Excel file');
+      const response = await fetch('/api/gemini-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schools: rows.map((r) => r.name) }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate Excel');
+
+      const data = (await response.json()) as {
+        rows: SchoolRow[];
+        xlsxBase64: string;
+      };
+
+      const binaryString = atob(data.xlsxBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `schools-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Error downloading Excel:', err);
+      setError(`Download failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-  }, [results?.xlsx_base64]);
+  };
+
+  const handleRemoveSchool = (index: number) => {
+    const updated = schools.filter((_, i) => i !== index);
+    setSchools(updated);
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        lastUrl: url,
+        lastSchools: updated,
+        lastResult: null,
+      } as StoredData)
+    );
+  };
+
+  const handleEditSchools = () => {
+    setStep('review');
+  };
+
+  const columns: (keyof SchoolRow)[] = [
+    'name',
+    'website',
+    'city',
+    'state',
+    'registrar_name',
+    'registrar_email',
+    'registrar_phone',
+    'registrar_page_url',
+    'provost_name',
+    'provost_email',
+    'provost_phone',
+    'provost_page_url',
+    'dept_email',
+    'dept_phone',
+    'main_office_email',
+    'main_office_phone',
+    'state_confidence',
+    'contact_confidence',
+    'source_urls',
+    'notes',
+  ];
+
+  const columnLabels: Record<string, string> = {
+    name: 'School Name',
+    website: 'Website',
+    city: 'City',
+    state: 'State',
+    registrar_name: 'Registrar Name',
+    registrar_email: 'Registrar Email',
+    registrar_phone: 'Registrar Phone',
+    registrar_page_url: 'Registrar Page',
+    provost_name: 'Provost Name',
+    provost_email: 'Provost Email',
+    provost_phone: 'Provost Phone',
+    provost_page_url: 'Provost Page',
+    dept_email: 'Dept Email',
+    dept_phone: 'Dept Phone',
+    main_office_email: 'Main Office Email',
+    main_office_phone: 'Main Office Phone',
+    state_confidence: 'State Conf.',
+    contact_confidence: 'Contact Conf.',
+    source_urls: 'Source URLs',
+    notes: 'Notes',
+  };
+
+  const formatValue = (value: unknown): string => {
+    if (value === null || value === undefined) return '—';
+    if (Array.isArray(value)) return value.join('; ');
+    if (typeof value === 'number') return value.toFixed(2);
+    return String(value);
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex flex-col gap-8 px-6 py-8 max-w-7xl mx-auto">
-        {/* Header Section - Modern, clean design */}
-        <div className="flex flex-col gap-3 pb-2">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <h1 className="text-4xl font-bold tracking-tight text-foreground">Institution Scraper</h1>
-              <p className="text-base text-muted-foreground">
-                Discover and research educational institutions with intelligent data extraction
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[var(--background)]">
+      <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+            College Contact Discovery
+          </h1>
+          <p className="text-base text-[var(--muted-foreground)]">
+            Extract and research registrar & provost contacts from educational institutions
+          </p>
         </div>
 
-        {/* Input Card - Black header with white text, modern design */}
-        <Card className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] overflow-hidden shadow-sm hover:shadow-md transition-shadow p-0">
-          <div className="rounded-t-2xl px-6 py-5" style={{ backgroundColor: '#0A0A0A' }}>
-            <h2 className="font-header-bold text-lg font-bold text-white">Enter URLs to Scrape</h2>
-            <p className="text-sm text-white/70 mt-1">Paste URLs containing lists of colleges, universities, or educational institutions</p>
-          </div>
-          <CardContent className="flex flex-col gap-6 pt-6">
-            <UrlInput urls={urls} onUrlsChange={setUrls} />
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={handleScrape}
-                disabled={loading || urls.length === 0}
-                size="lg"
-                className="sm:w-auto rounded-lg font-medium"
-              >
-                {loading ? (
-                  <>
-                    <StuLoader variant="inline" speed={1.5} />
-                    Scraping...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Start Scraping
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setUrls([])}
-                disabled={urls.length === 0 || loading}
-                className="rounded-lg"
-              >
-                Clear All
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Progress Indicator - Enhanced visibility */}
-        {(loading || (progress.stage !== 'idle' && progress.percentage > 0)) && (
-          <div className="animate-in fade-in duration-300">
-            <ProgressIndicator stage={progress.stage} percentage={progress.percentage} />
-          </div>
-        )}
-
-        {/* Contact Discovery Progress - Real-time feedback */}
-        {(loading || progress.stage === 'contacts') && contactProgress.totalSchools > 0 && (
-          <div className="animate-in fade-in duration-300">
-            <ContactDiscoveryProgress
-              totalSchools={contactProgress.totalSchools}
-              schoolsProcessed={contactProgress.processed}
-              schoolsWithRegistrar={contactProgress.withRegistrar}
-              schoolsWithProvost={contactProgress.withProvost}
-              schoolsWithBoth={contactProgress.withBoth}
-              isActive={loading || progress.stage === 'contacts'}
-            />
-          </div>
-        )}
-
-        {/* Error Message - Better visual hierarchy */}
+        {/* Error State */}
         {error && (
-          <div className="animate-in fade-in duration-300">
-            <Card className="border-destructive/30 bg-destructive/5 shadow-sm">
-              <CardContent className="pt-6 flex items-start gap-4">
-                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-1 flex-1">
-                  <p className="text-sm font-medium text-destructive">Error occurred</p>
-                  <p className="text-sm text-destructive/80">{error}</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="animate-in fade-in duration-200">
+            <div className="rounded-xl border border-red-200/30 bg-red-50/50 backdrop-blur-sm p-4 text-sm text-red-700">
+              <div className="font-semibold mb-1">Error</div>
+              <div className="text-red-600/90">{error}</div>
+            </div>
           </div>
         )}
 
-        {/* Results Section - Clean, organized layout */}
-        {results && (
-          <div className="flex flex-col gap-8 animate-in fade-in duration-300">
-            {/* Summary Stats - Grid layout for better scanning */}
-            <div className="pt-4">
-              <h2 className="text-lg font-semibold mb-4">Overview</h2>
-              <SummaryStats
-                totalRows={deduplicateRows(results.rows).length}
-                filteredCount={filteredAndSortedRows.length}
-                eta={results.eta}
-                summary={results.summary}
-              />
+        {/* Step 1: Input URL */}
+        {step === 'input' && (
+          <div className="animate-in fade-in duration-300">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm p-0 overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-50/50 px-6 sm:px-8 py-6 border-b border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                    <span className="text-sm font-bold text-primary">1</span>
+                  </div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">Paste URL</h2>
+                </div>
+                <p className="text-sm text-[var(--muted-foreground)] ml-11">
+                  Enter a URL containing a list of colleges or universities
+                </p>
+              </div>
+
+              <div className="p-6 sm:p-8 flex flex-col gap-4">
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://example.com/colleges-list"
+                    className="w-full px-4 py-3 text-sm font-mono rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+                  />
+                </div>
+
+                <button
+                  onClick={handleExtractSchools}
+                  disabled={extracting || !url.trim()}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:bg-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {extracting ? (
+                    <>
+                      <StuLoader variant="inline" speed={1.5} />
+                      Extracting Schools...
+                    </>
+                  ) : (
+                    <>
+                      <span>→</span>
+                      Extract Schools from URL
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
+        )}
 
-            {/* Filters & Search - Black header, modern design */}
-            <Card className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] overflow-hidden shadow-sm hover:shadow-md transition-shadow p-0">
-              <div className="rounded-t-2xl px-6 py-5" style={{ backgroundColor: '#0A0A0A' }}>
-                <div className="flex items-center justify-between">
-                  <h2 className="font-header-bold text-lg font-bold text-white">Search & Filter</h2>
-                  <span className="text-xs font-semibold text-white bg-white/10 px-2.5 py-1 rounded-full">
-                    {filteredAndSortedRows.length} results
-                  </span>
+        {/* Step 2: Review Schools */}
+        {step === 'review' && (
+          <div className="animate-in fade-in duration-300">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm p-0 overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-50/50 px-6 sm:px-8 py-6 border-b border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                    <span className="text-sm font-bold text-primary">2</span>
+                  </div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">Review Schools</h2>
                 </div>
+                <p className="text-sm text-[var(--muted-foreground)] ml-11">
+                  We found {schools.length} school{schools.length !== 1 ? 's' : ''}. Remove any you don&apos;t need.
+                </p>
               </div>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 px-6 pb-6">
-                {/* Search Input with Icon */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Search</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                    <input
-                      type="text"
-                      placeholder="Find institution, city, or website..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
-                    />
-                  </div>
+
+              <div className="p-6 sm:p-8 flex flex-col gap-4">
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {schools.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-[var(--muted-foreground)]">No schools to display</p>
+                    </div>
+                  ) : (
+                    schools.map((school, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--background)] hover:border-[color-mix(in_srgb,var(--muted-foreground)_25%,transparent)] transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <span className="text-xs font-semibold text-[var(--muted-foreground)] flex-shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="text-sm font-medium text-[var(--foreground)] truncate">
+                            {school}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveSchool(idx)}
+                          className="ml-2 px-3 py-1 rounded text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50/50 transition-colors flex-shrink-0"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
 
-                {/* State Filter */}
-                {states.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">State</label>
-                    <select
-                      value={stateFilter ?? ''}
-                      onChange={(e) => setStateFilter(e.target.value === '' ? null : e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
-                    >
-                      <option value="">All States</option>
-                      {states.map((state) => (
-                        <option key={state} value={state}>
-                          {state}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Download Button */}
-                <div className="flex flex-col gap-2 md:col-span-1 md:justify-end">
-                  <Button
-                    onClick={handleDownloadExcel}
-                    variant="outline"
-                    className="w-full rounded-lg font-medium"
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                  <button
+                    onClick={() => setStep('input')}
+                    className="px-4 py-2.5 rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_30%,transparent)] text-[var(--foreground)] font-semibold hover:bg-[var(--muted)]/50 transition-colors"
                   >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Excel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Results Table - Black header, modern design */}
-            <Card className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] overflow-hidden shadow-sm p-0">
-              <div className="rounded-t-2xl px-6 py-5" style={{ backgroundColor: '#0A0A0A' }}>
-                <div className="flex items-center justify-between">
-                  <h2 className="font-header-bold text-lg font-bold text-white">Results</h2>
-                  <span className="text-xs font-semibold text-white/70">
-                    {filteredAndSortedRows.length} of {deduplicateRows(results.rows).length} institutions
-                  </span>
+                    ← Back
+                  </button>
+                  <button
+                    onClick={handleScanContacts}
+                    disabled={schools.length === 0 || loading}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:bg-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    {loading ? (
+                      <>
+                        <StuLoader variant="inline" speed={1.5} />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <span>→</span>
+                        Scan {schools.length} School{schools.length !== 1 ? 's' : ''} for Contacts
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
-              <CardContent className="p-0 pt-0">
-                {filteredAndSortedRows.length === 0 ? (
-                  <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
-                    <Search className="w-10 h-10 text-muted-foreground/30" />
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm font-medium text-muted-foreground">No institutions found</p>
-                      <p className="text-xs text-muted-foreground/60">Try adjusting your filters</p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Contact Scanning */}
+        {step === 'contact-scan' && (
+          <div className="animate-in fade-in duration-300">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm p-0 overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-50/50 px-6 sm:px-8 py-6 border-b border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                    <span className="text-sm font-bold text-primary">3</span>
+                  </div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">Discovering Contacts</h2>
+                </div>
+                <p className="text-sm text-[var(--muted-foreground)] ml-11">
+                  Using Gemini AI to extract registrar & provost contacts from school websites
+                </p>
+              </div>
+
+              <div className="p-6 sm:p-8 flex flex-col gap-6">
+                {loading && (
+                  <div className="space-y-6">
+                    {/* Progress Card */}
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 space-y-4">
+                      <div className="flex items-end justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-semibold text-[var(--muted-foreground)] mb-1">
+                            Progress
+                          </div>
+                          <div className="text-sm text-[var(--muted-foreground)]">
+                            {done} of {queued + running + done} completed
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-bold text-primary">{getProgressPercentage()}%</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="h-3 bg-[var(--muted)]/30 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary via-primary to-primary/70 transition-all duration-500"
+                            style={{ width: `${getProgressPercentage()}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-[var(--muted-foreground)]">
+                          <span>{elapsedTime > 0 ? `${formatTime(elapsedTime)} elapsed` : 'Starting...'}</span>
+                          {estimateRemainingTime() > 0 && <span>{formatTime(estimateRemainingTime())} remaining</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--background)] p-3 text-center">
+                        <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-1">
+                          Elapsed
+                        </div>
+                        <div className="text-lg font-bold text-[var(--foreground)]">
+                          {formatTime(elapsedTime)}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--background)] p-3 text-center">
+                        <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-1">
+                          ETA
+                        </div>
+                        <div className="text-lg font-bold text-[var(--foreground)]">
+                          {formatTime(estimateRemainingTime())}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--background)] p-3 text-center">
+                        <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-1">
+                          Avg/School
+                        </div>
+                        <div className="text-lg font-bold text-[var(--foreground)]">
+                          {done > 0 ? formatTime(Math.ceil(elapsedTime / done)) : '—'}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
+                        <div className="text-xs font-semibold text-primary mb-1">
+                          Status
+                        </div>
+                        <div className="text-lg font-bold text-primary flex items-center justify-center gap-1">
+                          <StuLoader variant="inline" speed={1.5} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status Indicators */}
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-100/50 text-yellow-700 text-xs font-medium">
+                        <div className="w-2 h-2 rounded-full bg-yellow-600"></div>
+                        <span>Queued: {queued}</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                        <span>Running: {running}</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100/50 text-green-700 text-xs font-medium">
+                        <div className="w-2 h-2 rounded-full bg-green-600"></div>
+                        <span>Done: {done}</span>
+                      </div>
+                      {failed > 0 && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100/50 text-red-700 text-xs font-medium">
+                          <div className="w-2 h-2 rounded-full bg-red-600"></div>
+                          <span>Failed: {failed}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info Banner */}
+                    <div className="rounded-lg border border-amber-200/30 bg-amber-50/50 p-3 text-xs text-amber-900">
+                      <div className="font-semibold mb-1">API Quota Note</div>
+                      <p className="text-amber-800/80">
+                        Gemini API free tier allows 200 requests/day. If quota is exceeded, wait until tomorrow or upgrade to a paid plan.
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  <ResultsDataTable
-                    rows={filteredAndSortedRows}
-                    sortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={(field: SortField) => {
-                      if (sortField === field) {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField(field);
-                        setSortDirection('asc');
-                      }
-                    }}
-                  />
                 )}
-              </CardContent>
-            </Card>
+
+                {!loading && rows.length > 0 && (
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                    <button
+                      onClick={handleEditSchools}
+                      className="px-4 py-2.5 rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_30%,transparent)] text-[var(--foreground)] font-semibold hover:bg-[var(--muted)]/50 transition-colors"
+                    >
+                      ← Back to Schools
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      ↓ Download Excel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results: ICP Ranking */}
+        {rows.length > 0 && step === 'contact-scan' && (
+          <div className="animate-in fade-in duration-300">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm p-0 overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-50/50 px-6 sm:px-8 py-6 border-b border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                <h2 className="text-lg font-semibold text-[var(--foreground)]">🎯 Prospect Ranking by ICP Fit</h2>
+                <p className="text-sm text-[var(--muted-foreground)] mt-2">
+                  Top {Math.min(10, rows.length)} prospects ranked by fit to our ICP
+                </p>
+              </div>
+
+              <div className="p-6 sm:p-8">
+                <div className="space-y-2">
+                  {[...rows]
+                    .sort((a, b) => getICPScore(b).score - getICPScore(a).score)
+                    .slice(0, 10)
+                    .map((row, idx) => {
+                      const icp = getICPScore(row);
+                      return (
+                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] ${icp.color}`}>
+                          <div className="flex-1">
+                            <div className="font-semibold text-sm">{row.name}</div>
+                            <div className="text-xs opacity-75 mt-1">
+                              State: {row.state || 'N/A'} · Registrar: {row.registrar_email ? '✓' : '✗'} · Provost: {row.provost_email ? '✓' : '✗'}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4 flex-shrink-0">
+                            <div className="text-sm font-bold">{icp.tier}</div>
+                            <div className="text-xs opacity-75 mt-1">{icp.score}/100</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results: Complete Data Table */}
+        {rows.length > 0 && step === 'contact-scan' && (
+          <div className="animate-in fade-in duration-300">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm p-0 overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-50/50 px-6 sm:px-8 py-6 border-b border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
+                <h2 className="text-lg font-semibold text-[var(--foreground)]">📊 Complete Contact Data</h2>
+                <p className="text-sm text-[var(--muted-foreground)] mt-2">
+                  Confidence scores color-coded: Green (80%+) → Yellow (40%) → Red (0%)
+                </p>
+              </div>
+
+              <div className="overflow-x-auto" ref={tableContainerRef}>
+                <table className="w-full text-xs border-collapse">
+                  <thead className="bg-[var(--muted)]/50 sticky top-0 border-b border-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)]">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-[var(--foreground)] whitespace-nowrap border-r border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] w-32">ICP Fit</th>
+                      {columns.map((col) => (
+                        <th
+                          key={col}
+                          className="px-3 py-2 text-left font-semibold text-[var(--foreground)] whitespace-nowrap border-r border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)]"
+                        >
+                          {columnLabels[col] || col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, idx) => {
+                      const icp = getICPScore(row);
+                      return (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-[var(--background)]' : 'bg-[var(--muted)]/20'}>
+                          <td className={`px-3 py-2 font-semibold whitespace-nowrap border-r border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] text-xs ${icp.color}`}>
+                            {icp.tier}
+                          </td>
+                          {columns.map((col) => {
+                            const value = row[col];
+                            const isConfidence = col === 'state_confidence' || col === 'contact_confidence';
+                            const confidenceNum = typeof value === 'number' ? value : 0;
+                            const colorClass = isConfidence ? getConfidenceColor(confidenceNum) : '';
+
+                            return (
+                              <td
+                                key={col}
+                                className={`px-3 py-2 border-r border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] whitespace-nowrap overflow-hidden text-ellipsis text-xs ${colorClass}`}
+                                title={
+                                  col === 'source_urls' && Array.isArray(value)
+                                    ? (value as string[]).join(', ')
+                                    : formatValue(value)
+                                }
+                              >
+                                {isConfidence && typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : formatValue(value)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

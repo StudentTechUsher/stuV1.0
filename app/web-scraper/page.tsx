@@ -1,8 +1,8 @@
-import { WebScraperClient } from './web-scraper-client';
+import WebScraperClient from './web-scraper-client';
 
 export const metadata = {
-  title: 'Institution Scraper',
-  description: 'Discover and research educational institutions with automated data extraction.',
+  title: 'College Contact Scraper',
+  description: 'Discover registrar and provost contacts for colleges and universities using Gemini AI.',
 };
 
 export default function WebScraperPage() {
