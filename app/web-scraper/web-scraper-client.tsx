@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { StuLoader } from '@/components/ui/StuLoader';
-import { X, Plus, Download, Zap } from 'lucide-react';
+import { X, Plus, Download, Zap, Mail, Upload } from 'lucide-react';
+import { EmailExport } from './components/email-export';
 
 interface InstitutionRow {
   name: string;
@@ -23,6 +24,7 @@ interface InstitutionRow {
   main_office_phone: string | null;
   source_urls: string[];
   notes: string | null;
+  [key: string]: unknown;
 }
 
 // Helper function to get category color and styling
@@ -111,7 +113,7 @@ function getScoreColor(score: number): { text: string; bg: string; gradient: str
 }
 
 export default function WebScraperClient() {
-  const [step, setStep] = useState<'input' | 'school-lookup' | 'contact-discovery'>('input');
+  const [step, setStep] = useState<'input' | 'school-lookup' | 'contact-discovery' | 'email-export'>('input');
   const [url, setUrl] = useState('');
   const [urls, setUrls] = useState<string[]>([]);
   const [rows, setRows] = useState<InstitutionRow[]>([]);
@@ -134,6 +136,9 @@ export default function WebScraperClient() {
     withBoth: number;
   } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteTextInput, setPasteTextInput] = useState('');
 
   useEffect(() => {
     if (!scraping && !contactDiscoveryRunning) return;
@@ -163,6 +168,87 @@ export default function WebScraperClient() {
 
   const handleRemoveUrl = (index: number) => {
     setUrls(urls.filter((_, i) => i !== index));
+  };
+
+  const handleFileUploadForEmail = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    setStep('email-export');
+
+    try {
+      // Store the file object for later processing on the server
+      setRows([
+        {
+          name: 'Uploaded File Data',
+          website: null,
+          city: null,
+          state: null,
+          zip: null,
+          category: '',
+          stu_fit_score: 0,
+          classification_confidence: 0,
+          registrar_name: null,
+          registrar_email: null,
+          registrar_department_email: null,
+          provost_name: null,
+          provost_email: null,
+          provost_department_email: null,
+          main_office_email: null,
+          main_office_phone: null,
+          source_urls: [],
+          notes: null,
+          __uploadedFile: file,
+        },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to process file';
+      setError(message);
+      console.error('Error processing file:', err);
+    } finally {
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handlePasteTextSubmit = () => {
+    if (!pasteTextInput.trim()) {
+      setError('Please paste some text');
+      return;
+    }
+
+    setError(null);
+    setStep('email-export');
+    setShowPasteModal(false);
+
+    // Store the pasted text as an empty row with special flag
+    setRows([
+      {
+        name: 'Pasted Text Data',
+        website: null,
+        city: null,
+        state: null,
+        zip: null,
+        category: '',
+        stu_fit_score: 0,
+        classification_confidence: 0,
+        registrar_name: null,
+        registrar_email: null,
+        registrar_department_email: null,
+        provost_name: null,
+        provost_email: null,
+        provost_department_email: null,
+        main_office_email: null,
+        main_office_phone: null,
+        source_urls: [],
+        notes: null,
+        __pastedText: pasteTextInput,
+      },
+    ]);
+    setPasteTextInput('');
   };
 
   const handleStartScraping = async () => {
@@ -471,6 +557,119 @@ export default function WebScraperClient() {
                     </>
                   )}
                 </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-[var(--border)]" />
+                  <span className="text-xs text-[var(--muted-foreground)]">Or</span>
+                  <div className="flex-1 h-px bg-[var(--border)]" />
+                </div>
+
+                {/* Skip to Email Extraction */}
+                <button
+                  onClick={() => {
+                    setStep('email-export');
+                    if (rows.length === 0) {
+                      setRows([
+                        {
+                          name: 'Email Extraction',
+                          website: null,
+                          city: null,
+                          state: null,
+                          zip: null,
+                          category: '',
+                          stu_fit_score: 0,
+                          classification_confidence: 0,
+                          registrar_name: null,
+                          registrar_email: null,
+                          registrar_department_email: null,
+                          provost_name: null,
+                          provost_email: null,
+                          provost_department_email: null,
+                          main_office_email: null,
+                          main_office_phone: null,
+                          source_urls: [],
+                          notes: null,
+                        },
+                      ]);
+                    }
+                  }}
+                  className="w-full px-6 py-3 rounded-lg border-2 border-dashed border-purple-400 bg-purple-50/50 text-purple-700 text-sm font-semibold hover:bg-purple-100/50 hover:border-purple-500 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Skip to Email Extraction</span>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls,.txt"
+                  onChange={handleFileUploadForEmail}
+                  className="hidden"
+                  aria-label="Upload Excel file for email extraction"
+                />
+
+                {/* Paste Modal */}
+                {showPasteModal && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[var(--card)] rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto">
+                      <div className="border-b border-[var(--border)] px-6 py-4 sticky top-0 bg-[var(--card)]">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
+                            <Mail className="w-5 h-5 text-orange-600" />
+                            Paste Emails
+                          </h3>
+                          <button
+                            onClick={() => {
+                              setShowPasteModal(false);
+                              setPasteTextInput('');
+                            }}
+                            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                            aria-label="Close modal"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-[var(--foreground)] block mb-2">
+                            Paste emails or text content
+                          </label>
+                          <textarea
+                            value={pasteTextInput}
+                            onChange={(e) => setPasteTextInput(e.target.value)}
+                            placeholder="Paste emails, text, or any content here. We'll extract emails, remove duplicates, and clean up symbols. Examples: contact@example.com, user@test.org or person1@email.com person2@email.com"
+                            className="w-full p-3 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-none h-32"
+                          />
+                          <p className="text-xs text-[var(--muted-foreground)] mt-2">
+                            Any format works - we'll clean it up and extract valid emails.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button
+                            onClick={handlePasteTextSubmit}
+                            disabled={!pasteTextInput.trim()}
+                            className="flex-1 px-4 py-2.5 rounded-lg bg-orange-600 text-white text-sm font-semibold hover:bg-orange-700 disabled:bg-[var(--muted)] disabled:text-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors"
+                          >
+                            Extract & Continue
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowPasteModal(false);
+                              setPasteTextInput('');
+                            }}
+                            className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-sm font-semibold hover:bg-[var(--muted)]/40 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -902,7 +1101,7 @@ export default function WebScraperClient() {
                   </div>
                 )}
 
-                <div className="flex gap-3 mt-6">
+                <div className="flex flex-col sm:flex-row gap-3 mt-6">
                   {!contactDiscoveryRunning && (
                     <button
                       onClick={() => setStep('school-lookup')}
@@ -921,7 +1120,38 @@ export default function WebScraperClient() {
                       Download Current Data
                     </button>
                   )}
+                  {!contactDiscoveryRunning && rows.length > 0 && (
+                    <button
+                      onClick={() => setStep('email-export')}
+                      className="flex-1 px-5 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Mail size={16} />
+                      Extract Emails
+                    </button>
+                  )}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Email Export */}
+        {step === 'email-export' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow hover:shadow-md">
+              {/* Bold Black Header */}
+              <div className="border-b-2 px-6 sm:px-8 py-4" style={{ backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' }}>
+                <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+                  Step 4: Email Export
+                </h3>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 sm:p-8">
+                <EmailExport
+                  rows={rows}
+                  onBack={() => setStep('contact-discovery')}
+                />
               </div>
             </div>
           </div>
