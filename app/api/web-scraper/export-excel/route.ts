@@ -1,70 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { scrapeInstitutions, type InstitutionRow } from '@/lib/services/webScraperService';
-import { logError } from '@/lib/logger';
 import ExcelJS from 'exceljs';
+import { logError } from '@/lib/logger';
 
-/**
- * POST /api/web-scraper
- * Scrapes institutions from provided URLs
- */
-export async function POST(request: NextRequest) {
-  return handleScrapeInstitutions(request);
+interface InstitutionRow {
+  name: string;
+  website: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  category: string;
+  stu_fit_score: number;
+  registrar_name: string | null;
+  registrar_email: string | null;
+  registrar_department_email: string | null;
+  provost_name: string | null;
+  provost_email: string | null;
+  provost_department_email: string | null;
+  main_office_email: string | null;
+  main_office_phone: string | null;
+  source_urls: string[];
+  notes: string | null;
+  [key: string]: unknown;
 }
 
-async function handleScrapeInstitutions(request: NextRequest) {
+/**
+ * POST /api/web-scraper/export-excel
+ * Generates Excel file from provided institution rows
+ */
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { seedUrls } = body;
+    const { rows } = body as { rows: InstitutionRow[] };
 
-    // Validate input
-    if (!seedUrls || !Array.isArray(seedUrls) || seedUrls.length === 0) {
+    if (!rows || !Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json(
-        { error: 'seedUrls must be a non-empty array of strings' },
+        { error: 'rows must be a non-empty array' },
         { status: 400 }
       );
     }
 
-    // Validate URLs
-    const validUrls: string[] = [];
-    for (const url of seedUrls) {
-      if (typeof url !== 'string') continue;
-      try {
-        new URL(url);
-        validUrls.push(url);
-      } catch {
-        // Invalid URL, skip
-      }
-    }
+    const excelBase64 = await generateExcelExport(rows);
 
-    if (validUrls.length === 0) {
-      return NextResponse.json(
-        { error: 'No valid URLs provided' },
-        { status: 400 }
-      );
-    }
-
-    // Perform scraping
-    const result = await scrapeInstitutions(validUrls);
-
-    // Generate Excel file
-    const excelBase64 = await generateExcelExport(result.rows);
-
-    // Return result with Excel data
-    return NextResponse.json(
-      {
-        rows: result.rows,
-        eta: result.eta,
-        xlsx_base64: excelBase64,
-        summary: result.summary,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      xlsx_base64: excelBase64,
+    });
   } catch (error) {
-    logError('Web scraper failed', error, {
-      action: 'scrape_institutions',
+    logError('Failed to export Excel', error, {
+      action: 'export_excel',
     });
     return NextResponse.json(
-      { error: 'Failed to scrape institutions' },
+      { error: 'Failed to generate Excel export' },
       { status: 500 }
     );
   }
@@ -110,6 +95,38 @@ async function generateExcelExport(rows: InstitutionRow[]): Promise<string> {
 
     // Add data rows
     for (const row of rows) {
+      // Format all registrar contacts into a readable string
+      let registrarContactsStr = '';
+      const registrarDept = row.registrar_department as unknown as any;
+      if (registrarDept && Array.isArray(registrarDept.contacts)) {
+        registrarContactsStr = registrarDept.contacts
+          .map((c: any) => {
+            const parts = [];
+            if (c.name) parts.push(`Name: ${c.name}`);
+            if (c.title) parts.push(`Title: ${c.title}`);
+            if (c.email) parts.push(`Email: ${c.email}`);
+            if (c.phone) parts.push(`Phone: ${c.phone}`);
+            return parts.join(' | ');
+          })
+          .join(' | ');
+      }
+
+      // Format all provost contacts into a readable string
+      let provostContactsStr = '';
+      const provostDept = row.provost_department as unknown as any;
+      if (provostDept && Array.isArray(provostDept.contacts)) {
+        provostContactsStr = provostDept.contacts
+          .map((c: any) => {
+            const parts = [];
+            if (c.name) parts.push(`Name: ${c.name}`);
+            if (c.title) parts.push(`Title: ${c.title}`);
+            if (c.email) parts.push(`Email: ${c.email}`);
+            if (c.phone) parts.push(`Phone: ${c.phone}`);
+            return parts.join(' | ');
+          })
+          .join(' || ');
+      }
+
       worksheet.addRow({
         name: row.name,
         website: row.website || '',
@@ -125,9 +142,31 @@ async function generateExcelExport(rows: InstitutionRow[]): Promise<string> {
         provost_contact_form_url: row.provost_contact_form_url || '',
         main_office_email: row.main_office_email || '',
         main_office_phone: row.main_office_phone || '',
-        source_urls: row.source_urls.join('; '),
+        source_urls: Array.isArray(row.source_urls) ? row.source_urls.join('; ') : '',
         notes: row.notes || '',
       });
+
+      // Add a secondary row with ALL registrar and provost contacts if they exist
+      if (registrarContactsStr || provostContactsStr) {
+        worksheet.addRow({
+          name: `${row.name} - ALL CONTACTS`,
+          website: '',
+          city: '',
+          state: '',
+          registrar_name: registrarContactsStr ? 'ALL REGISTRAR STAFF:' : '',
+          registrar_email: registrarContactsStr || '',
+          registrar_department_email: '',
+          registrar_contact_form_url: '',
+          provost_name: provostContactsStr ? 'ALL PROVOST STAFF:' : '',
+          provost_email: provostContactsStr || '',
+          provost_department_email: '',
+          provost_contact_form_url: '',
+          main_office_email: '',
+          main_office_phone: '',
+          source_urls: '',
+          notes: '',
+        });
+      }
     }
 
     // Freeze header row

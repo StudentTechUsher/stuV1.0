@@ -15,8 +15,10 @@ interface InstitutionRow {
   classification_confidence: number;
   registrar_name: string | null;
   registrar_email: string | null;
+  registrar_department_email: string | null;
   provost_name: string | null;
   provost_email: string | null;
+  provost_department_email: string | null;
   main_office_email: string | null;
   main_office_phone: string | null;
   source_urls: string[];
@@ -119,6 +121,18 @@ export default function WebScraperClient() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
+  const [_sessionId, setSessionId] = useState<string | null>(null);
+  const [contactProgress, setContactProgress] = useState<{
+    total: number;
+    processed: number;
+    elapsedSeconds: number;
+    estimatedTimeRemaining: number;
+    estimatedCreditsUsed: string;
+    currentInstitution: string;
+    withRegistrar: number;
+    withProvost: number;
+    withBoth: number;
+  } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -205,16 +219,87 @@ export default function WebScraperClient() {
     setStartTime(Date.now());
     setElapsedTime(0);
     setStep('contact-discovery');
-    setProgressMessage('Starting contact discovery (Phase 2)...');
+    setProgressMessage('Initializing contact discovery...');
 
     try {
-      // TODO: Implement actual contact discovery API call
-      setProgressMessage('Contact discovery feature coming soon!');
+      // Generate session ID
+      const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      setSessionId(newSessionId);
+
+      // Sort rows by fit score (highest first) so best schools are processed first
+      const sortedRows = [...rows].sort((a, b) => b.stu_fit_score - a.stu_fit_score);
+
+      // Start contact discovery in background
+      const initResponse = await fetch('/api/web-scraper-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rows: sortedRows,
+          sessionId: newSessionId,
+        }),
+      });
+
+      if (!initResponse.ok) {
+        const errorData = await initResponse.json() as Record<string, unknown>;
+        throw new Error((errorData.error as string) || 'Failed to start contact discovery');
+      }
+
+      // Poll for progress updates
+      const pollInterval = setInterval(async () => {
+        try {
+          const progressResponse = await fetch(`/api/web-scraper-contacts?sessionId=${newSessionId}`);
+          if (!progressResponse.ok) {
+            clearInterval(pollInterval);
+            return;
+          }
+
+          const progress = (await progressResponse.json()) as Record<string, unknown>;
+          setContactProgress({
+            total: (progress.total as number) || 0,
+            processed: (progress.processed as number) || 0,
+            elapsedSeconds: (progress.elapsedSeconds as number) || 0,
+            estimatedTimeRemaining: (progress.estimatedTimeRemaining as number) || 0,
+            estimatedCreditsUsed: (progress.estimatedCreditsUsed as string) || '0.0000',
+            currentInstitution: (progress.currentInstitution as string) || '',
+            withRegistrar: (progress.withRegistrar as number) || 0,
+            withProvost: (progress.withProvost as number) || 0,
+            withBoth: (progress.withBoth as number) || 0,
+          });
+
+          // Update progress message
+          const processed = progress.processed as number;
+          const total = progress.total as number;
+          const current = progress.currentInstitution as string;
+          setProgressMessage(`Processing ${current}... (${processed}/${total})`);
+
+          // Update rows with discovered contact info in real-time
+          if (progress.rows && Array.isArray(progress.rows)) {
+            setRows(progress.rows as InstitutionRow[]);
+          }
+
+          // Check if complete
+          if ((progress.isComplete as boolean) === true) {
+            clearInterval(pollInterval);
+            setContactDiscoveryRunning(false);
+            setProgressMessage('✅ Contact discovery complete!');
+          }
+        } catch (err) {
+          console.error('Error polling progress:', err);
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Set timeout to stop polling after 2 hours (safety measure)
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (contactDiscoveryRunning) {
+          setContactDiscoveryRunning(false);
+          setError('Contact discovery took too long and was stopped');
+        }
+      }, 2 * 60 * 60 * 1000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
-      console.error('Error during contact discovery:', err);
-    } finally {
+      console.error('Error starting contact discovery:', err);
       setContactDiscoveryRunning(false);
     }
   };
@@ -226,10 +311,10 @@ export default function WebScraperClient() {
     }
 
     try {
-      const response = await fetch('/api/web-scraper', {
+      const response = await fetch('/api/web-scraper/export-excel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seedUrls: urls }),
+        body: JSON.stringify({ rows }),
       });
 
       if (!response.ok) throw new Error('Failed to generate Excel');
@@ -267,9 +352,15 @@ export default function WebScraperClient() {
 
   const formatTime = (seconds: number): string => {
     if (seconds < 60) return `${seconds}s`;
-    const mins = Math.floor(seconds / 60);
+    if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}m ${secs}s`;
+    }
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
+    return `${hours}h ${mins}m ${secs}s`;
   };
 
   return (
@@ -494,38 +585,86 @@ export default function WebScraperClient() {
                         <table className="w-full text-xs sm:text-sm">
                           <thead>
                             <tr style={{ backgroundColor: 'color-mix(in srgb, var(--muted) 30%, transparent)' }}>
-                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--foreground)] first:pl-0 last:pr-0">Institution</th>
-                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Location</th>
-                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Website</th>
-                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Type</th>
-                              <th className="text-center px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Score</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--foreground)] first:pl-0">Institution</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Location</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Website</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Registrar</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Registrar Email (Person)</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Registrar Dept Email</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Provost</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Provost Email (Person)</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Provost Dept Email</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Type</th>
+                              <th className="text-center px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] last:pr-0">Score</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[var(--border)]">
-                            {rows.map((row, idx) => {
+                            {[...rows].sort((a, b) => b.stu_fit_score - a.stu_fit_score).map((row, idx) => {
                               const categoryColor = getCategoryColor(row.category);
                               const scoreColor = getScoreColor(row.stu_fit_score);
                               return (
                                 <tr key={idx} className="hover:bg-[var(--muted)]/10 transition-colors">
-                                  <td className="px-4 py-3.5 text-[var(--foreground)] font-medium first:pl-0 last:pr-0">{row.name}</td>
-                                  <td className="px-4 py-3.5 text-[var(--foreground)] first:pl-0 last:pr-0 text-sm">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
-                                  <td className="px-4 py-3.5 first:pl-0 last:pr-0">
+                                  <td className="px-4 py-3.5 text-[var(--foreground)] font-medium first:pl-0">{row.name}</td>
+                                  <td className="px-4 py-3.5 text-[var(--foreground)] text-sm">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
+                                  <td className="px-4 py-3.5">
                                     {row.website ? (
-                                      <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline break-all text-xs font-medium">
+                                      <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline text-xs font-medium">
                                         {row.website.replace('https://', '')}
                                       </a>
                                     ) : (
-                                      <span className="text-[var(--muted-foreground)] text-sm">—</span>
+                                      <span className="text-[var(--muted-foreground)] text-xs">—</span>
                                     )}
                                   </td>
-                                  <td className="px-4 py-3.5 first:pl-0 last:pr-0">
-                                    <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold border ${categoryColor.badge}`}>
+                                  <td className="px-4 py-3.5 text-xs text-[var(--foreground)]">
+                                    {row.registrar_name || '—'}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.registrar_email ? (
+                                      <a href={`mailto:${row.registrar_email}`} className="text-blue-600 hover:underline">
+                                        {row.registrar_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.registrar_department_email ? (
+                                      <a href={`mailto:${row.registrar_department_email}`} className="text-green-600 hover:underline">
+                                        {row.registrar_department_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs text-[var(--foreground)]">
+                                    {row.provost_name || '—'}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.provost_email ? (
+                                      <a href={`mailto:${row.provost_email}`} className="text-blue-600 hover:underline">
+                                        {row.provost_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.provost_department_email ? (
+                                      <a href={`mailto:${row.provost_department_email}`} className="text-green-600 hover:underline">
+                                        {row.provost_department_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5">
+                                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold border ${categoryColor.badge}`}>
                                       {row.category}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3.5 first:pl-0 last:pr-0">
-                                    <div className="flex flex-col items-center gap-1.5">
-                                      <div className="relative w-full h-1.5 bg-[var(--muted)]/30 rounded-full overflow-hidden">
+                                  <td className="px-4 py-3.5 last:pr-0">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <div className="relative w-8 h-1.5 bg-[var(--muted)]/30 rounded-full overflow-hidden">
                                         <div
                                           className={`h-full bg-gradient-to-r ${scoreColor.bar} transition-all duration-500 ease-out rounded-full`}
                                           style={{ width: `${row.stu_fit_score}%` }}
@@ -562,25 +701,227 @@ export default function WebScraperClient() {
               </div>
 
               {/* Content */}
-              <div className="p-6 sm:p-8">
-                <div className="text-center py-16 px-4">
-                  <div className="inline-block mb-5">
-                    <StuLoader speed={1.5} />
+              <div className="p-6 sm:p-8 space-y-6">
+                {/* Current Task & Progress */}
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="inline-block mb-4">
+                      <StuLoader speed={1.5} />
+                    </div>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">
+                      {progressMessage || 'Finding registrar and provost contact information...'}
+                    </p>
                   </div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">
-                    {contactDiscoveryRunning ? 'Finding registrar and provost contact information...' : progressMessage}
-                  </p>
-                  {contactDiscoveryRunning && (
-                    <p className="text-xs text-[var(--muted-foreground)] mt-4">Elapsed: {formatTime(elapsedTime)}</p>
+
+                  {contactProgress && (
+                    <>
+                      {/* Progress Bar */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[var(--muted-foreground)] uppercase">Progress</span>
+                          <span className="text-sm font-bold text-[var(--foreground)]">
+                            {contactProgress.processed} / {contactProgress.total}
+                          </span>
+                        </div>
+                        <div className="h-2.5 bg-[var(--muted)]/30 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500 ease-out rounded-full"
+                            style={{
+                              width: `${(contactProgress.processed / Math.max(contactProgress.total, 1)) * 100}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Statistics Grid */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-[var(--muted)]/10 border border-[var(--border)]">
+                          <div className="text-xs text-[var(--muted-foreground)] uppercase font-semibold">Time Elapsed</div>
+                          <div className="text-lg font-bold text-[var(--foreground)] mt-1">
+                            {formatTime(contactProgress.elapsedSeconds)}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-[var(--muted)]/10 border border-[var(--border)]">
+                          <div className="text-xs text-[var(--muted-foreground)] uppercase font-semibold">Remaining</div>
+                          <div className="text-lg font-bold text-amber-600 mt-1">
+                            {formatTime(contactProgress.estimatedTimeRemaining)}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-[var(--muted)]/10 border border-[var(--border)]">
+                          <div className="text-xs text-[var(--muted-foreground)] uppercase font-semibold">With Registrar</div>
+                          <div className="text-lg font-bold text-green-600 mt-1">
+                            {contactProgress.withRegistrar}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-[var(--muted)]/10 border border-[var(--border)]">
+                          <div className="text-xs text-[var(--muted-foreground)] uppercase font-semibold">API Credits Used</div>
+                          <div className="text-lg font-bold text-orange-600 mt-1">
+                            ${contactProgress.estimatedCreditsUsed}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Countdown Timer */}
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200/50">
+                        <div className="text-center">
+                          <div className="text-xs font-semibold text-blue-700 uppercase mb-2">Est. Completion In</div>
+                          <div className="text-3xl font-extrabold text-blue-900 font-header-bold">
+                            {formatTime(contactProgress.estimatedTimeRemaining)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contact Summary */}
+                      <div className="p-4 rounded-lg bg-[var(--muted)]/10 border border-[var(--border)]">
+                        <div className="text-xs font-semibold text-[var(--muted-foreground)] uppercase mb-2">Contact Summary</div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-[var(--muted-foreground)]">With Registrar Department:</span>
+                            <span className="font-semibold text-green-600">{contactProgress.withRegistrar}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--muted-foreground)]">With Provost Department:</span>
+                            <span className="font-semibold text-green-600">{contactProgress.withProvost}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--muted-foreground)]">With Both Departments:</span>
+                            <span className="font-semibold text-blue-600">{contactProgress.withBoth}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 
-                <button
-                  onClick={() => setStep('school-lookup')}
-                  className="w-full px-5 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-sm font-semibold hover:bg-[var(--muted)]/40 transition-colors mt-4"
-                >
-                  ← Back to Results
-                </button>
+                {/* Live Results Table During Discovery */}
+                {rows.length > 0 && (
+                  <div className="mt-8 border-t pt-6">
+                    <h4 className="text-sm font-semibold text-[var(--foreground)] mb-4">Live Results (Best Fit First)</h4>
+                    <div ref={tableContainerRef} className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                      <div>
+                        <table className="w-full text-xs sm:text-sm">
+                          <thead>
+                            <tr style={{ backgroundColor: 'color-mix(in srgb, var(--muted) 30%, transparent)' }}>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--foreground)] first:pl-0">Institution</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Location</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Website</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Registrar</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Registrar Email (Person)</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Registrar Dept Email</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Provost</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Provost Email (Person)</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Provost Dept Email</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)]">Type</th>
+                              <th className="text-center px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] last:pr-0">Score</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--border)]">
+                            {[...rows].sort((a, b) => b.stu_fit_score - a.stu_fit_score).map((row, idx) => {
+                              const categoryColor = getCategoryColor(row.category);
+                              const scoreColor = getScoreColor(row.stu_fit_score);
+                              return (
+                                <tr key={idx} className="hover:bg-[var(--muted)]/10 transition-colors">
+                                  <td className="px-4 py-3.5 text-[var(--foreground)] font-medium first:pl-0">{row.name}</td>
+                                  <td className="px-4 py-3.5 text-[var(--foreground)] text-sm">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
+                                  <td className="px-4 py-3.5">
+                                    {row.website ? (
+                                      <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline text-xs font-medium">
+                                        {row.website.replace('https://', '')}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)] text-xs">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs text-[var(--foreground)]">
+                                    {row.registrar_name || '—'}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.registrar_email ? (
+                                      <a href={`mailto:${row.registrar_email}`} className="text-blue-600 hover:underline">
+                                        {row.registrar_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.registrar_department_email ? (
+                                      <a href={`mailto:${row.registrar_department_email}`} className="text-green-600 hover:underline">
+                                        {row.registrar_department_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs text-[var(--foreground)]">
+                                    {row.provost_name || '—'}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.provost_email ? (
+                                      <a href={`mailto:${row.provost_email}`} className="text-blue-600 hover:underline">
+                                        {row.provost_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs">
+                                    {row.provost_department_email ? (
+                                      <a href={`mailto:${row.provost_department_email}`} className="text-green-600 hover:underline">
+                                        {row.provost_department_email}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)]">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5">
+                                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold border ${categoryColor.badge}`}>
+                                      {row.category}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3.5 last:pr-0">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <div className="relative w-8 h-1.5 bg-[var(--muted)]/30 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full bg-gradient-to-r ${scoreColor.bar} transition-all duration-500 ease-out rounded-full`}
+                                          style={{ width: `${row.stu_fit_score}%` }}
+                                        />
+                                      </div>
+                                      <span className={`font-header font-bold text-xs ${scoreColor.text}`}>
+                                        {row.stu_fit_score}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 mt-6">
+                  {!contactDiscoveryRunning && (
+                    <button
+                      onClick={() => setStep('school-lookup')}
+                      className="flex-1 px-5 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-sm font-semibold hover:bg-[var(--muted)]/40 transition-colors"
+                    >
+                      ← Back to Results
+                    </button>
+                  )}
+                  {rows.length > 0 && (
+                    <button
+                      onClick={handleDownloadExcel}
+                      disabled={contactDiscoveryRunning}
+                      className="flex-1 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <Download size={16} />
+                      Download Current Data
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -54,11 +54,9 @@ export interface InstitutionRow {
   fit_rationale: string;
   registrar_name: string | null;
   registrar_email: string | null;
-  registrar_department_email: string | null;
   registrar_contact_form_url: string | null;
   provost_name: string | null;
   provost_email: string | null;
-  provost_department_email: string | null;
   provost_contact_form_url: string | null;
   main_office_phone: string | null;
   main_office_email: string | null;
@@ -262,56 +260,6 @@ const MAJOR_CITIES_DATABASE: Record<string, { state: string; zip?: string }> = {
   'chapel hill': { state: 'NC', zip: '27514' },
 };
 
-// Institution type database - maps institution names to their actual type
-// This helps correctly classify institutions that don't have clear naming patterns
-const INSTITUTION_TYPE_DATABASE: Record<string, InstitutionRow['category']> = {
-  // Utah Community Colleges
-  'snow college': 'Community College/Junior College',
-  'snow': 'Community College/Junior College',
-  'salt lake community college': 'Community College/Junior College',
-  'slcc': 'Community College/Junior College',
-  'dixie state university': 'Community College/Junior College',
-  'dssc': 'Community College/Junior College',
-  'utah valley university': 'Mid-Tier State University', // transitioned to 4-year
-  'uvu': 'Mid-Tier State University',
-  'weber state university': 'Mid-Tier State University',
-  'southern utah university': 'Mid-Tier State University',
-  'susc': 'Community College/Junior College',
-
-  // Idaho Community Colleges
-  'brigham young university': 'Large Private/Public University',
-  'byu': 'Large Private/Public University',
-  'byu-idaho': 'Large Private/Public University',
-  'ricks college': 'Community College/Junior College',
-  'college of idaho': 'Small Private Non-Profits',
-  'boise state university': 'Mid-Tier State University',
-  'idaho state university': 'Mid-Tier State University',
-  'university of idaho': 'Mid-Tier State University',
-
-  // Wyoming
-  'university of wyoming': 'Mid-Tier State University',
-  'northwest college': 'Community College/Junior College',
-  'eastern wyoming college': 'Community College/Junior College',
-
-  // Colorado
-  'community college of denver': 'Community College/Junior College',
-  'front range community college': 'Community College/Junior College',
-  'arapahoe community college': 'Community College/Junior College',
-  'colorado school of mines': 'Large Private/Public University',
-  'university of colorado': 'Large Private/Public University',
-
-  // Arizona Community Colleges
-  'maricopa community college': 'Community College/Junior College',
-  'glendale community college': 'Community College/Junior College',
-  'phoenix college': 'Community College/Junior College',
-  'rio salado college': 'Community College/Junior College',
-  'chandler-gilbert community college': 'Community College/Junior College',
-
-  // Nevada
-  'college of southern nevada': 'Community College/Junior College',
-  'truckee meadows community college': 'Community College/Junior College',
-};
-
 // ZIP code ranges by state (for reverse lookup)
 const ZIP_CODE_RANGES: Record<string, { min: number; max: number }> = {
   'AL': { min: 35000, max: 36999 },
@@ -447,15 +395,7 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
    */
   function sanitizeWebsiteUrl(url: string): string {
     try {
-      // Handle protocol-relative URLs (//example.com) and relative URLs
-      let fullUrl = url;
-      if (url.startsWith('//')) {
-        fullUrl = `https:${url}`;
-      } else if (!url.startsWith('http')) {
-        fullUrl = `https://${url}`;
-      }
-
-      const parsed = new URL(fullUrl);
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
 
       // Get the hostname parts: ['athletics', 'university', 'edu'] → need last 2
       const hostnameParts = parsed.hostname.split('.');
@@ -463,7 +403,6 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
       // Always return just the main domain (last 2 parts for .edu domains)
       // athletics.university.edu → university.edu
       // subdomain.university.edu → university.edu
-      // www.university.edu → university.edu
       // university.edu → university.edu
       const mainDomain = hostnameParts.slice(-2).join('.');
 
@@ -478,7 +417,7 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
   $('table tbody tr').each((_i, elem) => {
     const cells = $(elem).find('td');
     if (cells.length >= 1) {
-      const institutionName = $(cells[0]).text().trim();
+      let institutionName = $(cells[0]).text().trim();
 
       // Skip header rows and extremely short entries
       if (!institutionName || institutionName.length < 3) {
@@ -495,17 +434,6 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
       let state = null;
       let zip = null;
       let sector: 'Public' | 'Private' | 'For-Profit' | null = null;
-
-      // Check if the institution name cell contains a link (first priority for website)
-      const firstCellLink = $(cells[0]).find('a');
-      if (firstCellLink.length) {
-        const href = firstCellLink.attr('href') || '';
-        if ((href.startsWith('http') || href.startsWith('//')) &&
-            !href.includes('wikipedia') && !href.includes('facebook') &&
-            !href.includes('twitter') && !href.includes('instagram')) {
-          website = sanitizeWebsiteUrl(href);
-        }
-      }
 
       // Try to extract city/state from name first (lower priority)
       const nameLocation = extractCityStateFromName(institutionName);
@@ -584,12 +512,8 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
         const link = $(cells[i]).find('a');
         if (link.length) {
           const href = link.attr('href') || '';
-          // Check if it looks like a URL (starts with http, //, or has domain)
-          // Also filter out Wikipedia and social media links
-          if ((href.startsWith('http') || href.startsWith('//')) &&
-              !href.includes('wikipedia') && !href.includes('facebook') &&
-              !href.includes('twitter') && !href.includes('instagram') &&
-              (href.includes('.edu') || href.match(/\.[a-z]{2,}$/i))) {
+          // Check if it looks like a URL (starts with http, has domain)
+          if (href.startsWith('http') && (href.includes('.edu') || href.match(/\.[a-z]{2,}$/i))) {
             if (!website) {
               website = sanitizeWebsiteUrl(href);
             }
@@ -627,112 +551,8 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
     }
   });
 
-  // SECOND: Extract state-grouped lists (e.g., Wikipedia junior colleges list)
-  // Format: <h2 id="StateName">StateName</h2> followed by <ul><li>College, City</li></ul>
-  // Only extract if we haven't found institutions from tables
-  if (institutions.length === 0) {
-    $('h2').each((_headerIdx, headerElem) => {
-      const headerText = $(headerElem).text().trim();
-
-      // Check if this h2 contains a state name
-      const stateAbbr = normalizeStateName(headerText);
-      if (!stateAbbr) {
-        return; // Not a state header, skip
-      }
-
-      // Find the next <ul> element after this h2
-      let currentElem = $(headerElem).parent();
-      let ulElement = null;
-
-      // Look for ul within the next few siblings or parent elements
-      for (let i = 0; i < 5; i++) {
-        currentElem = currentElem.next();
-        if (currentElem.length === 0) break;
-
-        if (currentElem.is('ul')) {
-          ulElement = currentElem;
-          break;
-        }
-
-        // Also check direct children if we haven't found ul yet
-        const childUl = currentElem.find('ul').first();
-        if (childUl.length > 0) {
-          ulElement = childUl;
-          break;
-        }
-      }
-
-      // Extract colleges from the list
-      if (ulElement && ulElement.length > 0) {
-        ulElement.find('li').each((_liIdx, liElem) => {
-          const liText = $(liElem).text().trim();
-
-          // Parse format: "College Name, City" or "College Name, City (additional info)"
-          // First, extract college name and city from links or text
-          const collegeLinks = $(liElem).find('a');
-
-          if (collegeLinks.length >= 1) {
-            const collegeLink = collegeLinks.eq(0);
-            const collegeName = collegeLink.text().trim();
-            let city: string | null = null;
-            let website: string | null = null;
-
-            // Get the href from the college name link itself (highest priority)
-            const collegeHref = collegeLink.attr('href') || '';
-            if (collegeHref && (collegeHref.includes('http') || collegeHref.startsWith('//'))) {
-              if (!collegeHref.includes('wikipedia') && !collegeHref.includes('facebook') &&
-                  !collegeHref.includes('twitter') && !collegeHref.includes('instagram')) {
-                website = sanitizeWebsiteUrl(collegeHref);
-              }
-            }
-
-            // Try to get city from second link or remaining text
-            if (collegeLinks.length >= 2) {
-              city = collegeLinks.eq(1).text().trim();
-            } else {
-              // Try to extract city from text after college name
-              const match = liText.match(new RegExp(`${collegeName}\\s*,\\s*([^(,]+)(?:\\s|\\(|$)`));
-              if (match) {
-                city = match[1].trim();
-              }
-            }
-
-            // Look for other website links in the list item (fallback if college link didn't work)
-            if (!website) {
-              collegeLinks.each((_linkIdx, linkElem) => {
-                const href = $(linkElem).attr('href') || '';
-                // Extract any domain link that's not from the college name (already checked above)
-                if (href && linkElem !== collegeLink[0] && (href.includes('http') || href.startsWith('//'))) {
-                  // Only extract if it's not a Wikipedia link or social media
-                  if (!href.includes('wikipedia') && !href.includes('facebook') && !href.includes('twitter') && !href.includes('instagram')) {
-                    if (!website) {
-                      website = sanitizeWebsiteUrl(href);
-                    }
-                  }
-                }
-              });
-            }
-
-            if (collegeName && city) {
-              institutions.push({
-                name: collegeName,
-                aka: new Set(),
-                website,
-                city: city,
-                state: stateAbbr,
-                zip: null,
-                sector: null,
-                source_urls: new Set([sourceUrl]),
-              });
-            }
-          }
-        });
-      }
-    });
-  }
-
-  // THIRD: Extract .edu links that are NOT in tables or state-grouped lists
-  // Only extract if we haven't already found institutions from structured sources
+  // SECOND: Extract .edu links that are NOT in tables (for pages without structured tables)
+  // Only extract if we haven't already found institutions from tables
   if (institutions.length === 0) {
     $('a[href*=".edu"]').each((_i, elem) => {
       // Skip if this link is inside a table (we already extracted those above)
@@ -755,8 +575,7 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
 
         if (!shouldSkip) {
           const sanitizedWebsite = sanitizeWebsiteUrl(href);
-          let { city, state } = extractCityStateFromName(text);
-          const { zip } = extractCityStateFromName(text);
+          let { city, state, zip } = extractCityStateFromName(text);
 
           // If we don't have location info, try to infer from domain
           if (!city || !state) {
@@ -1026,27 +845,6 @@ function classifyInstitution(
   institution: ScrapedInstitution
 ): { category: InstitutionRow['category']; confidence: number; rationale: string } {
   const name = institution.name.toLowerCase();
-
-  // Rule 0: Check institution type database first (highest accuracy)
-  if (INSTITUTION_TYPE_DATABASE[name]) {
-    const category = INSTITUTION_TYPE_DATABASE[name];
-    return {
-      category,
-      confidence: 0.98,
-      rationale: `Matched known institution in database: ${institution.name}`,
-    };
-  }
-
-  // Also check partial matches for database entries
-  for (const [dbName, dbType] of Object.entries(INSTITUTION_TYPE_DATABASE)) {
-    if (name.includes(dbName) || dbName.includes(name)) {
-      return {
-        category: dbType,
-        confidence: 0.92,
-        rationale: `Matched institution database pattern: ${dbName}`,
-      };
-    }
-  }
 
   // Rule 1: Community College/Junior College
   for (const pattern of COMMUNITY_COLLEGE_PATTERNS) {
@@ -1426,7 +1224,7 @@ async function discoverContacts(institution: ScrapedInstitution) {
  * @returns Fit score (0-100)
  */
 function computeFitScore(
-  institution: ScrapedInstitution,
+  _institution: ScrapedInstitution,
   category: InstitutionRow['category']
 ): { score: number; rationale: string } {
   let score = 0;
@@ -1451,21 +1249,6 @@ function computeFitScore(
   } else if (category === 'Elite Private University') {
     score += 15;
     signals.push('Poor fit: Custom systems, slow cycles, low retention pain');
-  }
-
-  // Geographic proximity bonus
-  if (institution.state) {
-    const utahSurroundingStates = ['ID', 'WY', 'CO', 'AZ', 'NV'];
-
-    if (institution.state === 'UT') {
-      // Utah: +15 points (closest, highest priority)
-      score += 15;
-      signals.push('Geographic: Located in Utah (+15)');
-    } else if (utahSurroundingStates.includes(institution.state)) {
-      // Surrounding states (Idaho, Wyoming, Colorado, Arizona, Nevada): +8 points
-      score += 8;
-      signals.push(`Geographic: Located in ${institution.state}, nearby state (+8)`);
-    }
   }
 
   // Enrollment size bonus (ICP: 5k-25k)
@@ -1558,11 +1341,9 @@ export async function scrapeInstitutions(seedUrls: string[]): Promise<ScraperRes
       fit_rationale: fitRationale,
       registrar_name: null,
       registrar_email: null,
-      registrar_department_email: null,
       registrar_contact_form_url: null,
       provost_name: null,
       provost_email: null,
-      provost_department_email: null,
       provost_contact_form_url: null,
       main_office_phone: null,
       main_office_email: null,

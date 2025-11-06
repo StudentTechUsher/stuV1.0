@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InstitutionRow } from '@/lib/services/webScraperService';
+import { discoverInstitutionContacts } from '@/lib/services/contactDiscoveryService';
 import { logError } from '@/lib/logger';
 
 // Store in-progress contact discoveries
@@ -12,6 +13,10 @@ const contactDiscoveryState: Record<
     withProvost: number;
     withBoth: number;
     rows: InstitutionRow[];
+    elapsedSeconds: number;
+    estimatedTimeRemaining: number;
+    estimatedCreditsUsed: number;
+    currentInstitution: string;
   }
 > = {};
 
@@ -58,10 +63,14 @@ async function handleStartContactDiscovery(request: NextRequest) {
       withProvost: 0,
       withBoth: 0,
       rows: rows.map((r) => ({ ...r })), // Deep copy
+      elapsedSeconds: 0,
+      estimatedTimeRemaining: 0,
+      estimatedCreditsUsed: 0,
+      currentInstitution: '',
     };
 
     // Start background discovery (fire and forget)
-    discoverContactsInBackground(sessionId, rows).catch((error) => {
+    discoverContactsInBackground(sessionId).catch((error) => {
       logError('Background contact discovery failed', error, {
         action: 'discover_contacts_background',
       });
@@ -108,6 +117,10 @@ async function handleGetProgress(request: NextRequest) {
       withProvost: state.withProvost,
       withBoth: state.withBoth,
       isComplete: state.processed >= state.total,
+      elapsedSeconds: state.elapsedSeconds,
+      estimatedTimeRemaining: state.estimatedTimeRemaining,
+      estimatedCreditsUsed: state.estimatedCreditsUsed.toFixed(4),
+      currentInstitution: state.currentInstitution,
       rows: state.rows,
     });
   } catch (error) {
@@ -121,58 +134,74 @@ async function handleGetProgress(request: NextRequest) {
   }
 }
 
-// Import the contact discovery function
-import { searchForContactsWithAI } from '@/lib/services/webScraperService';
-
 /**
- * Background task to discover contacts for all institutions
- * Processes institutions sequentially to avoid rate limiting
+ * Background task to discover contacts for all institutions using OpenAI
+ * Processes institutions sequentially with progress tracking
+ *
+ * Strategy: One API call per institution (both registrar + provost in one request)
+ * Cost: ~1 API call per school (vs previous 2 with Gemini)
+ * Speed: ~5-10 seconds per institution
  */
-async function discoverContactsInBackground(
-  sessionId: string,
-  rows: InstitutionRow[]
-) {
+async function discoverContactsInBackground(sessionId: string) {
   const state = contactDiscoveryState[sessionId];
   if (!state) return;
 
-  // Process sequentially to respect Gemini API rate limits
-  // Each institution makes 2 API calls (registrar + provost)
-  const delayBetweenInstitutions = 3000; // 3 seconds between institutions
+  const startTime = Date.now();
+  state.elapsedSeconds = 0;
+  state.estimatedTimeRemaining = 0;
+  state.estimatedCreditsUsed = 0;
+  state.currentInstitution = '';
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+  // Estimate: ~0.003 credits per API call (rough estimate for GPT-4)
+  const creditsPerCall = 0.003;
+
+  for (let i = 0; i < state.rows.length; i++) {
+    const row = state.rows[i];
+    state.currentInstitution = row.name;
 
     try {
-      // Search for registrar
-      const registrarDept = await searchForContactsWithAI(row.name, 'Registrar');
-      if (registrarDept.main_email || registrarDept.contacts.length > 0) {
+      // Single OpenAI call finds both registrar and provost
+      const contacts = await discoverInstitutionContacts(row.name, row.website);
+
+      // Extract registrar info
+      if (contacts.registrar.main_email || contacts.registrar.contacts.length > 0) {
         state.withRegistrar++;
-        const primary = registrarDept.contacts[0];
-        if (primary) {
-          row.registrar_name = primary.name || null;
-          row.registrar_email = primary.email || null;
-        } else {
-          row.registrar_email = registrarDept.main_email;
+        // Store full registrar department info (all contacts) - use the raw API response
+        row.registrar_department = contacts.registrar as unknown as any;
+        // Store department email
+        if (contacts.registrar.main_email) {
+          row.registrar_department_email = contacts.registrar.main_email;
+        }
+        // Store individual person info (for easy table display)
+        const primary = contacts.registrar.contacts[0];
+        if (primary?.name) {
+          row.registrar_name = primary.name;
+        }
+        if (primary?.email) {
+          row.registrar_email = primary.email;
         }
       }
 
-      // Add delay between registrar and provost searches for same institution
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Search for provost
-      const provostDept = await searchForContactsWithAI(row.name, 'Provost');
-      if (provostDept.main_email || provostDept.contacts.length > 0) {
+      // Extract provost info
+      if (contacts.provost.main_email || contacts.provost.contacts.length > 0) {
         state.withProvost++;
-        const primary = provostDept.contacts[0];
-        if (primary) {
-          row.provost_name = primary.name || null;
-          row.provost_email = primary.email || null;
-        } else {
-          row.provost_email = provostDept.main_email;
+        // Store full provost department info (all contacts) - use the raw API response
+        row.provost_department = contacts.provost as unknown as any;
+        // Store department email
+        if (contacts.provost.main_email) {
+          row.provost_department_email = contacts.provost.main_email;
+        }
+        // Store individual person info (for easy table display)
+        const primary = contacts.provost.contacts[0];
+        if (primary?.name) {
+          row.provost_name = primary.name;
+        }
+        if (primary?.email) {
+          row.provost_email = primary.email;
         }
       }
 
-      // Check if has both
+      // Check if has both departments
       if (
         (row.registrar_email || row.registrar_name) &&
         (row.provost_email || row.provost_name)
@@ -182,13 +211,33 @@ async function discoverContactsInBackground(
 
       state.processed++;
 
-      // Delay before next institution
-      if (i < rows.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, delayBetweenInstitutions));
+      // Update timing and cost estimates
+      const elapsedMs = Date.now() - startTime;
+      state.elapsedSeconds = Math.ceil(elapsedMs / 1000);
+
+      const avgTimePerInstitution = elapsedMs / (i + 1);
+      const remainingCount = state.rows.length - (i + 1);
+      state.estimatedTimeRemaining = Math.ceil((remainingCount * avgTimePerInstitution) / 1000);
+
+      state.estimatedCreditsUsed = (i + 1) * creditsPerCall;
+
+      // Rate limit: 1 second between requests
+      if (i < state.rows.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
       console.error(`Contact discovery failed for ${row.name}:`, error);
       state.processed++;
+
+      // Update estimates even on error
+      const elapsedMs = Date.now() - startTime;
+      state.elapsedSeconds = Math.ceil(elapsedMs / 1000);
+
+      const avgTimePerInstitution = elapsedMs / (i + 1);
+      const remainingCount = state.rows.length - (i + 1);
+      state.estimatedTimeRemaining = Math.ceil((remainingCount * avgTimePerInstitution) / 1000);
+
+      state.estimatedCreditsUsed = (i + 1) * creditsPerCall;
     }
   }
 }
