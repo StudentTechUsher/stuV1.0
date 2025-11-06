@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { StuLoader } from '@/components/ui/StuLoader';
+import { X, Plus, Download, Zap } from 'lucide-react';
 
 interface InstitutionRow {
   name: string;
@@ -188,48 +189,47 @@ export default function WebScraperClient() {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <div className="flex flex-col gap-8 p-4 sm:p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-            Institution Lookup
-          </h1>
-          <p className="text-sm text-[var(--muted-foreground)] max-w-2xl">
+      <div className="flex flex-col gap-6 p-4 sm:p-8 max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Zap className="w-6 h-6 text-[var(--primary)]" />
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+              Institution Lookup
+            </h1>
+          </div>
+          <p className="text-sm text-[var(--muted-foreground)] max-w-2xl leading-relaxed">
             Extract institution data including names, locations, websites, and contact information by providing URLs to college directories and lists.
           </p>
         </div>
 
-        {/* Error Display */}
+        {/* Error Alert */}
         {error && (
-          <div className="animate-in fade-in duration-200">
-            <div className="rounded-lg border border-red-200/40 bg-red-50/80 p-4 text-sm text-red-700 space-y-1">
-              <div className="font-medium">Error</div>
-              <div className="text-red-600/90 text-xs">{error}</div>
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="rounded-xl border border-red-200/50 bg-red-50 px-5 py-4 text-sm">
+              <div className="font-semibold text-red-900 mb-1">Error</div>
+              <div className="text-red-700/80 text-xs leading-relaxed">{error}</div>
             </div>
           </div>
         )}
 
-        {/* Step 1: Input URLs */}
+        {/* Step 1: Add URLs */}
         {step === 'input' && (
-          <div className="animate-in fade-in duration-300">
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-xs">
-              {/* Section Header */}
-              <div className="px-6 sm:px-8 py-5 border-b border-[var(--border)]">
-                <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/10 flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-semibold text-primary">1</span>
-                  </div>
-                  <div>
-                    <h2 className="text-base font-semibold text-[var(--foreground)]">Add URLs</h2>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                      Enter links to college directories or lists
-                    </p>
-                  </div>
-                </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow hover:shadow-md">
+              {/* Bold Black Header */}
+              <div className="border-b-2 px-6 sm:px-8 py-4" style={{ backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' }}>
+                <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+                  Step 1: Add URLs
+                </h3>
               </div>
 
               {/* Content */}
-              <div className="p-6 sm:p-8 space-y-4">
+              <div className="p-6 sm:p-8 space-y-5">
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Enter links to college directories, lists, or any pages containing institution information
+                </p>
+
                 {/* URL Input */}
                 <div className="flex gap-2">
                   <input
@@ -238,33 +238,38 @@ export default function WebScraperClient() {
                     onChange={(e) => setUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
                     placeholder="https://example.com/colleges"
-                    className="flex-1 px-3.5 py-2.5 text-sm rounded-md border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)]/60 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
+                    className="flex-1 px-4 py-3 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)] transition-all"
                   />
                   <button
                     onClick={handleAddUrl}
                     disabled={!url.trim()}
-                    className="px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:bg-[var(--muted)] disabled:text-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors"
+                    className="px-6 py-3 rounded-lg bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary)]/90 disabled:bg-[var(--muted)] disabled:text-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                   >
+                    <Plus className="w-4 h-4" />
                     Add
                   </button>
                 </div>
 
                 {/* URLs List */}
                 {urls.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">URLs ({urls.length})</p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">URLs Added ({urls.length})</p>
+                      <span className="text-xs text-[var(--muted-foreground)]">Max 50 URLs</span>
+                    </div>
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
                       {urls.map((u, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between p-3 rounded-md border border-[var(--border)] bg-[var(--background)]/50 hover:bg-[var(--background)] transition-colors group"
+                          className="flex items-center justify-between p-3.5 rounded-lg border border-[var(--border)] bg-[var(--background)]/60 hover:bg-[var(--background)] transition-colors group"
                         >
-                          <span className="text-xs font-mono text-[var(--muted-foreground)] truncate">{u}</span>
+                          <span className="text-xs font-mono text-[var(--muted-foreground)] truncate flex-1">{u}</span>
                           <button
                             onClick={() => handleRemoveUrl(idx)}
-                            className="ml-3 px-2.5 py-1 rounded text-xs font-medium text-[var(--muted-foreground)] hover:text-red-600 hover:bg-red-50/50 transition-colors opacity-0 group-hover:opacity-100"
+                            className="ml-3 p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-red-600 hover:bg-red-50/50 transition-all opacity-0 group-hover:opacity-100"
+                            title="Remove URL"
                           >
-                            Remove
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       ))}
@@ -276,16 +281,16 @@ export default function WebScraperClient() {
                 <button
                   onClick={handleStartScraping}
                   disabled={urls.length === 0 || scraping}
-                  className="w-full px-6 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:bg-[var(--muted)] disabled:text-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mt-2"
+                  className="w-full px-6 py-3 rounded-lg bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary)]/90 disabled:bg-[var(--muted)] disabled:text-[var(--muted-foreground)] disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2.5 mt-4"
                 >
                   {scraping ? (
                     <>
                       <StuLoader variant="inline" speed={1.5} />
-                      <span>Scraping...</span>
+                      <span>Extracting Data...</span>
                     </>
                   ) : (
                     <>
-                      <span>→</span>
+                      <Zap className="w-4 h-4" />
                       <span>Start School Lookup</span>
                     </>
                   )}
@@ -297,109 +302,125 @@ export default function WebScraperClient() {
 
         {/* Step 2: School Lookup Results */}
         {step === 'school-lookup' && (
-          <div className="animate-in fade-in duration-300">
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-xs">
-              {/* Section Header */}
-              <div className="px-6 sm:px-8 py-5 border-b border-[var(--border)]">
-                <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 border border-blue-200/50 flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-semibold text-blue-700">2</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-base font-semibold text-[var(--foreground)]">School Lookup</h2>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                      {scraping ? `Extracting from ${urls.length} URL${urls.length !== 1 ? 's' : ''}...` : `Found ${rows.length} institutions`}
-                    </p>
-                  </div>
-                </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow hover:shadow-md">
+              {/* Bold Black Header */}
+              <div className="border-b-2 px-6 sm:px-8 py-4" style={{ backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' }}>
+                <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+                  Step 2: School Lookup Results
+                </h3>
               </div>
 
               {/* Content */}
-              <div className="p-6 sm:p-8 flex flex-col gap-5">
-                {/* Loading State or Action Buttons */}
+              <div className="p-6 sm:p-8 flex flex-col gap-6">
+                {/* Loading State */}
                 {scraping ? (
-                  <div className="text-center py-8 px-4">
-                    <div className="inline-block mb-4">
+                  <div className="text-center py-12 px-4">
+                    <div className="inline-block mb-5">
                       <StuLoader speed={1.5} />
                     </div>
-                    <p className="text-sm font-medium text-[var(--foreground)]">{progressMessage}</p>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-2">Elapsed: {formatTime(elapsedTime)}</p>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">{progressMessage}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-3">Elapsed: {formatTime(elapsedTime)}</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={() => setStep('input')}
-                      className="px-4 py-2 rounded-md border border-[var(--border)] text-[var(--foreground)] text-sm font-medium hover:bg-[var(--muted)]/40 transition-colors"
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      onClick={handleDownloadExcel}
-                      className="flex-1 px-4 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
-                    >
-                      📥 Export
-                    </button>
-                    <button
-                      onClick={handleStartContactDiscovery}
-                      className="flex-1 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <span>→</span>
-                      <span>Find Contacts</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Summary Stats */}
-                {!scraping && (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3.5 rounded-md border border-[var(--border)] bg-[var(--background)]/50">
-                        <div className="text-xl font-semibold text-[var(--foreground)]">{rows.length}</div>
-                        <div className="text-xs text-[var(--muted-foreground)] mt-1">Institutions</div>
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                      <button
+                        onClick={() => setStep('input')}
+                        className="px-5 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-sm font-semibold hover:bg-[var(--muted)]/40 transition-colors"
+                      >
+                        ← Back to URLs
+                      </button>
+                      <button
+                        onClick={handleDownloadExcel}
+                        className="flex-1 px-5 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export as Excel
+                      </button>
+                      <button
+                        onClick={handleStartContactDiscovery}
+                        className="flex-1 px-5 py-2.5 rounded-lg bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary)]/90 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Find Contacts
+                      </button>
+                    </div>
+
+                    {/* Summary Stats Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-4.5 shadow-sm transition-transform hover:-translate-y-1">
+                        <div className="relative z-10 text-center">
+                          <div className="font-header-bold text-2xl font-extrabold text-white">
+                            {rows.length}
+                          </div>
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-white/90">
+                            Institutions
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-3.5 rounded-md border border-[var(--border)] bg-[var(--background)]/50">
-                        <div className="text-xl font-semibold text-[var(--foreground)]">{rows.filter(r => r.city && r.state).length}</div>
-                        <div className="text-xs text-[var(--muted-foreground)] mt-1">With Location</div>
+                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4.5 shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+                        <div className="relative z-10 text-center">
+                          <div className="font-header-bold text-2xl font-extrabold text-blue-600">
+                            {rows.filter(r => r.city && r.state).length}
+                          </div>
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                            With Location
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-3.5 rounded-md border border-[var(--border)] bg-[var(--background)]/50">
-                        <div className="text-xl font-semibold text-[var(--foreground)]">{rows.filter(r => r.website).length}</div>
-                        <div className="text-xs text-[var(--muted-foreground)] mt-1">With Website</div>
+                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4.5 shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+                        <div className="relative z-10 text-center">
+                          <div className="font-header-bold text-2xl font-extrabold text-purple-600">
+                            {rows.filter(r => r.website).length}
+                          </div>
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                            With Website
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-3.5 rounded-md border border-[var(--border)] bg-[var(--background)]/50">
-                        <div className="text-xl font-semibold text-[var(--foreground)]">{rows.filter(r => r.stu_fit_score >= 50).length}</div>
-                        <div className="text-xs text-[var(--muted-foreground)] mt-1">High Fit</div>
+                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4.5 shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+                        <div className="relative z-10 text-center">
+                          <div className="font-header-bold text-2xl font-extrabold text-amber-600">
+                            {rows.filter(r => r.stu_fit_score >= 50).length}
+                          </div>
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                            High Fit
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     {/* Results Table */}
-                    <div ref={tableContainerRef} className="overflow-x-auto border border-[var(--border)] rounded-md -mx-6 sm:-mx-8">
+                    <div ref={tableContainerRef} className="overflow-x-auto rounded-lg border border-[var(--border)] -mx-6 sm:-mx-8">
                       <div className="px-6 sm:px-8">
                         <table className="w-full text-xs sm:text-sm">
-                          <thead className="border-b border-[var(--border)]">
-                            <tr>
-                              <th className="text-left px-4 py-3.5 font-semibold text-[var(--foreground)] first:pl-0 last:pr-0">Institution</th>
-                              <th className="text-left px-4 py-3.5 font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Location</th>
-                              <th className="text-left px-4 py-3.5 font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Website</th>
-                              <th className="text-left px-4 py-3.5 font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Type</th>
-                              <th className="text-center px-4 py-3.5 font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Score</th>
+                          <thead>
+                            <tr style={{ backgroundColor: 'color-mix(in srgb, var(--muted) 30%, transparent)' }}>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--foreground)] first:pl-0 last:pr-0">Institution</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Location</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Website</th>
+                              <th className="text-left px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Type</th>
+                              <th className="text-center px-4 py-3.5 font-header font-semibold text-[var(--muted-foreground)] first:pl-0 last:pr-0">Score</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[var(--border)]">
                             {rows.map((row, idx) => (
-                              <tr key={idx} className="hover:bg-[var(--muted)]/30 transition-colors">
-                                <td className="px-4 py-3 text-[var(--foreground)] font-medium first:pl-0 last:pr-0">{row.name}</td>
-                                <td className="px-4 py-3 text-[var(--foreground)] first:pl-0 last:pr-0">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
-                                <td className="px-4 py-3 first:pl-0 last:pr-0">
+                              <tr key={idx} className="hover:bg-[var(--muted)]/20 transition-colors">
+                                <td className="px-4 py-3.5 text-[var(--foreground)] font-medium first:pl-0 last:pr-0">{row.name}</td>
+                                <td className="px-4 py-3.5 text-[var(--foreground)] first:pl-0 last:pr-0 text-sm">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
+                                <td className="px-4 py-3.5 first:pl-0 last:pr-0">
                                   {row.website ? (
-                                    <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-xs">
+                                    <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline break-all text-xs font-medium">
                                       {row.website.replace('https://', '')}
                                     </a>
                                   ) : (
-                                    <span className="text-[var(--muted-foreground)]">—</span>
+                                    <span className="text-[var(--muted-foreground)] text-sm">—</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-[var(--foreground)] text-xs first:pl-0 last:pr-0">{row.category}</td>
-                                <td className="px-4 py-3 text-center font-semibold text-primary first:pl-0 last:pr-0">{row.stu_fit_score}</td>
+                                <td className="px-4 py-3.5 text-[var(--foreground)] text-xs first:pl-0 last:pr-0">{row.category}</td>
+                                <td className="px-4 py-3.5 text-center font-header font-bold text-[var(--primary)] first:pl-0 last:pr-0">{row.stu_fit_score}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -415,38 +436,32 @@ export default function WebScraperClient() {
 
         {/* Step 3: Contact Discovery */}
         {step === 'contact-discovery' && (
-          <div className="animate-in fade-in duration-300">
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-xs">
-              {/* Section Header */}
-              <div className="px-6 sm:px-8 py-5 border-b border-[var(--border)]">
-                <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-purple-50 border border-purple-200/50 flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-semibold text-purple-700">3</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-base font-semibold text-[var(--foreground)]">Contact Discovery</h2>
-                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                      {contactDiscoveryRunning ? 'Finding registrar and provost contact information...' : progressMessage}
-                    </p>
-                  </div>
-                </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow hover:shadow-md">
+              {/* Bold Black Header */}
+              <div className="border-b-2 px-6 sm:px-8 py-4" style={{ backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' }}>
+                <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+                  Step 3: Contact Discovery
+                </h3>
               </div>
 
               {/* Content */}
-              <div className="p-6 sm:p-8 flex flex-col gap-5">
-                <div className="text-center py-12 px-4">
-                  <div className="inline-block mb-4">
+              <div className="p-6 sm:p-8">
+                <div className="text-center py-16 px-4">
+                  <div className="inline-block mb-5">
                     <StuLoader speed={1.5} />
                   </div>
-                  <p className="text-sm font-medium text-[var(--foreground)]">{progressMessage}</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">
+                    {contactDiscoveryRunning ? 'Finding registrar and provost contact information...' : progressMessage}
+                  </p>
                   {contactDiscoveryRunning && (
-                    <p className="text-xs text-[var(--muted-foreground)] mt-3">Elapsed: {formatTime(elapsedTime)}</p>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-4">Elapsed: {formatTime(elapsedTime)}</p>
                   )}
                 </div>
 
                 <button
                   onClick={() => setStep('school-lookup')}
-                  className="px-4 py-2 rounded-md border border-[var(--border)] text-[var(--foreground)] text-sm font-medium hover:bg-[var(--muted)]/40 transition-colors"
+                  className="w-full px-5 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] text-sm font-semibold hover:bg-[var(--muted)]/40 transition-colors mt-4"
                 >
                   ← Back to Results
                 </button>
