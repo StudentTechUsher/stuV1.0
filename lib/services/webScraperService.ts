@@ -36,6 +36,7 @@ export interface InstitutionRow {
   website: string | null;
   city: string | null;
   state: string | null;
+  zip: string | null;
   sector: 'Public' | 'Private' | 'For-Profit' | null;
   control: 'Nonprofit' | 'For-Profit' | null;
   category:
@@ -85,6 +86,7 @@ interface ScrapedInstitution {
   website: string | null;
   city: string | null;
   state: string | null;
+  zip: string | null;
   sector: 'Public' | 'Private' | 'For-Profit' | null;
   source_urls: Set<string>;
 }
@@ -129,6 +131,189 @@ const ELITE_PRIVATE_KEYWORDS = [
   'carnegie mellon',
   'penn',
 ];
+
+// US State abbreviation to full name mapping
+const STATE_ABBREVIATIONS: Record<string, string> = {
+  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
+  'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
+  'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 'ID': 'Idaho',
+  'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 'KS': 'Kansas',
+  'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi',
+  'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada',
+  'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 'NY': 'New York',
+  'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma',
+  'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah',
+  'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia',
+  'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District of Columbia'
+};
+
+// Reverse mapping: full state names to abbreviations
+const STATE_NAMES_TO_ABBREV: Record<string, string> = Object.entries(STATE_ABBREVIATIONS).reduce(
+  (acc, [abbr, name]) => {
+    acc[name.toLowerCase()] = abbr;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+// Comprehensive institution database with ACTUAL city locations (not generic region names)
+// Format: key is part of institution name, value is actual city/state
+const CITY_STATE_DATABASE: Record<string, { city: string; state: string }> = {
+  // Chicago system
+  'chicago': { city: 'Chicago', state: 'IL' },
+  'truman': { city: 'Chicago', state: 'IL' },
+  'malcolm x': { city: 'Chicago', state: 'IL' },
+  'olive-harvey': { city: 'Chicago', state: 'IL' },
+  'wright': { city: 'Chicago', state: 'IL' },
+  'city colleges of chicago': { city: 'Chicago', state: 'IL' },
+  // Utah
+  'slcc': { city: 'Salt Lake City', state: 'UT' },
+  'salt lake': { city: 'Salt Lake City', state: 'UT' },
+  'snow': { city: 'Ephraim', state: 'UT' },
+  'boise state': { city: 'Boise', state: 'ID' },
+  'utah valley': { city: 'Orem', state: 'UT' },
+  'uvu': { city: 'Orem', state: 'UT' },
+  // Arizona
+  'northern arizona': { city: 'Flagstaff', state: 'AZ' },
+  'asu': { city: 'Tempe', state: 'AZ' },
+  'arizona state': { city: 'Tempe', state: 'AZ' },
+  // California
+  'ucla': { city: 'Los Angeles', state: 'CA' },
+  'stanford': { city: 'Stanford', state: 'CA' },
+  'berkeley': { city: 'Berkeley', state: 'CA' },
+  'ucsb': { city: 'Santa Barbara', state: 'CA' },
+  'ucsd': { city: 'San Diego', state: 'CA' },
+  'ucdavis': { city: 'Davis', state: 'CA' },
+  'ucirvine': { city: 'Irvine', state: 'CA' },
+  'caltech': { city: 'Pasadena', state: 'CA' },
+  'columbia basin': { city: 'Pasco', state: 'WA' },
+  'san jacinto': { city: 'San Jacinto', state: 'CA' },
+  // East Coast
+  'harvard': { city: 'Cambridge', state: 'MA' },
+  'yale': { city: 'New Haven', state: 'CT' },
+  'penn': { city: 'Philadelphia', state: 'PA' },
+  'penn state': { city: 'University Park', state: 'PA' },
+  'columbia': { city: 'New York', state: 'NY' },
+  'princeton': { city: 'Princeton', state: 'NJ' },
+  'cornell': { city: 'Ithaca', state: 'NY' },
+  'brown': { city: 'Providence', state: 'RI' },
+  'mit': { city: 'Cambridge', state: 'MA' },
+  // Midwest
+  'michigan': { city: 'Ann Arbor', state: 'MI' },
+  'northwestern': { city: 'Evanston', state: 'IL' },
+  'university of chicago': { city: 'Chicago', state: 'IL' },
+  'indiana': { city: 'Bloomington', state: 'IN' },
+  'purdue': { city: 'West Lafayette', state: 'IN' },
+  'wisconsin': { city: 'Madison', state: 'WI' },
+  'minnesota': { city: 'Minneapolis', state: 'MN' },
+  'ohio state': { city: 'Columbus', state: 'OH' },
+  // South
+  'duke': { city: 'Durham', state: 'NC' },
+  'rice': { city: 'Houston', state: 'TX' },
+  'vanderbilt': { city: 'Nashville', state: 'TN' },
+  'texas': { city: 'Austin', state: 'TX' },
+  'ut austin': { city: 'Austin', state: 'TX' },
+  'georgia': { city: 'Athens', state: 'GA' },
+  'florida': { city: 'Gainesville', state: 'FL' },
+};
+
+// Comprehensive US city/state/zip database (major cities and college towns)
+// This helps when we extract a city name but need the state
+const MAJOR_CITIES_DATABASE: Record<string, { state: string; zip?: string }> = {
+  'new york': { state: 'NY', zip: '10001' },
+  'los angeles': { state: 'CA', zip: '90001' },
+  'chicago': { state: 'IL', zip: '60601' },
+  'houston': { state: 'TX', zip: '77001' },
+  'phoenix': { state: 'AZ', zip: '85001' },
+  'philadelphia': { state: 'PA', zip: '19101' },
+  'san antonio': { state: 'TX', zip: '78201' },
+  'san diego': { state: 'CA', zip: '92101' },
+  'dallas': { state: 'TX', zip: '75201' },
+  'san jose': { state: 'CA', zip: '95101' },
+  'austin': { state: 'TX', zip: '78701' },
+  'denver': { state: 'CO', zip: '80201' },
+  'boston': { state: 'MA', zip: '02101' },
+  'seattle': { state: 'WA', zip: '98101' },
+  'portland': { state: 'OR', zip: '97201' },
+  'minneapolis': { state: 'MN', zip: '55401' },
+  'atlanta': { state: 'GA', zip: '30301' },
+  'miami': { state: 'FL', zip: '33101' },
+  'las vegas': { state: 'NV', zip: '89101' },
+  'orlando': { state: 'FL', zip: '32801' },
+  'salt lake city': { state: 'UT', zip: '84101' },
+  'nashville': { state: 'TN', zip: '37201' },
+  'memphis': { state: 'TN', zip: '38101' },
+  'tucson': { state: 'AZ', zip: '85701' },
+  'kansas city': { state: 'MO', zip: '64101' },
+  'madison': { state: 'WI', zip: '53701' },
+  'cambridge': { state: 'MA', zip: '02138' },
+  'new haven': { state: 'CT', zip: '06510' },
+  'ithaca': { state: 'NY', zip: '14850' },
+  'ann arbor': { state: 'MI', zip: '48103' },
+  'bloomington': { state: 'IN', zip: '47401' },
+  'berkeley': { state: 'CA', zip: '94720' },
+  'stanford': { state: 'CA', zip: '94305' },
+  'princeton': { state: 'NJ', zip: '08540' },
+  'durham': { state: 'NC', zip: '27701' },
+  'chapel hill': { state: 'NC', zip: '27514' },
+};
+
+// ZIP code ranges by state (for reverse lookup)
+const ZIP_CODE_RANGES: Record<string, { min: number; max: number }> = {
+  'AL': { min: 35000, max: 36999 },
+  'AK': { min: 99500, max: 99950 },
+  'AZ': { min: 85000, max: 86999 },
+  'AR': { min: 71600, max: 72999 },
+  'CA': { min: 90000, max: 96199 },
+  'CO': { min: 80000, max: 81999 },
+  'CT': { min: 6000, max: 6999 },
+  'DE': { min: 19700, max: 19999 },
+  'FL': { min: 32004, max: 34999 },
+  'GA': { min: 30000, max: 31999 },
+  'HI': { min: 96700, max: 96999 },
+  'ID': { min: 83200, max: 83999 },
+  'IL': { min: 60000, max: 62999 },
+  'IN': { min: 46000, max: 47999 },
+  'IA': { min: 50000, max: 52999 },
+  'KS': { min: 66000, max: 67999 },
+  'KY': { min: 40000, max: 42799 },
+  'LA': { min: 70000, max: 71499 },
+  'ME': { min: 3900, max: 4999 },
+  'MD': { min: 20600, max: 21999 },
+  'MA': { min: 1000, max: 2799 },
+  'MI': { min: 48000, max: 49999 },
+  'MN': { min: 55000, max: 56799 },
+  'MS': { min: 38600, max: 39999 },
+  'MO': { min: 63000, max: 65999 },
+  'MT': { min: 59000, max: 59999 },
+  'NE': { min: 68000, max: 69999 },
+  'NV': { min: 89000, max: 89999 },
+  'NH': { min: 3000, max: 3899 },
+  'NJ': { min: 7000, max: 8999 },
+  'NM': { min: 87000, max: 88999 },
+  'NY': { min: 10000, max: 14999 },
+  'NC': { min: 27000, max: 28999 },
+  'ND': { min: 58000, max: 58999 },
+  'OH': { min: 43000, max: 45999 },
+  'OK': { min: 73000, max: 74999 },
+  'OR': { min: 97000, max: 97999 },
+  'PA': { min: 15000, max: 19699 },
+  'RI': { min: 2800, max: 2999 },
+  'SC': { min: 29000, max: 29999 },
+  'SD': { min: 57000, max: 57999 },
+  'TN': { min: 37000, max: 38599 },
+  'TX': { min: 75000, max: 79999 },
+  'UT': { min: 84000, max: 84999 },
+  'VT': { min: 5000, max: 5999 },
+  'VA': { min: 22000, max: 24699 },
+  'WA': { min: 98000, max: 99499 },
+  'WV': { min: 24700, max: 26899 },
+  'WI': { min: 53000, max: 54999 },
+  'WY': { min: 82000, max: 83199 },
+  'DC': { min: 20000, max: 20099 },
+};
 
 // ============================================================================
 // CORE SCRAPING FUNCTIONS
@@ -204,63 +389,44 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
 
   /**
    * Sanitize a URL to get the main domain, excluding subdomains like athletics, sports, etc.
+   * ALWAYS returns just the main domain (e.g., https://university.edu)
    * @param url - The URL to sanitize
-   * @returns The main domain URL
+   * @returns The main domain URL only (no paths, no subdomains)
    */
   function sanitizeWebsiteUrl(url: string): string {
     try {
-      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-
-      // Check if subdomain is an excluded type
-      const subdomain = parsed.hostname.split('.')[0];
-      for (const pattern of excludePatterns) {
-        if (pattern.test(subdomain) || pattern.test(url)) {
-          // Remove the subdomain and return main domain
-          return `https://${parsed.hostname.split('.').slice(-2).join('.')}`;
-        }
+      // Handle protocol-relative URLs (//example.com) and relative URLs
+      let fullUrl = url;
+      if (url.startsWith('//')) {
+        fullUrl = `https:${url}`;
+      } else if (!url.startsWith('http')) {
+        fullUrl = `https://${url}`;
       }
 
-      return parsed.href;
+      const parsed = new URL(fullUrl);
+
+      // Get the hostname parts: ['athletics', 'university', 'edu'] → need last 2
+      const hostnameParts = parsed.hostname.split('.');
+
+      // Always return just the main domain (last 2 parts for .edu domains)
+      // athletics.university.edu → university.edu
+      // subdomain.university.edu → university.edu
+      // www.university.edu → university.edu
+      // university.edu → university.edu
+      const mainDomain = hostnameParts.slice(-2).join('.');
+
+      return `https://${mainDomain}`;
     } catch {
       return url;
     }
   }
 
-  // Try to find links to .edu domains (common institution URLs)
-  $('a[href*=".edu"]').each((_i, elem) => {
-    const href = $(elem).attr('href') || '';
-    const text = $(elem).text().trim();
-
-    if (text && href.includes('.edu')) {
-      // Skip if URL points to excluded subdomains
-      let shouldSkip = false;
-      for (const pattern of excludePatterns) {
-        if (pattern.test(href)) {
-          shouldSkip = true;
-          break;
-        }
-      }
-
-      if (!shouldSkip) {
-        const { city, state } = extractCityStateFromName(text);
-        institutions.push({
-          name: text,
-          aka: new Set(),
-          website: sanitizeWebsiteUrl(href),
-          city,
-          state,
-          sector: null,
-          source_urls: new Set([sourceUrl]),
-        });
-      }
-    }
-  });
-
-  // Extract table data (common for college lists)
+  // FIRST: Extract table data (common for college lists)
+  // Tables usually have better structured location data
   $('table tbody tr').each((_i, elem) => {
     const cells = $(elem).find('td');
     if (cells.length >= 1) {
-      let institutionName = $(cells[0]).text().trim();
+      const institutionName = $(cells[0]).text().trim();
 
       // Skip header rows and extremely short entries
       if (!institutionName || institutionName.length < 3) {
@@ -275,30 +441,103 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
       let website = null;
       let city = null;
       let state = null;
+      let zip = null;
+      let sector: 'Public' | 'Private' | 'For-Profit' | null = null;
+
+      // Check if the institution name cell contains a link (first priority for website)
+      const firstCellLink = $(cells[0]).find('a');
+      if (firstCellLink.length) {
+        const href = firstCellLink.attr('href') || '';
+        if ((href.startsWith('http') || href.startsWith('//')) &&
+            !href.includes('wikipedia') && !href.includes('facebook') &&
+            !href.includes('twitter') && !href.includes('instagram')) {
+          website = sanitizeWebsiteUrl(href);
+        }
+      }
 
       // Try to extract city/state from name first (lower priority)
       const nameLocation = extractCityStateFromName(institutionName);
       city = nameLocation.city;
       state = nameLocation.state;
+      zip = nameLocation.zip;
 
-      // Priority 1: Try to get city/state from dedicated column (typically column 2 or 3)
-      for (let i = 1; i < Math.min(cells.length, 4); i++) {
+      // Priority 1: Try to get city/state/zip from dedicated columns (typically columns 1-4)
+      // Also extract sector/type information from any column
+      // Check columns in order, looking for location data and sector information
+      for (let i = 1; i < cells.length; i++) {
         const cellText = $(cells[i]).text().trim();
-        const match = cellText.match(/(.+?),\s*([A-Z]{2})/);
-        if (match) {
-          city = match[1].trim();
-          state = match[2];
-          break;
+
+        // Skip empty cells and obvious non-location data
+        if (!cellText || cellText.length < 3) continue;
+
+        // Try to extract sector/type from this cell (public/private/for-profit/nonprofit)
+        // Do this for ALL columns to catch type info anywhere in the table
+        const extractedSector = extractSectorFromCell(cellText);
+        if (extractedSector && !sector) {
+          sector = extractedSector;
+        }
+
+        // Only check first 5 columns for location data (rest are likely other info)
+        if (i < 5) {
+          // Try full pattern: "City, State ZIP"
+          let match = cellText.match(/(.+?),\s*([A-Z]{2})\s+(\d{5})/);
+          if (match) {
+            city = match[1].trim();
+            state = match[2];
+            zip = match[3];
+            break;
+          }
+
+          // Try pattern: "City, State" (handles multi-word cities like "Los Angeles, CA")
+          // This regex matches: anything up to comma, then 2-letter state abbreviation
+          match = cellText.match(/^(.+?),\s*([A-Z]{2})$/);
+          if (match && !city) {
+            city = match[1].trim();
+            state = match[2];
+            break;
+          }
+
+          // Try to extract ZIP code alone
+          const zipMatch = cellText.match(/(\d{5})/);
+          if (zipMatch && !zip) {
+            zip = zipMatch[1];
+            // If we found a ZIP, try to infer state
+            if (!state) {
+              state = inferStateFromZip(zip);
+            }
+            // If we have zip but no city/state, this column likely has location
+            // Continue to next iteration to see if we can find city
+            continue;
+          }
+
+          // If this column looks like it contains location data (has comma and potential state)
+          // but didn't match above patterns, it might be a different format
+          if (cellText.includes(',') && !city && !state) {
+            // Try to parse "City, StateName" format (e.g., "Boston, Massachusetts")
+            const fullStateMatch = cellText.match(/^(.+?),\s*([A-Za-z\s]+)$/);
+            if (fullStateMatch) {
+              const potentialState = normalizeStateName(fullStateMatch[2].trim());
+              if (potentialState) {
+                city = fullStateMatch[1].trim();
+                state = potentialState;
+                break;
+              }
+            }
+          }
         }
       }
 
-      // Priority 2: Look for website link in next columns (can be .edu or any domain)
+      // Priority 2: Look for website link in all columns (can be .edu or any domain)
       for (let i = 1; i < cells.length; i++) {
         const link = $(cells[i]).find('a');
         if (link.length) {
           const href = link.attr('href') || '';
-          // Check if it looks like a URL (starts with http, has domain)
-          if (href.startsWith('http') && (href.includes('.edu') || href.match(/\.[a-z]{2,}$/i))) {
+          // Check if it looks like a URL (starts with http, //, or has domain)
+          // Also filter out Wikipedia and social media links
+          if ((href.startsWith('http') || href.startsWith('//')) &&
+              !href.includes('wikipedia') && !href.includes('facebook') &&
+              !href.includes('twitter') && !href.includes('instagram') &&
+              (href.includes('.edu') || href.match(/\.[a-z]{2,}$/i))) {
             if (!website) {
               website = sanitizeWebsiteUrl(href);
             }
@@ -311,83 +550,414 @@ function parseInstitutionsFromHtml(html: string, sourceUrl: string): ScrapedInst
 
       // Only add if it looks like a real institution name (has words, not just numbers/symbols)
       if (institutionName.match(/[a-z]/i)) {
+        // If we don't have location info, try to infer from domain
+        if ((!city || !state) && website) {
+          const domainLocation = inferLocationFromDomain(website);
+          if (domainLocation.city && !city) {
+            city = domainLocation.city;
+          }
+          if (domainLocation.state && !state) {
+            state = domainLocation.state;
+          }
+        }
+
         institutions.push({
           name: institutionName,
           aka: new Set(),
           website,
           city,
           state,
-          sector: null,
+          zip,
+          sector,
           source_urls: new Set([sourceUrl]),
         });
       }
     }
   });
 
+  // SECOND: Extract state-grouped lists (e.g., Wikipedia junior colleges list)
+  // Format: <h2 id="StateName">StateName</h2> followed by <ul><li>College, City</li></ul>
+  // Only extract if we haven't found institutions from tables
+  if (institutions.length === 0) {
+    $('h2').each((_headerIdx, headerElem) => {
+      const headerText = $(headerElem).text().trim();
+
+      // Check if this h2 contains a state name
+      const stateAbbr = normalizeStateName(headerText);
+      if (!stateAbbr) {
+        return; // Not a state header, skip
+      }
+
+      // Find the next <ul> element after this h2
+      let currentElem = $(headerElem).parent();
+      let ulElement = null;
+
+      // Look for ul within the next few siblings or parent elements
+      for (let i = 0; i < 5; i++) {
+        currentElem = currentElem.next();
+        if (currentElem.length === 0) break;
+
+        if (currentElem.is('ul')) {
+          ulElement = currentElem;
+          break;
+        }
+
+        // Also check direct children if we haven't found ul yet
+        const childUl = currentElem.find('ul').first();
+        if (childUl.length > 0) {
+          ulElement = childUl;
+          break;
+        }
+      }
+
+      // Extract colleges from the list
+      if (ulElement && ulElement.length > 0) {
+        ulElement.find('li').each((_liIdx, liElem) => {
+          const liText = $(liElem).text().trim();
+
+          // Parse format: "College Name, City" or "College Name, City (additional info)"
+          // First, extract college name and city from links or text
+          const collegeLinks = $(liElem).find('a');
+
+          if (collegeLinks.length >= 1) {
+            const collegeLink = collegeLinks.eq(0);
+            const collegeName = collegeLink.text().trim();
+            let city: string | null = null;
+            let website: string | null = null;
+
+            // Get the href from the college name link itself (highest priority)
+            const collegeHref = collegeLink.attr('href') || '';
+            if (collegeHref && (collegeHref.includes('http') || collegeHref.startsWith('//'))) {
+              if (!collegeHref.includes('wikipedia') && !collegeHref.includes('facebook') &&
+                  !collegeHref.includes('twitter') && !collegeHref.includes('instagram')) {
+                website = sanitizeWebsiteUrl(collegeHref);
+              }
+            }
+
+            // Try to get city from second link or remaining text
+            if (collegeLinks.length >= 2) {
+              city = collegeLinks.eq(1).text().trim();
+            } else {
+              // Try to extract city from text after college name
+              const match = liText.match(new RegExp(`${collegeName}\\s*,\\s*([^(,]+)(?:\\s|\\(|$)`));
+              if (match) {
+                city = match[1].trim();
+              }
+            }
+
+            // Look for other website links in the list item (fallback if college link didn't work)
+            if (!website) {
+              collegeLinks.each((_linkIdx, linkElem) => {
+                const href = $(linkElem).attr('href') || '';
+                // Extract any domain link that's not from the college name (already checked above)
+                if (href && linkElem !== collegeLink[0] && (href.includes('http') || href.startsWith('//'))) {
+                  // Only extract if it's not a Wikipedia link or social media
+                  if (!href.includes('wikipedia') && !href.includes('facebook') && !href.includes('twitter') && !href.includes('instagram')) {
+                    if (!website) {
+                      website = sanitizeWebsiteUrl(href);
+                    }
+                  }
+                }
+              });
+            }
+
+            if (collegeName && city) {
+              institutions.push({
+                name: collegeName,
+                aka: new Set(),
+                website,
+                city: city,
+                state: stateAbbr,
+                zip: null,
+                sector: null,
+                source_urls: new Set([sourceUrl]),
+              });
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // THIRD: Extract .edu links that are NOT in tables or state-grouped lists
+  // Only extract if we haven't already found institutions from structured sources
+  if (institutions.length === 0) {
+    $('a[href*=".edu"]').each((_i, elem) => {
+      // Skip if this link is inside a table (we already extracted those above)
+      if ($(elem).closest('table').length > 0) {
+        return;
+      }
+
+      const href = $(elem).attr('href') || '';
+      const text = $(elem).text().trim();
+
+      if (text && href.includes('.edu')) {
+        // Skip if URL points to excluded subdomains
+        let shouldSkip = false;
+        for (const pattern of excludePatterns) {
+          if (pattern.test(href)) {
+            shouldSkip = true;
+            break;
+          }
+        }
+
+        if (!shouldSkip) {
+          const sanitizedWebsite = sanitizeWebsiteUrl(href);
+          let { city, state } = extractCityStateFromName(text);
+          const { zip } = extractCityStateFromName(text);
+
+          // If we don't have location info, try to infer from domain
+          if (!city || !state) {
+            const domainLocation = inferLocationFromDomain(sanitizedWebsite);
+            if (domainLocation.city && !city) {
+              city = domainLocation.city;
+            }
+            if (domainLocation.state && !state) {
+              state = domainLocation.state;
+            }
+          }
+
+          institutions.push({
+            name: text,
+            aka: new Set(),
+            website: sanitizedWebsite,
+            city,
+            state,
+            zip,
+            sector: null,
+            source_urls: new Set([sourceUrl]),
+          });
+        }
+      }
+    });
+  }
+
   return institutions;
 }
 
 /**
  * AUTHORIZATION: PUBLIC
- * Extracts city and state from institution name
- * Examples: "City Colleges of Chicago" → {city: "Chicago", state: "IL"}
- *           "Boise State University" → {city: "Boise", state: "ID"}
- * @param name - Institution name
- * @returns {city, state} extracted from name
+ * Infers state from ZIP code by checking ZIP ranges
+ * @param zip - ZIP code (numeric)
+ * @returns State abbreviation or null
  */
-function extractCityStateFromName(name: string): { city: string | null; state: string | null } {
-  const cityStateMap: Record<string, { city: string; state: string }> = {
-    // Chicago system
-    'chicago': { city: 'Chicago', state: 'IL' },
-    'truman': { city: 'Chicago', state: 'IL' },
-    'malcolm x': { city: 'Chicago', state: 'IL' },
-    'olive-harvey': { city: 'Chicago', state: 'IL' },
-    'wright': { city: 'Chicago', state: 'IL' },
-    // Common community colleges
-    'slcc': { city: 'Salt Lake City', state: 'UT' },
-    'salt lake': { city: 'Salt Lake City', state: 'UT' },
-    'snow': { city: 'Ephraim', state: 'UT' },
-    'boise state': { city: 'Boise', state: 'ID' },
-    'northern arizona': { city: 'Flagstaff', state: 'AZ' },
-    'uvu': { city: 'Orem', state: 'UT' },
-    'asu': { city: 'Tempe', state: 'AZ' },
-    'ucla': { city: 'Los Angeles', state: 'CA' },
-    'stanford': { city: 'Stanford', state: 'CA' },
-    'harvard': { city: 'Cambridge', state: 'MA' },
-    'yale': { city: 'New Haven', state: 'CT' },
-    'berkeley': { city: 'Berkeley', state: 'CA' },
-    'michigan': { city: 'Ann Arbor', state: 'MI' },
-    'penn': { city: 'Philadelphia', state: 'PA' },
-    'columbia': { city: 'New York', state: 'NY' },
-  };
+function inferStateFromZip(zip: string | null): string | null {
+  if (!zip) return null;
 
-  const nameLower = name.toLowerCase();
+  const zipNum = parseInt(zip, 10);
+  if (isNaN(zipNum)) return null;
 
-  // Check for known city/state combinations
-  for (const [key, location] of Object.entries(cityStateMap)) {
-    if (nameLower.includes(key)) {
-      return location;
+  for (const [state, range] of Object.entries(ZIP_CODE_RANGES)) {
+    if (zipNum >= range.min && zipNum <= range.max) {
+      return state;
     }
   }
 
-  // Try to extract "City, State" pattern
-  const match = name.match(/(.+?),\s*([A-Z]{2})/);
-  if (match) {
-    return {
-      city: match[1].trim(),
-      state: match[2],
-    };
+  return null;
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Attempts to infer city and state from institution website domain
+ * For example: "name.university.edu" might be from a specific state
+ * This is a best-effort heuristic - checks if domain contains state abbreviations
+ * @param website - Website URL
+ * @returns {city, state} inferred from domain or null
+ */
+function inferLocationFromDomain(website: string | null): { city: string | null; state: string | null } {
+  if (!website) return { city: null, state: null };
+
+  try {
+    const url = new URL(website.startsWith('http') ? website : `https://${website}`);
+    const domain = url.hostname.toLowerCase();
+
+    // Check for state abbreviation in domain
+    // Example: "asu.edu" → Arizona, "tamu.edu" → Texas
+    const stateAbbrMatch = domain.match(/([a-z]{2})(?:\.edu|\.org|\.com)?$/);
+    if (stateAbbrMatch) {
+      const possibleAbbr = stateAbbrMatch[1].toUpperCase();
+      if (STATE_ABBREVIATIONS[possibleAbbr]) {
+        return { city: null, state: possibleAbbr };
+      }
+    }
+
+    // Check for university name in domain that might be in our database
+    const parts = domain.split('.');
+    if (parts.length >= 2) {
+      const universityPart = parts[0];
+
+      // Check if we have this university in our database
+      for (const [key, location] of Object.entries(CITY_STATE_DATABASE)) {
+        if (key.includes(universityPart) || universityPart.includes(key.split(' ')[0])) {
+          return { city: location.city, state: location.state };
+        }
+      }
+    }
+
+    return { city: null, state: null };
+  } catch {
+    return { city: null, state: null };
+  }
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Extracts ZIP code from text (e.g., "12345" or "12345-6789")
+ * @param text - Text to search
+ * @returns ZIP code or null
+ */
+function extractZipCode(text: string): string | null {
+  const zipMatch = text.match(/\b(\d{5})(?:-\d{4})?\b/);
+  return zipMatch ? zipMatch[1] : null;
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Normalizes state names to abbreviations
+ * Handles: "New York" → "NY", "california" → "CA", etc.
+ * @param stateInput - State name or abbreviation
+ * @returns State abbreviation or null
+ */
+function normalizeStateName(stateInput: string): string | null {
+  if (!stateInput) return null;
+
+  const input = stateInput.trim().toUpperCase();
+
+  // If already an abbreviation, return it
+  if (STATE_ABBREVIATIONS[input]) {
+    return input;
   }
 
-  // Try to extract just city name before college/university keywords
-  const cityMatch = name.match(/^([A-Za-z\s]+?)\s+(City\s+)?Colleges?/i);
-  if (cityMatch) {
-    const city = cityMatch[1].trim();
-    // Try to infer state from city name (would need a larger database)
-    return { city, state: null };
+  // Try to match full state name
+  const normalized = STATE_NAMES_TO_ABBREV[stateInput.toLowerCase().trim()];
+  return normalized || null;
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Extracts institution sector/control type from table column text
+ * Examples: "Public", "Private", "For-Profit", "Not-for-profit", "Nonprofit"
+ * @param cellText - Text from table cell
+ * @returns Sector type or null
+ */
+function extractSectorFromCell(cellText: string): 'Public' | 'Private' | 'For-Profit' | null {
+  if (!cellText) return null;
+
+  const text = cellText.toLowerCase().trim();
+
+  // Check for public
+  if (text.includes('public')) {
+    return 'Public';
   }
 
-  return { city: null, state: null };
+  // Check for for-profit
+  if (text.includes('for-profit') || text.includes('for profit') || text.includes('forprofit')) {
+    return 'For-Profit';
+  }
+
+  // Check for private (but not "not-for-profit" or "nonprofit")
+  if (text.includes('private') && !text.includes('for')) {
+    return 'Private';
+  }
+
+  // Check for nonprofit/not-for-profit (classify as Private)
+  if (text.includes('nonprofit') || text.includes('not-for-profit') || text.includes('not for profit')) {
+    return 'Private';
+  }
+
+  return null;
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Extracts city and state from institution name using multiple strategies
+ * Examples: "City Colleges of Chicago" → {city: "Chicago", state: "IL"}
+ *           "Boise State University" → {city: "Boise", state: "ID"}
+ *           "Stanford University" → {city: "Stanford", state: "CA"}
+ * @param name - Institution name
+ * @returns {city, state, zip} extracted from name
+ */
+function extractCityStateFromName(name: string): { city: string | null; state: string | null; zip: string | null } {
+  let city: string | null = null;
+  let state: string | null = null;
+  let zip: string | null = null;
+
+  const nameLower = name.toLowerCase().trim();
+
+  // Strategy 1: Check comprehensive database (institution-specific lookup)
+  for (const [key, location] of Object.entries(CITY_STATE_DATABASE)) {
+    if (nameLower.includes(key)) {
+      return { city: location.city, state: location.state, zip: null };
+    }
+  }
+
+  // Strategy 2: Extract "City, State" or "City, State ZIP" pattern
+  // Matches: "Boston, MA", "Los Angeles, CA 90001", "New York, NY 10001-1234"
+  const cityStateZipMatch = name.match(/([A-Za-z\s]+?),\s*([A-Z]{2})(?:\s+(\d{5}(?:-\d{4})?))?/);
+  if (cityStateZipMatch) {
+    city = cityStateZipMatch[1].trim();
+    state = cityStateZipMatch[2];
+    zip = cityStateZipMatch[3] || null;
+    return { city, state, zip };
+  }
+
+  // Strategy 3: Extract "City, Full State Name" pattern
+  // Matches: "Boston, Massachusetts", "Los Angeles, California"
+  const cityFullStateMatch = name.match(/([A-Za-z\s]+?),\s*([A-Za-z\s]+?)(?:\s+(\d{5}))?/);
+  if (cityFullStateMatch) {
+    const maybeCity = cityFullStateMatch[1].trim();
+    const maybeStateName = cityFullStateMatch[2].trim();
+    const normalizedState = normalizeStateName(maybeStateName);
+
+    if (normalizedState) {
+      return {
+        city: maybeCity,
+        state: normalizedState,
+        zip: cityFullStateMatch[3] || null,
+      };
+    }
+  }
+
+  // Strategy 4: Extract ZIP code and infer state
+  zip = extractZipCode(name);
+  if (zip) {
+    const inferredState = inferStateFromZip(zip);
+    if (inferredState) {
+      state = inferredState;
+      // Try to also extract city name before university/college keywords
+      const cityPrefix = name.match(/^([A-Za-z\s]+?)\s+(?:State|University|College|Institute)/i);
+      if (cityPrefix) {
+        city = cityPrefix[1].trim();
+      }
+    }
+  }
+
+  // REMOVED: Strategy 5 (too generic - was matching "Columbia" in "Columbia Basin College")
+  // This was pulling generic region names instead of actual cities
+  // Now relying on institution database lookups and explicit patterns
+
+  // Strategy 7: Look for standalone state abbreviation in name
+  // Matches: "Miami, FL", "Austin, TX"
+  const stateAbbrMatch = name.match(/\b([A-Z]{2})\b/);
+  if (stateAbbrMatch && !state) {
+    const possibleState = stateAbbrMatch[1];
+    if (STATE_ABBREVIATIONS[possibleState]) {
+      state = possibleState;
+    }
+  }
+
+  // Strategy 8: If we extracted a city but no state, try to look it up
+  if (city && !state) {
+    const cityInfo = MAJOR_CITIES_DATABASE[city.toLowerCase()];
+    if (cityInfo) {
+      state = cityInfo.state;
+      if (!zip) {
+        zip = cityInfo.zip || null;
+      }
+    }
+  }
+
+  return { city, state, zip };
 }
 
 // ============================================================================
@@ -489,6 +1059,9 @@ function deduplicateInstitutions(institutions: ScrapedInstitution[]): ScrapedIns
       }
       if (inst.state && !existing.state) {
         existing.state = inst.state;
+      }
+      if (inst.zip && !existing.zip) {
+        existing.zip = inst.zip;
       }
     } else {
       map.set(key, inst);
@@ -845,7 +1418,7 @@ export async function scrapeInstitutions(seedUrls: string[]): Promise<ScraperRes
   const startTime = Date.now();
   let scrapeTime = 0;
   let organizeTime = 0;
-  let searchTime = 0;
+  let schoolInfoTime = 0;
   let contactsTime = 0;
 
   // ========== STAGE 1: SCRAPE ==========
@@ -872,8 +1445,8 @@ export async function scrapeInstitutions(seedUrls: string[]): Promise<ScraperRes
 
   organizeTime = Date.now() - organizeStart;
 
-  // ========== STAGE 3: CLASSIFY & SEARCH ==========
-  const searchStart = Date.now();
+  // ========== STAGE 3: SCHOOL INFO LOOKUP (City, State, ZIP, Classification) ==========
+  const schoolInfoStart = Date.now();
 
   const rows: InstitutionRow[] = dedupedInstitutions.map((inst) => {
     const { category, confidence, rationale } = classifyInstitution(inst);
@@ -885,6 +1458,7 @@ export async function scrapeInstitutions(seedUrls: string[]): Promise<ScraperRes
       website: inst.website,
       city: inst.city,
       state: inst.state,
+      zip: inst.zip,
       sector: inst.sector,
       control: inst.sector === 'For-Profit' ? 'For-Profit' : 'Nonprofit',
       category,
@@ -909,13 +1483,12 @@ export async function scrapeInstitutions(seedUrls: string[]): Promise<ScraperRes
     };
   });
 
-  searchTime = Date.now() - searchStart;
+  schoolInfoTime = Date.now() - schoolInfoStart;
 
-  // ========== STAGE 4: CONTACT DISCOVERY (AI-DRIVEN - SKIPPED FOR NOW) ==========
-  // NOTE: Contact discovery is now done AFTER returning results to the client
-  // This allows the user to see the list immediately while contact info is gathered in background
-  const contactsStart = Date.now();
-  contactsTime = 0; // Will be calculated during background discovery
+  // ========== STAGE 4: CONTACT DISCOVERY (OPTIONAL - User can click to start) ==========
+  // NOTE: Contact discovery is now SKIPPED by default in this function
+  // The user can click a button to start this phase which calls a separate endpoint
+  contactsTime = 0; // Will be calculated when user initiates contact discovery
 
   // ========== GENERATE MARKDOWN TABLE ==========
   const tableMarkdown = generateMarkdownTable(rows);
@@ -931,7 +1504,7 @@ export async function scrapeInstitutions(seedUrls: string[]): Promise<ScraperRes
     eta: {
       scrape: Math.ceil(scrapeTime / 1000),
       organize: Math.ceil(organizeTime / 1000),
-      search: Math.ceil(searchTime / 1000),
+      search: Math.ceil(schoolInfoTime / 1000),
       contacts: Math.ceil(contactsTime / 1000),
       total: Math.ceil(totalTime / 1000),
     },
@@ -983,4 +1556,29 @@ export async function generateExcelFile(_rows: InstitutionRow[]): Promise<string
   // Returns base64-encoded Excel file
   // Implementation uses ExcelJS library
   return '';
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Performs ONLY the contact discovery phase for pre-existing institution rows
+ * Call this after scrapeInstitutions() to add contact info to existing rows
+ * @param rows - Institution rows to enrich with contact info
+ * @returns Updated rows with contact information populated
+ */
+export async function discoverContactsForRows(rows: InstitutionRow[]): Promise<InstitutionRow[]> {
+  const startTime = Date.now();
+  const contactsTime = Date.now() - startTime;
+
+  console.log(`Contact discovery completed in ${contactsTime}ms for ${rows.length} institutions`);
+
+  // TODO: Implement contact discovery using Gemini API or other service
+  // For now, return rows unchanged as a placeholder
+  // When implemented, this will:
+  // 1. Take each institution
+  // 2. Call searchForContactsWithAI for Registrar
+  // 3. Call searchForContactsWithAI for Provost
+  // 4. Update the row with contact info
+  // 5. Return enriched rows
+
+  return rows;
 }

@@ -64,7 +64,6 @@ async function handleStartContactDiscovery(request: NextRequest) {
     discoverContactsInBackground(sessionId, rows).catch((error) => {
       logError('Background contact discovery failed', error, {
         action: 'discover_contacts_background',
-        sessionId,
       });
     });
 
