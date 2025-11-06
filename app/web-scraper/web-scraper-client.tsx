@@ -23,6 +23,91 @@ interface InstitutionRow {
   notes: string | null;
 }
 
+// Helper function to get category color and styling
+function getCategoryColor(category: string): { bg: string; text: string; badge: string; gradient: string } {
+  const categoryMap: Record<string, { bg: string; text: string; badge: string; gradient: string }> = {
+    'Community College/Junior College': {
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      badge: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      gradient: 'from-emerald-400 to-teal-500'
+    },
+    'Mid-Tier State University': {
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      badge: 'bg-blue-100 text-blue-700 border-blue-200',
+      gradient: 'from-blue-400 to-cyan-500'
+    },
+    'Large Private/Public University': {
+      bg: 'bg-purple-50',
+      text: 'text-purple-700',
+      badge: 'bg-purple-100 text-purple-700 border-purple-200',
+      gradient: 'from-purple-400 to-pink-500'
+    },
+    'Small Private Non-Profits': {
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      badge: 'bg-amber-100 text-amber-700 border-amber-200',
+      gradient: 'from-amber-400 to-orange-500'
+    },
+    'Elite Private University': {
+      bg: 'bg-rose-50',
+      text: 'text-rose-700',
+      badge: 'bg-rose-100 text-rose-700 border-rose-200',
+      gradient: 'from-rose-400 to-pink-500'
+    },
+    'For-Profit/Technical College': {
+      bg: 'bg-gray-50',
+      text: 'text-gray-700',
+      badge: 'bg-gray-100 text-gray-700 border-gray-200',
+      gradient: 'from-gray-400 to-slate-500'
+    }
+  };
+  return categoryMap[category] || categoryMap['Small Private Non-Profits'];
+}
+
+// Helper function to get score color based on value
+function getScoreColor(score: number): { text: string; bg: string; gradient: string; bar: string } {
+  if (score >= 80) {
+    return {
+      text: 'text-green-700',
+      bg: 'bg-green-50',
+      gradient: 'from-green-400 to-emerald-500',
+      bar: 'from-green-500 to-emerald-600'
+    };
+  }
+  if (score >= 60) {
+    return {
+      text: 'text-blue-700',
+      bg: 'bg-blue-50',
+      gradient: 'from-blue-400 to-cyan-500',
+      bar: 'from-blue-500 to-cyan-600'
+    };
+  }
+  if (score >= 40) {
+    return {
+      text: 'text-amber-700',
+      bg: 'bg-amber-50',
+      gradient: 'from-amber-400 to-orange-500',
+      bar: 'from-amber-500 to-orange-600'
+    };
+  }
+  if (score >= 20) {
+    return {
+      text: 'text-orange-700',
+      bg: 'bg-orange-50',
+      gradient: 'from-orange-400 to-red-500',
+      bar: 'from-orange-500 to-red-600'
+    };
+  }
+  return {
+    text: 'text-gray-700',
+    bg: 'bg-gray-50',
+    gradient: 'from-gray-400 to-slate-500',
+    bar: 'from-gray-500 to-slate-600'
+  };
+}
+
 export default function WebScraperClient() {
   const [step, setStep] = useState<'input' | 'school-lookup' | 'contact-discovery'>('input');
   const [url, setUrl] = useState('');
@@ -350,43 +435,54 @@ export default function WebScraperClient() {
 
                     {/* Summary Stats Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-4.5 shadow-sm transition-transform hover:-translate-y-1">
+                      {/* Total Institutions - Vibrant Gradient */}
+                      <div className="group relative overflow-hidden rounded-xl border border-[var(--primary)]/20 bg-gradient-to-br from-[var(--primary)] via-emerald-500 to-[var(--hover-green)] p-4.5 shadow-md transition-all hover:-translate-y-1.5 hover:shadow-lg">
+                        <div className="absolute inset-0 bg-white/5" />
                         <div className="relative z-10 text-center">
-                          <div className="font-header-bold text-2xl font-extrabold text-white">
+                          <div className="font-header-bold text-3xl font-extrabold text-white">
                             {rows.length}
                           </div>
                           <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-white/90">
-                            Institutions
+                            Total Institutions
                           </div>
                         </div>
                       </div>
-                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4.5 shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+
+                      {/* With Location - Blue Gradient */}
+                      <div className="group relative overflow-hidden rounded-xl border border-blue-200/50 bg-gradient-to-br from-blue-400 to-cyan-500 p-4.5 shadow-md transition-all hover:-translate-y-1.5 hover:shadow-lg">
+                        <div className="absolute inset-0 bg-white/5" />
                         <div className="relative z-10 text-center">
-                          <div className="font-header-bold text-2xl font-extrabold text-blue-600">
+                          <div className="font-header-bold text-3xl font-extrabold text-white">
                             {rows.filter(r => r.city && r.state).length}
                           </div>
-                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-blue-50/90">
                             With Location
                           </div>
                         </div>
                       </div>
-                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4.5 shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+
+                      {/* With Website - Purple Gradient */}
+                      <div className="group relative overflow-hidden rounded-xl border border-purple-200/50 bg-gradient-to-br from-purple-400 to-pink-500 p-4.5 shadow-md transition-all hover:-translate-y-1.5 hover:shadow-lg">
+                        <div className="absolute inset-0 bg-white/5" />
                         <div className="relative z-10 text-center">
-                          <div className="font-header-bold text-2xl font-extrabold text-purple-600">
+                          <div className="font-header-bold text-3xl font-extrabold text-white">
                             {rows.filter(r => r.website).length}
                           </div>
-                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-purple-50/90">
                             With Website
                           </div>
                         </div>
                       </div>
-                      <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4.5 shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+
+                      {/* High Fit - Amber Gradient */}
+                      <div className="group relative overflow-hidden rounded-xl border border-amber-200/50 bg-gradient-to-br from-amber-400 to-orange-500 p-4.5 shadow-md transition-all hover:-translate-y-1.5 hover:shadow-lg">
+                        <div className="absolute inset-0 bg-white/5" />
                         <div className="relative z-10 text-center">
-                          <div className="font-header-bold text-2xl font-extrabold text-amber-600">
+                          <div className="font-header-bold text-3xl font-extrabold text-white">
                             {rows.filter(r => r.stu_fit_score >= 50).length}
                           </div>
-                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                            High Fit
+                          <div className="font-body mt-1.5 text-xs font-semibold uppercase tracking-wider text-amber-50/90">
+                            High Fit (50+)
                           </div>
                         </div>
                       </div>
@@ -406,23 +502,43 @@ export default function WebScraperClient() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[var(--border)]">
-                            {rows.map((row, idx) => (
-                              <tr key={idx} className="hover:bg-[var(--muted)]/20 transition-colors">
-                                <td className="px-4 py-3.5 text-[var(--foreground)] font-medium first:pl-0 last:pr-0">{row.name}</td>
-                                <td className="px-4 py-3.5 text-[var(--foreground)] first:pl-0 last:pr-0 text-sm">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
-                                <td className="px-4 py-3.5 first:pl-0 last:pr-0">
-                                  {row.website ? (
-                                    <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline break-all text-xs font-medium">
-                                      {row.website.replace('https://', '')}
-                                    </a>
-                                  ) : (
-                                    <span className="text-[var(--muted-foreground)] text-sm">—</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3.5 text-[var(--foreground)] text-xs first:pl-0 last:pr-0">{row.category}</td>
-                                <td className="px-4 py-3.5 text-center font-header font-bold text-[var(--primary)] first:pl-0 last:pr-0">{row.stu_fit_score}</td>
-                              </tr>
-                            ))}
+                            {rows.map((row, idx) => {
+                              const categoryColor = getCategoryColor(row.category);
+                              const scoreColor = getScoreColor(row.stu_fit_score);
+                              return (
+                                <tr key={idx} className="hover:bg-[var(--muted)]/10 transition-colors">
+                                  <td className="px-4 py-3.5 text-[var(--foreground)] font-medium first:pl-0 last:pr-0">{row.name}</td>
+                                  <td className="px-4 py-3.5 text-[var(--foreground)] first:pl-0 last:pr-0 text-sm">{row.city && row.state ? `${row.city}, ${row.state}` : '—'}</td>
+                                  <td className="px-4 py-3.5 first:pl-0 last:pr-0">
+                                    {row.website ? (
+                                      <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-[var(--primary)] hover:underline break-all text-xs font-medium">
+                                        {row.website.replace('https://', '')}
+                                      </a>
+                                    ) : (
+                                      <span className="text-[var(--muted-foreground)] text-sm">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 first:pl-0 last:pr-0">
+                                    <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold border ${categoryColor.badge}`}>
+                                      {row.category}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3.5 first:pl-0 last:pr-0">
+                                    <div className="flex flex-col items-center gap-1.5">
+                                      <div className="relative w-full h-1.5 bg-[var(--muted)]/30 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full bg-gradient-to-r ${scoreColor.bar} transition-all duration-500 ease-out rounded-full`}
+                                          style={{ width: `${row.stu_fit_score}%` }}
+                                        />
+                                      </div>
+                                      <span className={`font-header font-bold text-xs ${scoreColor.text}`}>
+                                        {row.stu_fit_score}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
