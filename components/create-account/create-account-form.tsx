@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import {
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  SelectChangeEvent,
+} from "@mui/material";
 // Removed direct client-side upsert; persistence handled by server action now.
 import { saveProfileAndPreferences } from "./save-profile-action";
 import { saveGradTimeline } from "./save-grad-timeline-action";
@@ -277,7 +286,7 @@ export default function CreateAccountForm({
             id="fname"
             label="First name"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
             required
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -299,7 +308,7 @@ export default function CreateAccountForm({
             id="lname"
             label="Last name"
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
             required
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -400,9 +409,6 @@ export default function CreateAccountForm({
         onChange={setClassPreferences}
         placeholder="Search for preferences..."
       />
-        </div>
-      </div>
-
       </div>
 
       {/* Graduation Timeline */}
@@ -424,7 +430,7 @@ export default function CreateAccountForm({
               labelId="grad-term-label"
               value={gradTerm}
               label="Term"
-              onChange={(e) => setGradTerm(e.target.value as Term | "")}
+              onChange={(e: SelectChangeEvent) => setGradTerm(e.target.value as Term | "")}
               className="font-body"
               sx={{
                 borderRadius: '10px',
@@ -457,9 +463,9 @@ export default function CreateAccountForm({
             <InputLabel id="grad-year-label" className="font-body">Year</InputLabel>
             <Select
               labelId="grad-year-label"
-              value={gradYear}
+              value={String(gradYear)}
               label="Year"
-              onChange={(e) => setGradYear(e.target.value as number | "")}
+              onChange={(e: SelectChangeEvent) => setGradYear(Number(e.target.value) || "")}
               className="font-body"
               sx={{
                 borderRadius: '10px',

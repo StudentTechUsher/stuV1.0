@@ -57,8 +57,8 @@ export default async function ProfilePage() {
     class_preferences: null,
   };
 
-  // Fetch LinkedIn profile URL if it exists
-  const linkedInProfileUrl = currentProfile?.linkedin_profile_url || null;
+  // LinkedIn profile URL - currently not stored in profile data
+  const linkedInProfileUrl = null;
 
   return (
     <main className="min-h-screen bg-[var(--background)]">

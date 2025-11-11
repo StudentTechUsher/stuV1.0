@@ -2,10 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Calendar, User } from 'lucide-react';
+import { Calendar, User, FileText, ArrowRight } from 'lucide-react';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
 import { issueGradPlanAccessId } from '@/lib/services/server-actions';
-import { FileText, ArrowRight, Calendar, User } from 'lucide-react';
 
 export interface PlansToApproveTableProps {
   readonly plans: PendingGradPlan[];
@@ -33,7 +32,10 @@ export default function PlansToApproveTable({ plans }: PlansToApproveTableProps)
     } catch (error) {
       console.error('Error navigating to grad plan:', error);
       setNavigatingId(null);
-  const getRelativeTime = (dateString: string) => {
+    }
+  };
+
+  const _getRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -47,10 +49,8 @@ export default function PlansToApproveTable({ plans }: PlansToApproveTableProps)
     return formatDate(dateString);
   };
 
-  const handleClick = (plan: PendingGradPlan) => {
-    if (onRowClick) {
-      onRowClick(plan);
-    }
+  const _handleClick = (plan: PendingGradPlan) => {
+    // Placeholder for potential future use
   };
 
   // Empty state - matching design system

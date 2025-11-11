@@ -417,10 +417,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                 </span>
                 <div className="flex flex-wrap items-center gap-3">
                   {selectedGradPlan ? (
-                    <InlineEditableTitle
-                      value={selectedPlanName}
-                      placeholder="Untitled Graduation Plan"
-                      onSave={handleTitleSave}
+                    <EditablePlanTitle
+                      planId={selectedGradPlan.id}
+                      initialName={selectedPlanName}
+                      onSaved={handleTitleSave}
+                      className="text-2xl font-semibold tracking-tight text-[#0a1f1a]"
                     />
                   ) : (
                     <h1 className="text-2xl font-semibold tracking-tight text-[#0a1f1a]">

@@ -36,11 +36,11 @@ export default function ReportsWithdrawalsPanel({
   const [minDaysAfter, setMinDaysAfter] = useState(0);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [selectedStudentRows, setSelectedStudentRows] = useState<WithdrawalRow[]>([]);
-  const [isRunningJob, setIsRunningJob] = useState(false);
-  const [jobMessage, setJobMessage] = useState<string | null>(null);
+  const [isRunningJob, _setIsRunningJob] = useState(false);
+  const [jobMessage, _setJobMessage] = useState<string | null>(null);
   const [showReportPreview, setShowReportPreview] = useState(false);
 
-  const { data, isLoading, error, refetch } = useWeeklyWithdrawals(
+  const { data, isLoading, error, refetch: _refetch } = useWeeklyWithdrawals(
     advisorId,
     startISO,
     endISO
@@ -82,7 +82,13 @@ export default function ReportsWithdrawalsPanel({
       }
     : null;
 
-  const handleGenerateReport = () => {
+  const handleRunWeeklyJob = async () => {
+    // Placeholder for weekly job runner
+    // This would typically call an API endpoint to generate and send digests
+    console.log('Running weekly job for advisor:', advisorId);
+  };
+
+  const _handleGenerateReport = () => {
     // Set date range to last 7 days
     const range = getLast7Days();
     setStartISO(range.startISO);
@@ -128,7 +134,7 @@ export default function ReportsWithdrawalsPanel({
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Job Status Message */}
       {jobMessage && (
@@ -219,7 +225,7 @@ export default function ReportsWithdrawalsPanel({
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Premium Loading State */}
       {isLoading && (
