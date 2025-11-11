@@ -1,15 +1,20 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronRight, Calendar, User } from 'lucide-react';
 import type { PendingGradPlan } from '@/types/pending-grad-plan';
+import { issueGradPlanAccessId } from '@/lib/services/server-actions';
+import { FileText, ArrowRight, Calendar, User } from 'lucide-react';
 
 export interface PlansToApproveTableProps {
   readonly plans: PendingGradPlan[];
-  readonly onRowClick?: (plan: PendingGradPlan) => void;
 }
 
-export default function PlansToApproveTable({ plans, onRowClick }: PlansToApproveTableProps) {
+export default function PlansToApproveTable({ plans }: PlansToApproveTableProps) {
+  const router = useRouter();
+  const [navigatingId, setNavigatingId] = React.useState<string | null>(null);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -20,6 +25,14 @@ export default function PlansToApproveTable({ plans, onRowClick }: PlansToApprov
     });
   };
 
+  const handleRowClick = async (plan: PendingGradPlan) => {
+    try {
+      setNavigatingId(String(plan.id));
+      const accessId = await issueGradPlanAccessId(plan.id);
+      router.push(`/dashboard/approve-grad-plans/${accessId}`);
+    } catch (error) {
+      console.error('Error navigating to grad plan:', error);
+      setNavigatingId(null);
   const getRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -40,80 +53,89 @@ export default function PlansToApproveTable({ plans, onRowClick }: PlansToApprov
     }
   };
 
+  // Empty state - matching design system
   if (plans.length === 0) {
     return (
-      <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-12 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--muted)_30%,transparent)]">
-          <User className="h-8 w-8 text-[var(--muted-foreground)]" />
+      <div className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-white p-12 text-center">
+        <div className="mx-auto max-w-md space-y-3">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--muted)]">
+            <FileText size={32} className="text-[var(--muted-foreground)]" />
+          </div>
+          <h3 className="font-header-bold text-lg text-[var(--foreground)]">
+            No Plans Awaiting Approval
+          </h3>
+          <p className="font-body text-sm text-[var(--muted-foreground)] leading-relaxed">
+            When students submit graduation plans for approval, they will appear here for you to review.
+          </p>
         </div>
-        <h3 className="mt-4 text-lg font-bold text-[var(--foreground)]">
-          No graduation plans awaiting approval
-        </h3>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          When students submit plans for approval, they will appear here.
-        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Plans count badge */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)] shadow-sm">
-            <span className="text-sm font-bold text-black">{plans.length}</span>
+    <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white shadow-sm transition-shadow hover:shadow-md">
+      {/* Black Header - matching academic-summary style */}
+      <div className="border-b-2 border-[#0A0A0A] bg-[#0A0A0A] px-6 py-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-left">
+            <span className="font-body-semi text-xs uppercase tracking-wider text-white">
+              Student Name
+            </span>
           </div>
-          <p className="text-sm font-semibold text-[var(--foreground)]">
-            {plans.length === 1 ? 'Plan' : 'Plans'} pending approval
-          </p>
+          <div className="text-left">
+            <span className="font-body-semi text-xs uppercase tracking-wider text-white">
+              Submitted
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="font-body-semi text-xs uppercase tracking-wider text-white">
+              Action
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Modern card-based list */}
-      <div className="space-y-3">
-        {plans.map((plan, index) => (
-          <button
+      {/* Table Body */}
+      <div className="divide-y divide-[var(--border)]">
+        {plans.map((plan) => (
+          <div
             key={plan.id}
-            onClick={() => handleClick(plan)}
-            className="group w-full rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-5 text-left shadow-sm transition-all duration-200 hover:shadow-md hover:border-[var(--primary)] hover:-translate-y-0.5"
+            onClick={() => handleRowClick(plan)}
+            className="group cursor-pointer px-6 py-4 transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--primary)_3%,white)]"
           >
-            <div className="flex items-center justify-between gap-4">
-              {/* Left side - Student info */}
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                {/* Avatar */}
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] border border-[color-mix(in_srgb,var(--primary)_30%,transparent)] shadow-sm">
-                  <User className="h-6 w-6 text-[var(--primary)]" strokeWidth={2.5} />
+            <div className="grid grid-cols-3 items-center gap-4">
+              {/* Student Name with Avatar */}
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-[var(--border)] bg-[color-mix(in_srgb,var(--primary)_15%,white)] shadow-sm">
+                  <User size={18} className="text-[var(--foreground)]" />
                 </div>
-
-                {/* Student name and timestamp */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate">
-                    {plan.student_first_name} {plan.student_last_name}
-                  </h3>
-                  <div className="mt-1 flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span className="truncate">{getRelativeTime(plan.created_at)}</span>
-                  </div>
-                </div>
+                <span className="font-body-semi text-sm text-[var(--foreground)]">
+                  {plan.student_first_name} {plan.student_last_name}
+                </span>
               </div>
 
-              {/* Right side - Action indicator */}
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex flex-col items-end">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                    Plan #{index + 1}
-                  </span>
-                  <span className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                    Click to review
-                  </span>
-                </div>
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] group-hover:bg-[var(--primary)] transition-colors">
-                  <ChevronRight className="h-5 w-5 text-[var(--primary)] group-hover:text-black transition-colors" strokeWidth={2.5} />
-                </div>
+              {/* Submitted Date */}
+              <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                <Calendar size={16} className="flex-shrink-0 text-[var(--muted-foreground)]" />
+                <span className="font-body">{formatDate(plan.created_at)}</span>
+              </div>
+
+              {/* Action Button */}
+              <div className="text-right">
+                {navigatingId === String(plan.id) ? (
+                  <div className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--primary)]"></div>
+                    <span className="font-body-semi">Opening...</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-body-semi text-[#0A0A0A] shadow-sm transition-all duration-150 group-hover:shadow-md">
+                    <span>Review Plan</span>
+                    <ArrowRight size={16} />
+                  </div>
+                )}
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>

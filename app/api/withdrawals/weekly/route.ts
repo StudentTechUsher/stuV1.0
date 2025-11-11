@@ -1,29 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listAdvisorWeeklyWithdrawals, seedAll } from '@/lib/mocks/withdrawalSeed';
+import { seedAll, listAdvisorWeeklyWithdrawals, getAdvisors } from '@/lib/mocks/withdrawalSeed';
+    // Check if advisor exists
+    const advisors = getAdvisors();
+    const advisor = advisors.find(a => a.id === advisorId);
 
-/**
- * GET /api/withdrawals/weekly?advisorId=...&start=...&end=...
- * Fetches weekly withdrawals for an advisor within a date range (using mock data)
- * AUTHORIZATION: ADVISORS ONLY
- */
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = request.nextUrl;
-    const advisorId = searchParams.get('advisorId');
-    const start = searchParams.get('start');
-    const end = searchParams.get('end');
-
-    if (!advisorId || !start || !end) {
-      return NextResponse.json(
-        { error: 'Missing required params: advisorId, start, end' },
-        { status: 400 }
-      );
+    if (!advisor) {
+      return NextResponse.json({ error: 'Advisor not found' }, { status: 404 });
     }
 
-    // Ensure mock data is seeded
-    seedAll();
-
-    // Get withdrawal rows from mock data
+    // Get withdrawal data from mock
     const rows = listAdvisorWeeklyWithdrawals(advisorId, start, end);
 
     // Calculate summary statistics
@@ -41,7 +26,7 @@ export async function GET(request: NextRequest) {
       byMajor[majorId] = (byMajor[majorId] || 0) + 1;
     });
 
-    return NextResponse.json({
+    const result = {
       rows,
       summary: {
         total: rows.length,
@@ -49,9 +34,11 @@ export async function GET(request: NextRequest) {
         byDepartment,
         byMajor,
       },
-    });
+    };
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching weekly withdrawals:', error);
+    console.error('Error fetching withdrawals:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
