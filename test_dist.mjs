@@ -1,4 +1,4 @@
-import { distributionForTarget } from './lib/gpa/core.ts';
+import { distributionForTarget } from '../lib/gpa/core.js';
 
 // Test 1: Simple case
 const result1 = distributionForTarget(60, 210, [
