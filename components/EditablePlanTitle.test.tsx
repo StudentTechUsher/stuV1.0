@@ -6,7 +6,6 @@ import EditablePlanTitle from './EditablePlanTitle';
 describe('EditablePlanTitle Component', () => {
   const defaultProps = {
     planId: 'test-plan-123',
-    ownerId: 'test-user-456',
     initialName: 'My Graduation Plan',
     onSaved: vi.fn(),
   };
