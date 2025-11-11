@@ -1,31 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { seedAll, listAdvisorWeeklyWithdrawals, getAdvisors } from '@/lib/mocks/withdrawalSeed';
-
-/**
- * GET /api/withdrawals/weekly?advisorId=...&start=...&end=...
- * Fetches weekly withdrawals for an advisor within a date range
- * AUTHORIZATION: ADVISORS ONLY
- *
- * NOTE: Currently using mock data from withdrawalSeed.ts
- * TODO: Replace with actual database queries from withdrawalService.ts when DB is set up
- */
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = request.nextUrl;
-    const advisorId = searchParams.get('advisorId');
-    const start = searchParams.get('start');
-    const end = searchParams.get('end');
-
-    if (!advisorId || !start || !end) {
-      return NextResponse.json(
-        { error: 'Missing required params: advisorId, start, end' },
-        { status: 400 }
-      );
-    }
-
-    // Ensure mock data is seeded
-    seedAll();
-
     // Check if advisor exists
     const advisors = getAdvisors();
     const advisor = advisors.find(a => a.id === advisorId);

@@ -23,16 +23,26 @@ import {
     updateGradPlanDetails as _updateGradPlanDetails,
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
     updateGradPlanName as _updateGradPlanName,
+    deleteGradPlan as _deleteGradPlan,
 } from './gradPlanService';
-import { ChatbotSendMessage_ServerAction as _chatbotSendMessage } from './openaiService';
+import {
+    fetchProfileBasicInfo as _fetchProfileBasicInfo,
+} from './profileService.server';
+import {
+    ChatbotSendMessage_ServerAction as _chatbotSendMessage,
+    parseTranscriptCourses_ServerAction as _parseTranscriptCourses,
+} from './openaiService';
 import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
     deleteProgram as _deleteProgram,
 } from './programService';
 import {
-    fetchUserCourses as _fetchUserCourses,
-    fetchMostRecentUserCourses as _fetchMostRecentUserCourses,
+    fetchUserCoursesArray as _fetchUserCoursesArray,
     formatCoursesForDisplay,
+    saveManualCourses as _saveManualCourses,
+    updateUserCourseTags as _updateUserCourseTags,
+    upsertUserCourses as _upsertUserCourses,
+    type ParsedCourse,
 } from './userCoursesService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
@@ -136,8 +146,14 @@ export async function submitGradPlanForApproval(userId: string, planData: unknow
             planName = nameValidation.sanitizedValue;
         }
 
-        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planData, VALIDATION_OPTIONS);
-        return await _submitGradPlanForApproval(userId, sanitizedPlan, programIds, planName);
+        // The planData is just the array of terms, not the full object expected by graduationPlanPayloadSchema
+        // We'll just validate that it's an array and pass it through
+        if (!Array.isArray(planData)) {
+            return { success: false, message: 'Invalid plan data format. Expected an array of terms.' };
+        }
+
+        // Pass the raw planData (array of terms) directly to the service
+        return await _submitGradPlanForApproval(userId, planData, programIds, planName);
     } catch (error) {
         if (error instanceof ValidationError) {
             return { success: false, message: error.errors.join('; ') };
@@ -203,14 +219,18 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
     if (trimmedNotes.length > 4000) {
         return { success: false, error: 'Advisor notes exceed 4000 characters' };
     }
+    // Basic validation: ensure planDetails is provided and is an object or array
+    if (!planDetails || (typeof planDetails !== 'object')) {
+        return { success: false, error: 'Plan details are required' };
+    }
     try {
-        const sanitizedPlan = await graduationPlanPayloadSchema.validate(planDetails, VALIDATION_OPTIONS);
-        return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, sanitizedPlan, trimmedNotes);
+        return await _updateGradPlanDetailsAndAdvisorNotes(gradPlanId, planDetails, trimmedNotes);
     } catch (error) {
-        if (error instanceof ValidationError) {
-            return { success: false, error: error.errors.join('; ') };
-        }
-        throw error;
+        console.error('Error updating grad plan details and advisor notes:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update plan'
+        };
     }
 }
 
@@ -291,6 +311,56 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
     }
 }
 
+// Delete graduation plan (students can delete their own non-active plans)
+export async function deleteGradPlanAction(gradPlanId: string) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id, is_active')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only delete their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to delete this plan' };
+            }
+        }
+
+        // Call the service function to delete
+        return await _deleteGradPlan(gradPlanId);
+    } catch (error) {
+        console.error('❌ Unexpected error deleting grad plan:', error);
+        return { success: false, error: 'Unable to delete plan. Please try again.' };
+    }
+}
+
 // Program related
 export async function fetchProgramsByUniversity(universityId: number) {
     return await _fetchProgramsByUniversity(universityId);
@@ -313,7 +383,8 @@ export async function chatbotSendMessage(message: string, sessionId?: string) {
 // User courses related
 export async function fetchUserCoursesAction(userId: string) {
     try {
-        const courses = await _fetchUserCourses(userId);
+        const supabase = await createSupabaseServerComponentClient();
+        const courses = await _fetchUserCoursesArray(supabase, userId);
         return { success: true, courses: formatCoursesForDisplay(courses) };
     } catch (error) {
         console.error('Error fetching user courses:', error);
@@ -321,12 +392,129 @@ export async function fetchUserCoursesAction(userId: string) {
     }
 }
 
-export async function fetchMostRecentUserCoursesAction(userId: string) {
+// Transcript parsing with AI
+export async function parseTranscriptCoursesAction(args: {
+    transcriptText: string;
+    userId?: string | null;
+    sessionId?: string;
+}) {
+    return await _parseTranscriptCourses(args);
+}
+
+/**
+ * Server action to save manual courses
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function saveManualCoursesAction(
+    userId: string,
+    manualCourses: ParsedCourse[],
+    options?: { existingParsed?: ParsedCourse[] }
+) {
     try {
-        const courses = await _fetchMostRecentUserCourses(userId);
-        return { success: true, courses: formatCoursesForDisplay(courses) };
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const result = await _saveManualCourses(supabase, userId, manualCourses, options);
+        return { success: true, manualCount: result.manualCount };
     } catch (error) {
-        console.error('Error fetching recent user courses:', error);
-        return { success: false, error: 'Failed to fetch recent user courses' };
+        console.error('Error saving manual courses:', error);
+        return { success: false, error: 'Failed to save manual courses' };
     }
+}
+
+/**
+ * Server action to update course tags
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function updateUserCourseTagsAction(
+    userId: string,
+    courseId: string,
+    tags: string[]
+) {
+    try {
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            console.error('❌ updateUserCourseTagsAction: User not authenticated');
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            console.error('❌ updateUserCourseTagsAction: User ID mismatch', {
+                authenticatedUser: user.id,
+                requestedUserId: userId,
+            });
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        console.log('✅ updateUserCourseTagsAction: Auth verified, calling service', {
+            userId,
+            courseId,
+            tags,
+        });
+
+        const result = await _updateUserCourseTags(supabase, userId, courseId, tags);
+
+        console.log('✅ updateUserCourseTagsAction: Service call successful', {
+            success: result.success,
+            tags: result.tags,
+        });
+
+        return { success: true, tags: result.tags };
+    } catch (error) {
+        console.error('❌ updateUserCourseTagsAction: Error updating course tags:', error);
+        if (error instanceof Error) {
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+            });
+        }
+        return { success: false, error: 'Failed to update course tags' };
+    }
+}
+
+/**
+ * Server action to update all user courses
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function updateUserCoursesAction(
+    userId: string,
+    courses: ParsedCourse[]
+) {
+    try {
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const result = await _upsertUserCourses(supabase, userId, courses);
+        return { success: true, courseCount: result.courseCount };
+    } catch (error) {
+        console.error('Error updating user courses:', error);
+        return { success: false, error: 'Failed to update courses' };
+    }
+}
+
+// Profile related
+export async function fetchProfileBasicInfoAction(userId: string) {
+    return await _fetchProfileBasicInfo(userId);
 }

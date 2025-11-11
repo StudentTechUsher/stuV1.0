@@ -11,13 +11,19 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import IconButton from '@mui/material/IconButton';
 import GraduationPlanner from "@/components/grad-planner/graduation-planner";
 import CreateGradPlanDialog from "@/components/grad-planner/create-grad-plan-dialog";
 import ProgramSelectionDialog, { type ProgramSelections } from "@/components/grad-planner/ProgramSelectionDialog";
-import InlineEditableTitle from "@/components/grad-planner/inline-editable-title";
+import EditablePlanTitle from "@/components/EditablePlanTitle";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
-import { updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { updateGradPlanNameAction, deleteGradPlanAction } from '@/lib/services/server-actions';
+import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
 interface Term {
   term: string;
@@ -69,26 +75,42 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
   const [gradPlans, setGradPlans] = useState<GradPlanRecord[]>(allGradPlans);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
+  const [planNameInput, setPlanNameInput] = useState('');
+  const [planNameError, setPlanNameError] = useState<string | null>(null);
+  const [isSavingPlanName, setIsSavingPlanName] = useState(false);
+  const [isEditingPlanName, setIsEditingPlanName] = useState(false);
+  const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameInput, setRenameInput] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [isSavingRename, setIsSavingRename] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
     severity: 'success'
   });
 
+  // Initialize gradPlans only once on mount
   useEffect(() => {
     setGradPlans(allGradPlans);
-  }, [allGradPlans]);
+  }, []); // Only run on mount
 
+  // Update selected plan when it changes in the list, but preserve it during editing
   useEffect(() => {
-    if (selectedGradPlan) {
-      const updated = allGradPlans.find(plan => plan.id === selectedGradPlan.id);
-      if (updated && updated !== selectedGradPlan) {
-        setSelectedGradPlan(updated);
-      }
-    } else if (activeGradPlan) {
+    if (!selectedGradPlan && activeGradPlan) {
       setSelectedGradPlan(activeGradPlan);
     }
-  }, [allGradPlans, activeGradPlan, selectedGradPlan]);
+  }, [activeGradPlan, selectedGradPlan]);
+
+  // Update planNameInput when selectedGradPlan changes
+  useEffect(() => {
+    if (selectedGradPlan) {
+      const currentName = typeof selectedGradPlan.plan_name === 'string'
+        ? selectedGradPlan.plan_name.trim()
+        : '';
+      setPlanNameInput(currentName);
+    }
+  }, [selectedGradPlan]);
 
   const handleGradPlanSelection = (event: SelectChangeEvent<string>) => {
     const selectedId = event.target.value;
@@ -178,13 +200,140 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     }
   };
 
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
+  const handlePlanNameBlur = async () => {
+    if (!selectedGradPlan || isSavingPlanName) return;
+
+    const trimmedName = planNameInput.trim();
+    const currentName = typeof selectedGradPlan.plan_name === 'string'
+      ? selectedGradPlan.plan_name.trim()
+      : '';
+
+    // If unchanged, just exit edit mode
+    if (trimmedName === currentName) {
+      setIsEditingPlanName(false);
+      setPlanNameError(null);
+      return;
+    }
+
+    // Validate the new name
+    const validation = validatePlanName(trimmedName, { allowEmpty: false });
+    if (!validation.isValid) {
+      setPlanNameError(validation.error);
+      // Revert to original name
+      setPlanNameInput(currentName);
+      setIsEditingPlanName(false);
+      setNotification({ open: true, message: validation.error, severity: 'error' });
+      return;
+    }
+
+    const sanitizedName = validation.sanitizedValue;
+
+    // Save the new name
+    setIsSavingPlanName(true);
+    try {
+      const result = await updateGradPlanNameAction(selectedGradPlan.id, sanitizedName);
+      if (!result.success) {
+        const message = result.error ?? 'Failed to update plan name.';
+        setPlanNameError(message);
+        setPlanNameInput(currentName); // Revert
+        setNotification({ open: true, message, severity: 'error' });
+        return;
+      }
+
+      // Update local state
+      setGradPlans(prev =>
+        prev.map(plan => (plan.id === selectedGradPlan.id ? { ...plan, plan_name: sanitizedName } : plan))
+      );
+      setSelectedGradPlan(prev => prev ? { ...prev, plan_name: sanitizedName } : prev);
+      setPlanNameInput(sanitizedName);
+      setPlanNameError(null);
+      setNotification({ open: true, message: 'Plan name updated!', severity: 'success' });
+    } catch (error) {
+      console.error('Error updating plan name:', error);
+      setPlanNameInput(currentName); // Revert
+      setNotification({ open: true, message: 'Failed to update plan name.', severity: 'error' });
+    } finally {
+      setIsSavingPlanName(false);
+      setIsEditingPlanName(false);
+    }
   };
 
   const selectedPlanName = selectedGradPlan && typeof selectedGradPlan.plan_name === 'string'
     ? selectedGradPlan.plan_name.trim()
     : '';
+  const handlePlanNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.currentTarget.blur(); // Trigger onBlur to save
+    } else if (event.key === 'Escape') {
+      // Revert to original name
+      const currentName = typeof selectedGradPlan?.plan_name === 'string'
+        ? selectedGradPlan.plan_name.trim()
+        : '';
+      setPlanNameInput(currentName);
+      setPlanNameError(null);
+      setIsEditingPlanName(false);
+      event.currentTarget.blur();
+    }
+  };
+
+  const handleDeletePlan = async (planId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering the plan selection
+
+    const planToDelete = gradPlans.find(p => p.id === planId);
+    if (!planToDelete) return;
+
+    const planName = typeof planToDelete.plan_name === 'string' && planToDelete.plan_name.trim()
+      ? planToDelete.plan_name.trim()
+      : 'Untitled Plan';
+
+    if (!confirm(`Are you sure you want to delete "${planName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const result = await deleteGradPlanAction(planId);
+
+      if (result.success) {
+        // Remove the plan from the local state
+        const updatedPlans = gradPlans.filter(p => p.id !== planId);
+        setGradPlans(updatedPlans);
+
+        // If the deleted plan was selected, select the first remaining plan or null
+        if (selectedGradPlan?.id === planId) {
+          const newSelectedPlan = updatedPlans.length > 0 ? updatedPlans[0] : null;
+          setSelectedGradPlan(newSelectedPlan);
+        }
+
+        setNotification({
+          open: true,
+          message: 'Graduation plan deleted successfully!',
+          severity: 'success'
+        });
+
+        // Close the dialog if no plans remain
+        if (updatedPlans.length === 0) {
+          setShowPlanSwitcher(false);
+        }
+      } else {
+        setNotification({
+          open: true,
+          message: result.error || 'Failed to delete graduation plan',
+          severity: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting graduation plan:', error);
+      setNotification({
+        open: true,
+        message: 'An unexpected error occurred while deleting the plan',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({ ...notification, open: false });
+  };
 
   const selectedPlanCreatedAt = (() => {
     if (!selectedGradPlan?.created_at) return null;
@@ -413,6 +562,8 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               if (Array.isArray(planDetails)) {
                 return {
                   plan: planDetails,
+                  plan_name: selectedGradPlan.plan_name,
+                  programs: selectedGradPlan.programs,
                   est_grad_sem: studentRecord?.est_grad_sem,
                   est_grad_date: studentRecord?.est_grad_date
                 };
@@ -420,6 +571,8 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               // Otherwise, spread it and add graduation fields
               return {
                 ...(planDetails as Record<string, unknown>),
+                plan_name: selectedGradPlan.plan_name,
+                programs: selectedGradPlan.programs,
                 est_grad_sem: studentRecord?.est_grad_sem,
                 est_grad_date: studentRecord?.est_grad_date
               };
@@ -484,7 +637,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         <CreateGradPlanDialog
           open={showCourseSelection}
           onClose={handleCourseSelectionClose}
-          selectedProgramIds={[...programSelections.majorIds, ...programSelections.minorIds]}
+          selectedProgramIds={
+            programSelections.isGraduateStudent
+              ? programSelections.graduateProgramIds
+              : [...programSelections.majorIds, ...programSelections.minorIds]
+          }
           genEdProgramIds={programSelections.genEdIds}
           genEdStrategy={programSelections.genEdStrategy}
           planMode={programSelections.planMode}
@@ -492,9 +649,158 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           onPlanCreated={handlePlanCreated}
           initialPlanName={programSelections.planName}
           prompt={prompt}
+          isGraduateStudent={programSelections.isGraduateStudent}
         />
       )}
-      
+
+      {/* Plan Switcher Dialog */}
+      <Dialog
+        open={showPlanSwitcher}
+        onClose={() => setShowPlanSwitcher(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(10,31,26,0.2)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1f1a' }}>
+              Switch Graduation Plan
+            </Typography>
+            <IconButton
+              onClick={() => setShowPlanSwitcher(false)}
+              size="small"
+              sx={{ color: 'rgba(10,31,26,0.6)' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </IconButton>
+          </Box>
+          <Typography variant="body2" sx={{ color: 'rgba(10,31,26,0.6)', mt: 0.5 }}>
+            Select a graduation plan to view
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {gradPlans.map((plan) => {
+              const planName = typeof plan.plan_name === 'string'
+                ? (plan.plan_name ?? '').trim()
+                : '';
+              const isSelected = plan.id === selectedGradPlan?.id;
+
+              let createdAt = 'Unknown Date';
+              try {
+                createdAt = plan.created_at
+                  ? new Date(plan.created_at as string).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : 'Unknown Date';
+              } catch {
+                createdAt = 'Unknown Date';
+              }
+
+              const displayName = planName.length > 0 ? planName : 'Untitled Plan';
+
+              return (
+                <Box
+                  key={plan.id}
+                  onClick={() => {
+                    const event = { target: { value: plan.id } } as SelectChangeEvent<string>;
+                    handleGradPlanSelection(event);
+                    setShowPlanSwitcher(false);
+                  }}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: '7px',
+                    border: isSelected ? '1.5px solid' : 'none',
+                    borderColor: isSelected ? 'var(--primary)' : undefined,
+                    backgroundColor: isSelected ? 'rgba(18,249,135,0.08)' : 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: isSelected ? 'var(--primary)' : undefined,
+                      backgroundColor: isSelected ? 'rgba(18,249,135,0.12)' : 'transparent',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 600,
+                          color: '#0a1f1a',
+                          mb: 0.5,
+                        }}
+                      >
+                        {displayName}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'rgba(10,31,26,0.6)',
+                          display: 'block',
+                        }}
+                      >
+                        Created {createdAt}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {!isSelected && (
+                        <IconButton
+                          onClick={(e) => handleDeletePlan(plan.id, e)}
+                          size="small"
+                          sx={{
+                            color: 'rgba(244, 67, 54, 0.7)',
+                            '&:hover': {
+                              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                              color: 'rgb(244, 67, 54)',
+                            },
+                          }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.25 4.5h13.5M7.5 8.25v4.5M10.5 8.25v4.5M3 4.5h12l-.75 9.75a1.5 1.5 0 01-1.5 1.5h-7.5a1.5 1.5 0 01-1.5-1.5L3 4.5zM6.75 4.5v-1.5a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </IconButton>
+                      )}
+                      {isSelected && (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '4px',
+                            backgroundColor: 'var(--primary)',
+                            color: 'white',
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.667 3.5L5.25 9.917 2.333 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                            ACTIVE
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}

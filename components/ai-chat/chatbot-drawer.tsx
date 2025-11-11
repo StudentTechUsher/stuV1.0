@@ -33,7 +33,7 @@ type Props = {
   role?: Role;
   /** Optional: override or extend the quick actions */
   presetPrompts?: QuickAction[];
-  /** Optional: handle sending the prompt (otherwise we console.log it) */
+  /** Optional: handle sending the prompt */
   onSend?: (text: string, meta?: { role?: Role }) => void | Promise<void>;
 };
 

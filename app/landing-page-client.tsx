@@ -4,12 +4,39 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Menu, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useUniversityTheme } from "@/contexts/university-theme-context"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 export function LandingPageClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { university } = useUniversityTheme()
+  const router = useRouter()
+
+  // Listen for auth state changes and redirect authenticated users to dashboard
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+
+    // Check initial session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      }
+    }
+
+    checkSession()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        router.push('/dashboard')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [router])
 
   return (
     <div className="flex min-h-screen flex-col">

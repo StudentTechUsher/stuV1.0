@@ -34,6 +34,8 @@ export interface ProgramSelections {
   genEdStrategy: 'early' | 'balanced';
   planMode: 'AUTO' | 'MANUAL';
   planName: string;
+  isGraduateStudent: boolean;
+  graduateProgramIds: string[];
 }
 
 interface ProgramSelectionDialogProps {
@@ -49,113 +51,142 @@ export default function ProgramSelectionDialog({
   onNext,
   universityId
 }: Readonly<ProgramSelectionDialogProps>) {
+  const [studentType, setStudentType] = useState<'undergraduate' | 'graduate'>('undergraduate');
   const [majors, setMajors] = useState<ProgramOption[]>([]);
   const [minors, setMinors] = useState<ProgramOption[]>([]);
+  const [graduatePrograms, setGraduatePrograms] = useState<ProgramOption[]>([]);
   const [genEds, setGenEds] = useState<ProgramOption[]>([]);
   const [loadingMajors, setLoadingMajors] = useState(false);
   const [loadingMinors, setLoadingMinors] = useState(false);
+  const [loadingGraduatePrograms, setLoadingGraduatePrograms] = useState(false);
   const [loadingGenEds, setLoadingGenEds] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedMajors, setSelectedMajors] = useState<ProgramOption[]>([]);
   const [selectedMinors, setSelectedMinors] = useState<ProgramOption[]>([]);
+  const [selectedGraduatePrograms, setSelectedGraduatePrograms] = useState<ProgramOption[]>([]);
   const [genEdStrategy, setGenEdStrategy] = useState<'early' | 'balanced'>('balanced');
   const [planMode, setPlanMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
   const [planName, setPlanName] = useState('');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
 
-  // Fetch majors and minors when dialog opens
+  // Fetch programs when dialog opens or student type changes
   useEffect(() => {
     if (!open) return;
 
     const fetchPrograms = async () => {
       setError(null);
 
-      // Fetch majors
-      setLoadingMajors(true);
-      try {
-        const majorsRes = await fetch(`/api/programs?type=major&universityId=${universityId}`);
-        if (!majorsRes.ok) throw new Error('Failed to fetch majors');
-        const majorsData = await majorsRes.json();
-        setMajors(majorsData);
-      } catch (err) {
-        console.error('Error fetching majors:', err);
-        setError('Failed to load majors. Please try again.');
-      } finally {
-        setLoadingMajors(false);
-      }
+      if (studentType === 'undergraduate') {
+        // Fetch majors
+        setLoadingMajors(true);
+        try {
+          const majorsRes = await fetch(`/api/programs?type=major&universityId=${universityId}`);
+          if (!majorsRes.ok) throw new Error('Failed to fetch majors');
+          const majorsData = await majorsRes.json();
+          setMajors(majorsData);
+        } catch (err) {
+          console.error('Error fetching majors:', err);
+          setError('Failed to load majors. Please try again.');
+        } finally {
+          setLoadingMajors(false);
+        }
 
-      // Fetch minors
-      setLoadingMinors(true);
-      try {
-        const minorsRes = await fetch(`/api/programs?type=minor&universityId=${universityId}`);
-        if (!minorsRes.ok) throw new Error('Failed to fetch minors');
-        const minorsData = await minorsRes.json();
-        setMinors(minorsData);
-      } catch (err) {
-        console.error('Error fetching minors:', err);
-        setError('Failed to load minors. Please try again.');
-      } finally {
-        setLoadingMinors(false);
-      }
+        // Fetch minors
+        setLoadingMinors(true);
+        try {
+          const minorsRes = await fetch(`/api/programs?type=minor&universityId=${universityId}`);
+          if (!minorsRes.ok) throw new Error('Failed to fetch minors');
+          const minorsData = await minorsRes.json();
+          setMinors(minorsData);
+        } catch (err) {
+          console.error('Error fetching minors:', err);
+          setError('Failed to load minors. Please try again.');
+        } finally {
+          setLoadingMinors(false);
+        }
 
-      // Fetch GenEd programs using service function
-      setLoadingGenEds(true);
-      try {
-        const genEdPrograms = await GetGenEdsForUniversity(universityId);
-        setGenEds(genEdPrograms.map(p => ({
-          id: p.id,
-          name: p.name,
-          program_type: p.program_type || 'general_ed'
-        })));
-      } catch (err) {
-        console.error('Error fetching GenEd programs:', err);
-        setError('Failed to load general education programs. Please try again.');
-      } finally {
-        setLoadingGenEds(false);
+        // Fetch GenEd programs using service function
+        setLoadingGenEds(true);
+        try {
+          const genEdPrograms = await GetGenEdsForUniversity(universityId);
+          setGenEds(genEdPrograms.map(p => ({
+            id: p.id,
+            name: p.name,
+            program_type: p.program_type || 'general_ed'
+          })));
+        } catch (err) {
+          console.error('Error fetching GenEd programs:', err);
+          setError('Failed to load general education programs. Please try again.');
+        } finally {
+          setLoadingGenEds(false);
+        }
+      } else {
+        // Graduate student - fetch graduate programs
+        setLoadingGraduatePrograms(true);
+        try {
+          const gradRes = await fetch(`/api/programs?type=graduate_no_gen_ed&universityId=${universityId}`);
+          if (!gradRes.ok) throw new Error('Failed to fetch graduate programs');
+          const gradData = await gradRes.json();
+          setGraduatePrograms(gradData);
+        } catch (err) {
+          console.error('Error fetching graduate programs:', err);
+          setError('Failed to load graduate programs. Please try again.');
+        } finally {
+          setLoadingGraduatePrograms(false);
+        }
       }
     };
 
     fetchPrograms();
-  }, [open, universityId]);
+  }, [open, universityId, studentType]);
 
   const handleNext = () => {
-    if (selectedMajors.length === 0) {
+    if (studentType === 'undergraduate' && selectedMajors.length === 0) {
       setError('Please select at least one major');
+      return;
+    }
+
+    if (studentType === 'graduate' && selectedGraduatePrograms.length === 0) {
+      setError('Please select at least one graduate program');
       return;
     }
 
     const nameValidation = validatePlanName(planName, { allowEmpty: true });
     if (!nameValidation.isValid) {
-      setPlanNameError(nameValidation.error);
+      setError(nameValidation.error);
       return;
     }
-    setPlanNameError(null);
 
     onNext({
-      majorIds: selectedMajors.map(m => m.id),
-      minorIds: selectedMinors.map(m => m.id),
-      genEdIds: genEds.map(g => g.id), // Include all GenEd programs for the university
+      majorIds: studentType === 'undergraduate' ? selectedMajors.map(m => m.id) : [],
+      minorIds: studentType === 'undergraduate' ? selectedMinors.map(m => m.id) : [],
+      genEdIds: studentType === 'undergraduate' ? genEds.map(g => g.id) : [], // No GenEd for graduate students
       genEdStrategy,
       planMode,
-      planName: nameValidation.sanitizedValue
+      planName: nameValidation.sanitizedValue,
+      isGraduateStudent: studentType === 'graduate',
+      graduateProgramIds: studentType === 'graduate' ? selectedGraduatePrograms.map(p => p.id) : []
     });
   };
 
   const handleClose = () => {
     // Reset selections on close
+    setStudentType('undergraduate');
     setSelectedMajors([]);
     setSelectedMinors([]);
+    setSelectedGraduatePrograms([]);
     setGenEdStrategy('balanced');
     setPlanMode('AUTO');
     setError(null);
     setPlanName('');
-    setPlanNameError(null);
     onClose();
   };
 
-  const isLoading = loadingMajors || loadingMinors || loadingGenEds;
-  const canProceed = selectedMajors.length > 0 && !isLoading;
+  const isLoading = loadingMajors || loadingMinors || loadingGenEds || loadingGraduatePrograms;
+  const canProceed = (
+    (studentType === 'undergraduate' && selectedMajors.length > 0) ||
+    (studentType === 'graduate' && selectedGraduatePrograms.length > 0)
+  ) && !isLoading;
 
   return (
     <Dialog
@@ -197,8 +228,47 @@ export default function ProgramSelectionDialog({
             </Box>
           )}
 
-          {/* Majors Selection */}
+          {/* Student Type Selection */}
           <Box>
+            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
+              Student Type
+            </Typography>
+            <ToggleButtonGroup
+              value={studentType}
+              exclusive
+              onChange={(_, value) => {
+                if (value) {
+                  setStudentType(value);
+                  // Clear selections when switching types
+                  setSelectedMajors([]);
+                  setSelectedMinors([]);
+                  setSelectedGraduatePrograms([]);
+                  setError(null);
+                }
+              }}
+              fullWidth
+              sx={{ mb: 1 }}
+            >
+              <ToggleButton value="undergraduate" className="font-body-semi">
+                Undergraduate
+              </ToggleButton>
+              <ToggleButton value="graduate" className="font-body-semi">
+                Graduate
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Typography variant="caption" className="font-body" color="text.secondary">
+              {studentType === 'undergraduate'
+                ? 'Undergraduate programs include majors, minors, and general education requirements'
+                : 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
+              }
+            </Typography>
+          </Box>
+
+          {/* Undergraduate Programs */}
+          {studentType === 'undergraduate' && (
+            <>
+              {/* Majors Selection */}
+              <Box>
             <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
               Select Majors (1-3 required)
             </Typography>
@@ -231,13 +301,13 @@ export default function ProgramSelectionDialog({
                 />
               )}
             />
-            <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              {selectedMajors.length}/3 majors selected
-            </Typography>
-          </Box>
+                <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {selectedMajors.length}/3 majors selected
+                </Typography>
+              </Box>
 
-          {/* Minors Selection */}
-          <Box>
+              {/* Minors Selection */}
+              <Box>
             <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
               Select Minors (0-3 optional)
             </Typography>
@@ -269,13 +339,13 @@ export default function ProgramSelectionDialog({
                 />
               )}
             />
-            <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              {selectedMinors.length}/3 minors selected
-            </Typography>
-          </Box>
+                <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {selectedMinors.length}/3 minors selected
+                </Typography>
+              </Box>
 
-          {/* GenEd Strategy */}
-          <Box>
+              {/* GenEd Strategy */}
+              <Box>
             <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
               General Education Strategy
             </Typography>
@@ -293,13 +363,53 @@ export default function ProgramSelectionDialog({
                 Balanced
               </ToggleButton>
             </ToggleButtonGroup>
-            <Typography variant="caption" className="font-body" color="text.secondary">
-              {genEdStrategy === 'early'
-                ? 'Complete general education courses early to focus on major courses later'
-                : 'Balance general education and major courses throughout your plan'
-              }
-            </Typography>
-          </Box>
+                <Typography variant="caption" className="font-body" color="text.secondary">
+                  {genEdStrategy === 'early'
+                    ? 'Complete general education courses early to focus on major courses later'
+                    : 'Balance general education and major courses throughout your plan'
+                  }
+                </Typography>
+              </Box>
+            </>
+          )}
+
+          {/* Graduate Programs */}
+          {studentType === 'graduate' && (
+            <Box>
+              <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
+                Select Graduate Program (1 required)
+              </Typography>
+              <Autocomplete
+                options={graduatePrograms}
+                getOptionLabel={(option) => option.name}
+                value={selectedGraduatePrograms[0] || null}
+                onChange={(_, newValue) => {
+                  setSelectedGraduatePrograms(newValue ? [newValue] : []);
+                  setError(null);
+                }}
+                loading={loadingGraduatePrograms}
+                disabled={isLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search for graduate programs..."
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loadingGraduatePrograms ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+              <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                Graduate programs do not include general education requirements
+              </Typography>
+            </Box>
+          )}
 
           {/* Plan Mode */}
           <Box>
@@ -328,27 +438,6 @@ export default function ProgramSelectionDialog({
                 : 'Manually select courses from requirements before generating plan'
               }
             </Typography>
-          </Box>
-
-          {/* Plan Name */}
-          <Box>
-            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-              Plan Name (optional)
-            </Typography>
-            <TextField
-              fullWidth
-              placeholder="Ex: Biomedical Engineering Roadmap"
-              value={planName}
-              onChange={(event) => {
-                setPlanName(event.target.value);
-                if (planNameError) {
-                  setPlanNameError(null);
-                }
-              }}
-              error={Boolean(planNameError)}
-              helperText={planNameError ?? 'You can rename your plan at any time from the dashboard.'}
-              inputProps={{ maxLength: 100 }}
-            />
           </Box>
         </Box>
       </DialogContent>

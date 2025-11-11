@@ -103,6 +103,7 @@ interface CreateGradPlanDialogProps {
   onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string, planName?: string) => void;
   prompt: string;
   initialPlanName?: string;
+  isGraduateStudent?: boolean;
 }
 
 export default function CreateGradPlanDialog({
@@ -115,7 +116,8 @@ export default function CreateGradPlanDialog({
   universityId,
   onPlanCreated,
   prompt,
-  initialPlanName
+  initialPlanName,
+  isGraduateStudent = false
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: program data (loaded dynamically)
@@ -137,7 +139,6 @@ export default function CreateGradPlanDialog({
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
   const [planName, setPlanName] = useState(initialPlanName ?? '');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
   // Snackbar for success/error feedback
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>(
     { open: false, message: '', severity: 'info' }
@@ -154,7 +155,6 @@ export default function CreateGradPlanDialog({
   useEffect(() => {
     if (open) {
       setPlanName(initialPlanName ?? '');
-      setPlanNameError(null);
     }
   }, [open, initialPlanName]);
 
@@ -167,7 +167,7 @@ useEffect(() => {
     setDataLoadError(null);
 
     try {
-      // Fetch selected programs (majors + minors) with full requirements
+      // Fetch selected programs (majors + minors OR graduate programs) with full requirements
       if (selectedProgramIds.length > 0) {
         const programsRes = await fetch(`/api/programs/batch?ids=${selectedProgramIds.join(',')}&universityId=${universityId}`);
         if (!programsRes.ok) throw new Error('Failed to fetch program data');
@@ -175,8 +175,8 @@ useEffect(() => {
         setProgramsData(programsJson);
       }
 
-      // Fetch GenEd programs with full requirements
-      if (genEdProgramIds.length > 0) {
+      // Fetch GenEd programs with full requirements (skip for graduate students)
+      if (!isGraduateStudent && genEdProgramIds.length > 0) {
         const genEdRes = await fetch(`/api/programs/batch?ids=${genEdProgramIds.join(',')}&universityId=${universityId}`);
         if (!genEdRes.ok) throw new Error('Failed to fetch GenEd data');
         const genEdJson = await genEdRes.json();
@@ -192,7 +192,7 @@ useEffect(() => {
   }
 
   fetchProgramData();
-}, [open, selectedProgramIds, genEdProgramIds, universityId]);
+}, [open, selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
 
 // --- User-added elective courses & GenEd strategy ---
 interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
@@ -346,7 +346,6 @@ const handleRemoveElective = (id: string) => {
     if (!open || selectedPrograms.size === 0) return;
 
     const timer = setTimeout(() => {
-      console.log('🔍 Auto-selection running for programs:', Array.from(selectedPrograms));
       Array.from(selectedPrograms).forEach(programId => {
         programRequirements.forEach(req => {
           if (req.courses) {
@@ -355,7 +354,6 @@ const handleRemoveElective = (id: string) => {
             const validCourses = getValidCourses(req);
 
             if (shouldAutoSelect(req, false)) {
-              console.log(`✅ Auto-selecting for requirement ${req.requirementId} (${requirementKey}):`, validCourses.slice(0, dropdownCount).map(c => c.code));
               setSelectedProgramCourses(prev => {
                 const existing = prev[requirementKey] ?? [];
                 const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
@@ -369,10 +367,8 @@ const handleRemoveElective = (id: string) => {
                       next[i] = validCourses[i].code;
                     }
                   }
-                  console.log(`📝 Setting selected courses for ${requirementKey}:`, next);
                   return { ...prev, [requirementKey]: next };
                 }
-                console.log(`⏭️  Skipping ${requirementKey} - already filled`);
                 return prev;
               });
             }
@@ -601,11 +597,9 @@ const handleRemoveElective = (id: string) => {
 
     const nameValidation = validatePlanName(planName, { allowEmpty: true });
     if (!nameValidation.isValid) {
-      setPlanNameError(nameValidation.error);
       showSnackbar(nameValidation.error, 'error');
       return;
     }
-    setPlanNameError(null);
     const sanitizedPlanName = nameValidation.sanitizedValue;
     setPlanName(sanitizedPlanName);
 
@@ -613,12 +607,41 @@ const handleRemoveElective = (id: string) => {
     setPlanCreationError(null);
 
     try {
-      // Step 1: Send the course data to AI for semester organization
-      // Augment prompt with GenEd strategy assumption so AI can respect sequencing preference
-      const strategyText = genEdStrategy === 'early'
+      // Step 1: Calculate total target credits from all selected programs
+      // For graduate students, only use program data (no GenEd)
+      const allSelectedProgramData: ProgramRow[] = isGraduateStudent ? programsData : [...programsData, ...genEdData];
+      const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
+        const credits = (prog.target_total_credits as number | null | undefined) ?? 0;
+        return sum + credits;
+      }, 0);
+
+      // Default credits: 120 for undergrad, 30-36 for graduate (using 30 as default)
+      const defaultCredits = isGraduateStudent ? 30 : 120;
+      const effectiveTargetCredits = totalTargetCredits > 0 ? totalTargetCredits : defaultCredits;
+
+      console.log('📊 Credit calculation:', {
+        isGraduateStudent,
+        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
+        selectedPrograms: programsData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
+        totalTargetCredits,
+        effectiveTargetCredits
+      });
+
+      // Step 2: Send the course data to AI for semester organization
+      // For undergrad: augment prompt with GenEd strategy
+      // For graduate: skip GenEd strategy since there are no GenEd requirements
+      const strategyText = !isGraduateStudent && genEdStrategy === 'early'
         ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
-        : 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.';
-      const augmentedPrompt = `${prompt}\n\nGenEd Sequencing Preference:\n${strategyText}`;
+        : !isGraduateStudent
+        ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
+        : '';
+
+      // Replace any mentions of "120 credits" in the prompt with the calculated target
+      const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
+
+      const augmentedPrompt = isGraduateStudent
+        ? `${promptWithCredits}\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ${effectiveTargetCredits}`
+        : `${promptWithCredits}\n\nGenEd Sequencing Preference:\n${strategyText}\n\nTarget Total Credits: ${effectiveTargetCredits}`;
       const plannerPayload = generateSelectedClassesJson;
       if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
         setPlanCreationError('Course selection data is invalid. Please review your selections and try again.');
@@ -640,7 +663,7 @@ const handleRemoveElective = (id: string) => {
         if (sanitizedPlanName) {
           const gradPlanId = decodeAccessIdClient(aiResult.accessId);
           if (!gradPlanId) {
-            console.warn('⚠️ Unable to decode grad plan ID from accessId while saving plan name.');
+            console.warn(`⚠️ Unable to decode grad plan ID from accessId "${aiResult.accessId}" while saving plan name.`);
           } else {
             const renameResult = await updateGradPlanNameAction(gradPlanId, sanitizedPlanName);
             if (!renameResult.success) {
@@ -862,30 +885,8 @@ const handleRemoveElective = (id: string) => {
         )}
         
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Plan Name */}
-          <Box>
-            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-              Name Your Plan
-            </Typography>
-            <TextField
-              fullWidth
-              placeholder="Ex: First Year STEM Roadmap"
-              value={planName}
-              onChange={(event) => {
-                setPlanName(event.target.value);
-                if (planNameError) {
-                  setPlanNameError(null);
-                }
-              }}
-              disabled={isCreatingPlan}
-              error={Boolean(planNameError)}
-              helperText={planNameError ?? 'Optional, but helpful! You can change this later.'}
-              inputProps={{ maxLength: 100 }}
-            />
-          </Box>
           {/* Available Programs */}
           <Box>
-            <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>Available Programs:</Typography>
             {programsData?.length ? (
               <Box>
                 {/* Group programs by type */}
@@ -939,8 +940,8 @@ const handleRemoveElective = (id: string) => {
             )}
           </Box>
 
-          {/* General Education Requirements */}
-          {effectiveMode === 'MANUAL' && (
+          {/* General Education Requirements (Undergraduate Only) */}
+          {!isGraduateStudent && effectiveMode === 'MANUAL' && (
             <Box>
               <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
 
@@ -1112,9 +1113,6 @@ const handleRemoveElective = (id: string) => {
                                         <Select
                                           value={(() => {
                                             const val = selectedProgramCourses[key]?.[slot] ?? '';
-                                            if (isAutoSelected && slot === 0) {
-                                              console.log(`🎯 Rendering ${key} slot ${slot}, value:`, val, 'from state:', selectedProgramCourses[key]);
-                                            }
                                             return val;
                                           })()}
                                           label={
@@ -1126,8 +1124,8 @@ const handleRemoveElective = (id: string) => {
                                           onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
                                         >
                                           <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
-                                          {validCourses.map((course) => (
-                                            <MenuItem key={`${key}-slot-${slot}-${course.code}`} value={course.code}>
+                                          {validCourses.map((course, courseIdx) => (
+                                            <MenuItem key={`${key}-slot-${slot}-${course.code}-${courseIdx}`} value={course.code}>
                                               {course.code} — {course.title} ({course.credits} credits)
                                             </MenuItem>
                                           ))}

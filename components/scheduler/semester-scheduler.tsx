@@ -138,7 +138,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   const handleScheduleSaved = (schedule: SchedulerEvent[]) => {
     // Mock save to localStorage
     localStorage.setItem('scheduler-generated-schedule', JSON.stringify(schedule));
-    console.log('Schedule saved to localStorage');
   };
 
   const handleAddPersonalEvent = () => {

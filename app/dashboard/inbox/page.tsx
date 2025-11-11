@@ -98,7 +98,7 @@ export default async function InboxPage() {
 							All Clear!
 						</h3>
 						<p className="font-body text-sm text-[var(--muted-foreground)]">
-							You don't have any unread notifications at the moment.
+							You don&apos;t have any unread notifications at the moment.
 						</p>
 					</div>
 				) : (

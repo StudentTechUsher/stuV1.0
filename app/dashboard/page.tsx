@@ -27,15 +27,6 @@ export default async function DashboardPage() {
 
   const cookieStore = await cookies();
 
-  // Check what cookies we have
-  const allCookies = cookieStore.getAll()
-  const authCookies = allCookies.filter(c =>
-    c.name.includes('sb-') || c.name.includes('supabase')
-  )
-  authCookies.forEach(c => {
-    console.log(`  - ${c.name}: ${c.value.substring(0, 50)}...`)
-  })
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -84,17 +75,6 @@ export default async function DashboardPage() {
   // Check if user needs onboarding (no university selected)
   const needsOnboarding = !profile?.university_id;
 
-  // Fetch student data for academic summary
-  const { data: studentData, error: studentErr } = await supabase
-    .from("student")
-    .select("year_in_school")
-    .eq("profile_id", userId)
-    .maybeSingle();
-
-  if (studentErr) {
-    console.error("student data fetch error:", studentErr.message);
-  }
-
   const role: Role = (profile?.role_id && ROLE_MAP[profile.role_id]) ?? "student";
 
   return (
@@ -102,24 +82,22 @@ export default async function DashboardPage() {
       {needsOnboarding && <OnboardingModalWrapper userName={profile?.fname} />}
       {/* Unified padding for all dashboard views - responsive spacing for better mobile/desktop experience */}
       <div className="p-4 sm:p-6">
-        <RoleView role={role} userId={userId} studentData={studentData} />
+        <RoleView role={role} userId={userId} />
       </div>
     </>
   );
 }
 
-function RoleView({ 
-  role, 
-  userId, 
-  studentData 
-}: Readonly<{ 
-  role: Role; 
-  userId: string; 
-  studentData: { year_in_school: string } | null; 
+function RoleView({
+  role,
+  userId
+}: Readonly<{
+  role: Role;
+  userId: string;
 }>) {
   switch (role) {
     case "student":
-      return <StudentDashboard userId={userId} studentData={studentData} />;
+      return <StudentDashboard userId={userId} />;
     case "advisor":
       return <AdvisorDashboardWrapper />;
     case "admin":
@@ -130,11 +108,9 @@ function RoleView({
 }
 
 function StudentDashboard({
-  userId,
-  studentData
+  userId
 }: Readonly<{
   userId: string;
-  studentData: { year_in_school: string } | null;
 }>) {
   return (
     // Modern grid layout with responsive columns and consistent gap spacing
@@ -147,7 +123,7 @@ function StudentDashboard({
             <StuLoader variant="card" text="Loading your academic summary..." />
           </div>
         }>
-          <AcademicSummary yearInSchool={studentData?.year_in_school} />
+          <AcademicSummary />
         </Suspense>
         <AcademicProgressCard />
       </div>
