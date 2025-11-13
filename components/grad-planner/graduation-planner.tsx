@@ -22,13 +22,12 @@ import { CourseItem } from '@/components/space/CoursePill';
 import { Course, Event, EventType, Term } from './types';
 
 // Import components
-import { PlanSummary } from './PlanSummary';
 import { PlanAssumptions } from './PlanAssumptions';
 import { EventDialog } from './EventDialog';
 import { TrashZone } from './TrashZone';
 import { DraggableCourseOverlay } from './DraggableCourseOverlay';
 import { EditModeBanner } from './EditModeBanner';
-import { PlanHeader } from './PlanHeader';
+import { PlanOverview } from './PlanOverview';
 import { DetailView } from './DetailView';
 
 // Import hooks
@@ -60,7 +59,7 @@ export default function GraduationPlanner({
   isEditMode = false,
   onPlanUpdate,
   onSave,
-  initialSpaceView = false,
+  initialSpaceView = true,
   editorRole = 'student',
   advisorChanges,
   externalEvents,
@@ -386,19 +385,16 @@ export default function GraduationPlanner({
         {activeCourse && isEditMode && <TrashZone />}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <PlanHeader
+          <PlanOverview
             currentPlanData={currentPlanData}
             durationYears={durationYears}
+            fulfilledRequirements={fulfilledRequirements}
             isEditMode={isEditMode}
             isSpaceView={isSpaceView}
             onToggleView={() => setIsSpaceView(!isSpaceView)}
             onAddEvent={() => handleOpenEventDialog()}
-          />
-
-          <PlanSummary
-            planData={currentPlanData}
-            durationYears={durationYears}
-            fulfilledRequirements={fulfilledRequirements}
+            programs={(plan as Record<string, unknown>)?.programs as Array<{ id: number; name: string }> | undefined}
+            estGradSem={(plan as Record<string, unknown>)?.est_grad_sem as string | undefined}
           />
 
           {/* Display terms with events between them */}
