@@ -179,7 +179,7 @@ function validateAndTransform(
     seats_capacity: seats.capacity,
     waitlist_count: isNaN(waitlist!) ? null : waitlist,
     source_row_hash: generateSourceHash(raw),
-    raw_json: raw as Record<string, unknown>,
+    raw_json: raw as unknown as Record<string, unknown>,
   };
 }
 

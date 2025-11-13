@@ -60,7 +60,12 @@ export default function ProgramSelectionDialog({
   const [loadingMinors, setLoadingMinors] = useState(false);
   const [loadingGraduatePrograms, setLoadingGraduatePrograms] = useState(false);
   const [loadingGenEds, setLoadingGenEds] = useState(false);
+  const [loadingStudentTypes, setLoadingStudentTypes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableStudentTypes, setAvailableStudentTypes] = useState<{
+    hasUndergraduate: boolean;
+    hasGraduate: boolean;
+  } | null>(null);
 
   const [selectedMajors, setSelectedMajors] = useState<ProgramOption[]>([]);
   const [selectedMinors, setSelectedMinors] = useState<ProgramOption[]>([]);
@@ -69,9 +74,38 @@ export default function ProgramSelectionDialog({
   const [planMode, setPlanMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
   const [planName, setPlanName] = useState('');
 
-  // Fetch programs when dialog opens or student type changes
+  // Fetch available student types when dialog opens
   useEffect(() => {
     if (!open) return;
+
+    const fetchStudentTypes = async () => {
+      setLoadingStudentTypes(true);
+      try {
+        const response = await fetch(`/api/programs/student-types?universityId=${universityId}`);
+        if (!response.ok) throw new Error('Failed to fetch student types');
+        const data = await response.json();
+        setAvailableStudentTypes(data);
+
+        // Auto-select student type if only one is available
+        if (data.hasUndergraduate && !data.hasGraduate) {
+          setStudentType('undergraduate');
+        } else if (data.hasGraduate && !data.hasUndergraduate) {
+          setStudentType('graduate');
+        }
+      } catch (err) {
+        console.error('Error fetching student types:', err);
+        setError('Failed to load available programs. Please try again.');
+      } finally {
+        setLoadingStudentTypes(false);
+      }
+    };
+
+    fetchStudentTypes();
+  }, [open, universityId]);
+
+  // Fetch programs when dialog opens or student type changes
+  useEffect(() => {
+    if (!open || !availableStudentTypes) return;
 
     const fetchPrograms = async () => {
       setError(null);
@@ -138,7 +172,7 @@ export default function ProgramSelectionDialog({
     };
 
     fetchPrograms();
-  }, [open, universityId, studentType]);
+  }, [open, universityId, studentType, availableStudentTypes]);
 
   const handleNext = () => {
     if (studentType === 'undergraduate' && selectedMajors.length === 0) {
@@ -179,14 +213,18 @@ export default function ProgramSelectionDialog({
     setPlanMode('AUTO');
     setError(null);
     setPlanName('');
+    setAvailableStudentTypes(null);
     onClose();
   };
 
-  const isLoading = loadingMajors || loadingMinors || loadingGenEds || loadingGraduatePrograms;
+  const isLoading = loadingMajors || loadingMinors || loadingGenEds || loadingGraduatePrograms || loadingStudentTypes;
   const canProceed = (
     (studentType === 'undergraduate' && selectedMajors.length > 0) ||
     (studentType === 'graduate' && selectedGraduatePrograms.length > 0)
   ) && !isLoading;
+
+  // Determine if we should show the student type toggle
+  const showStudentTypeToggle = availableStudentTypes?.hasUndergraduate && availableStudentTypes?.hasGraduate;
 
   return (
     <Dialog
@@ -229,40 +267,59 @@ export default function ProgramSelectionDialog({
           )}
 
           {/* Student Type Selection */}
-          <Box>
-            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-              Student Type
-            </Typography>
-            <ToggleButtonGroup
-              value={studentType}
-              exclusive
-              onChange={(_, value) => {
-                if (value) {
-                  setStudentType(value);
-                  // Clear selections when switching types
-                  setSelectedMajors([]);
-                  setSelectedMinors([]);
-                  setSelectedGraduatePrograms([]);
-                  setError(null);
+          {showStudentTypeToggle ? (
+            <Box>
+              <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
+                Student Type
+              </Typography>
+              <ToggleButtonGroup
+                value={studentType}
+                exclusive
+                onChange={(_, value) => {
+                  if (value) {
+                    setStudentType(value);
+                    // Clear selections when switching types
+                    setSelectedMajors([]);
+                    setSelectedMinors([]);
+                    setSelectedGraduatePrograms([]);
+                    setError(null);
+                  }
+                }}
+                fullWidth
+                sx={{ mb: 1 }}
+              >
+                <ToggleButton value="undergraduate" className="font-body-semi">
+                  Undergraduate
+                </ToggleButton>
+                <ToggleButton value="graduate" className="font-body-semi">
+                  Graduate
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <Typography variant="caption" className="font-body" color="text.secondary">
+                {studentType === 'undergraduate'
+                  ? 'Undergraduate programs include majors, minors, and general education requirements'
+                  : 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
                 }
-              }}
-              fullWidth
-              sx={{ mb: 1 }}
-            >
-              <ToggleButton value="undergraduate" className="font-body-semi">
-                Undergraduate
-              </ToggleButton>
-              <ToggleButton value="graduate" className="font-body-semi">
-                Graduate
-              </ToggleButton>
-            </ToggleButtonGroup>
-            <Typography variant="caption" className="font-body" color="text.secondary">
-              {studentType === 'undergraduate'
-                ? 'Undergraduate programs include majors, minors, and general education requirements'
-                : 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
-              }
-            </Typography>
-          </Box>
+              </Typography>
+            </Box>
+          ) : availableStudentTypes && (
+            <Box>
+              <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
+                Student Type
+              </Typography>
+              <Box sx={{ p: 2, backgroundColor: '#f5f5f5', borderRadius: 2 }}>
+                <Typography variant="body2" className="font-body-semi">
+                  {studentType === 'undergraduate' ? 'Undergraduate' : 'Graduate'}
+                </Typography>
+                <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {studentType === 'undergraduate'
+                    ? 'Undergraduate programs include majors, minors, and general education requirements'
+                    : 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
+                  }
+                </Typography>
+              </Box>
+            </Box>
+          )}
 
           {/* Undergraduate Programs */}
           {studentType === 'undergraduate' && (

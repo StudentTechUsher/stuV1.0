@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
  */
 async function processGradPlanGeneration(
   userId: string,
-  coursesData: unknown,
-  promptInput: unknown,
+  coursesData: ReturnType<typeof courseSelectionPayloadSchema.validateSync>,
+  promptInput: ReturnType<typeof organizePromptInputSchema.validateSync>,
   planName?: string
 ) {
   try {

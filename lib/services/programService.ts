@@ -234,6 +234,53 @@ export async function fetchPrograms(options?: { type?: string; universityId?: nu
 
 /**
  * AUTHORIZATION: PUBLIC
+ * Checks which student types (undergraduate/graduate) are available for a university
+ * @param universityId - The university ID to check
+ * @returns Object indicating availability of undergraduate and graduate programs
+ */
+export async function fetchAvailableStudentTypes(universityId: number): Promise<{
+  hasUndergraduate: boolean;
+  hasGraduate: boolean;
+}> {
+  try {
+    // Check for undergraduate programs (major or minor)
+    const { data: undergradData, error: undergradError } = await db
+      .from('program')
+      .select('id')
+      .eq('university_id', universityId)
+      .in('program_type', ['major', 'minor'])
+      .limit(1);
+
+    if (undergradError) {
+      throw new ProgramFetchError('Failed to check undergraduate programs', undergradError);
+    }
+
+    // Check for graduate programs
+    const { data: gradData, error: gradError } = await db
+      .from('program')
+      .select('id')
+      .eq('university_id', universityId)
+      .eq('program_type', 'graduate_no_gen_ed')
+      .limit(1);
+
+    if (gradError) {
+      throw new ProgramFetchError('Failed to check graduate programs', gradError);
+    }
+
+    return {
+      hasUndergraduate: (undergradData?.length ?? 0) > 0,
+      hasGraduate: (gradData?.length ?? 0) > 0
+    };
+  } catch (error) {
+    if (error instanceof ProgramFetchError) {
+      throw error;
+    }
+    throw new ProgramFetchError('Unexpected error checking available student types', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
  * Fetches multiple programs by their IDs
  * @param ids - Array of program IDs
  * @param universityId - Optional university filter
