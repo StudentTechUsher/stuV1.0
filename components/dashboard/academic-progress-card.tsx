@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchUserCourses } from "@/lib/services/userCoursesService";
@@ -54,6 +55,7 @@ function ProgressBar({
 }
 
 export default function AcademicProgressCard() {
+  const router = useRouter();
   const [hasTranscript, setHasTranscript] = useState(true);
 
   useEffect(() => {
@@ -72,6 +74,10 @@ export default function AcademicProgressCard() {
 
     checkTranscript();
   }, []);
+
+  const handleGpaCalculatorClick = () => {
+    router.push('/dashboard/gpa-calculator');
+  };
 
   return (
     // Modern card with clean hierarchy and better spacing
@@ -116,7 +122,9 @@ export default function AcademicProgressCard() {
           {/* GPA Calculator Card - interactive CTA */}
           <button
             type="button"
+            onClick={handleGpaCalculatorClick}
             className="group overflow-hidden rounded-xl border-2 border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_25%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] p-5 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]"
+            disabled={!hasTranscript}
           >
             <svg className="mx-auto mb-2 h-8 w-8 text-[var(--muted-foreground)] transition-colors group-hover:text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />

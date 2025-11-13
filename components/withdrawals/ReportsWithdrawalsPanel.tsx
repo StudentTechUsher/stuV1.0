@@ -36,11 +36,11 @@ export default function ReportsWithdrawalsPanel({
   const [minDaysAfter, setMinDaysAfter] = useState(0);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [selectedStudentRows, setSelectedStudentRows] = useState<WithdrawalRow[]>([]);
-  const [isRunningJob, setIsRunningJob] = useState(false);
-  const [jobMessage, setJobMessage] = useState<string | null>(null);
+  const [isRunningJob, _setIsRunningJob] = useState(false);
+  const [jobMessage, _setJobMessage] = useState<string | null>(null);
   const [showReportPreview, setShowReportPreview] = useState(false);
 
-  const { data, isLoading, error, refetch } = useWeeklyWithdrawals(
+  const { data, isLoading, error, refetch: _refetch } = useWeeklyWithdrawals(
     advisorId,
     startISO,
     endISO
@@ -82,7 +82,13 @@ export default function ReportsWithdrawalsPanel({
       }
     : null;
 
-  const handleGenerateReport = () => {
+  const handleRunWeeklyJob = async () => {
+    // Placeholder for weekly job runner
+    // This would typically call an API endpoint to generate and send digests
+    console.log('Running weekly job for advisor:', advisorId);
+  };
+
+  const _handleGenerateReport = () => {
     // Set date range to last 7 days
     const range = getLast7Days();
     setStartISO(range.startISO);
@@ -113,93 +119,113 @@ export default function ReportsWithdrawalsPanel({
               )}
             </div>
             <button
-              onClick={handleGenerateReport}
-              className="inline-flex items-center justify-center gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-2.5 font-body-semi text-sm text-[#0A0A0A] transition-all duration-150 hover:-translate-y-[1px] hover:bg-[var(--hover-green)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-              aria-label="Run weekly job to generate withdrawal report"
+              onClick={handleRunWeeklyJob}
+              disabled={isRunningJob}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2.5 font-body-semi text-sm text-[#0A0A0A] shadow-sm transition-all duration-200 hover:bg-[var(--hover-green)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/30"
+              aria-label="Run weekly job to generate digests"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-              Run Weekly Job
+              {isRunningJob && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+              <span>{isRunningJob ? 'Running...' : 'Run Weekly Job'}</span>
             </button>
           </div>
         </div>
+      </section>
 
+      {/* Job Status Message */}
+      {jobMessage && (
+        <div
+          className={`rounded-xl px-4 py-3.5 text-sm font-body shadow-sm ${
+            jobMessage.startsWith('✓')
+              ? 'border border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_8%,white)] text-[var(--foreground)]'
+              : 'border border-[var(--destructive)] bg-[var(--destructive)] text-white'
+          }`}
+        >
+          {jobMessage}
+        </div>
+      )}
 
-        {/* Premium Filters Section - inside the card */}
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-3 mb-5">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[color-mix(in_srgb,var(--muted-foreground)_60%,black_40%)]">
-              Filters
-            </span>
-            <div className="flex-1 h-px bg-[var(--border)]"></div>
+      {/* Filters Card - Modern design */}
+      <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white shadow-sm overflow-hidden">
+        {/* Filter header */}
+        <div className="border-b border-[var(--border)] bg-[var(--muted)] px-6 py-3">
+          <h2 className="font-body-semi text-sm uppercase tracking-wider text-[var(--muted-foreground)]">
+            Filters
+          </h2>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Quick date buttons */}
+          <div>
+            <label className="font-body-semi text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-3 block">
+              Quick Select
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  const range = getLast7Days();
+                  setStartISO(range.startISO);
+                  setEndISO(range.endISO);
+                }}
+                className="rounded-lg border border-[var(--border)] bg-white px-4 py-2 font-body-semi text-sm text-[var(--foreground)] transition-all duration-200 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+              >
+                Last 7 Days
+              </button>
+              <button
+                onClick={() => {
+                  const range = getCurrentWeek();
+                  setStartISO(range.startISO);
+                  setEndISO(range.endISO);
+                }}
+                className="rounded-lg border border-[var(--border)] bg-white px-4 py-2 font-body-semi text-sm text-[var(--foreground)] transition-all duration-200 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+              >
+                This Week
+              </button>
+              <button
+                onClick={() => {
+                  const range = getLastWeek();
+                  setStartISO(range.startISO);
+                  setEndISO(range.endISO);
+                }}
+                className="rounded-lg border border-[var(--border)] bg-white px-4 py-2 font-body-semi text-sm text-[var(--foreground)] transition-all duration-200 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+              >
+                Last Week
+              </button>
+            </div>
           </div>
 
-          {/* Quick date buttons with premium styling */}
-          <div className="mb-5 flex flex-wrap gap-2">
-            <button
-              onClick={() => {
-                const range = getLast7Days();
-                setStartISO(range.startISO);
-                setEndISO(range.endISO);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-white px-3.5 py-2 font-body-semi text-sm text-[#0a1f1a] transition-all duration-150 hover:-translate-y-[1px] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] hover:shadow-[0_10px_30px_-20px_rgba(10,31,26,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Last 7 Days
-            </button>
-            <button
-              onClick={() => {
-                const range = getCurrentWeek();
-                setStartISO(range.startISO);
-                setEndISO(range.endISO);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-white px-3.5 py-2 font-body-semi text-sm text-[#0a1f1a] transition-all duration-150 hover:-translate-y-[1px] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] hover:shadow-[0_10px_30px_-20px_rgba(10,31,26,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              This Week
-            </button>
-            <button
-              onClick={() => {
-                const range = getLastWeek();
-                setStartISO(range.startISO);
-                setEndISO(range.endISO);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-white px-3.5 py-2 font-body-semi text-sm text-[#0a1f1a] transition-all duration-150 hover:-translate-y-[1px] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)] hover:shadow-[0_10px_30px_-20px_rgba(10,31,26,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Last Week
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <DateRangePicker
-              startISO={startISO}
-              endISO={endISO}
-              onStartChange={setStartISO}
-              onEndChange={setEndISO}
-            />
-            <label className="flex items-center gap-3 text-sm">
-              <span className="font-body-semi text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
-                Min days after deadline:
-              </span>
+          {/* Date range and min days filter */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="font-body-semi text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-3 block">
+                Date Range
+              </label>
+              <DateRangePicker
+                startISO={startISO}
+                endISO={endISO}
+                onStartChange={setStartISO}
+                onEndChange={setEndISO}
+              />
+            </div>
+            <div>
+              <label className="font-body-semi text-xs uppercase tracking-wider text-[var(--muted-foreground)] mb-3 block">
+                Min Days After Deadline
+              </label>
               <input
                 type="number"
                 min="0"
                 value={minDaysAfter}
                 onChange={(e) => setMinDaysAfter(Number(e.target.value))}
-                className="w-20 rounded-[7px] border border-[var(--border)] bg-white px-3 py-2 text-center font-body text-[#0a1f1a] transition-all duration-150 focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-1"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-4 py-2.5 font-body text-sm text-[var(--foreground)] transition-all duration-200 focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-0"
               />
-            </label>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Premium Loading State */}
       {isLoading && (

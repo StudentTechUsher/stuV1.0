@@ -5,8 +5,8 @@ import TranscriptUpload from './TranscriptUpload';
 import ParsedCoursesTable from './ParsedCoursesTable';
 
 export default function TranscriptUploadSection() {
-  const [documentId, setDocumentId] = useState<string | null>(null);
-  const [showParsedCourses, setShowParsedCourses] = useState(false);
+  const [documentId, _setDocumentId] = useState<string | null>(null);
+  const [showParsedCourses, _setShowParsedCourses] = useState(false);
 
   const handleTextExtracted = (text: string) => {
     console.log('Extracted text:', text);

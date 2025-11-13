@@ -54,10 +54,10 @@ export async function createSupabaseServerComponentClient() {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options)
-          })
+        setAll() {
+          // In Next.js 15, cookies can only be modified in Server Actions or Route Handlers
+          // Server Components are read-only, so this is a no-op
+          // Cookie modifications will happen in Server Actions when needed
         },
       },
     }

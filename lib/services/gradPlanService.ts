@@ -8,6 +8,9 @@ export class GradPlanNotFoundError extends Error {
 export class GradPlanFetchError extends Error {
     constructor(message: string, public cause?: unknown) { super(message); this.name = 'GradPlanFetchError'; }
 }
+export class DuplicatePlanNameError extends Error {
+    constructor(message = 'A plan with this name already exists') { super(message); this.name = 'DuplicatePlanNameError'; }
+}
 
 /**
  * AUTHORIZED FOR STUDENTS AND ABOVE
@@ -661,6 +664,77 @@ export async function updateGradPlanName(
     } catch (err) {
         console.error('❌ Unexpected error updating plan_name:', err);
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Updates plan name with uniqueness check per owner (student).
+ * Throws DuplicatePlanNameError if a plan with same name already exists for this student.
+ * @param gradPlanId - The ID of the graduation plan to update
+ * @param studentId - The numeric student ID (owner of the plan)
+ * @param planName - The new plan name
+ * @returns The normalized/trimmed plan name if successful
+ * @throws DuplicatePlanNameError if duplicate found
+ * @throws GradPlanFetchError for other database errors
+ */
+export async function updateGradPlanNameWithUniquenessCheck(
+    gradPlanId: string,
+    studentId: number,
+    planName: string
+): Promise<string> {
+    // Normalize: trim whitespace, collapse internal spaces
+    const normalized = planName.replace(/\s+/g, ' ').trim();
+
+    if (!normalized) {
+        throw new Error('Plan name cannot be empty');
+    }
+    if (normalized.length > 120) {
+        throw new Error('Plan name must be ≤ 120 characters');
+    }
+
+    try {
+        // Check for duplicate (case-insensitive) among OTHER plans for this student
+        const { data: existingPlans, error: checkError } = await supabase
+            .from('grad_plan')
+            .select('id')
+            .eq('student_id', studentId)
+            .ilike('plan_name', normalized); // Case-insensitive comparison
+
+        if (checkError) {
+            console.error('❌ Error checking for duplicate plan name:', checkError);
+            throw new GradPlanFetchError('Failed to validate plan name uniqueness', checkError);
+        }
+
+        // Check if any OTHER plan has this name (filter out current plan)
+        const isDuplicate = existingPlans && existingPlans.some(plan => plan.id !== gradPlanId);
+        if (isDuplicate) {
+            throw new DuplicatePlanNameError('You already have a plan with that name. Choose a different name.');
+        }
+
+        // Perform the update
+        const { error: updateError } = await supabase
+            .from('grad_plan')
+            .update({ plan_name: normalized })
+            .eq('id', gradPlanId);
+
+        if (updateError) {
+            console.error('❌ Error updating plan_name:', updateError);
+            throw new GradPlanFetchError('Failed to update plan name', updateError);
+        }
+
+        return normalized;
+    } catch (err) {
+        // Re-throw known errors
+        if (err instanceof DuplicatePlanNameError || err instanceof GradPlanFetchError) {
+            throw err;
+        }
+        // Wrap unexpected errors
+        console.error('❌ Unexpected error in updateGradPlanNameWithUniquenessCheck:', err);
+        throw new GradPlanFetchError(
+            'Unexpected error updating plan name',
+            err
+        );
     }
 }
 
