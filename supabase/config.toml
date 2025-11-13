@@ -1,0 +1,43 @@
+# Supabase local development configuration
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://100.74.72.81:54321"
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[auth]
+enabled = true
+# Site URL should match your Next.js dev server
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "http://100.74.72.81:3000/**"
+]
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+enable_anonymous_sign_ins = false
+
+# OAuth providers can be configured later
+[auth.external.google]
+enabled = false

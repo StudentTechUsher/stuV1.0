@@ -348,6 +348,14 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     return null;
   })();
 
+  const handleShowSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+    setNotification({
+      open: true,
+      message,
+      severity: severity === 'info' || severity === 'warning' ? 'success' : severity
+    });
+  };
+
   const handlePlanCreated = (aiGeneratedPlan: Term[], programIds: number[], accessId?: string, _planName?: string) => {
     // Close all dialogs
     setShowCourseSelection(false);
@@ -651,6 +659,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           initialPlanName={programSelections.planName}
           prompt={prompt}
           isGraduateStudent={programSelections.isGraduateStudent}
+          onShowSnackbar={handleShowSnackbar}
         />
       )}
 

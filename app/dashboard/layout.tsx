@@ -114,6 +114,7 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     <DashboardLayoutClient
       items={items}
       role={role}
+      userId={userId ?? undefined}
     >
       {children}
     </DashboardLayoutClient>

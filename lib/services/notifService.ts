@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { sendGradPlanApprovalEmail } from './emailService'
 
 /**
  * Returns the count of graduation plans currently pending approval.
@@ -158,11 +159,62 @@ export async function createNotifForGradPlanEdited(
 
 /**
  * Notification when a graduation plan has been approved.
- * URL points to the generic grad planner dashboard route.
+ * Fetches user email from profiles, sends email notification, and creates in-app notification.
  */
 export async function createNotifForGradPlanApproved(targetUserId: string, initiatorUserId: string | null) {
 	try {
 		if (!targetUserId) throw new Error('Missing target user id');
+
+		// Fetch user profile to get email and first name
+		const { data: profile, error: profileError } = await supabase
+			.from('profiles')
+			.select('email, first_name')
+			.eq('id', targetUserId)
+			.single();
+
+		if (profileError) {
+			console.error('❌ Error fetching user profile for grad plan approval:', profileError);
+		}
+
+		// Fetch the most recent approved grad plan to get access_id
+		const { data: gradPlan, error: gradPlanError } = await supabase
+			.from('grad_plan')
+			.select('access_id')
+			.eq('user_id', targetUserId)
+			.eq('pending_approval', false)
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.single();
+
+		if (gradPlanError) {
+			console.error('❌ Error fetching grad plan for approval notification:', gradPlanError);
+		}
+
+		// Fetch advisor name if initiator exists
+		let advisorName: string | undefined;
+		if (initiatorUserId) {
+			const { data: advisorProfile, error: advisorError } = await supabase
+				.from('profiles')
+				.select('first_name, last_name')
+				.eq('id', initiatorUserId)
+				.single();
+
+			if (!advisorError && advisorProfile) {
+				advisorName = `${advisorProfile.first_name} ${advisorProfile.last_name}`;
+			}
+		}
+
+		// Send email if we have the necessary data
+		if (profile?.email && profile?.first_name && gradPlan?.access_id) {
+			await sendGradPlanApprovalEmail({
+				studentFirstName: profile.first_name,
+				studentEmail: profile.email,
+				planAccessId: gradPlan.access_id,
+				advisorName
+			});
+		}
+
+		// Create in-app notification
 		return await createNotification({
 			target_user_id: targetUserId,
 			initiator_user_id: initiatorUserId,
