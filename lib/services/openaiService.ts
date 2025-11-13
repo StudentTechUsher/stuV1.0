@@ -342,6 +342,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
             .filter((n: number) => !Number.isNaN(n))
         : [],
       isActive: false,
+      userId: user.id,
     });
 
     return {

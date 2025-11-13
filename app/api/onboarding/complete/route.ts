@@ -14,11 +14,27 @@ export async function POST(request: NextRequest) {
 async function handleCompleteOnboarding(request: NextRequest) {
   try {
     const body = await request.json();
-    const { university_id, fname, lname, role, est_grad_sem, est_grad_date } = body;
+    const { university_id, fname, lname, email, role, est_grad_sem, est_grad_date } = body;
 
     if (!university_id || typeof university_id !== 'number') {
       return NextResponse.json(
         { success: false, error: 'University ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email address' },
         { status: 400 }
       );
     }
@@ -67,8 +83,8 @@ async function handleCompleteOnboarding(request: NextRequest) {
       );
     }
 
-    // Update the profile using service layer (pass name fields in case profile needs to be created)
-    await completeOnboarding(user.id, university_id, role, fname, lname, est_grad_sem, est_grad_date);
+    // Update the profile using service layer (pass name and email fields)
+    await completeOnboarding(user.id, university_id, role, fname, lname, email, est_grad_sem, est_grad_date);
 
     return NextResponse.json({ success: true });
   } catch (error) {

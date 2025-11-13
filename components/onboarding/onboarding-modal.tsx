@@ -31,6 +31,7 @@ interface OnboardingModalProps {
   userName?: string
   initialFirstName?: string
   initialLastName?: string
+  initialEmail?: string
 }
 
 type UserRole = "student" | "advisor" | "admin"
@@ -40,12 +41,14 @@ export function OnboardingModal({
   isOpen,
   userName,
   initialFirstName = "",
-  initialLastName = ""
+  initialLastName = "",
+  initialEmail = ""
 }: Readonly<OnboardingModalProps>) {
   const router = useRouter()
   const [selectedUniversity, setSelectedUniversity] = useState<string>("")
   const [firstName, setFirstName] = useState<string>(initialFirstName)
   const [lastName, setLastName] = useState<string>(initialLastName)
+  const [email, setEmail] = useState<string>(initialEmail)
   const [selectedRole, setSelectedRole] = useState<UserRole | "">("")
   const [gradTerm, setGradTerm] = useState<Term | "">("")
   const [gradYear, setGradYear] = useState<number | "">(new Date().getFullYear())
@@ -72,6 +75,18 @@ export function OnboardingModal({
       return
     }
 
+    if (!email.trim()) {
+      setError("Please enter your email address")
+      return
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setError("Please enter a valid email address")
+      return
+    }
+
     if (selectedRole === "student" && (!gradTerm || !gradYear)) {
       setError("Please select your expected graduation semester")
       return
@@ -85,6 +100,7 @@ export function OnboardingModal({
         university_id: Number.parseInt(selectedUniversity, 10),
         fname: firstName.trim(),
         lname: lastName.trim(),
+        email: email.trim(),
         role: selectedRole,
       };
 
@@ -160,6 +176,24 @@ export function OnboardingModal({
               </div>
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="font-body-medium">
+              Email Address
+            </Label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={saving}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-body"
+              placeholder="Enter your email address"
+              required
+            />
+            <p className="text-sm text-muted-foreground font-body">
+              We'll use this to send you important notifications about your graduation plan.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="role" className="font-body-medium">
               Your Role

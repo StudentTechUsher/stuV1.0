@@ -39,6 +39,7 @@ export interface AdvisorStudentRow {
     fname: string;
     lname: string;
     programs: string; // comma separated list of program names (empty string if none)
+    avatar_url?: string | null; // profile picture URL from auth metadata
 }
 
 /**

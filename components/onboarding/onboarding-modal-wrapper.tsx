@@ -50,7 +50,7 @@ export async function OnboardingModalWrapper({ userName }: Readonly<OnboardingMo
     return null
   }
 
-  // Get user metadata to extract name information
+  // Get user metadata to extract name and email information
   const { data: { user } } = await supabase.auth.getUser()
   const tokenPayload = decodeJwtPayload(user?.app_metadata?.access_token)
   const fullName = tokenPayload?.name as string || ""
@@ -72,6 +72,9 @@ export async function OnboardingModalWrapper({ userName }: Readonly<OnboardingMo
     ""
   ) as string
 
+  // Extract email from auth user (most reliable source)
+  const emailFromAuth = user?.email || ""
+
   return (
     <OnboardingModal
       universities={universities || []}
@@ -79,6 +82,7 @@ export async function OnboardingModalWrapper({ userName }: Readonly<OnboardingMo
       userName={userName}
       initialFirstName={firstNameFromToken}
       initialLastName={lastNameFromToken}
+      initialEmail={emailFromAuth}
     />
   )
 }

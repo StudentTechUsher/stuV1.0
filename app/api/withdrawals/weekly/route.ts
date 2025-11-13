@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listAdvisorWeeklyWithdrawals, seedAll } from '@/lib/mocks/withdrawalSeed';
+import {
+  fetchAdvisorWeeklyWithdrawals,
+  WithdrawalFetchError,
+  AdvisorNotFoundError,
+} from '@/lib/services/withdrawalService';
+import { logError } from '@/lib/logger';
 
 /**
  * GET /api/withdrawals/weekly?advisorId=...&start=...&end=...
- * Fetches weekly withdrawals for an advisor within a date range (using mock data)
+ * Fetches weekly withdrawals for an advisor within a date range
  * AUTHORIZATION: ADVISORS ONLY
  */
 export async function GET(request: NextRequest) {
@@ -20,38 +25,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Ensure mock data is seeded
-    seedAll();
+    const result = await fetchAdvisorWeeklyWithdrawals(advisorId, start, end);
 
-    // Get withdrawal rows from mock data
-    const rows = listAdvisorWeeklyWithdrawals(advisorId, start, end);
-
-    // Calculate summary statistics
-    const byCollege: Record<string, number> = {};
-    const byDepartment: Record<string, number> = {};
-    const byMajor: Record<string, number> = {};
-
-    rows.forEach((row) => {
-      const collegeId = row.student.collegeId || 'unknown';
-      const departmentId = row.student.departmentId || 'unknown';
-      const majorId = row.student.majorId || 'unknown';
-
-      byCollege[collegeId] = (byCollege[collegeId] || 0) + 1;
-      byDepartment[departmentId] = (byDepartment[departmentId] || 0) + 1;
-      byMajor[majorId] = (byMajor[majorId] || 0) + 1;
-    });
-
-    return NextResponse.json({
-      rows,
-      summary: {
-        total: rows.length,
-        byCollege,
-        byDepartment,
-        byMajor,
-      },
-    });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching weekly withdrawals:', error);
+    if (error instanceof AdvisorNotFoundError) {
+      return NextResponse.json({ error: 'Advisor not found' }, { status: 404 });
+    }
+
+    if (error instanceof WithdrawalFetchError) {
+      logError('Failed to fetch weekly withdrawals', error, {
+        action: 'fetch_weekly_withdrawals',
+      });
+      return NextResponse.json(
+        { error: 'Failed to fetch withdrawals' },
+        { status: 500 }
+      );
+    }
+
+    logError('Unexpected error fetching withdrawals', error, {
+      action: 'fetch_weekly_withdrawals',
+    });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

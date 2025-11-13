@@ -25,6 +25,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { fetchUserCourses } from "@/lib/services/userCoursesService";
 import { GetActiveGradPlan } from "@/lib/services/gradPlanService";
+import { classifyCredits } from "@/lib/classifyCredits";
 
 /** ----- Default data for the PoC ----- */
 const DEFAULT_DATA = {
@@ -40,11 +41,7 @@ const DEFAULT_DATA = {
   optimization: "Moderate",
 };
 
-export default function AcademicSummary({
-  yearInSchool
-}: Readonly<{
-  yearInSchool?: string;
-}>) {
+export default function AcademicSummary() {
   const [userData, setUserData] = useState(DEFAULT_DATA);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [gradDialogOpen, setGradDialogOpen] = useState(false);
@@ -127,10 +124,13 @@ export default function AcademicSummary({
             });
           }
 
+          // Calculate class year from earned credits using classifyCredits utility
+          const classYear = classifyCredits(earnedCredits);
+
           setUserData(prev => ({
             ...prev,
             name: displayName,
-            standing: yearInSchool || prev.standing,
+            standing: classYear,
             estSemester: profileData?.est_grad_sem || prev.estSemester,
             estGradDate: formattedGradDate,
             earnedCredits,
@@ -146,7 +146,7 @@ export default function AcademicSummary({
     };
 
     getUserData();
-  }, [yearInSchool]);
+  }, []);
 
   // Initialize selected month and year from current estGradDate
   useEffect(() => {

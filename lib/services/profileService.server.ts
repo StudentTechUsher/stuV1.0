@@ -103,6 +103,26 @@ export async function ensureProfileExists(userId: string, email: string): Promis
 }
 
 /** Server-side variant to be called in RSC pages (avoids exposing multiple round trips client-side). */
+/**
+ * Generate Gravatar URL from email address
+ * @param email - User's email address
+ * @returns Gravatar URL
+ */
+async function getGravatarUrl(email: string): Promise<string> {
+  // Create MD5 hash of email (Gravatar requires lowercase, trimmed email)
+  // Using dynamic import for Node.js crypto module (server-side only)
+  const crypto = await import('crypto');
+  const hash = crypto
+    .createHash('md5')
+    .update(email.toLowerCase().trim())
+    .digest('hex');
+
+  // d=404 means return 404 if no Gravatar exists (we'll handle fallback in UI)
+  // d=mp generates a generic "mystery person" silhouette
+  // s=200 sets size to 200px
+  return `https://www.gravatar.com/avatar/${hash}?d=mp&s=200`;
+}
+
 export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow[]> {
   try {
     const supabaseSrv = await createSupabaseServerComponentClient();
@@ -110,20 +130,28 @@ export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow
       .from('profiles')
       .select('id, fname, lname')
       .eq('role_id', 3);
-    if (profilesError || !profiles?.length) return [];
+
+    if (profilesError) {
+      console.error('❌ Error fetching profiles:', profilesError);
+      return [];
+    }
+    if (!profiles?.length) {
+      console.log('ℹ️ No student profiles found (role_id = 3)');
+      return [];
+    }
 
     const profileIds = profiles.map(p => p.id);
     const { data: students, error: studentsError } = await supabaseSrv
       .from('student')
       .select('profile_id, selected_programs')
       .in('profile_id', profileIds);
-    if (studentsError) return profiles.map(p => ({ id: p.id, fname: p.fname, lname: p.lname, programs: '' }));
+    if (studentsError) return profiles.map(p => ({ id: p.id, fname: p.fname, lname: p.lname, programs: '', avatar_url: null }));
 
     const programIds = new Set<number>();
     const studentProgramsMap = new Map<string, number[]>();
     students?.forEach(s => {
-      const list = Array.isArray(s.selected_programs) 
-        ? s.selected_programs.filter((x: unknown): x is number => Number.isInteger(x)) 
+      const list = Array.isArray(s.selected_programs)
+        ? s.selected_programs.filter((x: unknown): x is number => Number.isInteger(x))
         : [];
       studentProgramsMap.set(s.profile_id, list);
       list.forEach(id => programIds.add(id));
@@ -139,11 +167,43 @@ export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow
         programNameMap = new Map(programs.map(p => [p.id, p.name]));
       }
     }
-    return profiles.map(p => {
+
+    // Fetch email addresses from auth.users and generate Gravatar URLs
+    const emailMap = new Map<string, string>();
+    try {
+      for (const profileId of profileIds) {
+        try {
+          const { data: userData, error: userError } = await supabaseSrv.auth.admin.getUserById(profileId);
+          if (!userError && userData?.user?.email) {
+            emailMap.set(profileId, userData.user.email);
+          }
+        } catch (userError) {
+          console.error(`Failed to fetch email for user ${profileId}:`, userError);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user emails:', error);
+    }
+
+    // Generate Gravatar URLs for each student based on their email
+    const result = await Promise.all(profiles.map(async p => {
       const ids = studentProgramsMap.get(p.id) || [];
       const names = ids.map(id => programNameMap.get(id)).filter(Boolean) as string[];
-      return { id: p.id, fname: p.fname, lname: p.lname, programs: names.join(', ') };
-    });
+      const email = emailMap.get(p.id);
+      return {
+        id: p.id,
+        fname: p.fname,
+        lname: p.lname,
+        programs: names.join(', '),
+        avatar_url: email ? await getGravatarUrl(email) : null
+      };
+    }));
+
+    console.log(`✅ Returning ${result.length} students with Gravatar URLs:`,
+      result.map(r => ({ name: `${r.fname} ${r.lname}`, email: emailMap.get(r.id), avatar_url: r.avatar_url }))
+    );
+
+    return result;
   } catch (error) {
     console.error('❌ Server fetch students failed:', error);
     return [];
@@ -295,6 +355,7 @@ export async function updateProfile(userId: string, updates: Record<string, stri
  * @param role - The user's role ('student', 'advisor', or 'admin')
  * @param fname - The user's first name (optional)
  * @param lname - The user's last name (optional)
+ * @param email - The user's email address (optional)
  * @param estGradSem - Expected graduation semester (required for students)
  * @param estGradDate - Expected graduation date (required for students)
  */
@@ -304,6 +365,7 @@ export async function completeOnboarding(
   role: 'student' | 'advisor' | 'admin',
   fname?: string,
   lname?: string,
+  email?: string,
   estGradSem?: string,
   estGradDate?: string
 ) {
@@ -339,6 +401,7 @@ export async function completeOnboarding(
 
       if (fname) profileData.fname = fname;
       if (lname) profileData.lname = lname;
+      if (email) profileData.email = email;
       if (estGradSem) profileData.est_grad_sem = estGradSem;
       if (estGradDate) profileData.est_grad_date = estGradDate;
 
@@ -365,6 +428,7 @@ export async function completeOnboarding(
 
       if (fname) updateData.fname = fname;
       if (lname) updateData.lname = lname;
+      if (email) updateData.email = email;
       if (estGradSem) updateData.est_grad_sem = estGradSem;
       if (estGradDate) updateData.est_grad_date = estGradDate;
 

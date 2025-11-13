@@ -13,6 +13,7 @@ import { Event } from '@/components/grad-planner/types';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
 import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
+import EditablePlanTitle from '@/components/EditablePlanTitle';
 
 interface GradPlanDetails {
   id: string;
@@ -578,18 +579,30 @@ export default function EditGradPlanPage() {
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography
-              variant="h4"
-              component="h1"
-              sx={{
-                fontFamily: '"Red Hat Display", sans-serif',
-                fontWeight: 800,
-                fontSize: { xs: '1.75rem', md: '2.1rem' },
-                color: '#0a1f1a',
-              }}
-            >
-              {pageTitle}
-            </Typography>
+            {selectedPlanName && isStudent ? (
+              <EditablePlanTitle
+                planId={gradPlan.id}
+                initialName={selectedPlanName}
+                onSaved={(newName) => {
+                  setGradPlan(prev => (prev ? { ...prev, plan_name: newName } : prev));
+                  showSnackbar('Plan name updated successfully!', 'success');
+                }}
+                className="h4 font-display font-800 text-2xl md:text-[2.1rem]"
+              />
+            ) : (
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontFamily: '"Red Hat Display", sans-serif',
+                  fontWeight: 800,
+                  fontSize: { xs: '1.75rem', md: '2.1rem' },
+                  color: '#0a1f1a',
+                }}
+              >
+                {pageTitle}
+              </Typography>
+            )}
 
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
               <Box
@@ -661,29 +674,6 @@ export default function EditGradPlanPage() {
               </Box>
             )}
 
-            {isStudent && !isRenaming && (
-              <Button
-                variant="outlined"
-                onClick={handleStartRename}
-                sx={{
-                  alignSelf: 'flex-start',
-                  borderRadius: '7px',
-                  borderColor: 'var(--primary)',
-                  color: 'var(--primary)',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  letterSpacing: '0.08em',
-                  px: 2.5,
-                  py: 0.75,
-                  '&:hover': {
-                    borderColor: 'var(--hover-green)',
-                    backgroundColor: 'var(--primary-15)',
-                  },
-                }}
-              >
-                {selectedPlanName ? 'Rename Plan' : 'Add Plan Name'}
-              </Button>
-            )}
           </Box>
 
           {isStudent && (

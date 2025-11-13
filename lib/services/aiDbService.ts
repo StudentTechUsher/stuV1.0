@@ -1,5 +1,7 @@
 import { supabase } from "../supabase";
 import { encodeAccessId } from "../utils/access-id";
+import { createNotifForPlanReady } from './notifService';
+import { sendGradPlanCreatedEmail } from './emailService';
 
 /**
  * AUTHORIZED FOR ANONYMOUS USERS AND ABOVE (depending on use case)
@@ -33,8 +35,9 @@ export async function InsertGeneratedGradPlan(args: {
   rawJsonText?: string; // optional raw JSON text if you still want to retain
   programsInPlan?: number[]; // optional associated program IDs
   isActive?: boolean; // default false for newly generated pending plan
+  userId?: string; // user profile ID for notification
 }): Promise<{ gradPlanId: number; accessId: string }> {
-  const { studentId, planData, programsInPlan = [], isActive = false } = args;
+  const { studentId, planData, programsInPlan = [], isActive = false, userId } = args;
 
   const { data, error } = await supabase
     .from('grad_plan')
@@ -54,7 +57,62 @@ export async function InsertGeneratedGradPlan(args: {
     throw new Error('Failed to store generated graduation plan');
   }
 
-  return { gradPlanId: data.id, accessId: encodeAccessId(data.id) };
+  const accessId = encodeAccessId(data.id);
+
+  console.log(`📧 InsertGeneratedGradPlan: Plan inserted with ID ${data.id}, accessId: ${accessId}, userId: ${userId}`);
+
+  // Send notification and email to user that the plan is ready
+  if (userId) {
+    try {
+      // Create in-app notification
+      console.log(`📧 Calling createNotifForPlanReady for user ${userId}, accessId: ${accessId}`);
+      const notifResult = await createNotifForPlanReady(userId, accessId);
+      console.log(`✅ In-app notification created successfully:`, notifResult);
+
+      // Get user's email and name from profiles table
+      console.log(`📧 Fetching user profile for email notification...`);
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, fname')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('⚠️ Failed to fetch user profile for email:', profileError);
+      } else if (profile?.email) {
+        const firstName = profile.fname || 'Student';
+        console.log(`📧 Attempting to send email...`);
+        console.log(`   - To: ${profile.email}`);
+        console.log(`   - First Name: ${firstName}`);
+        console.log(`   - Access ID: ${accessId}`);
+
+        try {
+          await sendGradPlanCreatedEmail({
+            studentFirstName: firstName,
+            studentEmail: profile.email,
+            planAccessId: accessId
+          });
+          console.log(`✅ Grad plan created email sent successfully to ${profile.email}`);
+        } catch (emailError) {
+          console.error('❌ Email sending failed with error:', emailError);
+          if (emailError instanceof Error) {
+            console.error('   - Error message:', emailError.message);
+            console.error('   - Error stack:', emailError.stack);
+          }
+        }
+      } else {
+        console.warn('⚠️ User profile found but has no email address');
+        console.warn('   - Profile data:', JSON.stringify(profile));
+      }
+    } catch (notifError) {
+      console.error('⚠️ Failed to create plan ready notification or send email:', notifError);
+      // Don't throw - notification failure shouldn't block plan creation
+    }
+  } else {
+    console.warn('⚠️ No userId provided to InsertGeneratedGradPlan - notification will NOT be created!');
+  }
+
+  return { gradPlanId: data.id, accessId };
 }
 
 /**

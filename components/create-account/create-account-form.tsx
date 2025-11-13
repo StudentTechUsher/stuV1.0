@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import {
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  SelectChangeEvent,
+} from "@mui/material";
 // Removed direct client-side upsert; persistence handled by server action now.
 import { saveProfileAndPreferences } from "./save-profile-action";
 import { saveGradTimeline } from "./save-grad-timeline-action";
@@ -252,66 +261,87 @@ export default function CreateAccountForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* Error Alert */}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm" role="alert">
-          <div className="flex items-start gap-3">
-            <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p className="font-body-semi text-sm font-semibold text-red-900">{error}</p>
-          </div>
+        <div
+          role="alert"
+          className="rounded-xl border-2 border-red-200 bg-red-50 p-4 flex items-start gap-3"
+        >
+          <svg className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="font-body text-sm text-red-800">{error}</p>
         </div>
       )}
 
-      {/* Personal Information Card */}
-      <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-        <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-          <h2 className="font-header text-lg font-bold text-white">Personal Information</h2>
+      {/* Names Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Personal Information
+          </h3>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="fname" className="font-body-semi mb-2 block text-sm font-medium text-[var(--foreground)]">
-                First Name <span className="text-red-600">*</span>
-              </label>
-              <input
-                id="fname"
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-                className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] transition-all focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
-                placeholder="Enter your first name"
-              />
-            </div>
-            <div>
-              <label htmlFor="lname" className="font-body-semi mb-2 block text-sm font-medium text-[var(--foreground)]">
-                Last Name <span className="text-red-600">*</span>
-              </label>
-              <input
-                id="lname"
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-                className="font-body w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] transition-all focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
-                placeholder="Enter your last name"
-              />
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <TextField
+            id="fname"
+            label="First name"
+            value={firstName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+                '& fieldset': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              },
+            }}
+          />
+          <TextField
+            id="lname"
+            label="Last name"
+            value={lastName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+                '& fieldset': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              },
+            }}
+          />
         </div>
       </div>
 
-      {/* Academic Information Card */}
-      <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-        <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-          <h2 className="font-header text-lg font-bold text-white">Academic Information</h2>
+      {/* Academic Information Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Academic Details
+          </h3>
         </div>
-        <div className="p-6 space-y-6">
-          <p className="font-body text-sm text-[var(--muted-foreground)]">
-            Tell us about your academic goals and interests. You can change these later.
+        {!isEditMode && (
+          <p className="font-body text-sm text-[var(--muted-foreground)] -mt-2">
+            Tell us about your academic goals and interests
           </p>
+        )}
 
       <SingleSelect
         label="University"
@@ -379,121 +409,133 @@ export default function CreateAccountForm({
         onChange={setClassPreferences}
         placeholder="Search for preferences..."
       />
+      </div>
+
+      {/* Graduation Timeline */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Graduation Timeline {!isEditMode && <span className="text-red-500 ml-1">*</span>}
+          </h3>
+        </div>
+        <p className="font-body text-sm text-[var(--muted-foreground)] -mt-2">
+          When do you plan to graduate?
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FormControl fullWidth required={!isEditMode}>
+            <InputLabel id="grad-term-label" className="font-body">Term</InputLabel>
+            <Select
+              labelId="grad-term-label"
+              value={gradTerm}
+              label="Term"
+              onChange={(e: SelectChangeEvent) => setGradTerm(e.target.value as Term | "")}
+              className="font-body"
+              sx={{
+                borderRadius: '10px',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              }}
+            >
+              <MenuItem value="">
+                <em>Select term</em>
+              </MenuItem>
+              <MenuItem value="Spring" className="font-body">Spring</MenuItem>
+              <MenuItem value="Summer" className="font-body">Summer</MenuItem>
+              <MenuItem value="Fall" className="font-body">Fall</MenuItem>
+              <MenuItem value="Winter" className="font-body">Winter</MenuItem>
+            </Select>
+            {!isEditMode && (
+              <FormHelperText className="font-body">When you plan to graduate</FormHelperText>
+            )}
+          </FormControl>
+
+          <FormControl fullWidth required={!isEditMode}>
+            <InputLabel id="grad-year-label" className="font-body">Year</InputLabel>
+            <Select
+              labelId="grad-year-label"
+              value={String(gradYear)}
+              label="Year"
+              onChange={(e: SelectChangeEvent) => setGradYear(Number(e.target.value) || "")}
+              className="font-body"
+              sx={{
+                borderRadius: '10px',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--border)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'color-mix(in srgb, var(--primary) 50%, transparent)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'var(--primary)',
+                  borderWidth: '2px',
+                },
+              }}
+            >
+              <MenuItem value="">
+                <em>Select year</em>
+              </MenuItem>
+              {Array.from({ length: 10 }, (_, i) => {
+                const year = new Date().getFullYear() + i;
+                return (
+                  <MenuItem key={year} value={year} className="font-body">
+                    {year}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+            {!isEditMode && (
+              <FormHelperText className="font-body">You can edit this later</FormHelperText>
+            )}
+          </FormControl>
         </div>
       </div>
 
-      {/* Graduation Timeline Card */}
-      <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-        <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-          <h2 className="font-header text-lg font-bold text-white">
-            Graduation Timeline {!isEditMode && <span className="text-red-400">*</span>}
-          </h2>
+      {/* Career Goals */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+          <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+            Career Goals <span className="font-body-semi text-xs normal-case">(Optional)</span>
+          </h3>
         </div>
-        <div className="p-6 space-y-4">
-          <p className="font-body text-sm text-[var(--muted-foreground)]">
-            When do you plan to graduate?
+        <p className="font-body text-sm text-[var(--muted-foreground)] -mt-1">
+          What are your career aspirations?
+        </p>
+
+        <div className="relative">
+          <textarea
+            value={careerGoalsText}
+            onChange={(e) => setCareerGoalsText(e.target.value)}
+            placeholder="E.g., I want to work in software engineering, focus on AI/ML, and eventually start my own company..."
+            maxLength={1000}
+            className="font-body w-full min-h-[120px] rounded-xl border border-[var(--border)] bg-white p-4 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-opacity-20 transition-all resize-vertical"
+          />
+          <p className="font-body text-xs text-[var(--muted-foreground)] mt-2">
+            {careerGoalsText.length}/1000 characters
           </p>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="grad-term" className="font-body-semi mb-2 block text-sm font-medium text-[var(--foreground)]">
-                Term {!isEditMode && <span className="text-red-600">*</span>}
-              </label>
-              <div className="relative">
-                <select
-                  id="grad-term"
-                  value={gradTerm}
-                  onChange={(e) => setGradTerm(e.target.value as Term | "")}
-                  required={!isEditMode}
-                  className="font-body w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] transition-all focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
-                >
-                  <option value="">Select term</option>
-                  <option value="Spring">Spring</option>
-                  <option value="Summer">Summer</option>
-                  <option value="Fall">Fall</option>
-                  <option value="Winter">Winter</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[var(--muted-foreground)]">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-              {!isEditMode && (
-                <p className="font-body mt-1.5 text-xs text-[var(--muted-foreground)]">When you plan to graduate</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="grad-year" className="font-body-semi mb-2 block text-sm font-medium text-[var(--foreground)]">
-                Year {!isEditMode && <span className="text-red-600">*</span>}
-              </label>
-              <div className="relative">
-                <select
-                  id="grad-year"
-                  value={gradYear}
-                  onChange={(e) => setGradYear(e.target.value ? Number(e.target.value) : "")}
-                  required={!isEditMode}
-                  className="font-body w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] transition-all focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
-                >
-                  <option value="">Select year</option>
-                  {Array.from({ length: 10 }, (_, i) => {
-                    const year = new Date().getFullYear() + i;
-                    return (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    );
-                  })}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[var(--muted-foreground)]">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-              {!isEditMode && (
-                <p className="font-body mt-1.5 text-xs text-[var(--muted-foreground)]">You can edit this later</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Career Goals Card */}
-      <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-        <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-          <h2 className="font-header text-lg font-bold text-white">Career Goals</h2>
-        </div>
-        <div className="p-6 space-y-4">
-          <p className="font-body text-sm text-[var(--muted-foreground)]">
-            What are your career aspirations? (Optional)
-          </p>
-
-          <div>
-            <textarea
-              value={careerGoalsText}
-              onChange={(e) => setCareerGoalsText(e.target.value)}
-              placeholder="E.g., I want to work in software engineering, focus on AI/ML, and eventually start my own company..."
-              maxLength={1000}
-              className="font-body w-full min-h-[120px] rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] transition-all focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 resize-y"
-            />
-            <p className="font-body mt-1.5 text-xs text-[var(--muted-foreground)]">
-              {careerGoalsText.length}/1000 characters
-            </p>
-          </div>
         </div>
       </div>
 
       {/* Transcript Upload - only show in create mode, not edit mode */}
       {!isEditMode && (
-        <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-          <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-            <h2 className="font-header text-lg font-bold text-white">Transcript Upload</h2>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-[var(--primary)]"></div>
+            <h3 className="font-header-bold text-sm uppercase tracking-wide text-[var(--muted-foreground)]">
+              Transcript Upload <span className="font-body-semi text-xs normal-case">(Optional)</span>
+            </h3>
           </div>
-          <div className="p-6">
-            <TranscriptUploadSection />
-          </div>
+          <TranscriptUploadSection />
         </div>
       )}
 

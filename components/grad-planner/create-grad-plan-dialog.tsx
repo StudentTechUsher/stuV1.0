@@ -104,6 +104,7 @@ interface CreateGradPlanDialogProps {
   prompt: string;
   initialPlanName?: string;
   isGraduateStudent?: boolean;
+  onShowSnackbar?: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
 export default function CreateGradPlanDialog({
@@ -117,7 +118,8 @@ export default function CreateGradPlanDialog({
   onPlanCreated,
   prompt,
   initialPlanName,
-  isGraduateStudent = false
+  isGraduateStudent = false,
+  onShowSnackbar
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: program data (loaded dynamically)
@@ -603,106 +605,69 @@ const handleRemoveElective = (id: string) => {
     const sanitizedPlanName = nameValidation.sanitizedValue;
     setPlanName(sanitizedPlanName);
 
-    setIsCreatingPlan(true);
-    setPlanCreationError(null);
+    // Step 1: Calculate total target credits from all selected programs
+    // For graduate students, only use program data (no GenEd)
+    const allSelectedProgramData: ProgramRow[] = isGraduateStudent ? programsData : [...programsData, ...genEdData];
+    const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
+      const credits = (prog.target_total_credits as number | null | undefined) ?? 0;
+      return sum + credits;
+    }, 0);
 
-    try {
-      // Step 1: Calculate total target credits from all selected programs
-      // For graduate students, only use program data (no GenEd)
-      const allSelectedProgramData: ProgramRow[] = isGraduateStudent ? programsData : [...programsData, ...genEdData];
-      const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
-        const credits = (prog.target_total_credits as number | null | undefined) ?? 0;
-        return sum + credits;
-      }, 0);
+    // Default credits: 120 for undergrad, 30-36 for graduate (using 30 as default)
+    const defaultCredits = isGraduateStudent ? 30 : 120;
+    const effectiveTargetCredits = totalTargetCredits > 0 ? totalTargetCredits : defaultCredits;
 
-      // Default credits: 120 for undergrad, 30-36 for graduate (using 30 as default)
-      const defaultCredits = isGraduateStudent ? 30 : 120;
-      const effectiveTargetCredits = totalTargetCredits > 0 ? totalTargetCredits : defaultCredits;
+    console.log('📊 Credit calculation:', {
+      isGraduateStudent,
+      genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
+      selectedPrograms: programsData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
+      totalTargetCredits,
+      effectiveTargetCredits
+    });
 
-      console.log('📊 Credit calculation:', {
-        isGraduateStudent,
-        genEdPrograms: isGraduateStudent ? [] : genEdData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
-        selectedPrograms: programsData.map(p => ({ name: p.name, credits: (p.target_total_credits as number | null | undefined) })),
-        totalTargetCredits,
-        effectiveTargetCredits
-      });
+    // Step 2: Prepare the course data and prompt for AI organization
+    // For undergrad: augment prompt with GenEd strategy
+    // For graduate: skip GenEd strategy since there are no GenEd requirements
+    const strategyText = !isGraduateStudent && genEdStrategy === 'early'
+      ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
+      : !isGraduateStudent
+      ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
+      : '';
 
-      // Step 2: Send the course data to AI for semester organization
-      // For undergrad: augment prompt with GenEd strategy
-      // For graduate: skip GenEd strategy since there are no GenEd requirements
-      const strategyText = !isGraduateStudent && genEdStrategy === 'early'
-        ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
-        : !isGraduateStudent
-        ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
-        : '';
+    // Replace any mentions of "120 credits" in the prompt with the calculated target
+    const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
 
-      // Replace any mentions of "120 credits" in the prompt with the calculated target
-      const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
+    const augmentedPrompt = isGraduateStudent
+      ? `${promptWithCredits}\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ${effectiveTargetCredits}`
+      : `${promptWithCredits}\n\nGenEd Sequencing Preference:\n${strategyText}\n\nTarget Total Credits: ${effectiveTargetCredits}`;
 
-      const augmentedPrompt = isGraduateStudent
-        ? `${promptWithCredits}\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ${effectiveTargetCredits}`
-        : `${promptWithCredits}\n\nGenEd Sequencing Preference:\n${strategyText}\n\nTarget Total Credits: ${effectiveTargetCredits}`;
-      const plannerPayload = generateSelectedClassesJson;
-      if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
-        setPlanCreationError('Course selection data is invalid. Please review your selections and try again.');
-        showSnackbar('Course selection data is invalid. Please review your selections and try again.', 'error');
-        return;
-      }
-
-      const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
-      const aiResult = await OrganizeCoursesIntoSemesters(plannerPayload, promptPayload);
-      
-      if (!aiResult.success) {
-        setPlanCreationError(`AI Planning Error: ${aiResult.message}`);
-        showSnackbar(`AI Planning Error: ${aiResult.message}`, 'error');
-        return;
-      }
-
-      if (aiResult.success && aiResult.accessId) {
-        let savedPlanName: string | undefined;
-        if (sanitizedPlanName) {
-          const gradPlanId = decodeAccessIdClient(aiResult.accessId);
-          if (!gradPlanId) {
-            console.warn(`⚠️ Unable to decode grad plan ID from accessId "${aiResult.accessId}" while saving plan name.`);
-          } else {
-            const renameResult = await updateGradPlanNameAction(gradPlanId, sanitizedPlanName);
-            if (!renameResult.success) {
-              const renameMessage = renameResult.error ?? 'Failed to save plan name. Please rename it from your dashboard.';
-              setPlanCreationError(renameMessage);
-              showSnackbar(renameMessage, 'error');
-            } else {
-              savedPlanName = sanitizedPlanName;
-            }
-          }
-        }
-
-        // Call the onPlanCreated callback with the AI-generated plan
-        if (onPlanCreated && aiResult.semesterPlan) {
-          // Convert selected program IDs from strings to numbers (include both majors/minors AND GenEd programs)
-          const allProgramIds = [...Array.from(selectedPrograms), ...genEdProgramIds].map(id => parseInt(id, 10));
-          // Use the accessId from the AI result
-          onPlanCreated(aiResult.semesterPlan as Term[], allProgramIds, aiResult.accessId, savedPlanName);
-        }
-        const renameFailed = Boolean(sanitizedPlanName) && !savedPlanName;
-        const resultSeverity: 'success' | 'error' | 'info' | 'warning' = renameFailed ? 'warning' : 'success';
-        const resultMessage = renameFailed
-          ? 'Plan generated, but we could not save the name automatically. Please update it from your dashboard.'
-          : 'Semester plan generated successfully!';
-        showSnackbar(resultMessage, resultSeverity);
-
-        // Close dialog on success
-        onClose();
-      } else {
-        setPlanCreationError('Plan created but failed to generate access ID. Please try again.');
-        showSnackbar('Plan created but missing access ID. Please retry.', 'warning');
-      }
-    } catch (error) {
-      console.error('Error creating graduation plan:', error);
-      setPlanCreationError('An unexpected error occurred. Please try again.');
-      showSnackbar('Unexpected error while generating plan.', 'error');
-    } finally {
-      setIsCreatingPlan(false);
+    const plannerPayload = generateSelectedClassesJson;
+    if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
+      setPlanCreationError('Course selection data is invalid. Please review your selections and try again.');
+      showSnackbar('Course selection data is invalid. Please review your selections and try again.', 'error');
+      return;
     }
+
+    const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
+
+    // Show snackbar and close dialog immediately
+    if (onShowSnackbar) {
+      onShowSnackbar('🎓 Your graduation plan is being generated! You\'ll be notified when it\'s ready.', 'info');
+    }
+    onClose();
+
+    // Call API route to process in background (fire and forget)
+    fetch('/api/grad-plan/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        coursesData: plannerPayload,
+        promptInput: promptPayload,
+        planName: sanitizedPlanName
+      })
+    }).then(response => response.json())
+      .then(result => console.log('✅ Grad plan generation started:', result))
+      .catch(error => console.error('❌ Failed to start grad plan generation:', error));
   };
 
   // Handle dialog close - prevent closing during plan creation
