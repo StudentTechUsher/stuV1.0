@@ -1,20 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Alert,
-  Snackbar,
-  Box,
-  Stack,
-  Typography,
-  ButtonBase
-} from '@mui/material';
-import { Settings, CheckCircle2, Check, AlertCircle, X } from 'lucide-react';
+// Removed unused imports from '@mui/material'
+import { Settings, Check, AlertCircle, X } from 'lucide-react';
 import { StuLoader } from '@/components/ui/StuLoader';
 import { SELECTION_MODES, SELECTION_MODE_DESCRIPTIONS, type SelectionMode } from '@/lib/selectionMode';
 
