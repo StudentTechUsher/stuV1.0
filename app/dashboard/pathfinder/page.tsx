@@ -114,8 +114,8 @@ export default async function PathfinderPage() {
           }
 
           // Add tags based on course level
-          const courseNum = parseInt((course.number as string) || '0');
-          if (!isNaN(courseNum)) {
+          const courseNum = Number.parseInt((course.number as string) || '0');
+          if (!Number.isNaN(courseNum)) {
             if (courseNum < 200) {
               tags.push('Introductory');
             } else if (courseNum >= 300) {

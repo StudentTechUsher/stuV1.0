@@ -28,7 +28,7 @@ interface PathfinderClientProps {
   currentPrograms: Array<{ id: number; name: string }>;
 }
 
-export default function PathfinderClient({ courses, currentPrograms }: PathfinderClientProps) {
+export default function PathfinderClient({ courses, currentPrograms }: Readonly<PathfinderClientProps>) {
   // Convert currentPrograms array to string for backward compatibility
   const currentMajor = currentPrograms.length > 0
     ? currentPrograms.map(p => p.name).join(', ')
