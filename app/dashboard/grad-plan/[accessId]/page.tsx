@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, Snackbar, Alert, TextField } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction, updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/services/server-actions';
 import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
@@ -148,10 +148,6 @@ export default function EditGradPlanPage() {
     movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
     hasSuggestions: boolean;
   } | null>(null);
-  const [planNameInput, setPlanNameInput] = React.useState('');
-  const [planNameError, setPlanNameError] = React.useState<string | null>(null);
-  const [isRenaming, setIsRenaming] = React.useState(false);
-  const [isSavingRename, setIsSavingRename] = React.useState(false);
   const [events, setEvents] = React.useState<Event[]>([]);
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
 
@@ -271,8 +267,6 @@ export default function EditGradPlanPage() {
           }
         }
         setGradPlan(planData);
-        setPlanNameInput(planData.plan_name?.trim() ?? '');
-        setPlanNameError(null);
 
         // Initialize currentPlanData with the fetched plan so Submit is enabled for new plans
         const planArray = extractPlanArray(planData.plan_details);
@@ -308,56 +302,30 @@ export default function EditGradPlanPage() {
   const handleSaveChanges = async () => {
     if (!gradPlan || !currentPlanData) return;
 
-    const existingPlanName = typeof gradPlan.plan_name === 'string' ? gradPlan.plan_name.trim() : '';
-    const requiresPlanName = existingPlanName.length === 0;
-    const trimmedPlanName = planNameInput.trim();
+    const currentPlanName = typeof gradPlan.plan_name === 'string' ? gradPlan.plan_name.trim() : '';
 
-    if (requiresPlanName && trimmedPlanName.length === 0) {
-      setPlanNameError('Please provide a name for this graduation plan before submitting.');
+    // Check if plan still needs a name (not "Untitled Plan" and not empty)
+    if (!currentPlanName || currentPlanName === 'Untitled Plan') {
       showSnackbar('Please name your graduation plan before submitting.', 'error');
       return;
-    }
-
-    if (requiresPlanName) {
-      setPlanNameError(null);
     }
 
     setIsSubmitting(true);
 
     try {
       // For students, submit for approval with program IDs
-      // For now, we'll extract program IDs from the existing plan
       const programIds = gradPlan.programs.map(p => p.id);
-      
+
       // Get current user session to get profile_id
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         throw new Error('User session not found');
       }
 
-      const planNameToUse = existingPlanName || trimmedPlanName;
-
-      if (requiresPlanName) {
-        const nameResult = await updateGradPlanNameAction(gradPlan.id, planNameToUse);
-        if (!nameResult.success) {
-          const errorMessage = nameResult.error ?? 'Failed to update plan name.';
-          setPlanNameError(errorMessage);
-          showSnackbar(errorMessage, 'error');
-          setIsSubmitting(false);
-          return;
-        }
-        setGradPlan(prev => (prev ? { ...prev, plan_name: planNameToUse } : prev));
-        setPlanNameInput(planNameToUse);
-      }
-
-      const result = await submitGradPlanForApproval(session.user.id, currentPlanData, programIds, planNameToUse);
+      const result = await submitGradPlanForApproval(session.user.id, currentPlanData, programIds, currentPlanName);
 
       if (result.success) {
         showSnackbar('Changes submitted for approval successfully!', 'success');
-        if (requiresPlanName && planNameToUse) {
-          setGradPlan(prev => (prev ? { ...prev, plan_name: planNameToUse } : prev));
-          setPlanNameInput(planNameToUse);
-        }
         // Optionally redirect back after a delay
         setTimeout(() => handleBack(), 2000);
       } else {
@@ -457,10 +425,9 @@ export default function EditGradPlanPage() {
   const isStudent = userRole === "student";
   const existingPlanName = typeof gradPlan.plan_name === 'string' ? gradPlan.plan_name.trim() : '';
   const selectedPlanName = existingPlanName;
-  const requiresPlanName = existingPlanName.length === 0;
-  const isPlanNameValid = !requiresPlanName || planNameInput.trim().length > 0;
-  const renameSaveDisabled = isSavingRename || planNameInput.trim().length === 0;
-  const headerTitle = existingPlanName
+  const requiresPlanName = !existingPlanName || existingPlanName === 'Untitled Plan';
+  const isPlanNameValid = !requiresPlanName;
+  const headerTitle = existingPlanName && existingPlanName !== 'Untitled Plan'
     ? `Edit ${existingPlanName}`
     : 'Edit Graduation Plan';
   const pageTitle = isStudent ? headerTitle : `Graduation Plan for ${studentName}`;
@@ -471,57 +438,6 @@ export default function EditGradPlanPage() {
     hour: '2-digit',
     minute: '2-digit'
   });
-
-  const handleStartRename = () => {
-    setPlanNameInput(existingPlanName);
-    setPlanNameError(null);
-    setIsRenaming(true);
-  };
-
-  const handleRenameCancel = () => {
-    setPlanNameInput(existingPlanName);
-    setPlanNameError(null);
-    setIsRenaming(false);
-  };
-
-  const handleRenameSave = async () => {
-    if (!gradPlan) {
-      return;
-    }
-
-    const trimmedName = planNameInput.trim();
-    if (trimmedName.length === 0) {
-      setPlanNameError('Plan name cannot be empty.');
-      return;
-    }
-
-    if (trimmedName === existingPlanName) {
-      setIsRenaming(false);
-      return;
-    }
-
-    setIsSavingRename(true);
-    try {
-      const result = await updateGradPlanNameAction(gradPlan.id, trimmedName);
-      if (!result.success) {
-        const message = result.error ?? 'Failed to update plan name.';
-        setPlanNameError(message);
-        showSnackbar(message, 'error');
-        return;
-      }
-
-      setGradPlan(prev => (prev ? { ...prev, plan_name: trimmedName } : prev));
-      setPlanNameInput(trimmedName);
-      setPlanNameError(null);
-      setIsRenaming(false);
-      showSnackbar('Plan name updated.', 'success');
-    } catch (renameError) {
-      console.error('Error updating plan name:', renameError);
-      showSnackbar('Unexpected error updating plan name.', 'error');
-    } finally {
-      setIsSavingRename(false);
-    }
-  };
 
   return (
     <Box
@@ -579,10 +495,10 @@ export default function EditGradPlanPage() {
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {selectedPlanName && isStudent ? (
+            {isStudent ? (
               <EditablePlanTitle
                 planId={gradPlan.id}
-                initialName={selectedPlanName}
+                initialName={selectedPlanName || 'Untitled Plan'}
                 onSaved={(newName) => {
                   setGradPlan(prev => (prev ? { ...prev, plan_name: newName } : prev));
                   showSnackbar('Plan name updated successfully!', 'success');
@@ -735,75 +651,9 @@ export default function EditGradPlanPage() {
           )}
         </Box>
 
-        {isStudent && isRenaming && (
-          <Box
-            sx={{
-              borderRadius: '7px',
-              border: '1px solid',
-              borderColor: 'color-mix(in srgb, var(--primary) 38%, transparent)',
-              backgroundColor: 'color-mix(in srgb, var(--primary) 12%, white)',
-              p: { xs: 2, md: 3 },
-              display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
-              gap: 2,
-              alignItems: { md: 'center' },
-            }}
-          >
-            <TextField
-              label="Plan Name"
-              size="small"
-              value={planNameInput}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                setPlanNameInput(event.target.value);
-                if (planNameError) {
-                  setPlanNameError(null);
-                }
-              }}
-              required
-              error={Boolean(planNameError)}
-              helperText={planNameError ?? 'Choose a clear, professional name before submitting.'}
-              inputProps={{ maxLength: 100 }}
-              sx={{ flex: 1, minWidth: 220 }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                variant="contained"
-                onClick={handleRenameSave}
-                disabled={renameSaveDisabled}
-                sx={{
-                  backgroundColor: '#0a1f1a',
-                  color: '#ffffff',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 3,
-                  '&:hover': { backgroundColor: '#043322' },
-                  '&:disabled': {
-                    backgroundColor: 'var(--muted)',
-                    color: 'var(--muted-foreground)',
-                  },
-                }}
-              >
-                {isSavingRename ? 'Saving…' : 'Save'}
-              </Button>
-              <Button
-                variant="text"
-                onClick={handleRenameCancel}
-                disabled={isSavingRename}
-                sx={{
-                  color: '#0a1f1a',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                }}
-              >
-                Cancel
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        {isStudent && requiresPlanName && !isRenaming && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
-            Name this plan to submit it for approval.
+        {isStudent && requiresPlanName && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            Click the plan title above to name your plan before submitting for approval.
           </Alert>
         )}
       </Box>
