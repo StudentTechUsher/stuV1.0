@@ -20,8 +20,28 @@ interface SpaceViewProps {
 }
 
 export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent }: Readonly<SpaceViewProps>) {
-  // Group terms into rows of 4
-  const termsPerRow = 4;
+  // Calculate optimal terms per row (3-4 terms) based on total term count
+  const termsPerRow = React.useMemo(() => {
+    const totalTerms = plan.terms.length;
+
+    // If we can divide evenly by 4, use 4
+    if (totalTerms % 4 === 0) return 4;
+
+    // If we can divide evenly by 3, use 3
+    if (totalTerms % 3 === 0) return 3;
+
+    // Otherwise, check which gives a better last row
+    const remainder4 = totalTerms % 4;
+    const remainder3 = totalTerms % 3;
+
+    // If 4-per-row leaves 3 or fewer in last row, prefer 3-per-row
+    // But if 3-per-row leaves only 1 in last row and 4-per-row leaves 2+, use 4
+    if (remainder4 >= 3 || (remainder3 === 1 && remainder4 >= 2)) {
+      return 4;
+    }
+
+    return 3;
+  }, [plan.terms.length]);
 
   const rows = React.useMemo(() => {
     const result: React.ReactNode[] = [];
@@ -46,8 +66,11 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
               <React.Fragment key={`term-group-${term.id}`}>
                 {/* Term Card */}
                 <div
-                  className="flex-1 min-w-0 transition-all duration-250 ease-in-out"
-                  style={{ flex: '1 1 0' }}
+                  className="min-w-0 transition-all duration-250 ease-in-out"
+                  style={{
+                    width: `calc((100% - (${termsPerRow - 1} * 0.75rem)) / ${termsPerRow})`,
+                    flexShrink: 0
+                  }}
                 >
                   <TermCard
                     term={term}
