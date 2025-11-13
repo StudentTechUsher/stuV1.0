@@ -153,7 +153,7 @@ export function distributionForTarget(
     };
   }
 
-  const requiredAvg = C_free > 0 ? qpNeededRemaining / C_free : 0;
+  const requiredAvg = qpNeededRemaining / C_free;
 
   // Unattainable: average needed exceeds 4.0
   if (requiredAvg > 4.0) {
