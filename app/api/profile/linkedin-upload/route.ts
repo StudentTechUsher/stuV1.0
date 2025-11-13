@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const storagePath = `linkedin-profiles/${user.id}/${timestamp}_${sanitizedFileName}`;
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('student-documents')
       .upload(storagePath, fileBuffer, {
         contentType: 'application/pdf',
