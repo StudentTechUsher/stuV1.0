@@ -65,13 +65,14 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   const userId = userError || !user ? null : user.id;
 
-  // 2) Query profiles for role_id and onboarded status (RLS lets users read only their own row)
+  // 2) Query profiles for role_id, onboarded status, and university_id (RLS lets users read only their own row)
   let roleId: string | null = null;
   let onboarded = true; // Default to true (onboarded) to prevent blocking existing users
+  let universityId: number | null = null;
   if (userId) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role_id, onboarded")
+      .select("role_id, onboarded, university_id")
       .eq("id", userId)
       .maybeSingle();
 
@@ -79,14 +80,19 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     roleId = profile?.role_id ? String(profile.role_id) : null;
     // Only set onboarded to false if explicitly false in the database
     onboarded = profile?.onboarded !== false;
+    universityId = profile?.university_id ?? null;
   }
 
   // 3) Pick a Role string (you can also fetch role name via FK join)
   const role: Role =
     ROLE_MAP[roleId ?? "3"]; // sensible default to "student" if roleId is null or undefined
 
-  // If user hasn't been onboarded yet (waiting for admin approval), show pending message
-  if (!onboarded && user) {
+  // If user hasn't been onboarded yet AND they have selected a university,
+  // they're waiting for admin approval (only for advisors/admins)
+  // If they haven't selected a university yet, let them through to complete onboarding
+  const hasSelectedUniversity = universityId !== null;
+
+  if (!onboarded && hasSelectedUniversity && user) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 shadow-lg">
