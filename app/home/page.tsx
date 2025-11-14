@@ -93,7 +93,7 @@ export default async function HomePage() {
         {/* Action Cards */}
         <div className="max-w-4xl w-full mx-auto">
           {/* Dashboard Card - Always visible */}
-          <Link href="/dashboard" className="block mb-3">
+          <Link href="/" className="block mb-3">
             <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
               <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                 View my {role} dashboard
@@ -107,7 +107,7 @@ export default async function HomePage() {
           {/* Student-specific cards */}
           {role === "student" && (
             <>
-              <Link href="/dashboard/grad-plan" className="block mb-3">
+              <Link href="/grad-plan" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Create a four-year graduation map
@@ -118,7 +118,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/major-choice" className="block mb-3">
+              <Link href="/major-choice" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Help me choose a major
@@ -129,7 +129,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/semester-scheduler" className="block mb-3">
+              <Link href="/semester-scheduler" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Plan my schedule for next semester
@@ -140,7 +140,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/meet-with-advisor" className="block mb-3">
+              <Link href="/meet-with-advisor" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Help me connect with my advisor
@@ -156,7 +156,7 @@ export default async function HomePage() {
           {/* Advisor-specific cards */}
           {role === "advisor" && (
             <>
-              <Link href="/dashboard/approve-grad-plans" className="block mb-3">
+              <Link href="/approve-grad-plans" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Approve graduation plans
@@ -167,7 +167,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/my-advisees" className="block mb-3">
+              <Link href="/my-advisees" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     My advisees
@@ -178,7 +178,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/appointments" className="block mb-3">
+              <Link href="/appointments" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Appointments
@@ -189,7 +189,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/reports" className="block mb-3">
+              <Link href="/reports" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Reports
@@ -205,7 +205,7 @@ export default async function HomePage() {
           {/* Admin-specific cards */}
           {role === "admin" && (
             <>
-              <Link href="/dashboard/users" className="block mb-3">
+              <Link href="/users" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Manage users
@@ -216,7 +216,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/programs" className="block mb-3">
+              <Link href="/programs" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Manage programs
@@ -227,7 +227,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/system" className="block mb-3">
+              <Link href="/system" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     System settings
@@ -238,7 +238,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/reports" className="block mb-3">
+              <Link href="/reports" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     System reports

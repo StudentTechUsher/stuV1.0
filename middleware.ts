@@ -29,21 +29,36 @@ function handleAuthRedirects(
 ): NextResponse | null {
   const pathname = request.nextUrl.pathname
 
-  // Protected routes - redirect to login if no session
-  const protectedPaths = ['/dashboard']
-  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
+  // Public paths that don't require authentication
+  const publicPaths = [
+    '/',
+    '/login',
+    '/signup',
+    '/students',
+    '/demo',
+    '/about-us',
+    '/privacy-policy',
+    '/home',
+    '/landing',
+    '/how-it-works',
+  ]
 
-  if (isProtectedPath && !session) {
+  const isPublicPath = publicPaths.includes(pathname) ||
+                       pathname.startsWith('/auth/') ||
+                       pathname.startsWith('/api/')
+
+  // If not a public path and no session, redirect to login
+  if (!isPublicPath && !session) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('next', pathname + request.nextUrl.search)
     return NextResponse.redirect(redirectUrl)
   }
 
   // Auth pages and landing page - redirect to dashboard if logged in
-  const publicPaths = ['/', '/login', '/signup']
-  const isPublicPath = publicPaths.includes(pathname)
+  const authPages = ['/', '/login', '/signup']
+  const isAuthPage = authPages.includes(pathname)
 
-  if (isPublicPath && session) {
+  if (isAuthPage && session) {
     const redirectTo = request.nextUrl.searchParams.get('next') || '/dashboard'
     return NextResponse.redirect(new URL(redirectTo, request.url))
   }
