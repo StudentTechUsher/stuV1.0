@@ -632,7 +632,7 @@ export default function UniversityEditor() {
                           inputValue = inputValue.replace(/[^0-9A-F]/g, '').slice(0, 6);
                           // Update the hex input display value
                           setHexInputValues(prev => ({ ...prev, [key]: inputValue }));
-                          // Update the actual color if it's exactly 6 characters (valid hex)
+                          // Only update tempColors when we have a complete 6-digit hex code
                           if (inputValue.length === 6) {
                             const hexValue = '#' + inputValue;
                             setTempColors(prev => ({ ...prev, [key]: hexValue }));
