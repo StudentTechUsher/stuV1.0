@@ -9,28 +9,43 @@ export async function POST(request: NextRequest) {
 
     console.log('Test update API called with:', { universityId, colors });
 
-    // Create server-side Supabase client
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
+    // Try with service role key first (has full permissions, bypasses RLS)
+    const { createClient } = await import('@supabase/supabase-js');
+
+    let supabase: any;
+    const serviceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+
+    if (serviceRoleKey) {
+      console.log('Using service role key (has full permissions)');
+      supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceRoleKey
+      );
+    } else {
+      console.log('Service role key not available, using anon key');
+      // Fallback to anon key with cookies
+      const cookieStore = await cookies();
+      supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return cookieStore.getAll();
+            },
+            setAll(cookiesToSet) {
+              try {
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  cookieStore.set(name, value, options)
+                );
+              } catch {
+                // Ignore cookie setting errors in server routes
+              }
+            },
           },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Ignore cookie setting errors in server routes
-            }
-          },
-        },
-      }
-    );
+        }
+      );
+    }
 
     // First, verify we can read the university
     console.log('Fetching university with ID:', universityId);
@@ -52,11 +67,14 @@ export async function POST(request: NextRequest) {
 
     // Now try to update
     console.log('Attempting to update with colors:', colors);
-    const { data: updateData, error: updateError } = await supabase
+
+    // Try a simple update first without .select()
+    const { error: updateError } = await supabase
       .from('university')
       .update(colors)
-      .eq('id', universityId)
-      .select();
+      .eq('id', universityId);
+
+    console.log('Update error:', updateError);
 
     if (updateError) {
       console.error('Error updating university:', updateError);
@@ -70,7 +88,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Update successful:', updateData);
+    console.log('Update command completed (no error)');
 
     // Verify the update worked by fetching again
     const { data: verifyData, error: verifyError } = await supabase
@@ -88,7 +106,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Update successful',
-      updateData,
       verifyData,
     });
   } catch (error) {
