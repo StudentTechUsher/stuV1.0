@@ -28,7 +28,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import WorkRounded from "@mui/icons-material/WorkRounded";
 import TimelineRounded from "@mui/icons-material/TimelineRounded";
 import { MdHistory } from "react-icons/md";
-import type { NavItem } from "@/app/dashboard/layout";
+import type { NavItem } from "@/app/(dashboard)/layout";
 import { JSX } from "react";
 import { Inbox } from "@mui/icons-material";
 
