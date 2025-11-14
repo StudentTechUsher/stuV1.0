@@ -31,6 +31,15 @@ export default function UniversityEditor() {
     text_color: '#1A1A1A',
     secondary_text_color: '#666666',
   });
+  const [hexInputValues, setHexInputValues] = useState({
+    primary_color: '12F987',
+    secondary_color: '0D8B56',
+    accent_color: '85E5C2',
+    dark_color: '0A1B12',
+    light_color: 'F0FFF9',
+    text_color: '1A1A1A',
+    secondary_text_color: '666666',
+  });
 
   const { updateUniversityTheme, resetToDefault } = useUniversityTheme();
   const supabase = createSupabaseBrowserClient();
@@ -79,13 +88,23 @@ export default function UniversityEditor() {
 
     if (university) {
       setTempColors({
-        primary_color: university.primary_color,
-        secondary_color: university.secondary_color,
-        accent_color: university.accent_color,
-        dark_color: university.dark_color,
-        light_color: university.light_color,
-        text_color: university.text_color,
-        secondary_text_color: university.secondary_text_color,
+        primary_color: university.primary_color || '#12F987',
+        secondary_color: university.secondary_color || '#0D8B56',
+        accent_color: university.accent_color || '#85E5C2',
+        dark_color: university.dark_color || '#0A1B12',
+        light_color: university.light_color || '#F0FFF9',
+        text_color: university.text_color || '#1A1A1A',
+        secondary_text_color: university.secondary_text_color || '#666666',
+      });
+      // Initialize hex input values (without the #)
+      setHexInputValues({
+        primary_color: (university.primary_color || '#12F987').replace('#', ''),
+        secondary_color: (university.secondary_color || '#0D8B56').replace('#', ''),
+        accent_color: (university.accent_color || '#85E5C2').replace('#', ''),
+        dark_color: (university.dark_color || '#0A1B12').replace('#', ''),
+        light_color: (university.light_color || '#F0FFF9').replace('#', ''),
+        text_color: (university.text_color || '#1A1A1A').replace('#', ''),
+        secondary_text_color: (university.secondary_text_color || '#666666').replace('#', ''),
       });
     }
   }, [selectedUniversityId, universities]);
@@ -606,10 +625,22 @@ export default function UniversityEditor() {
                       </div>
                       <Input
                         type="text"
-                        value={value}
-                        onChange={(e) => setTempColors(prev => ({ ...prev, [key]: e.target.value }))}
+                        value={hexInputValues[key as keyof typeof hexInputValues] || ''}
+                        onChange={(e) => {
+                          let inputValue = e.target.value.toUpperCase();
+                          // Only allow hex characters and limit to 6 digits
+                          inputValue = inputValue.replace(/[^0-9A-F]/g, '').slice(0, 6);
+                          // Update the hex input display value
+                          setHexInputValues(prev => ({ ...prev, [key]: inputValue }));
+                          // Update the actual color if it's exactly 6 characters (valid hex)
+                          if (inputValue.length === 6) {
+                            const hexValue = '#' + inputValue;
+                            setTempColors(prev => ({ ...prev, [key]: hexValue }));
+                          }
+                        }}
                         className="flex-1 h-11 rounded-xl border-[var(--border)] font-mono text-sm font-semibold focus:ring-2 focus:ring-[var(--primary)] focus:ring-opacity-20"
-                        placeholder="#000000"
+                        placeholder="FFFFFF"
+                        maxLength={6}
                       />
                     </div>
                   </div>
