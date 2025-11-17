@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #f8f9fa; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+
+.header {
+  padding: 12pt 20pt;
+  background: linear-gradient(135deg, #1F4788 0%, #17A2B8 100%);
+  color: white;
+  text-align: center;
+  border-bottom: 3pt solid #17A2B8;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24pt;
+  font-weight: bold;
+}
+
+.canvas-container {
+  display: flex;
+  flex: 1;
+  padding: 10pt;
+  gap: 8pt;
+  overflow: hidden;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 8pt;
+  flex: 1;
+}
+
+.block {
+  border-radius: 4pt;
+  padding: 10pt;
+  font-size: 9pt;
+  line-height: 1.4;
+  border: 1pt solid #ddd;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.block h3 {
+  margin: 0 0 6pt 0;
+  font-size: 10pt;
+  font-weight: bold;
+  color: white;
+}
+
+.block p {
+  margin: 0;
+  color: #333;
+  font-size: 8pt;
+  line-height: 1.35;
+}
+
+.block ul {
+  margin: 0;
+  padding-left: 12pt;
+  color: #333;
+  font-size: 8pt;
+  line-height: 1.35;
+}
+
+.block li {
+  margin-bottom: 2pt;
+}
+
+/* Block color schemes */
+.key-partners { background: #E8F4F8; }
+.key-partners h3 { background: #0A5F7F; }
+
+.key-activities { background: #F0E8FF; }
+.key-activities h3 { background: #6B4BA8; }
+
+.key-resources { background: #FFF4E6; }
+.key-resources h3 { background: #D97706; }
+
+.customer-segments { background: #F0F9FF; }
+.customer-segments h3 { background: #1E40AF; }
+
+.channels { background: #E8F5E9; }
+.channels h3 { background: #2E7D32; }
+
+.relationships { background: #FCE4EC; }
+.relationships h3 { background: #C2185B; }
+
+.revenue { background: #FFF3E0; }
+.revenue h3 { background: #E65100; }
+
+.cost-structure { background: #EEEEEE; }
+.cost-structure h3 { background: #424242; }
+
+.center-container {
+  display: flex;
+  gap: 8pt;
+  flex: 1;
+}
+
+.jtbd-block {
+  background: #FFF9C4; flex: 1;
+}
+.jtbd-block h3 { background: #F57F17; }
+
+.cvp-block {
+  background: #C8E6C9; flex: 1;
+}
+.cvp-block h3 { background: #388E3C; }
+
+.footer {
+  padding: 4pt 20pt;
+  font-size: 8pt;
+  text-align: right;
+  color: #666;
+  background: white;
+  border-top: 1pt solid #ddd;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Stu: Business Model Canvas</h1>
+</div>
+
+<div class="canvas-container">
+  <!-- Left Column: Partners, Activities, Resources -->
+  <div class="column" style="flex: 0.8;">
+    <!-- Key Partnerships -->
+    <div class="block key-partners">
+      <h3>Key Partnerships</h3>
+      <ul>
+        <li>SIS vendors (Ellucian, Degree Works)</li>
+        <li>Student success networks &amp; NACADA</li>
+        <li>AWS, Supabase, Looker</li>
+      </ul>
+    </div>
+
+    <!-- Key Activities -->
+    <div class="block key-activities" style="flex: 1;">
+      <h3>Key Activities</h3>
+      <ul>
+        <li>AI graduation mapping &amp; optimization</li>
+        <li>Data integration &amp; onboarding</li>
+        <li>Customer success &amp; retention</li>
+        <li>Direct sales to decision-makers</li>
+      </ul>
+    </div>
+
+    <!-- Cost Structure -->
+    <div class="block cost-structure">
+      <h3>Cost Structure</h3>
+      <ul>
+        <li>Engineering/Product: $250–300K/yr</li>
+        <li>CS &amp; Sales: $120–150K/yr</li>
+        <li>Cloud infrastructure: $5–15K/mo</li>
+        <li>CAC: ~$10–20K/pilot</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Center: Customer Segments, JTBD, CVP, Channels, Relationships -->
+  <div class="column" style="flex: 1.2;">
+    <!-- Customer Segments -->
+    <div class="block customer-segments">
+      <h3>Customer Segments</h3>
+      <ul>
+        <li>Community &amp; technical colleges</li>
+        <li>State &amp; public universities</li>
+        <li>For-profit &amp; online universities</li>
+        <li>Online/distributed programs</li>
+      </ul>
+    </div>
+
+    <!-- Center: JTBD and CVP -->
+    <div class="center-container" style="flex: 1; gap: 6pt;">
+      <div class="block jtbd-block">
+        <h3>Jobs-To-Be-Done</h3>
+        <ul>
+          <li>Automate scheduling to free advisors</li>
+          <li>Improve completion &amp; retention rates</li>
+          <li>Forecast enrollment &amp; capacity</li>
+          <li>Enable self-service progression</li>
+        </ul>
+      </div>
+
+      <div class="block cvp-block">
+        <h3>Customer Value Proposition</h3>
+        <ul>
+          <li>40%+ advisor time savings</li>
+          <li>AI-powered personalized guidance</li>
+          <li>Unified enrollment visibility</li>
+          <li>No rip-and-replace implementation</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Channels -->
+    <div class="block channels">
+      <h3>Channels</h3>
+      <ul>
+        <li>Direct outbound (LinkedIn, email)</li>
+        <li>NACADA &amp; AACRAO conferences</li>
+        <li>Pilot-first SaaS model</li>
+        <li>Dedicated customer success</li>
+      </ul>
+    </div>
+
+    <!-- Customer Relationships -->
+    <div class="block relationships">
+      <h3>Customer Relationships</h3>
+      <ul>
+        <li>High-touch pilots (90-day ROI)</li>
+        <li>Quarterly business reviews</li>
+        <li>Co-creation &amp; roadmap input</li>
+        <li>Automated dashboards &amp; alerts</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right Column: Resources, Key Resources revenue -->
+  <div class="column" style="flex: 0.8;">
+    <!-- Key Resources -->
+    <div class="block key-resources">
+      <h3>Key Resources</h3>
+      <ul>
+        <li>AI/ML graduation engine</li>
+        <li>Pre-built SIS integrations</li>
+        <li>Domain expertise &amp; team</li>
+        <li>$500K–1M seed funding</li>
+      </ul>
+    </div>
+
+    <!-- Revenue Streams -->
+    <div class="block revenue" style="flex: 1;">
+      <h3>Revenue Streams</h3>
+      <ul>
+        <li>SaaS subscription: $6–20/student/yr</li>
+        <li>Integration fees: $5K–30K</li>
+        <li>Per-FTE &amp; cohort pricing</li>
+        <li>Enterprise support &amp; custom dev</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Stu: AI-powered degree planning &amp; student success platform</p>
+</div>
+</body>
+</html>
