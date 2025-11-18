@@ -69,8 +69,9 @@ export default function CreatePlanClient({
   const [profileSubStep, setProfileSubStep] = useState<ProfileSubStep>('name');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load from localStorage on mount (client-side only)
+  // Initialize or transition from INITIALIZE to PROFILE_SETUP
   useEffect(() => {
+    // Check if we need to load from localStorage
     const params = new URLSearchParams(window.location.search);
     const urlConversationId = params.get('id');
 
@@ -78,7 +79,17 @@ export default function CreatePlanClient({
       const saved = loadStateFromLocalStorage(urlConversationId);
       if (saved) {
         setConversationState(saved);
+        return;
       }
+    }
+
+    // Transition from INITIALIZE to PROFILE_SETUP
+    if (conversationState.currentStep === ConversationStep.INITIALIZE) {
+      setConversationState(prev =>
+        updateState(prev, {
+          step: ConversationStep.PROFILE_SETUP,
+        })
+      );
     }
   }, []);
 
@@ -526,6 +537,28 @@ export default function CreatePlanClient({
 
   // Render appropriate screen based on current step
   const renderCurrentScreen = () => {
+    // Handle INITIALIZE step (should auto-transition, but safeguard just in case)
+    if (conversationState.currentStep === ConversationStep.INITIALIZE) {
+      return (
+        <div className="w-full space-y-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900">
+              Initializing your graduation plan...
+            </h2>
+          </div>
+          <div className="flex justify-center py-12">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
+              <div
+                className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-600 border-r-indigo-600 animate-spin"
+                style={{ animationDuration: '2s' }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (conversationState.currentStep === ConversationStep.PROFILE_SETUP) {
       if (profileSubStep === 'name') {
         return (
