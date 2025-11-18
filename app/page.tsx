@@ -1,10 +1,10 @@
-import { LandingPageClient } from './landing-page-client'
+import { UnifiedLandingClient } from './unified-landing-client'
 import { Metadata } from 'next'
 import { getOrganizationSchema, getSoftwareSchema, getWebsiteSchema } from '@/lib/seo/structured-data'
 
 export const metadata: Metadata = {
-  title: 'Academic Planning & Forecasting for Universities',
-  description: 'Stu automates graduation planning and semester scheduling for universities. Help students graduate on time, give advisors their time back, and forecast course demand with precision. Enterprise-grade planning at a fraction of the cost.',
+  title: 'Academic Planning & Course Scheduling for Students & Universities',
+  description: 'Stu helps students graduate on time and universities optimize course planning. Intelligent scheduling, degree mapping, and analytics for academic success.',
   keywords: [
     'academic planning',
     'university forecasting',
@@ -13,11 +13,13 @@ export const metadata: Metadata = {
     'course demand forecasting',
     'advisor tools',
     'degree planning',
-    'student success platform'
+    'student success platform',
+    'college course planner',
+    'degree tracker'
   ],
   openGraph: {
-    title: 'Stu - Academic Planning & Forecasting for Universities',
-    description: 'Automated graduation planning, forecasting, and semester scheduling. Help students graduate on time while giving advisors their time back.',
+    title: 'Stu - Academic Planning for Students & Universities',
+    description: 'Intelligent course scheduling and graduation planning. Help students graduate on time while giving advisors and universities powerful planning tools.',
     url: 'https://stuplanning.com',
     type: 'website',
   },
@@ -46,7 +48,7 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
-      <LandingPageClient />
+      <UnifiedLandingClient />
     </>
   )
 }

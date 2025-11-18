@@ -26,7 +26,7 @@ export function UnifiedLandingClient() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push('/') // Redirect to overview page
+        router.push('/overview')
       }
     }
 
@@ -35,7 +35,7 @@ export function UnifiedLandingClient() {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        router.push('/') // Redirect to overview page
+        router.push('/overview')
       }
     })
 
