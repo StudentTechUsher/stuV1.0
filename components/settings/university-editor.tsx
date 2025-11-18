@@ -315,30 +315,7 @@ export default function UniversityEditor() {
 
     setIsUpdating(true);
     try {
-      console.log('handleSaveTheme called with:', {
-        universityId: selectedUniversity.id,
-        universityName: selectedUniversity.name,
-        colors: tempColors,
-      });
-
-      // Test direct API call
-      const testResponse = await fetch('/api/test-update-university', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          universityId: selectedUniversity.id,
-          colors: tempColors,
-        }),
-      });
-
-      const testResult = await testResponse.json();
-      console.log('Test API response:', testResult);
-
-      if (!testResponse.ok) {
-        throw new Error(testResult.details?.message || testResult.error || 'Test update failed');
-      }
-
-      // Also try the context method
+      // Save theme using context method
       await updateUniversityTheme(selectedUniversity.id, tempColors);
 
       showToast({

@@ -1,13 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   OnboardingSchema,
-  OnboardingInput,
   UpdatePlanNameSchema,
-  UpdatePlanNameInput,
   UpdateGoalGradeSchema,
-  UpdateGoalGradeInput,
   GradPlanEditSchema,
-  GradPlanEditInput,
 } from '@/lib/validation/zodSchemas';
 
 describe('Zod Schemas - Validation Tests', () => {
