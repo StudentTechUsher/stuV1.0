@@ -55,10 +55,7 @@ export const UpdateGoalGradeSchema = z.object({
     .enum(
       ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'],
       {
-        errorMap: () => ({
-          message:
-            'Goal grade must be one of: A, A-, B+, B, B-, C+, C, C-, D+, D, E',
-        }),
+        message: 'Goal grade must be one of: A, A-, B+, B, B-, C+, C, C-, D+, D, E',
       }
     )
     .or(z.null()),

@@ -89,6 +89,7 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
 
   const handleRoleChange = async (newRole: string) => {
     if (newRole === currentRole) return;
+    if (!user) return;
 
     setIsUpdatingRole(true);
     try {
