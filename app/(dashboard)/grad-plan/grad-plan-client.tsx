@@ -41,7 +41,7 @@ export default function GradPlanClient({
   const [studentProfile, setStudentProfile] = useState(initialStudentProfile);
 
   // Parse the plan data - only if we have a plan
-  const { planData, assumptions } = usePlanParser(selectedGradPlan);
+  const { planData, assumptions } = usePlanParser(selectedGradPlan || undefined);
 
   // Check if plan is approved
   const isApproved = (selectedGradPlan?.is_active as boolean) || false;

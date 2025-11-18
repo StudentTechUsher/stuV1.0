@@ -308,6 +308,7 @@ export function getStepLabel(step: ConversationStep): string {
     [ConversationStep.INITIALIZE]: 'Initializing',
     [ConversationStep.PROFILE_SETUP]: 'Profile Setup',
     [ConversationStep.CAREER_PATHFINDER]: 'Career Exploration',
+    [ConversationStep.PROGRAM_PATHFINDER]: 'Program Exploration',
     [ConversationStep.TRANSCRIPT_CHECK]: 'Transcript Review',
     [ConversationStep.STUDENT_TYPE]: 'Student Classification',
     [ConversationStep.PROGRAM_SELECTION]: 'Program Selection',

@@ -435,12 +435,9 @@ export default function CreatePlanClient({
             completedStep: ConversationStep.COURSE_METHOD,
           });
 
-          // Then mark COURSE_SELECTION as complete
+          // Then mark COURSE_SELECTION as complete (skip manual selection since using transcript)
           const withSelection = updateState(withMethod, {
             step: ConversationStep.COURSE_SELECTION,
-            data: {
-              selectedCourses: courseData as unknown as CourseSelection[],
-            },
             completedStep: ConversationStep.COURSE_SELECTION,
           });
 
