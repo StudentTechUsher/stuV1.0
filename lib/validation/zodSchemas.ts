@@ -107,8 +107,7 @@ const PlanOperation = z.discriminatedUnion('op', [
 export const GradPlanEditSchema = z.object({
   planId: z
     .string()
-    .uuid('Invalid plan ID format')
-    .or(z.string().min(1, 'Plan ID is required')),
+    .uuid('Invalid plan ID format'),
   operations: z
     .array(PlanOperation)
     .min(1, 'At least one operation is required'),
