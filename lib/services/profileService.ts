@@ -136,3 +136,22 @@ export async function saveTargetedCareerClient(careerTitle: string): Promise<{ s
     if (updateError) return { success: false, error: updateError.message };
     return { success: true };
 }
+
+/**
+ * Update profile fields for the authenticated user.
+ * Updates fields like est_grad_date, est_grad_sem, career_goals in the profiles table.
+ * Relies on RLS allowing the current user to update their own profile row.
+ */
+export async function updateProfileClient(updates: Record<string, string | null>): Promise<{ success: boolean; error?: string }> {
+    // Ensure we have current auth user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Not authenticated' };
+
+    const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+    if (updateError) return { success: false, error: updateError.message };
+    return { success: true };
+}

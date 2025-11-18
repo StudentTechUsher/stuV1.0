@@ -18,6 +18,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import SchoolIcon from '@mui/icons-material/School';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EditIcon from '@mui/icons-material/Edit';
+import { Sparkles } from 'lucide-react';
 import { GetGenEdsForUniversity } from '@/lib/services/programService';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
@@ -326,9 +327,34 @@ export default function ProgramSelectionDialog({
             <>
               {/* Majors Selection */}
               <Box>
-            <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-              Select Majors (1-3 required)
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle1" className="font-header-bold">
+                Select Majors (1-3 required)
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Sparkles size={14} />}
+                onClick={() => {
+                  // TODO: Implement major finder
+                  console.log('Help me find one clicked');
+                }}
+                sx={{
+                  fontSize: '0.75rem',
+                  py: 0.25,
+                  px: 1,
+                  borderColor: 'var(--primary)',
+                  color: 'var(--primary)',
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: 'var(--hover-green)',
+                    backgroundColor: 'var(--primary-15)',
+                  },
+                }}
+              >
+                Help me find one
+              </Button>
+            </Box>
             <Autocomplete
               multiple
               options={majors}
@@ -433,9 +459,34 @@ export default function ProgramSelectionDialog({
           {/* Graduate Programs */}
           {studentType === 'graduate' && (
             <Box>
-              <Typography variant="subtitle1" className="font-header-bold" gutterBottom>
-                Select Graduate Program (1 required)
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="subtitle1" className="font-header-bold">
+                  Select Graduate Program (1 required)
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Sparkles size={14} />}
+                  onClick={() => {
+                    // TODO: Implement graduate program finder
+                    console.log('Help me find one clicked - graduate');
+                  }}
+                  sx={{
+                    fontSize: '0.75rem',
+                    py: 0.25,
+                    px: 1,
+                    borderColor: 'var(--primary)',
+                    color: 'var(--primary)',
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderColor: 'var(--hover-green)',
+                      backgroundColor: 'var(--primary-15)',
+                    },
+                  }}
+                >
+                  Help me find one
+                </Button>
+              </Box>
               <Autocomplete
                 options={graduatePrograms}
                 getOptionLabel={(option) => option.name}

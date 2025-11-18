@@ -247,7 +247,7 @@ export default function ApproveGradPlanPage() {
   }, [params.accessId, isCheckingRole]);
 
   const handleBack = () => {
-    router.push('/dashboard/approve-grad-plans');
+    router.push('/approve-grad-plans');
   };
 
   // Helper to detect moved courses between original and edited plans
@@ -384,7 +384,7 @@ export default function ApproveGradPlanPage() {
           console.error('Notification dispatch failed (non-blocking):', notifyErr);
         }
         // Redirect to approval list after short delay so user sees snackbar
-        setTimeout(() => router.push('/dashboard/approve-grad-plans'), 1100);
+        setTimeout(() => router.push('/approve-grad-plans'), 1100);
       } else {
         showSnackbar(result.error || 'Failed to save changes', 'error');
       }
@@ -449,7 +449,7 @@ export default function ApproveGradPlanPage() {
         } catch (notifyErr) {
           console.error('Approval notification dispatch failed (non-blocking):', notifyErr);
         }
-        setTimeout(() => router.push('/dashboard/approve-grad-plans'), 2000);
+        setTimeout(() => router.push('/approve-grad-plans'), 2000);
       } else {
         showSnackbar(`Failed to approve plan: ${result.error || 'Unknown error'}`, 'error');
       }

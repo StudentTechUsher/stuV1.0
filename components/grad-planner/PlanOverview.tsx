@@ -61,7 +61,7 @@ export function PlanOverview({
   const ViewIcon = isSpaceView ? Minimize2 : Maximize2;
 
   return (
-    <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-6 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
+    <section className="rounded-lg border border-gray-400 bg-gray-200/50 p-6">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex flex-col gap-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">

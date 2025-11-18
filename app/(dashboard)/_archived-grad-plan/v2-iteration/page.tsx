@@ -1,12 +1,12 @@
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
-import GradPlanClient from './grad-plan-client';
+import GradPlan2Client from './grad-plan2-client';
 import { GetAllGradPlans } from '@/lib/services/gradPlanService';
 import { GetAiPrompt } from '@/lib/services/aiDbService';
 
 // Force dynamic rendering for this page because it uses cookies
 export const dynamic = 'force-dynamic';
 
-export default async function GradPlanPage() {
+export default async function GradPlan2Page() {
   // Get the verified user (includes session validation)
   const user = await getVerifiedUser();
 
@@ -39,8 +39,23 @@ export default async function GradPlanPage() {
     )[0];
   }
 
+  // Handle no plans state
+  if (!activePlan) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">No Graduation Plan Found</h2>
+          <p className="text-muted-foreground mb-4">
+            You don't have any graduation plans yet. Create one to get started!
+          </p>
+          {/* TODO: Add "Create New Plan" button here later */}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <GradPlanClient
+    <GradPlan2Client
       user={user}
       studentProfile={userProfile}
       gradPlan={activePlan}

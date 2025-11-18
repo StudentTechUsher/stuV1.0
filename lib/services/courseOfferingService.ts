@@ -287,3 +287,213 @@ export async function deleteCourseOfferingsByTerm(
 
   return { deleted: count || 0 };
 }
+
+// Type definition for course search results
+export interface CourseOffering {
+  offering_id: number;
+  course_code: string;
+  title: string;
+  credits_decimal: number | null;
+  description?: string | null;
+  department_code?: string | null;
+  prerequisites?: string | null;
+}
+
+export class CourseOfferingFetchError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'CourseOfferingFetchError';
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Search for course offerings by university
+ * Returns distinct courses (deduplicated by course_code and title)
+ * @param universityId - University ID to filter courses
+ * @param searchTerm - Optional search term to filter by course code or title
+ * @returns Array of unique course offerings
+ */
+export async function searchCourseOfferings(
+  universityId: number,
+  searchTerm?: string
+): Promise<CourseOffering[]> {
+  try {
+    let query = supabase
+      .from('course_offerings')
+      .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
+      .eq('university_id', universityId)
+      .not('course_code', 'is', null)
+      .not('title', 'is', null);
+
+    // Apply search filter if provided
+    if (searchTerm && searchTerm.trim()) {
+      const term = searchTerm.trim();
+      query = query.or(`course_code.ilike.%${term}%,title.ilike.%${term}%`);
+    }
+
+    // Order by course code
+    query = query.order('course_code', { ascending: true });
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch course offerings', error);
+    }
+
+    // Deduplicate by course_code + title combination
+    const seen = new Set<string>();
+    const uniqueCourses: CourseOffering[] = [];
+
+    for (const course of data || []) {
+      const key = `${course.course_code}|${course.title}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueCourses.push(course);
+      }
+    }
+
+    return uniqueCourses;
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching course offerings', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Get distinct colleges for a university
+ * @param universityId - University ID to filter courses
+ * @returns Array of unique college names
+ */
+export async function getColleges(universityId: number): Promise<string[]> {
+  try {
+    // Fetch all college values (Supabase default limit is 1000, but we can increase if needed)
+    const { data, error } = await supabase
+      .from('course_offerings')
+      .select('college')
+      .eq('university_id', universityId)
+      .not('college', 'is', null)
+      .limit(10000); // Increase limit to ensure we get all rows
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch colleges', error);
+    }
+
+    // Deduplicate and sort in memory
+    const seen = new Set<string>();
+    const colleges: string[] = [];
+
+    for (const row of data || []) {
+      if (row.college && !seen.has(row.college)) {
+        seen.add(row.college);
+        colleges.push(row.college);
+      }
+    }
+
+    return colleges.sort();
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching colleges', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Get distinct department codes for a university and college
+ * @param universityId - University ID to filter courses
+ * @param college - College name to filter by
+ * @returns Array of unique department codes
+ */
+export async function getDepartmentCodes(
+  universityId: number,
+  college: string
+): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('course_offerings')
+      .select('department_code')
+      .eq('university_id', universityId)
+      .eq('college', college)
+      .not('department_code', 'is', null)
+      .limit(10000);
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch department codes', error);
+    }
+
+    // Deduplicate and sort department codes
+    const seen = new Set<string>();
+    const departments: string[] = [];
+
+    for (const row of data || []) {
+      if (row.department_code && !seen.has(row.department_code)) {
+        seen.add(row.department_code);
+        departments.push(row.department_code);
+      }
+    }
+
+    return departments.sort();
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching department codes', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Get distinct courses for a university, college, and department
+ * Returns unique courses by course_code (no duplicates across sections)
+ * @param universityId - University ID to filter courses
+ * @param college - College name to filter by
+ * @param departmentCode - Department code to filter by
+ * @returns Array of unique course offerings
+ */
+export async function getCoursesByDepartment(
+  universityId: number,
+  college: string,
+  departmentCode: string
+): Promise<CourseOffering[]> {
+  try {
+    const { data, error } = await supabase
+      .from('course_offerings')
+      .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
+      .eq('university_id', universityId)
+      .eq('college', college)
+      .eq('department_code', departmentCode)
+      .not('course_code', 'is', null)
+      .not('title', 'is', null)
+      .limit(10000);
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch courses', error);
+    }
+
+    // Deduplicate by course_code (ignore sections) and sort
+    const seen = new Set<string>();
+    const uniqueCourses: CourseOffering[] = [];
+
+    for (const course of data || []) {
+      if (course.course_code && !seen.has(course.course_code)) {
+        seen.add(course.course_code);
+        uniqueCourses.push(course);
+      }
+    }
+
+    // Sort by course code
+    uniqueCourses.sort((a, b) => a.course_code.localeCompare(b.course_code));
+
+    return uniqueCourses;
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching courses by department', error);
+  }
+}
