@@ -56,17 +56,18 @@ async function handleExtractColors(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
-      if (error.message === 'No colors found on the page') {
+      if (error.message.includes('No colors found') || error.message.includes('No valid colors')) {
         return NextResponse.json(
           {
             error: 'No colors found',
-            details: 'The page may not contain visible color definitions, or they may be loaded dynamically.',
+            details: 'The page may not contain visible color definitions, or they may be loaded dynamically. Try uploading a logo image instead.',
             colors: [],
           },
           { status: 404 }
         );
       }
 
+      console.error('Color extraction error:', error.message);
       logError('Failed to extract colors', error, {
         action: 'extract_colors',
       });
@@ -79,6 +80,7 @@ async function handleExtractColors(request: NextRequest) {
       );
     }
 
+    console.error('Unexpected error extracting colors:', error);
     logError('Unexpected error extracting colors', error, {
       action: 'extract_colors',
     });

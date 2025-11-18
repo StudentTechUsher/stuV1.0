@@ -6,6 +6,8 @@ import {
 } from '@/lib/services/profileService.server';
 import { ProfileUpdateError } from '@/lib/services/errors/profileErrors';
 import { logError } from '@/lib/logger';
+import { OnboardingSchema } from '@/lib/validation/zodSchemas';
+import { validateRequest, ValidationError, formatValidationError } from '@/lib/validation/validationUtils';
 
 export async function POST(request: NextRequest) {
   return handleCompleteOnboarding(request);
@@ -14,45 +16,9 @@ export async function POST(request: NextRequest) {
 async function handleCompleteOnboarding(request: NextRequest) {
   try {
     const body = await request.json();
-    const { university_id, fname, lname, email, role, est_grad_sem, est_grad_date } = body;
 
-    if (!university_id || typeof university_id !== 'number') {
-      return NextResponse.json(
-        { success: false, error: 'University ID is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!email || typeof email !== 'string' || !email.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'Email is required' },
-        { status: 400 }
-      );
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email address' },
-        { status: 400 }
-      );
-    }
-
-    if (!role || !['student', 'advisor', 'admin'].includes(role)) {
-      return NextResponse.json(
-        { success: false, error: 'Valid role is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate graduation fields for students
-    if (role === 'student' && (!est_grad_sem || !est_grad_date)) {
-      return NextResponse.json(
-        { success: false, error: 'Graduation semester is required for students' },
-        { status: 400 }
-      );
-    }
+    // Validate request body with Zod
+    const validatedData = validateRequest(OnboardingSchema, body);
 
     // Create Supabase client
     const cookieStore = await cookies();
@@ -83,11 +49,16 @@ async function handleCompleteOnboarding(request: NextRequest) {
       );
     }
 
-    // Update the profile using service layer (pass name and email fields)
+    // Update the profile using service layer with validated data
+    const { university_id, fname, lname, email, role, est_grad_sem, est_grad_date } = validatedData;
     await completeOnboarding(user.id, university_id, role, fname, lname, email, est_grad_sem, est_grad_date);
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json(formatValidationError(error), { status: 400 });
+    }
+
     if (error instanceof ProfileUpdateError) {
       logError('Failed to complete onboarding', error, {
         action: 'complete_onboarding',

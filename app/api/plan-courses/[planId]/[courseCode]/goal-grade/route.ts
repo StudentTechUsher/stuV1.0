@@ -10,7 +10,12 @@ import {
   setGoalGradeOnCourse,
   GPACalculationError,
 } from '@/lib/services/gpaService';
-import { ValidationError, validateGrade } from '@/lib/gpa/validation';
+import { UpdateGoalGradeSchema } from '@/lib/validation/zodSchemas';
+import {
+  validateRequest,
+  ValidationError as ZodValidationError,
+  formatValidationError,
+} from '@/lib/validation/validationUtils';
 
 /**
  * Set goal grade on a course
@@ -33,31 +38,10 @@ async function handleSetGoalGrade(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse and validate request body
+    // Parse and validate request body with Zod
     const body = await request.json();
-
-    if (typeof body !== 'object' || body === null) {
-      return NextResponse.json(
-        { error: 'Request body must be an object' },
-        { status: 400 }
-      );
-    }
-
-    const bodyObj = body as Record<string, unknown>;
-
-    // Validate goal grade
-    let goalGrade: string | null;
-    try {
-      goalGrade = validateGrade(bodyObj.goalGrade);
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
-      }
-      throw error;
-    }
+    const validatedData = validateRequest(UpdateGoalGradeSchema, body);
+    const { goalGrade } = validatedData;
 
     // Await params and decode the course code
     const { planId, courseCode } = await params;
@@ -81,6 +65,10 @@ async function handleSetGoalGrade(
 
     return NextResponse.json({ goalGrade: result.goalGrade });
   } catch (error) {
+    if (error instanceof ZodValidationError) {
+      return NextResponse.json(formatValidationError(error), { status: 400 });
+    }
+
     if (error instanceof GPACalculationError) {
       logError('GPA goal grade error', error, {
         action: 'set_goal_grade_api',
