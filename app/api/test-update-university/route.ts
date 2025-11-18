@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const { createClient } = await import('@supabase/supabase-js');
 
     let supabase: any;
-    const serviceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (serviceRoleKey) {
       console.log('Using service role key (has full permissions)');
