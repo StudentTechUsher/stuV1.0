@@ -29,7 +29,6 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
   const [currentRole, setCurrentRole] = useState<string>('3');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [user, setUser] = useState<User | null>(passedUser || null);
-  const [profile, setProfile] = useState<Profile | null>(passedProfile || null);
   const [isLoading, setIsLoading] = useState(!passedUser || !passedProfile);
 
   const router = useRouter();
@@ -46,7 +45,6 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
   useEffect(() => {
     if (passedUser && passedProfile) {
       setUser(passedUser);
-      setProfile(passedProfile);
       setCurrentRole(passedProfile.role_id || '3');
       setIsLoading(false);
       return;
@@ -63,7 +61,6 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
             .eq('id', authUser.id)
             .single();
           if (profileData) {
-            setProfile(profileData as Profile);
             setCurrentRole(profileData.role_id || '3');
           }
         }
