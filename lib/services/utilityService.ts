@@ -7,6 +7,7 @@
 import { ColorExtractionError } from './errors/utilityErrors';
 import * as fs from 'fs';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 
 /**
  * Extract dominant colors from a webpage screenshot using Playwright
@@ -31,7 +32,7 @@ async function extractColorsViaScreenshot(url: string): Promise<string[]> {
     await page.waitForTimeout(1000); // Wait for animations to settle
 
     // Take screenshot
-    tmpFile = path.join('/tmp', `screenshot-${Date.now()}.png`);
+    tmpFile = path.join('/tmp', `screenshot-${randomUUID()}.png`);
     await page.screenshot({ path: tmpFile, fullPage: false });
 
     await context.close();
