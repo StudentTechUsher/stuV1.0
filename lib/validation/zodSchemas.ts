@@ -13,8 +13,7 @@ export const OnboardingSchema = z
       .email('Invalid email format')
       .max(254, 'Email must be at most 254 characters'),
     role: z
-      .enum(['student', 'advisor', 'admin'])
-      .refine((role) => role !== undefined, 'Role is required'),
+      .enum(['student', 'advisor', 'admin']),
     fname: z.string().trim().min(1).max(100).optional(),
     lname: z.string().trim().min(1).max(100).optional(),
     est_grad_sem: z.string().min(1).optional(),
