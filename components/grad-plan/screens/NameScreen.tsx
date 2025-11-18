@@ -31,7 +31,7 @@ export default function NameScreen({
   return (
     <WizardFormLayout
       title="What's your name?"
-      subtitle="Let's make sure we have this right."
+      subtitle="Feel free to change your name if needed."
       footerButtons={
         <div className="flex gap-3 justify-between">
           <Button

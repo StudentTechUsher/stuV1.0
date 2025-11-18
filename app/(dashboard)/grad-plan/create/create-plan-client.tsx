@@ -20,7 +20,6 @@ import { getNextStep } from '@/lib/chatbot/grad-plan/conversationState';
 import WizardContainer from '@/components/grad-plan/WizardContainer';
 import NameScreen from '@/components/grad-plan/screens/NameScreen';
 import GraduationDateScreen from '@/components/grad-plan/screens/GraduationDateScreen';
-import GraduationSemesterScreen from '@/components/grad-plan/screens/GraduationSemesterScreen';
 import CareerGoalsScreen from '@/components/grad-plan/screens/CareerGoalsScreen';
 import TranscriptScreen from '@/components/grad-plan/screens/TranscriptScreen';
 import StudentTypeScreen from '@/components/grad-plan/screens/StudentTypeScreen';
@@ -46,7 +45,7 @@ interface CreatePlanClientProps {
 }
 
 // Track which profile sub-screen we're on (wizard breaks profile into multiple screens)
-type ProfileSubStep = 'name' | 'date' | 'semester' | 'career';
+type ProfileSubStep = 'name' | 'date' | 'career';
 
 export default function CreatePlanClient({
   user,
@@ -144,24 +143,28 @@ export default function CreatePlanClient({
   };
 
   const handleProfileDateSubmit = async (date: string) => {
-    // Update conversation state with date
+    // Extract semester from date
+    // Winter: April 30, Spring: May 31, Summer: August 31, Fall: December 15
+    const dateObj = new Date(date);
+    const month = dateObj.getMonth() + 1; // getMonth is 0-indexed
+
+    let semester = '';
+    if (month === 4 || month === 5) {
+      semester = 'Winter';
+    } else if (month === 5) {
+      semester = 'Spring';
+    } else if (month === 8) {
+      semester = 'Summer';
+    } else if (month === 12) {
+      semester = 'Fall';
+    }
+
+    // Update conversation state with date and semester
     setConversationState(prev =>
       updateState(prev, {
         step: ConversationStep.PROFILE_SETUP,
         data: {
           estGradDate: date,
-        },
-      })
-    );
-    setProfileSubStep('semester');
-  };
-
-  const handleProfileSemesterSubmit = async (semester: string) => {
-    // Update conversation state with semester
-    setConversationState(prev =>
-      updateState(prev, {
-        step: ConversationStep.PROFILE_SETUP,
-        data: {
           estGradSem: semester,
         },
       })
@@ -251,10 +254,8 @@ export default function CreatePlanClient({
   const handleProfileBack = () => {
     if (profileSubStep === 'date') {
       setProfileSubStep('name');
-    } else if (profileSubStep === 'semester') {
-      setProfileSubStep('date');
     } else if (profileSubStep === 'career') {
-      setProfileSubStep('semester');
+      setProfileSubStep('date');
     }
   };
 
@@ -563,7 +564,12 @@ export default function CreatePlanClient({
       if (profileSubStep === 'name') {
         return (
           <NameScreen
-            defaultName={studentProfile.first_name || ''}
+            defaultName={
+              (studentProfile['fname'] as string) ||
+              (studentProfile.first_name && studentProfile.last_name
+                ? `${studentProfile.first_name} ${studentProfile.last_name}`
+                : studentProfile.first_name || '')
+            }
             onSubmit={handleProfileNameSubmit}
             onBack={handleCancel}
             isLoading={isLoading}
@@ -573,16 +579,8 @@ export default function CreatePlanClient({
         return (
           <GraduationDateScreen
             defaultDate={studentProfile.est_grad_date || ''}
-            onSubmit={handleProfileDateSubmit}
-            onBack={handleProfileBack}
-            isLoading={isLoading}
-          />
-        );
-      } else if (profileSubStep === 'semester') {
-        return (
-          <GraduationSemesterScreen
             defaultSemester={studentProfile.est_grad_sem || ''}
-            onSubmit={handleProfileSemesterSubmit}
+            onSubmit={handleProfileDateSubmit}
             onBack={handleProfileBack}
             isLoading={isLoading}
           />
