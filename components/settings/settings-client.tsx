@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -15,8 +15,8 @@ type Profile = {
 } & Record<string, unknown>;
 
 interface SettingsClientProps {
-  user: User;
-  profile: Profile;
+  user?: User;
+  profile?: Profile;
 }
 
 const ROLE_OPTIONS = [
@@ -25,9 +25,12 @@ const ROLE_OPTIONS = [
   { value: '3', label: 'Student', description: 'Personal academic planning' }
 ];
 
-export default function SettingsClient({ user, profile }: SettingsClientProps) {
-  const [currentRole, setCurrentRole] = useState(profile.role_id || '3');
+export default function SettingsClient({ user: passedUser, profile: passedProfile }: SettingsClientProps) {
+  const [currentRole, setCurrentRole] = useState<string>('3');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [user, setUser] = useState<User | null>(passedUser || null);
+  const [profile, setProfile] = useState<Profile | null>(passedProfile || null);
+  const [isLoading, setIsLoading] = useState(!passedUser || !passedProfile);
 
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
@@ -39,6 +42,46 @@ export default function SettingsClient({ user, profile }: SettingsClientProps) {
     variant?: 'default' | 'destructive';
   } | null>(null);
 
+  // Fetch user data if not provided
+  useEffect(() => {
+    if (passedUser && passedProfile) {
+      setUser(passedUser);
+      setProfile(passedProfile);
+      setCurrentRole(passedProfile.role_id || '3');
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchUserData = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          setUser(authUser);
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single();
+          if (profileData) {
+            setProfile(profileData as Profile);
+            setCurrentRole(profileData.role_id || '3');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        showToast({
+          title: 'Failed to load settings',
+          description: 'There was a problem loading your settings. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [passedUser, passedProfile, supabase]);
+
   const showToast = (message: { title: string; description?: string; variant?: 'default' | 'destructive' }) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
@@ -46,6 +89,7 @@ export default function SettingsClient({ user, profile }: SettingsClientProps) {
 
   const handleRoleChange = async (newRole: string) => {
     if (newRole === currentRole) return;
+    if (!user) return;
 
     setIsUpdatingRole(true);
     try {
@@ -77,6 +121,29 @@ export default function SettingsClient({ user, profile }: SettingsClientProps) {
   };
 
   const currentRoleLabel = ROLE_OPTIONS.find(r => r.value === currentRole)?.label || 'Student';
+
+  if (isLoading) {
+    return (
+      <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
+        <CardContent className="p-6 flex items-center justify-center h-32">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)]" />
+            <span className="text-sm text-[var(--muted-foreground)]">Loading settings...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
+        <CardContent className="p-6 text-center">
+          <p className="text-sm text-[var(--muted-foreground)]">Please log in to access settings.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>

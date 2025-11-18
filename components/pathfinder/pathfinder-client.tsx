@@ -1,13 +1,13 @@
 "use client";
 import * as React from 'react';
 import { CourseHistoryList, PivotOptionsPanel, useDefaultPivotOptions, MajorPivotForm, MajorPivotFormValues } from '@/components/pathfinder';
-import { fetchMajorPivotSuggestions, fetchMajorsForCareerSelection, fetchAdjacentCareerSuggestions, fetchNearCompletionMinorAudit, fetchMinorsCatalog, enrichCareerData, enrichMajorData } from '@/app/dashboard/pathfinder/actions';
+import { fetchMajorPivotSuggestions, fetchMajorsForCareerSelection, fetchAdjacentCareerSuggestions, fetchNearCompletionMinorAudit, fetchMinorsCatalog, enrichCareerData, enrichMajorData } from '@/app/(dashboard)/pathfinder/actions';
 import { saveTargetedCareerClient } from '@/lib/services/profileService';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/ui/toast';
 import AdjacentCareerForm, { AdjacentCareerFormValues } from '@/components/pathfinder/adjacent-career-form';
 import MajorOverlapDialog from '@/components/pathfinder/program-overlap-dialog';
-import { fetchMinorByName } from '@/app/dashboard/pathfinder/major-actions';
+import { fetchMinorByName } from '@/app/(dashboard)/pathfinder/major-actions';
 import { useRouter } from 'next/navigation';
 import CareerInfoModal from '@/components/pathfinder/CareerInfoModal';
 import type { Career } from '@/types/career';

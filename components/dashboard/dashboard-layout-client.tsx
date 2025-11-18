@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import NavRail from '@/components/dashboard/nav-rail';
 import DashboardChatFab from '@/components/dashboard/dashboard-chat-fab';
 import GradPlanRealtimeListener from '@/components/dashboard/grad-plan-realtime-listener';
-import type { NavItem } from '@/app/dashboard/layout';
+import type { NavItem } from '@/app/(dashboard)/layout';
 
 export const RAIL_WIDTH = 88;
 
