@@ -191,7 +191,6 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
         throw error;
       }
 
-      console.log('Update response:', data);
 
       // Update local state
       if (university) {
