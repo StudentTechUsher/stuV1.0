@@ -20,8 +20,11 @@ import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 import { StuLoader } from '@/components/ui/StuLoader';
 import AddIcon from '@mui/icons-material/Add';
+import { Sparkles } from 'lucide-react';
+import { searchCourseOfferings, type CourseOffering } from '@/lib/services/courseOfferingService';
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
@@ -199,45 +202,51 @@ useEffect(() => {
 // --- User-added elective courses & GenEd strategy ---
 interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
 const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
-const [showElectiveForm, setShowElectiveForm] = useState(false);
-const [electiveDraft, setElectiveDraft] = useState<{ code: string; title: string; credits: string }>({ code: '', title: '', credits: '' });
+const [availableCourses, setAvailableCourses] = useState<CourseOffering[]>([]);
+const [coursesLoading, setCoursesLoading] = useState(false);
 const [electiveError, setElectiveError] = useState<string | null>(null);
 
 // GenEd sequencing strategy: use passed-in value
 const genEdStrategy = initialGenEdStrategy;
 
-const resetElectiveDraft = () => {
-  setElectiveDraft({ code: '', title: '', credits: '' });
-  setElectiveError(null);
-};
-
-const handleAddElective = () => {
-  const code = electiveDraft.code.trim().toUpperCase();
-  const title = electiveDraft.title.trim();
-  const creditsNum = parseFloat(electiveDraft.credits);
-
-  if (!code || !title) {
-    setElectiveError('Code and title are required.');
-    return;
+// Fetch available courses when dialog opens
+useEffect(() => {
+  if (open) {
+    setCoursesLoading(true);
+    searchCourseOfferings(universityId)
+      .then(courses => {
+        setAvailableCourses(courses);
+      })
+      .catch(error => {
+        console.error('Error fetching courses:', error);
+        setElectiveError('Failed to load courses. Please try again.');
+      })
+      .finally(() => {
+        setCoursesLoading(false);
+      });
   }
-  if (isNaN(creditsNum) || creditsNum <= 0) {
-    setElectiveError('Credits must be a positive number.');
-    return;
-  }
+}, [open, universityId]);
+
+const handleAddElective = (selectedCourse: CourseOffering | null) => {
+  if (!selectedCourse) return;
+
+  const code = selectedCourse.course_code.trim().toUpperCase();
+  const title = selectedCourse.title.trim();
+  const credits = selectedCourse.credits_decimal || 3.0; // Default to 3.0 if null
+
   if (userElectives.some(e => e.code === code)) {
-    setElectiveError('This course code has already been added.');
+    setElectiveError('This course has already been added.');
     return;
   }
-  const normalizedCredits = parseFloat(creditsNum.toFixed(2));
+
   const newCourse: UserElectiveCourse = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    id: `${selectedCourse.offering_id}`,
     code,
     title,
-    credits: normalizedCredits
+    credits
   };
   setUserElectives(prev => [...prev, newCourse]);
-  resetElectiveDraft();
-  setShowElectiveForm(false);
+  setElectiveError(null);
 };
 
 const handleRemoveElective = (id: string) => {
@@ -1119,9 +1128,34 @@ const handleRemoveElective = (id: string) => {
           {/* User Added Elective Courses Section */}
           <Box sx={{ mt: 4 }}>
             <Divider sx={{ mb: 3 }} />
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Additional Elective Courses
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="h6">
+                Additional Elective Courses
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Sparkles size={14} />}
+                onClick={() => {
+                  // TODO: Implement elective finder
+                  console.log('Help me find good options clicked');
+                }}
+                sx={{
+                  fontSize: '0.75rem',
+                  py: 0.25,
+                  px: 1,
+                  borderColor: 'var(--primary)',
+                  color: 'var(--primary)',
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: 'var(--hover-green)',
+                    backgroundColor: 'var(--primary-15)',
+                  },
+                }}
+              >
+                Help me find good options
+              </Button>
+            </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               If you want to include extra elective courses not covered above, add them here. These will be included in the AI planning step.
             </Typography>
@@ -1141,64 +1175,55 @@ const handleRemoveElective = (id: string) => {
                 ))}
               </Box>
             )}
-            {showElectiveForm ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <TextField
-                    label="Course Code"
-                    value={electiveDraft.code}
-                    onChange={(e) => setElectiveDraft(d => ({ ...d, code: e.target.value }))}
-                    size="small"
-                    sx={{ flex: '1 1 140px', minWidth: '120px' }}
-                  />
-                  <TextField
-                    label="Course Title"
-                    value={electiveDraft.title}
-                    onChange={(e) => setElectiveDraft(d => ({ ...d, title: e.target.value }))}
-                    size="small"
-                    sx={{ flex: '2 1 240px', minWidth: '200px' }}
-                  />
-                  <TextField
-                    label="Credits"
-                    value={electiveDraft.credits}
-                    onChange={(e) => setElectiveDraft(d => ({ ...d, credits: e.target.value }))}
-                    size="small"
-                    sx={{ flex: '0 1 110px', minWidth: '110px' }}
-                    placeholder="e.g. 3.0"
-                    inputProps={{ inputMode: 'decimal', pattern: '^[0-9]+(\\.[0-9]+)?$' }}
-                  />
-                </Box>
-                {electiveError && (
-                  <Alert severity="warning" onClose={() => setElectiveError(null)}>{electiveError}</Alert>
-                )}
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleAddElective}
-                    startIcon={<AddIcon />}
-                    sx={{ fontWeight: 'bold' }}
-                  >
-                    Add Elective
-                  </Button>
-                  <Button
-                    variant="text"
-                    color="inherit"
-                    onClick={() => { resetElectiveDraft(); setShowElectiveForm(false); }}
-                  >
-                    Cancel
-                  </Button>
-                </Box>
-              </Box>
-            ) : (
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={() => setShowElectiveForm(true)}
-                sx={{ fontWeight: 'bold' }}
-              >
-                Add Elective Course
-              </Button>
+            <Autocomplete
+              options={availableCourses}
+              getOptionLabel={(option) => `${option.course_code} - ${option.title} (${option.credits_decimal || 3.0} cr)`}
+              loading={coursesLoading}
+              value={null}
+              onChange={(_event, value) => handleAddElective(value)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search for a course to add..."
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {coursesLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '7px',
+                    },
+                  }}
+                />
+              )}
+              renderOption={(props, option) => {
+                const { key, ...restProps } = props as { key: string; [key: string]: unknown };
+                return (
+                  <Box component="li" key={key} {...restProps}>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {option.course_code} - {option.title}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.credits_decimal || 3.0} credits
+                        {option.department_code && ` • ${option.department_code}`}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }}
+              sx={{ mb: 2 }}
+            />
+            {electiveError && (
+              <Alert severity="warning" onClose={() => setElectiveError(null)} sx={{ mb: 2 }}>
+                {electiveError}
+              </Alert>
             )}
           </Box>
         </Box>

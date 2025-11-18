@@ -1484,7 +1484,9 @@ export interface ParsedTranscriptCourse {
   title: string;
   credits: number;
   grade: string | null;
-  term?: string | null; // Term like "Fall 2023", "Spring 2024"
+  term?: string | null; // Term like "Fall Semester 2023", "Winter Semester 2024"
+  section?: string | null; // Section number like "001", "030"
+  professor?: string | null; // Professor name if available
   tags?: string[]; // Program requirement tags (e.g., "General Education - Mathematics", "CS Major - Core")
 }
 
@@ -1808,41 +1810,47 @@ export async function parseTranscriptCourses_ServerAction(args: {
       '- title: string (full course title)\n' +
       '- credits: number (e.g., 3.00, 1.50, 0.50)\n' +
       '- grade: string or null (e.g., "A", "B+", "A-", "P" or null if not shown)\n' +
-      '- term: string or null (e.g., "Fall Semester 2023", "Winter Semester 2024")\n' +
+      '- term: string or null (e.g., "Fall Semester 2023", "Winter Semester 2024", "Spring 2024")\n' +
+      '- section: string or null (e.g., "001", "030" - the 3-digit section number)\n' +
+      '- professor: string or null (professor name if it appears on transcript)\n' +
       '- tags: empty array []\n\n' +
       'PARSING ALGORITHM (follow exactly):\n' +
       '1. Look for the course title (long text description)\n' +
       '2. Everything BEFORE the title contains: SUBJECT + NUMBER + SECTION\n' +
       '3. Find all tokens before the title\n' +
-      '4. The LAST numeric token before title is the SECTION (3 digits) - ignore it\n' +
+      '4. The LAST numeric token before title is the SECTION (3 digits) - SAVE this as "section" field\n' +
       '5. The SECOND-TO-LAST numeric token is the course NUMBER (e.g., 202, 275, 100, 490R)\n' +
       '6. Everything before the NUMBER is the SUBJECT (can have spaces)\n' +
-      '7. courseCode = SUBJECT + " " + NUMBER\n\n' +
+      '7. courseCode = SUBJECT + " " + NUMBER\n' +
+      '8. Look for professor names (often appear near course info or at end of line)\n' +
+      '9. Look for term/semester info (often at start of sections like "Fall Semester 2023")\n\n' +
       'WORKED EXAMPLES:\n\n' +
       'Example 1: "REL C 225 030 Foundations of the Restoration 2.00 A"\n' +
       'Tokens before title: ["REL", "C", "225", "030"]\n' +
-      'SECTION (last numeric): "030" → ignore\n' +
+      'SECTION (last numeric): "030" → section: "030"\n' +
       'NUMBER (second-to-last numeric): "225"\n' +
       'SUBJECT (everything before NUMBER): "REL C"\n' +
-      'courseCode: "REL C 225" ✓\n\n' +
-      'Example 2: "HIST 202 001 World Civilization from 1500 3.00 B+"\n' +
+      'courseCode: "REL C 225" ✓, section: "030" ✓\n\n' +
+      'Example 2: "HIST 202 001 World Civilization from 1500 3.00 B+ Dr. Smith"\n' +
       'Tokens before title: ["HIST", "202", "001"]\n' +
-      'SECTION: "001" → ignore\n' +
+      'SECTION: "001" → section: "001"\n' +
       'NUMBER: "202"\n' +
       'SUBJECT: "HIST"\n' +
-      'courseCode: "HIST 202" ✓\n\n' +
+      'PROFESSOR: "Dr. Smith" (appears after grade)\n' +
+      'courseCode: "HIST 202" ✓, section: "001" ✓, professor: "Dr. Smith" ✓\n\n' +
       'Example 3: "M COM 320 004 Management Communication 3.00 A-"\n' +
       'Tokens before title: ["M", "COM", "320", "004"]\n' +
-      'SECTION: "004" → ignore\n' +
+      'SECTION: "004" → section: "004"\n' +
       'NUMBER: "320"\n' +
       'SUBJECT: "M COM"\n' +
-      'courseCode: "M COM 320" ✓\n\n' +
-      'Example 4: "ENT 490R 009 Topics in Entrepreneurship 3.00 A"\n' +
+      'courseCode: "M COM 320" ✓, section: "004" ✓\n\n' +
+      'Example 4: "ENT 490R 009 Topics in Entrepreneurship 3.00 A Johnson, Michael"\n' +
       'Tokens before title: ["ENT", "490R", "009"]\n' +
-      'SECTION: "009" → ignore\n' +
+      'SECTION: "009" → section: "009"\n' +
       'NUMBER: "490R"\n' +
       'SUBJECT: "ENT"\n' +
-      'courseCode: "ENT 490R" ✓\n\n' +
+      'PROFESSOR: "Johnson, Michael"\n' +
+      'courseCode: "ENT 490R" ✓, section: "009" ✓, professor: "Johnson, Michael" ✓\n\n' +
       'Extract all courses from this transcript:\n\n' +
       transcriptText +
       '\n\nIMPORTANT: The courseCode MUST include both subject AND number. "REL C" alone is WRONG - it must be "REL C 225".';
@@ -2114,6 +2122,8 @@ function normalizeCourseRecord(record: unknown): ParsedTranscriptCourse | null {
   const creditsValue = raw.credits ?? raw.creditHours ?? raw.credit ?? null;
   const gradeValue = raw.grade ?? null;
   const termValue = raw.term ?? raw.semester ?? null;
+  const sectionValue = raw.section ?? null;
+  const professorValue = raw.professor ?? raw.instructor ?? null;
   const tagsValue = raw.tags ?? null;
 
   if (typeof courseCodeValue !== 'string' || !courseCodeValue.trim()) {
@@ -2144,6 +2154,16 @@ function normalizeCourseRecord(record: unknown): ParsedTranscriptCourse | null {
       ? null
       : String(termValue).trim();
 
+  const normalizedSection =
+    sectionValue === null || sectionValue === undefined || sectionValue === ''
+      ? null
+      : String(sectionValue).trim();
+
+  const normalizedProfessor =
+    professorValue === null || professorValue === undefined || professorValue === ''
+      ? null
+      : String(professorValue).trim();
+
   // Normalize tags - ensure it's an array of strings
   let normalizedTags: string[] = [];
   if (Array.isArray(tagsValue)) {
@@ -2158,6 +2178,125 @@ function normalizeCourseRecord(record: unknown): ParsedTranscriptCourse | null {
     credits,
     grade: normalizedGrade,
     term: normalizedTerm,
+    section: normalizedSection,
+    professor: normalizedProfessor,
     tags: normalizedTags,
   };
+}
+
+/**
+ * Chat completion with function calling (tools) support
+ * Used for the career pathfinder conversation
+ */
+interface OpenAIChatMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  tool_call_id?: string;
+  name?: string;
+}
+
+interface OpenAITool {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export interface ChatCompletionWithToolsResponse {
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  finish_reason: string;
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (called from chatbot routes)
+ * Chat completion with optional function calling (tools) support
+ * @param messages - Array of chat messages
+ * @param tools - Optional array of tools/functions the AI can call
+ * @param options - Optional parameters (max_tokens, temperature)
+ * @returns Chat completion response with potential tool calls
+ */
+export async function chatCompletionWithTools(
+  messages: OpenAIChatMessage[],
+  tools?: OpenAITool[],
+  options?: { max_tokens?: number; temperature?: number }
+): Promise<ChatCompletionWithToolsResponse> {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new OpenAIChatError('OpenAI API key not configured');
+    }
+
+    const { max_tokens: maxTokens = 1000, temperature = 0.7 } = options || {};
+
+    const requestBody: Record<string, unknown> = {
+      model: 'gpt-4o-mini',
+      messages,
+      max_tokens: maxTokens,
+      temperature,
+      stream: false,
+    };
+
+    // Add tools if provided
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+      requestBody.tool_choice = 'auto'; // Let AI decide when to call tools
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+      throw new OpenAIChatError(`OpenAI request failed with status ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices[0];
+
+    return {
+      content: choice.message.content,
+      tool_calls: choice.message.tool_calls,
+      usage: data.usage,
+      finish_reason: choice.finish_reason,
+    };
+  } catch (error) {
+    if (error instanceof OpenAIChatError) {
+      throw error;
+    }
+    throw new OpenAIChatError('Unexpected error in chat completion with tools', error);
+  }
 }

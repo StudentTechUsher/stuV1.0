@@ -1,5 +1,5 @@
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
-import GradPlanClient from './grad-plan-client';
+import GradPlanClient from "@/components/grad-planner/grad-plan-client";
 import { GetAllGradPlans } from '@/lib/services/gradPlanService';
 import { GetAiPrompt } from '@/lib/services/aiDbService';
 
@@ -7,15 +7,17 @@ import { GetAiPrompt } from '@/lib/services/aiDbService';
 export const dynamic = 'force-dynamic';
 
 export default async function GradPlanPage() {
-  // Get the verified user (includes session validation)
+
+  // STEP 1: Get the verified user (includes session validation)
   const user = await getVerifiedUser();
 
   if (!user) {
+    // This shouldn't happen due to middleware, but handle gracefully
     console.error('❌ Page: No verified user found');
     return <div>Authentication required</div>;
   }
 
-  // Get user profile with university_id
+  // STEP 2: Get user profile with university_id
   const userProfile = await getVerifiedUserProfile();
 
   if (!userProfile) {
@@ -23,28 +25,23 @@ export default async function GradPlanPage() {
     return <div>Profile not found</div>;
   }
 
-  // Get all graduation plans for this student
+  // STEP 3: Get all graduation plan records for this student
+  // This may return empty array for new users - that's expected behavior
   const allGradPlans = userProfile.id ? await GetAllGradPlans(userProfile.id) : [];
 
-  // Get AI prompt for organizing grad plan
+  // Find the currently active plan from all plans
+  const activeGradPlan = allGradPlans.find(plan => plan.is_active) || null;
+
+  // STEP 4: Get AI prompt for organizing grad plan
+  // Program data will be fetched dynamically on the client side when needed
   const prompt = (await GetAiPrompt('organize_grad_plan')) ?? '';
-
-  // Find active plan, or fallback to most recent plan
-  let activePlan = allGradPlans.find(plan => plan.is_active) || null;
-
-  // If no active plan, get most recent one
-  if (!activePlan && allGradPlans.length > 0) {
-    activePlan = allGradPlans.sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )[0];
-  }
 
   return (
     <GradPlanClient
       user={user}
-      studentProfile={userProfile}
-      gradPlan={activePlan}
+      studentRecord={userProfile}
       allGradPlans={allGradPlans}
+      activeGradPlan={activeGradPlan}
       prompt={prompt}
     />
   );

@@ -403,7 +403,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     setMajorMessage(null);
     setSuggestionError(null);
     if (!retainedFormRef.current) {
-      router.push('/dashboard/grad-plan');
+      router.push('/grad-plan');
       return;
     }
     setLoadingMajors(true);
@@ -448,7 +448,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
 
   function handleNoneOfThese(formValues: MajorPivotFormValues) {
     if (retryCount >= 1) {
-      router.push('/dashboard/meet-with-advisor');
+      router.push('/meet-with-advisor');
       return;
     }
     void loadCareerSuggestions(formValues, true);
@@ -523,7 +523,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
             Upload your transcript to get started with personalized recommendations.
           </p>
           <a
-            href="/dashboard/academic-history"
+            href="/academic-history"
             className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
           >
             Upload Transcript

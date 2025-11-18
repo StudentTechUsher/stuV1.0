@@ -280,6 +280,7 @@ export function OnboardingModal({
                 <p className="text-sm text-muted-foreground font-body">
                   When do you expect to graduate?
                 </p>
+                <br />
               </div>
             </div>
           )}

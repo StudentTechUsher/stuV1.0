@@ -262,7 +262,7 @@ export default function EditGradPlanPage() {
 
           if (studentError || !studentData || studentData.id !== planData.student_id) {
             console.error('Access denied: Student does not own this plan');
-            router.push('/dashboard/grad-plan');
+            router.push('/grad-plan');
             return;
           }
         }
@@ -293,9 +293,9 @@ export default function EditGradPlanPage() {
 
   const handleBack = () => {
     if (userRole === "advisor") {
-      router.push('/dashboard/approve-grad-plans');
+      router.push('/approve-grad-plans');
     } else {
-      router.push('/dashboard/grad-plan');
+      router.push('/grad-plan');
     }
   };
 

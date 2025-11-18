@@ -7,6 +7,7 @@ import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
+import { GetAiPrompt } from './aiDbService';
 import {
     VALIDATION_OPTIONS,
     courseSelectionPayloadSchema,
@@ -27,6 +28,7 @@ import {
 } from './gradPlanService';
 import {
     fetchProfileBasicInfo as _fetchProfileBasicInfo,
+    updateProfile as _updateProfile,
 } from './profileService.server';
 import {
     ChatbotSendMessage_ServerAction as _chatbotSendMessage,
@@ -62,6 +64,11 @@ export async function organizeCoursesIntoSemestersAction(coursesData: unknown, p
         }
         throw error;
     }
+}
+
+// Get AI prompt from database
+export async function getAiPromptAction(promptName: string): Promise<string | null> {
+    return await GetAiPrompt(promptName);
 }
 
 // Decode access ID
@@ -517,4 +524,133 @@ export async function updateUserCoursesAction(
 // Profile related
 export async function fetchProfileBasicInfoAction(userId: string) {
     return await _fetchProfileBasicInfo(userId);
+}
+
+export async function updateProfileAction(userId: string, updates: Record<string, string | null>) {
+    try {
+        await _updateProfile(userId, updates);
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to update profile' };
+    }
+}
+
+/**
+ * Server action for chatbot profile updates
+ * AUTHORIZATION: STUDENTS AND ABOVE (own profile only)
+ */
+export async function updateProfileForChatbotAction(
+    userId: string,
+    data: {
+        estGradDate?: string | null;
+        estGradSem?: string | null;
+        careerGoals?: string | null;
+    }
+) {
+    try {
+        // Verify user is authenticated and owns the profile
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this profile' };
+        }
+
+        // Build updates object with proper field names
+        const updates: Record<string, string | null> = {};
+
+        if (data.estGradDate !== undefined) {
+            updates.est_grad_date = data.estGradDate;
+        }
+        if (data.estGradSem !== undefined) {
+            updates.est_grad_sem = data.estGradSem;
+        }
+        if (data.careerGoals !== undefined) {
+            updates.career_goals = data.careerGoals;
+        }
+
+        await _updateProfile(userId, updates);
+
+        return {
+            success: true,
+            data: {
+                estGradDate: data.estGradDate ?? null,
+                estGradSem: data.estGradSem ?? null,
+                careerGoals: data.careerGoals ?? null,
+            },
+        };
+    } catch (error) {
+        console.error('Error updating profile for chatbot:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update profile',
+        };
+    }
+}
+
+// Course offering related actions
+import {
+    getColleges as _getColleges,
+    getDepartmentCodes as _getDepartmentCodes,
+    getCoursesByDepartment as _getCoursesByDepartment,
+} from './courseOfferingService';
+
+/**
+ * Server action to get colleges for a university
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ */
+export async function getCollegesAction(universityId: number) {
+    try {
+        const colleges = await _getColleges(universityId);
+        return { success: true, colleges };
+    } catch (error) {
+        console.error('Error fetching colleges:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch colleges',
+        };
+    }
+}
+
+/**
+ * Server action to get department codes for a university and college
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ */
+export async function getDepartmentCodesAction(universityId: number, college: string) {
+    try {
+        const departments = await _getDepartmentCodes(universityId, college);
+        return { success: true, departments };
+    } catch (error) {
+        console.error('Error fetching department codes:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch department codes',
+        };
+    }
+}
+
+/**
+ * Server action to get courses by department
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ */
+export async function getCoursesByDepartmentAction(
+    universityId: number,
+    college: string,
+    departmentCode: string
+) {
+    try {
+        const courses = await _getCoursesByDepartment(universityId, college, departmentCode);
+        return { success: true, courses };
+    } catch (error) {
+        console.error('Error fetching courses by department:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch courses',
+        };
+    }
 }

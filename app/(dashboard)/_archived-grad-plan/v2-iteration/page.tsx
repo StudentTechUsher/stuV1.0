@@ -1,6 +1,7 @@
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import GradPlan2Client from './grad-plan2-client';
 import { GetAllGradPlans } from '@/lib/services/gradPlanService';
+import { GetAiPrompt } from '@/lib/services/aiDbService';
 
 // Force dynamic rendering for this page because it uses cookies
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,9 @@ export default async function GradPlan2Page() {
 
   // Get all graduation plans for this student
   const allGradPlans = userProfile.id ? await GetAllGradPlans(userProfile.id) : [];
+
+  // Get AI prompt for organizing grad plan
+  const prompt = (await GetAiPrompt('organize_grad_plan')) ?? '';
 
   // Find active plan, or fallback to most recent plan
   let activePlan = allGradPlans.find(plan => plan.is_active) || null;
@@ -55,6 +59,8 @@ export default async function GradPlan2Page() {
       user={user}
       studentProfile={userProfile}
       gradPlan={activePlan}
+      allGradPlans={allGradPlans}
+      prompt={prompt}
     />
   );
 }
