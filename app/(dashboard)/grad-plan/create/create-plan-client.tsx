@@ -24,6 +24,10 @@ import GraduationSemesterScreen from '@/components/grad-plan/screens/GraduationS
 import CareerGoalsScreen from '@/components/grad-plan/screens/CareerGoalsScreen';
 import TranscriptScreen from '@/components/grad-plan/screens/TranscriptScreen';
 import StudentTypeScreen from '@/components/grad-plan/screens/StudentTypeScreen';
+import ProgramSelectionScreen from '@/components/grad-plan/screens/ProgramSelectionScreen';
+import CourseSelectionScreen from '@/components/grad-plan/screens/CourseSelectionScreen';
+import AdditionalConcernsScreen from '@/components/grad-plan/screens/AdditionalConcernsScreen';
+import GeneratingPlanScreen from '@/components/grad-plan/screens/GeneratingPlanScreen';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction } from '@/lib/services/server-actions';
 
 interface CreatePlanClientProps {
@@ -306,6 +310,220 @@ export default function CreatePlanClient({
     router.push('/grad-plan');
   };
 
+  const handleProgramSelectionSubmit = async (data: unknown) => {
+    setIsLoading(true);
+    try {
+      const programData = data as any;
+
+      // Build selected programs from the submitted data
+      const selectedPrograms: any[] = [];
+
+      if (programData.studentType === 'undergraduate') {
+        programData.programs.majorIds.forEach((id: number) => {
+          selectedPrograms.push({
+            programId: id,
+            programName: '',
+            programType: 'major',
+          });
+        });
+        if (programData.programs.minorIds) {
+          programData.programs.minorIds.forEach((id: number) => {
+            selectedPrograms.push({
+              programId: id,
+              programName: '',
+              programType: 'minor',
+            });
+          });
+        }
+        if (programData.programs.genEdIds) {
+          programData.programs.genEdIds.forEach((id: number) => {
+            selectedPrograms.push({
+              programId: id,
+              programName: '',
+              programType: 'general_education',
+            });
+          });
+        }
+      } else {
+        programData.programs.graduateProgramIds.forEach((id: number) => {
+          selectedPrograms.push({
+            programId: id,
+            programName: '',
+            programType: 'graduate',
+          });
+        });
+      }
+
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.PROGRAM_SELECTION,
+          data: {
+            selectedPrograms,
+          },
+          completedStep: ConversationStep.PROGRAM_SELECTION,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    } catch (error) {
+      console.error('Error in program selection:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCourseSelectionSubmit = async (data: unknown) => {
+    setIsLoading(true);
+    try {
+      const courseData = data as any;
+
+      setConversationState(prev => {
+        // Mark COURSE_METHOD as complete
+        const withMethod = updateState(prev, {
+          step: ConversationStep.COURSE_METHOD,
+          data: {
+            courseSelectionMethod: 'manual',
+          },
+          completedStep: ConversationStep.COURSE_METHOD,
+        });
+
+        // Mark COURSE_SELECTION as complete
+        const withSelection = updateState(withMethod, {
+          step: ConversationStep.COURSE_SELECTION,
+          completedStep: ConversationStep.COURSE_SELECTION,
+        });
+
+        // Move to next step (ADDITIONAL_CONCERNS or GENERATING_PLAN)
+        return updateState(withSelection, {
+          step: getNextStep(withSelection),
+        });
+      });
+    } catch (error) {
+      console.error('Error in course selection:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAdditionalConcernsSubmit = async (concerns: string) => {
+    setIsLoading(true);
+    try {
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.ADDITIONAL_CONCERNS,
+          data: {
+            additionalConcerns: concerns.trim() || null,
+          },
+          completedStep: ConversationStep.ADDITIONAL_CONCERNS,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    } catch (error) {
+      console.error('Error in additional concerns:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAdditionalConcernsSkip = async () => {
+    setIsLoading(true);
+    try {
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.ADDITIONAL_CONCERNS,
+          data: {
+            additionalConcerns: null,
+          },
+          completedStep: ConversationStep.ADDITIONAL_CONCERNS,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    } catch (error) {
+      console.error('Error skipping additional concerns:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGeneratePlan = async () => {
+    setIsLoading(true);
+    try {
+      // Get the prompt from database
+      const promptTemplate = await getAiPromptAction('organize_grad_plan');
+      if (!promptTemplate) {
+        throw new Error('Prompt template not found');
+      }
+
+      // Fetch user courses if transcript exists
+      const userCoursesResult = hasCourses ? await fetchUserCoursesAction(user.id) : null;
+      const takenCourses = userCoursesResult?.success && userCoursesResult.courses
+        ? userCoursesResult.courses.map(course => ({
+            code: course.code,
+            title: course.title,
+            credits: course.credits,
+            term: course.term,
+            grade: course.grade,
+            status: course.grade === 'In Progress' ? 'In-Progress' : 'Completed',
+            source: course.origin === 'manual' ? 'Manual' : 'Transcript',
+          }))
+        : [];
+
+      // Get program IDs from state
+      const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
+
+      // Call the plan generation server action
+      const result = await organizeCoursesIntoSemestersAction(
+        {
+          selectedCourses: conversationState.collectedData.selectedCourses || {},
+          programs: conversationState.collectedData.selectedPrograms || [],
+          studentType: conversationState.collectedData.studentType || 'undergraduate',
+          selectionMode: 'MANUAL',
+          selectedPrograms: programIds,
+          takenCourses,
+        },
+        {
+          prompt_name: 'organize_grad_plan',
+          prompt: promptTemplate,
+          model: 'gpt-4-mini',
+          max_output_tokens: 25_000,
+        }
+      );
+
+      if (!result.success || !result.accessId) {
+        throw new Error(result.message || 'Failed to generate graduation plan');
+      }
+
+      // Update state to COMPLETE
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.GENERATING_PLAN,
+          completedStep: ConversationStep.GENERATING_PLAN,
+        });
+
+        return updateState(updated, {
+          step: ConversationStep.COMPLETE,
+        });
+      });
+
+      // Navigate to the grad plan page after a brief delay
+      setTimeout(() => {
+        router.push(`/grad-plan/${result.accessId}`);
+      }, 2000);
+    } catch (error) {
+      console.error('Error generating graduation plan:', error);
+      alert('Error generating your plan. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
   // Render appropriate screen based on current step
   const renderCurrentScreen = () => {
     if (conversationState.currentStep === ConversationStep.PROFILE_SETUP) {
@@ -363,11 +581,59 @@ export default function CreatePlanClient({
           isLoading={isLoading}
         />
       );
+    } else if (conversationState.currentStep === ConversationStep.PROGRAM_SELECTION) {
+      return (
+        <ProgramSelectionScreen
+          studentType={conversationState.collectedData.studentType || 'undergraduate'}
+          universityId={studentProfile.university_id}
+          onSubmit={handleProgramSelectionSubmit}
+          onBack={handleBack}
+          isLoading={isLoading}
+        />
+      );
+    } else if (conversationState.currentStep === ConversationStep.COURSE_SELECTION) {
+      const majorMinorIds = conversationState.collectedData.selectedPrograms
+        .filter(p => p.programType === 'major' || p.programType === 'minor')
+        .map(p => p.programId);
+      const genEdIds = conversationState.collectedData.selectedPrograms
+        .filter(p => p.programType === 'general_education')
+        .map(p => p.programId);
+
+      return (
+        <CourseSelectionScreen
+          studentType={conversationState.collectedData.studentType || 'undergraduate'}
+          universityId={studentProfile.university_id}
+          selectedProgramIds={majorMinorIds}
+          genEdProgramIds={genEdIds}
+          onSubmit={handleCourseSelectionSubmit}
+          onBack={handleBack}
+          isLoading={isLoading}
+        />
+      );
+    } else if (conversationState.currentStep === ConversationStep.ADDITIONAL_CONCERNS) {
+      return (
+        <AdditionalConcernsScreen
+          defaultConcerns={conversationState.collectedData.additionalConcerns || ''}
+          onSubmit={handleAdditionalConcernsSubmit}
+          onSkip={handleAdditionalConcernsSkip}
+          onBack={handleBack}
+          isLoading={isLoading}
+        />
+      );
+    } else if (conversationState.currentStep === ConversationStep.GENERATING_PLAN) {
+      // Automatically start generation when reaching this step
+      useEffect(() => {
+        if (conversationState.currentStep === ConversationStep.GENERATING_PLAN && !isLoading) {
+          handleGeneratePlan();
+        }
+      }, [conversationState.currentStep]);
+
+      return <GeneratingPlanScreen />;
     }
 
     return (
       <div className="text-center text-gray-600">
-        <p>Screen not yet implemented</p>
+        <p>Screen not yet implemented for step: {conversationState.currentStep}</p>
       </div>
     );
   };
