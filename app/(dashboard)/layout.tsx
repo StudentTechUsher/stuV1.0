@@ -65,13 +65,14 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   const userId = userError || !user ? null : user.id;
 
-  // 2) Query profiles for role_id and onboarded status (RLS lets users read only their own row)
+  // 2) Query profiles for role_id, onboarded status, and university_id (RLS lets users read only their own row)
   let roleId: string | null = null;
   let onboarded = true; // Default to true (onboarded) to prevent blocking existing users
+  let universityId: number | null = null;
   if (userId) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role_id, onboarded")
+      .select("role_id, onboarded, university_id")
       .eq("id", userId)
       .maybeSingle();
 
@@ -79,14 +80,19 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     roleId = profile?.role_id ? String(profile.role_id) : null;
     // Only set onboarded to false if explicitly false in the database
     onboarded = profile?.onboarded !== false;
+    universityId = profile?.university_id ?? null;
   }
 
   // 3) Pick a Role string (you can also fetch role name via FK join)
   const role: Role =
     ROLE_MAP[roleId ?? "3"]; // sensible default to "student" if roleId is null or undefined
 
-  // If user hasn't been onboarded yet (waiting for admin approval), show pending message
-  if (!onboarded && user) {
+  // If user hasn't been onboarded yet AND they have selected a university,
+  // they're waiting for admin approval (only for advisors/admins)
+  // If they haven't selected a university yet, let them through to complete onboarding
+  const hasSelectedUniversity = universityId !== null;
+
+  if (!onboarded && hasSelectedUniversity && user) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 shadow-lg">
@@ -126,40 +132,40 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
   switch (role) {
     case "student":
       return [
-        { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
-  { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",                icon: "inbox", badgeCount: inboxBadge },
-        { href: "/dashboard/grad-plan",          segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
-        { href: "/dashboard/academic-history",   segment: "academic-history",    label: "Academic History",     icon: "history" },
-        { href: "/dashboard/semester-scheduler", segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
-        { href: "/dashboard/pathfinder",         segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
-        { href: "/dashboard/profile",            segment: "profile",            label: "Profile",              icon: "profile" },
+        { href: "/",                    segment: null,                 label: "Overview",             icon: "dashboard" },
+        { href: "/inbox",               segment: "inbox",              label: "Inbox",                icon: "inbox", badgeCount: inboxBadge },
+        { href: "/grad-plan",           segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
+        { href: "/academic-history",    segment: "academic-history",   label: "Academic History",     icon: "history" },
+        { href: "/semester-scheduler",  segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
+        { href: "/pathfinder",          segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
+        { href: "/profile",             segment: "profile",            label: "Profile",              icon: "profile" },
       ];
 
     case "advisor":
       return [
-        { href: "/dashboard",                    segment: null,                 label: "Overview",       icon: "dashboard" },
-  { href: "/dashboard/inbox",              segment: "inbox",              label: "Inbox",          icon: "inbox", badgeCount: inboxBadge },
-        { href: "/dashboard/approve-grad-plans", segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
-        { href: "/dashboard/advisees",           segment: "advisees",           label: "My Advisees",    icon: "advisees" },
-        { href: "/dashboard/maintain-programs",  segment: "maintain programs",  label: "Maintain Programs",      icon: "programs" },
-        { href: "/dashboard/program-flow",       segment: "program-flow",       label: "Program Flow",   icon: "programFlow" },
-        { href: "/dashboard/appointments",       segment: "appointments",       label: "Appointments",   icon: "appointments" },
-        { href: "/dashboard/reports",            segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
-        { href: "/dashboard/careers/manage",     segment: "careers",            label: "Manage Careers", icon: "careers" },
-        { href: "/dashboard/profile",            segment: "profile",            label: "Profile",        icon: "profile" },
+        { href: "/",                    segment: null,                 label: "Overview",       icon: "dashboard" },
+        { href: "/inbox",               segment: "inbox",              label: "Inbox",          icon: "inbox", badgeCount: inboxBadge },
+        { href: "/approve-grad-plans",  segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
+        { href: "/advisees",            segment: "advisees",           label: "My Advisees",    icon: "advisees" },
+        { href: "/maintain-programs",   segment: "maintain-programs",  label: "Maintain Programs",      icon: "programs" },
+        { href: "/program-flow",        segment: "program-flow",       label: "Program Flow",   icon: "programFlow" },
+        { href: "/appointments",        segment: "appointments",       label: "Appointments",   icon: "appointments" },
+        { href: "/reports",             segment: "reports",            label: "Reports",        icon: "reports", badgeCount: 3 },
+        { href: "/careers/manage",      segment: "careers",            label: "Manage Careers", icon: "careers" },
+        { href: "/profile",             segment: "profile",            label: "Profile",        icon: "profile" },
       ];
 
     case "admin":
       return [
-        { href: "/dashboard",                       segment: null,                    label: "Overview",               icon: "dashboard" },
-        { href: "/dashboard/admin/forecast",        segment: "admin",                 label: "Forecasting",            icon: "forecast" },
-  { href: "/dashboard/inbox",                 segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
-        { href: "/dashboard/users",                 segment: "users",                 label: "Maintain Users",         icon: "users" },
-        { href: "/dashboard/maintain-programs",     segment: "maintain programs",     label: "Maintain Programs",      icon: "programs" },
-        { href: "/dashboard/manage-advisors",       segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
-        { href: "/dashboard/careers/manage",        segment: "careers",               label: "Manage Careers",         icon: "careers" },
-        { href: "/dashboard/system",                segment: "system",                label: "System",                 icon: "system" },
-        { href: "/dashboard/profile",               segment: "profile",               label: "Profile",                icon: "profile" },
+        { href: "/",                    segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/admin/forecast",      segment: "admin",                 label: "Forecasting",            icon: "forecast" },
+        { href: "/inbox",               segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
+        { href: "/users",               segment: "users",                 label: "Maintain Users",         icon: "users" },
+        { href: "/maintain-programs",   segment: "maintain-programs",     label: "Maintain Programs",      icon: "programs" },
+        { href: "/manage-advisors",     segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
+        { href: "/careers/manage",      segment: "careers",               label: "Manage Careers",         icon: "careers" },
+        { href: "/system",              segment: "system",                label: "System",                 icon: "system" },
+        { href: "/profile",             segment: "profile",               label: "Profile",                icon: "profile" },
       ];
   }
 }

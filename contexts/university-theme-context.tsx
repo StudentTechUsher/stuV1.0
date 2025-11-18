@@ -174,12 +174,23 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
 
   const updateUniversityTheme = async (universityId: number, themeUpdates: Partial<UniversityTheme>) => {
     try {
-      const { error } = await supabase
+      if (!universityId) {
+        throw new Error('University ID is required');
+      }
+
+      console.log('Updating university', universityId, 'with colors:', themeUpdates);
+
+      const { error, data } = await supabase
         .from('university')
         .update(themeUpdates)
-        .eq('id', universityId);
+        .eq('id', universityId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
 
       // Update local state
       if (university) {
