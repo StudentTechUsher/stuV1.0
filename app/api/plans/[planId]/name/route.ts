@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { updateGradPlanNameWithUniquenessCheck, DuplicatePlanNameError, GradPlanFetchError } from '@/lib/services/gradPlanService';
+import { UpdatePlanNameSchema } from '@/lib/validation/zodSchemas';
+import { validateRequest, ValidationError, formatValidationError } from '@/lib/validation/validationUtils';
 
 /**
  * PUT /api/plans/:planId/name
@@ -23,12 +25,11 @@ async function handleUpdatePlanName(request: NextRequest) {
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 });
     }
 
-    const body = await request.json() as Record<string, unknown>;
-    const { name } = body;
+    const body = await request.json();
 
-    if (typeof name !== 'string' || !name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-    }
+    // Validate request body with Zod
+    const validatedData = validateRequest(UpdatePlanNameSchema, body);
+    const { name } = validatedData;
 
     // Get the current user session
     const supabase = await createSupabaseServerComponentClient();
@@ -105,6 +106,10 @@ async function handleUpdatePlanName(request: NextRequest) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json(formatValidationError(error), { status: 400 });
+    }
+
     console.error('Error in handleUpdatePlanName:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

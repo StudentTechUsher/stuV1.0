@@ -3,23 +3,29 @@ import { Plus, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Term } from './types';
 
-interface PlanHeaderProps {
+interface PlanOverviewProps {
   currentPlanData: Term[];
   durationYears?: number;
+  fulfilledRequirements: string[];
   isEditMode: boolean;
   isSpaceView: boolean;
   onToggleView: () => void;
   onAddEvent: () => void;
+  programs?: Array<{ id: number; name: string }>;
+  estGradSem?: string;
 }
 
-export function PlanHeader({
+export function PlanOverview({
   currentPlanData,
   durationYears,
+  fulfilledRequirements,
   isEditMode,
   isSpaceView,
   onToggleView,
-  onAddEvent
-}: PlanHeaderProps) {
+  onAddEvent,
+  programs,
+  estGradSem
+}: PlanOverviewProps) {
   const totalCredits = currentPlanData.reduce((total, term) => {
     const termCredits = term.credits_planned ||
                        (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
@@ -28,7 +34,7 @@ export function PlanHeader({
   const totalCourses = currentPlanData.reduce((total, term) => total + (term.courses?.length ?? 0), 0);
   const totalTerms = currentPlanData.length;
 
-  // Aggregate the key plan stats so we can surface them using the same stat-card language as the dashboard.
+  // Aggregate the key plan stats
   const statCards: Array<{ label: string; value: string; tone: 'primary' | 'neutral' | 'muted' }> = [
     { label: 'Total Credits', value: totalCredits.toString(), tone: 'primary' },
     { label: 'Total Courses', value: totalCourses.toString(), tone: 'primary' },
@@ -57,7 +63,7 @@ export function PlanHeader({
   return (
     <section className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-white p-6 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
       <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">
             Plan Overview
           </span>
@@ -67,6 +73,29 @@ export function PlanHeader({
           <p className="max-w-xl text-sm leading-relaxed text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
             Quickly confirm credits, pacing, and milestones before you dive into each term.
           </p>
+
+          {/* Programs and Graduation Info */}
+          <div className="flex flex-wrap items-center gap-2">
+            {programs && programs.length > 0 && programs.map((program) => (
+              <span
+                key={program.id}
+                className="inline-flex items-center rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,white)] px-3 py-1.5 text-xs font-semibold tracking-wide text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)]"
+              >
+                {program.name}
+              </span>
+            ))}
+            {estGradSem && estGradSem !== 'Not set' && (
+              <span className="inline-flex items-center gap-1.5 rounded-[7px] border border-[color-mix(in_srgb,var(--muted-foreground)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,white)] px-3 py-1.5 text-xs font-semibold tracking-wide text-[color-mix(in_srgb,var(--foreground)_82%,var(--muted-foreground)_18%)]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Expected Grad: {estGradSem}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -109,6 +138,24 @@ export function PlanHeader({
           </div>
         ))}
       </div>
+
+      {fulfilledRequirements.length > 0 && (
+        <div className="mt-6 flex flex-col gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground)_30%)]">
+            Requirements Met
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {fulfilledRequirements.map((requirement) => (
+              <span
+                key={requirement}
+                className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--primary)_32%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-[color-mix(in_srgb,var(--foreground)_80%,var(--primary)_20%)]"
+              >
+                {requirement}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

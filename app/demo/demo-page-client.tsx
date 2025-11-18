@@ -104,7 +104,7 @@ export default function DemoPageClient() {
 
             <div className="flex justify-center">
               <Link
-                href="/dashboard"
+                href="/signup"
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -22,7 +22,7 @@ export function LandingPageClient() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push('/dashboard')
+        router.push('/') // Redirect to overview page
       }
     }
 
@@ -31,7 +31,7 @@ export function LandingPageClient() {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        router.push('/dashboard')
+        router.push('/') // Redirect to overview page
       }
     })
 

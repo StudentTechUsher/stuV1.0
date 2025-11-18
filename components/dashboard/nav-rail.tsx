@@ -28,7 +28,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import WorkRounded from "@mui/icons-material/WorkRounded";
 import TimelineRounded from "@mui/icons-material/TimelineRounded";
 import { MdHistory } from "react-icons/md";
-import type { NavItem } from "@/app/dashboard/layout";
+import type { NavItem } from "@/app/(dashboard)/layout";
 import { JSX } from "react";
 import { Inbox } from "@mui/icons-material";
 
@@ -215,7 +215,7 @@ export default function NavRail({ items, railWidth = 88, showSettings = true }: 
 
           {/* Settings Button */}
           <Tooltip title="Settings" placement="right">
-            <Box component={Link} href="/dashboard/settings">
+            <Box component={Link} href="/settings">
               <IconButton
                 size="large"
                 sx={{ color: "var(--nav-foreground, #fff)", "&:hover": { bgcolor: "rgba(255,255,255,0.08)" } }}
