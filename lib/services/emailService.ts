@@ -120,7 +120,7 @@ export async function sendGradPlanCreatedEmail(data: GradPlanCreatedData) {
     }
     console.log('✅ All required fields present');
 
-    const planUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stuplanning.com'}/dashboard/grad-plan/${data.planAccessId}`;
+    const planUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stuplanning.com'}/grad-plan/${data.planAccessId}`;
 
     // HTML email body
     const htmlBody = `
@@ -275,7 +275,7 @@ export async function sendGradPlanApprovalEmail(data: GradPlanApprovalData) {
     }
     console.log('✅ All required fields present');
 
-    const planUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stuplanning.com'}/dashboard/grad-plan/${data.planAccessId}`;
+    const planUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stuplanning.com'}/grad-plan/${data.planAccessId}`;
     const advisorNameText = data.advisorName ? ` by ${data.advisorName}` : '';
 
     // HTML email body

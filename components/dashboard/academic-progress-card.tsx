@@ -76,7 +76,7 @@ export default function AcademicProgressCard() {
   }, []);
 
   const handleGpaCalculatorClick = () => {
-    router.push('/dashboard/gpa-calculator');
+    router.push('/gpa-calculator');
   };
 
   return (
@@ -154,7 +154,7 @@ export default function AcademicProgressCard() {
         </div>
         </>
       ) : (
-        <Link href="/dashboard/academic-history" style={{ textDecoration: 'none' }}>
+        <Link href="/academic-history" style={{ textDecoration: 'none' }}>
           <div className="flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_25%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] p-8 text-center transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--primary)_15%,transparent)]">
               <Upload size={32} color="var(--primary)" />

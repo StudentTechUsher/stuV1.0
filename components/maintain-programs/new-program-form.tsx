@@ -146,7 +146,7 @@ export default function NewProgramForm({ universityId }: Readonly<NewProgramForm
       setSnackbarOpen(true);
 
       setTimeout(() => {
-        router.push('/dashboard/maintain-programs');
+        router.push('/maintain-programs');
       }, 1000);
     } catch (error) {
       console.error('Failed to create program:', error);
@@ -159,7 +159,7 @@ export default function NewProgramForm({ universityId }: Readonly<NewProgramForm
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/maintain-programs');
+    router.push('/maintain-programs');
   };
 
   const handleSnackbarClose = (_?: unknown, reason?: string) => {

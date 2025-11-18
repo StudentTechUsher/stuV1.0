@@ -41,7 +41,7 @@ export function GPACalculatorContent() {
 
         if (response.status === 302) {
           // Redirect to transcript sync
-          router.push('/dashboard/academic-history');
+          router.push('/academic-history');
           return;
         }
 

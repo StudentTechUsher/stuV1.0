@@ -249,7 +249,7 @@ export default function ScheduleGenerator({
                   No graduation plans found. Create one to start scheduling your classes.
                 </Typography>
               </Alert>
-              <Link href="/dashboard/grad-plan" passHref>
+              <Link href="/grad-plan" passHref>
                 <Button
                   variant="contained"
                   startIcon={<Plus size={16} />}

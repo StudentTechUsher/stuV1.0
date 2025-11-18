@@ -189,7 +189,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       // selectedGradPlan is a database record with an id field
       const planId = selectedGradPlan.id;
       const accessId = encodeAccessIdClient(planId);
-      router.push(`/dashboard/grad-plan/${accessId}`);
+      router.push(`/grad-plan/${accessId}`);
     } else {
       // No plan exists, shouldn't happen but handle gracefully
       setNotification({
@@ -370,7 +370,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
     // Redirect to the unified editing view using the accessId
     if (accessId) {
-      router.push(`/dashboard/grad-plan/${accessId}`);
+      router.push(`/grad-plan/${accessId}`);
     } else {
       console.error('No access ID returned from creation');
       setNotification({
@@ -655,6 +655,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           genEdStrategy={programSelections.genEdStrategy}
           planMode={programSelections.planMode}
           universityId={studentRecord?.university_id || 0}
+          userId={user?.id}
           onPlanCreated={handlePlanCreated}
           initialPlanName={programSelections.planName}
           prompt={prompt}

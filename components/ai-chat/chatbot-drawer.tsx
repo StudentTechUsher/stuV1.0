@@ -136,7 +136,7 @@ export default function ChatbotDrawer({
             // Auto-redirect after additional delay to give user time to read
             setTimeout(() => {
               if (typeof window !== 'undefined') {
-                window.location.href = '/dashboard/meet-with-advisor';
+                window.location.href = '/meet-with-advisor';
               }
             }, 6000); // 6 seconds after showing the advisor suggestion
           }, 1000); // 1 second after initial response

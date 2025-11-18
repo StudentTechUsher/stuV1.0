@@ -100,7 +100,7 @@ export async function middleware(request: NextRequest) {
   // Handle auth-based redirects
   const authRedirect = handleAuthRedirects(request, session)
   if (authRedirect) {
-    console.log('Redirecting to:', authRedirect.headers.get('location'))
+    //console.log('Redirecting to:', authRedirect.headers.get('location'))
     return authRedirect
   }
 

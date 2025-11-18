@@ -20,6 +20,6 @@ export default async function ProgramEditPage({ params }: { params: { id: string
     return <ProgramEditor program={program} />;
   } catch (error) {
     console.error('Failed to load program:', error);
-    redirect('/dashboard/maintain-programs');
+    redirect('/maintain-programs');
   }
 }

@@ -162,7 +162,7 @@ export default function ProgramEditor({ program }: Readonly<ProgramEditorProps>)
       setSnackbarOpen(true);
 
       setTimeout(() => {
-        router.push('/dashboard/maintain-programs');
+        router.push('/maintain-programs');
       }, 1000);
     } catch (error) {
       console.error('Failed to save program:', error);
@@ -175,7 +175,7 @@ export default function ProgramEditor({ program }: Readonly<ProgramEditorProps>)
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/maintain-programs');
+    router.push('/maintain-programs');
   };
 
   const handleSnackbarClose = (_?: unknown, reason?: string) => {

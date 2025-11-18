@@ -111,7 +111,7 @@ export default function MajorInfoModal({
               <button
                 onClick={() => {
                   // TODO: Navigate to major edit page when implemented
-                  router.push(`/dashboard/maintain-programs?major=${major.slug}`);
+                  router.push(`/maintain-programs?major=${major.slug}`);
                 }}
                 className="px-4 py-2 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] font-body-semi text-sm hover:bg-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] transition-colors"
               >

@@ -28,7 +28,7 @@ export default function PlansToApproveTable({ plans }: PlansToApproveTableProps)
     try {
       setNavigatingId(String(plan.id));
       const accessId = await issueGradPlanAccessId(plan.id);
-      router.push(`/dashboard/approve-grad-plans/${accessId}`);
+      router.push(`/approve-grad-plans/${accessId}`);
     } catch (error) {
       console.error('Error navigating to grad plan:', error);
       setNavigatingId(null);

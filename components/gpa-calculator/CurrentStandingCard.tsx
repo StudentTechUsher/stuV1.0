@@ -44,7 +44,7 @@ export function CurrentStandingCard({
             </p>
             <Button
               component={Link}
-              href="/dashboard/academic-history"
+              href="/academic-history"
               variant="contained"
               size="small"
               sx={{

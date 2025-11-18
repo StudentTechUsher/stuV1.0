@@ -19,6 +19,6 @@ export default async function NewProgramPage() {
     return <NewProgramForm universityId={universityId} />;
   } catch (error) {
     console.error('Failed to load new program page:', error);
-    redirect('/dashboard/maintain-programs');
+    redirect('/maintain-programs');
   }
 }

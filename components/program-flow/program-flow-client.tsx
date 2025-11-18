@@ -11,7 +11,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
   const router = useRouter();
 
   const handleProgramClick = (programId: string) => {
-    router.push(`/dashboard/program-flow/${programId}`);
+    router.push(`/program-flow/${programId}`);
   };
 
   // Categorize programs by type

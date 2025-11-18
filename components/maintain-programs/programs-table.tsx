@@ -16,7 +16,7 @@ export default function ProgramsTable({ rows, onDelete, canDelete = true }: Read
   const [programToDelete, setProgramToDelete] = React.useState<ProgramRow | null>(null);
 
   const handleEdit = (row: ProgramRow) => {
-    router.push(`/dashboard/maintain-programs/${row.id}`);
+    router.push(`/maintain-programs/${row.id}`);
   };
 
   const getBadgeClasses = (programType: string) => {

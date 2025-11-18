@@ -114,7 +114,7 @@ export function AdminDashboard() {
           {/* Forecasting Tool Button */}
           <button
             type="button"
-            onClick={() => router.push('/dashboard/admin/forecast')}
+            onClick={() => router.push('/admin/forecast')}
             className="group flex items-center gap-2 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] px-4 py-2.5 font-body-semi text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
             aria-label="Open forecasting tool"
           >

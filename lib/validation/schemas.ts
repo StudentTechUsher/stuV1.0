@@ -100,6 +100,17 @@ export const courseSelectionPayloadSchema = yup.object({
   selectedPrograms: yup.array().of(
     yup.mixed() // Can be string or number
   ).optional(),
+  takenCourses: yup.array().of(
+    yup.object({
+      code: yup.string().required('Course code is required'),
+      title: yup.string().required('Course title is required'),
+      credits: yup.number().required('Course credits are required'),
+      term: yup.string().required('Course term is required'),
+      grade: yup.string().required('Course grade is required'),
+      status: yup.string().required('Course status is required'),
+      source: yup.string().required('Course source is required'),
+    })
+  ).optional().default([]),
 });
 
 export type CourseSelectionPayloadInput = yup.InferType<typeof courseSelectionPayloadSchema>;

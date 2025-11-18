@@ -100,9 +100,9 @@ export class EscalationService {
 
   getEscalationActionUrl(action: EscalationSuggestion['action']): string {
     const actionUrls = {
-      schedule_meeting: '/dashboard/meet-with-advisor',
-      contact_advisor: '/dashboard/meet-with-advisor',
-      view_resources: '/dashboard/settings'
+      schedule_meeting: '/meet-with-advisor',
+      contact_advisor: '/meet-with-advisor',
+      view_resources: '/settings'
     };
 
     return actionUrls[action];

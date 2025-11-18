@@ -38,7 +38,7 @@ async function handleGetContext(_request: NextRequest) {
     if (error instanceof NoTranscriptError) {
       // Redirect to transcript sync
       return NextResponse.json(
-        { error: 'No transcript synced', redirect: '/dashboard/academic-history' },
+        { error: 'No transcript synced', redirect: '/academic-history' },
         { status: 302 }
       );
     }

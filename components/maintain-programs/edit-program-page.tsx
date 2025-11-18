@@ -102,7 +102,7 @@ export default function EditProgramPage({ program }: Readonly<EditProgramPagePro
 
       // Navigate back after success
       setTimeout(() => {
-        router.push('/dashboard/maintain-programs');
+        router.push('/maintain-programs');
       }, 1000);
     } catch (error) {
       console.error('Failed to save program:', error);
@@ -115,7 +115,7 @@ export default function EditProgramPage({ program }: Readonly<EditProgramPagePro
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/maintain-programs');
+    router.push('/maintain-programs');
   };
 
   const handleSnackbarClose = (_?: unknown, reason?: string) => {

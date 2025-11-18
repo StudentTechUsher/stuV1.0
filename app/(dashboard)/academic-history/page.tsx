@@ -286,10 +286,8 @@ export default function AcademicHistoryPage() {
         const genEds = await GetGenEdsForUniversity(universityId);
         if (genEds.length > 0) {
           setGenEdProgram(genEds[0]);
-          console.log('✅ Loaded Gen Ed program:', genEds[0].name);
         } else {
           setGenEdProgram(null);
-          console.log('⚠️ No Gen Ed program found for university:', universityId);
         }
       } catch (error) {
         console.error('Failed to fetch Gen Ed program:', error);
@@ -317,7 +315,6 @@ export default function AcademicHistoryPage() {
             universityId
           );
           setPrograms(programsData);
-          console.log('✅ Loaded programs:', programsData.map(p => p.name).join(', '));
         } else {
           setPrograms([]);
         }

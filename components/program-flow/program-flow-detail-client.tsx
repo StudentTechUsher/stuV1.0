@@ -112,7 +112,7 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleBack = () => {
-    router.push('/dashboard/program-flow');
+    router.push('/program-flow');
   };
 
   const handleSave = async (isMajorVersion: boolean) => {

@@ -107,7 +107,7 @@ export default function GradPlanRealtimeListener({ userId }: Readonly<GradPlanRe
 
   const handleViewPlan = () => {
     if (notification.planAccessId) {
-      router.push(`/dashboard/grad-plan/${notification.planAccessId}`);
+      router.push(`/grad-plan/${notification.planAccessId}`);
     }
     handleClose();
   };

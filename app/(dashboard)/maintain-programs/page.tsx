@@ -93,7 +93,7 @@ export default function MaintainProgramsPage() {
 
         <Button
           component={Link}
-          href="/dashboard/maintain-programs/new"
+          href="/maintain-programs/new"
           startIcon={<AddIcon />}
           sx={{
             backgroundColor: '#12F987',

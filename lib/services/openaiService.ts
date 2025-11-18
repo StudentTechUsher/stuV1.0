@@ -30,6 +30,15 @@ interface CoursesDataInput {
   generalEducation?: unknown;
   selectionMode?: 'AUTO' | 'MANUAL' | 'CHOICE';
   selectedPrograms?: Array<string | number>;
+  takenCourses?: Array<{
+    code: string;
+    title: string;
+    credits: number;
+    term: string;
+    grade: string;
+    status: string;
+    source: string;
+  }>;
 }
 
 interface CareerOption {

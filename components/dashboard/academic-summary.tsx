@@ -309,7 +309,7 @@ export default function AcademicSummary() {
               </Stack>
             </Stack>
           ) : (
-            <Link href="/dashboard/academic-history" passHref style={{ textDecoration: 'none' }}>
+            <Link href="/academic-history" passHref style={{ textDecoration: 'none' }}>
               <ButtonBase
                 sx={{
                   width: "100%",
@@ -485,7 +485,7 @@ export default function AcademicSummary() {
             </ButtonBase>
           </>
         ) : (
-          <Link href="/dashboard/grad-plan" passHref style={{ textDecoration: 'none' }}>
+          <Link href="/grad-plan" passHref style={{ textDecoration: 'none' }}>
             <ButtonBase
               sx={{
                 width: "100%",

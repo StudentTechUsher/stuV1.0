@@ -478,12 +478,27 @@ export default function CreatePlanClient({
               throw new Error('Prompt template not found');
             }
 
+            // Fetch user courses if transcript exists
+            const userCoursesResult = hasCourses ? await fetchUserCoursesAction(user.id) : null;
+            const takenCourses = userCoursesResult?.success && userCoursesResult.courses
+              ? userCoursesResult.courses.map(course => ({
+                  code: course.code,
+                  title: course.title,
+                  credits: course.credits,
+                  term: course.term,
+                  grade: course.grade,
+                  status: course.grade === 'In Progress' ? 'In-Progress' : 'Completed',
+                  source: course.origin === 'manual' ? 'Manual' : 'Transcript',
+                }))
+              : [];
+
             // Transform courseData to match the expected schema
             const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
             const transformedCourseData = {
               ...courseData,
               selectionMode: 'MANUAL' as const,
               selectedPrograms: programIds,
+              takenCourses,
             };
 
             // Call the existing organize courses server action
@@ -580,6 +595,20 @@ export default function CreatePlanClient({
               throw new Error('Prompt template not found');
             }
 
+            // Fetch user courses if transcript exists
+            const userCoursesResult = hasCourses ? await fetchUserCoursesAction(user.id) : null;
+            const takenCourses = userCoursesResult?.success && userCoursesResult.courses
+              ? userCoursesResult.courses.map(course => ({
+                  code: course.code,
+                  title: course.title,
+                  credits: course.credits,
+                  term: course.term,
+                  grade: course.grade,
+                  status: course.grade === 'In Progress' ? 'In-Progress' : 'Completed',
+                  source: course.origin === 'manual' ? 'Manual' : 'Transcript',
+                }))
+              : [];
+
             // Get course data from conversation state
             const courseData = conversationState.collectedData.selectedCourses || {};
 
@@ -589,6 +618,7 @@ export default function CreatePlanClient({
               ...courseData,
               selectionMode: 'MANUAL' as const,
               selectedPrograms: programIds,
+              takenCourses,
             };
 
             // Call the existing organize courses server action

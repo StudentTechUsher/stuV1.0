@@ -32,7 +32,7 @@ export default function SchedulerQuickAccess() {
             </Typography>
           </Box>
 
-          <Link href="/dashboard/semester-scheduler" passHref>
+          <Link href="/semester-scheduler" passHref>
             <Button
               variant="contained"
               fullWidth

@@ -28,7 +28,7 @@ import { searchCourseOfferings, type CourseOffering } from '@/lib/services/cours
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
-import { updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { updateGradPlanNameAction, fetchUserCoursesAction } from '@/lib/services/server-actions';
 import { decodeAccessIdClient } from '@/lib/utils/access-id';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import {
@@ -90,6 +90,15 @@ type SelectedClassesPayload = {
   }>;
   generalEducation: Record<string, SelectedCourseEntry[]>;
   userAddedElectives: Array<{ code: string; title: string; credits: number }>;
+  takenCourses?: Array<{
+    code: string;
+    title: string;
+    credits: number;
+    term: string;
+    grade: string;
+    status: string;
+    source: string;
+  }>;
 };
 
 // Types for program & requirement logic moved to helpers (imported above)
@@ -103,6 +112,7 @@ interface CreateGradPlanDialogProps {
   genEdStrategy: 'early' | 'balanced';
   planMode: 'AUTO' | 'MANUAL';
   universityId: number;
+  userId?: string;
   onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string, planName?: string) => void;
   prompt: string;
   initialPlanName?: string;
@@ -118,6 +128,7 @@ export default function CreateGradPlanDialog({
   genEdStrategy: initialGenEdStrategy,
   planMode: initialPlanMode,
   universityId,
+  userId,
   onPlanCreated,
   prompt,
   initialPlanName,
@@ -657,6 +668,43 @@ const handleRemoveElective = (id: string) => {
       return;
     }
 
+    // Fetch user courses if userId is provided
+    let takenCourses: Array<{
+      code: string;
+      title: string;
+      credits: number;
+      term: string;
+      grade: string;
+      status: string;
+      source: string;
+    }> = [];
+
+    if (userId) {
+      try {
+        const userCoursesResult = await fetchUserCoursesAction(userId);
+        if (userCoursesResult?.success && userCoursesResult.courses) {
+          takenCourses = userCoursesResult.courses.map(course => ({
+            code: course.code,
+            title: course.title,
+            credits: course.credits,
+            term: course.term,
+            grade: course.grade,
+            status: course.grade === 'In Progress' ? 'In-Progress' : 'Completed',
+            source: course.origin === 'manual' ? 'Manual' : 'Transcript',
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching user courses:', error);
+        // Continue with empty takenCourses array
+      }
+    }
+
+    // Add takenCourses to the payload
+    const enrichedPayload = {
+      ...plannerPayload,
+      takenCourses,
+    };
+
     const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
 
     // Show snackbar and close dialog immediately
@@ -670,7 +718,7 @@ const handleRemoveElective = (id: string) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        coursesData: plannerPayload,
+        coursesData: enrichedPayload,
         promptInput: promptPayload,
         planName: sanitizedPlanName
       })
