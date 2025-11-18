@@ -69,6 +69,11 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        showToast({
+          title: 'Failed to load settings',
+          description: 'There was a problem loading your settings. Please try again.',
+          variant: 'destructive',
+        });
       } finally {
         setIsLoading(false);
       }
