@@ -14,24 +14,19 @@ export default function WizardProgressBar({
   const percentage = Math.round((current / total) * 100);
 
   return (
-    <div className="w-full space-y-2">
-      {/* Progress Bar */}
-      <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+    <div className="w-full">
+      {/* Thin, minimal progress bar - Figma style */}
+      <div className="relative h-px bg-gray-200 overflow-hidden">
         <div
-          className="h-full bg-indigo-600 rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${percentage}%` }}
+          className="h-full transition-all duration-500 ease-out"
+          style={{ width: `${percentage}%`, backgroundColor: 'var(--primary)' }}
         />
       </div>
 
-      {/* Step Indicator Text */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-600 font-medium">
-          Step {current} of {total}
-        </p>
-        <p className="text-xs text-gray-600 font-medium">
-          {percentage}%
-        </p>
-      </div>
+      {/* Optional: subtle step indicator text below */}
+      <p className="text-xs text-gray-500 font-medium mt-2">
+        Step {current} of {total}
+      </p>
     </div>
   );
 }

@@ -56,7 +56,7 @@ export default function AdditionalConcernsScreen({
             <Button
               onClick={handleSubmit}
               disabled={!isValid || isLoading}
-              className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Continuing...' : 'Continue →'}
             </Button>
@@ -69,7 +69,7 @@ export default function AdditionalConcernsScreen({
           placeholder="Any specific course preferences, timing constraints, or other concerns..."
           value={concerns}
           onChange={(e) => setConcerns(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400 resize-none"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400 resize-none"
           rows={6}
           disabled={isLoading}
           autoFocus

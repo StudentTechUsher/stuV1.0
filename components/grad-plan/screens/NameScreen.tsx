@@ -30,24 +30,25 @@ export default function NameScreen({
 
   return (
     <WizardFormLayout
-      title="What's your name?"
-      subtitle="Feel free to change your name if needed."
+      title=""
+      subtitle=""
       footerButtons={
-        <div className="flex gap-3 justify-between">
+        <div className="flex gap-2 md:gap-3">
           <Button
             variant="outline"
             onClick={onBack}
             disabled={isLoading}
-            className="px-6 py-2 text-base font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="px-4 md:px-5 py-2 text-sm font-medium text-gray-700 border-gray-300 hover:bg-gray-50"
           >
-            ← Back
+            Back
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!isValid || isLoading}
-            className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--primary)', color: 'black' }}
+            className="px-4 md:px-5 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
-            {isLoading ? 'Continuing...' : 'Continue →'}
+            {isLoading ? 'Continuing...' : 'Continue'}
           </Button>
         </div>
       }
@@ -58,7 +59,8 @@ export default function NameScreen({
           placeholder="Enter your full name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+          style={{ '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-inset text-gray-900 placeholder-gray-500 transition-shadow"
           disabled={isLoading}
           autoFocus
         />

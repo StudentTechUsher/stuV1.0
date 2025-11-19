@@ -99,7 +99,7 @@ export default function CareerGoalsScreen({
               <Button
                 onClick={handleIndustrySubmit}
                 disabled={!isIndustryStepValid || isLoading}
-                className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Continuing...' : 'Continue →'}
               </Button>
@@ -130,7 +130,7 @@ export default function CareerGoalsScreen({
               placeholder="e.g., Data Science, Nursing, Environmental Science..."
               value={customIndustry}
               onChange={(e) => setCustomIndustry(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400"
               disabled={isLoading}
             />
           </div>
@@ -166,7 +166,7 @@ export default function CareerGoalsScreen({
           <Button
             onClick={handleCommitmentSubmit}
             disabled={!isCommitmentValid || isLoading}
-            className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Continuing...' : 'Continue →'}
           </Button>
@@ -183,7 +183,7 @@ export default function CareerGoalsScreen({
               disabled={isLoading}
               className={`flex-1 py-3 px-2 rounded-lg font-semibold transition-colors ${
                 commitment === num
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
               } disabled:opacity-50`}
             >

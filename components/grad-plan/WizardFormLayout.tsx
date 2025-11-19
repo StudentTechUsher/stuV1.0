@@ -9,6 +9,11 @@ interface WizardFormLayoutProps {
   footerButtons?: ReactNode;
 }
 
+/**
+ * WizardFormLayout - minimal form container
+ * Used within WizardContainer to structure individual step content
+ * Provides consistent spacing and button layout
+ */
 export default function WizardFormLayout({
   title,
   subtitle,
@@ -16,27 +21,29 @@ export default function WizardFormLayout({
   footerButtons,
 }: WizardFormLayoutProps) {
   return (
-    <div className="w-full space-y-8">
-      {/* Question Section */}
-      <div>
-        <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 leading-tight">
-          {title}
-        </h2>
-        {subtitle && (
-          <p className="text-sm text-gray-600 mt-3 max-w-lg">
-            {subtitle}
-          </p>
-        )}
-      </div>
+    <div className="w-full space-y-6">
+      {/* Question Title & Subtitle - handled by WizardContainer, but kept here for optional use */}
+      {title && (
+        <div>
+          <h2 className="text-xl md:text-2xl font-semibold text-gray-900 leading-tight">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="text-sm text-gray-600 mt-2 max-w-lg leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* Form Content */}
+      {/* Form/Content area - compact and responsive */}
       <div className="w-full">
         {children}
       </div>
 
-      {/* Footer Buttons */}
+      {/* Navigation buttons - minimal, compact layout */}
       {footerButtons && (
-        <div className="pt-4">
+        <div className="pt-2 flex gap-3 justify-center md:justify-end">
           {footerButtons}
         </div>
       )}

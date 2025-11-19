@@ -83,7 +83,7 @@ export default function TranscriptScreen({
             <Button
               onClick={() => onSubmit(false, false)}
               disabled={isLoading}
-              className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Continuing...' : 'Continue →'}
             </Button>
@@ -111,7 +111,10 @@ export default function TranscriptScreen({
                 handleFileChange(syntheticEvent);
               }
             }}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-500 transition-colors cursor-pointer bg-gray-50"
+            style={{ borderColor: uploadedFile ? 'var(--primary)' : 'rgb(209, 213, 219)' }}
+            className="border-2 border-dashed rounded-lg p-8 text-center hover:transition-colors cursor-pointer bg-gray-50"
+            onMouseEnter={(e) => !uploadedFile && (e.currentTarget.style.borderColor = 'var(--primary)')}
+            onMouseLeave={(e) => !uploadedFile && (e.currentTarget.style.borderColor = 'rgb(209, 213, 219)')}
           >
             {uploadedFile ? (
               <>
@@ -126,7 +129,7 @@ export default function TranscriptScreen({
                 <p className="text-xs text-gray-500">
                   {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
-                <p className="text-xs text-indigo-600 mt-2 font-medium">
+                <p className="text-xs mt-2 font-medium" style={{ color: 'var(--primary)' }}>
                   Click to change file
                 </p>
               </>
@@ -185,7 +188,7 @@ export default function TranscriptScreen({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || isLoading}
-            className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Continuing...' : 'Continue →'}
           </Button>

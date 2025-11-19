@@ -56,8 +56,12 @@ export default function GeneratingPlanScreen({
           {/* Outer rotating circle */}
           <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
           <div
-            className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-600 border-r-indigo-600 animate-spin"
-            style={{ animationDuration: '2s' }}
+            className="absolute inset-0 rounded-full border-4 border-transparent animate-spin"
+            style={{
+              borderTopColor: 'var(--primary)',
+              borderRightColor: 'var(--primary)',
+              animationDuration: '2s'
+            }}
           />
           {/* Center circle */}
           <div className="absolute inset-4 rounded-full border-4 border-gray-200" />
@@ -92,13 +96,13 @@ export default function GeneratingPlanScreen({
               </p>
               {!step.completed && index === steps.findIndex(s => !s.completed) && (
                 <div className="flex gap-1 mt-1">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce" />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" />
                   <span
-                    className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce"
+                    className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce"
                     style={{ animationDelay: '0.2s' }}
                   />
                   <span
-                    className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce"
+                    className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce"
                     style={{ animationDelay: '0.4s' }}
                   />
                 </div>

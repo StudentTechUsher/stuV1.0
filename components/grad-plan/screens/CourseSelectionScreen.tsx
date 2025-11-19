@@ -197,7 +197,7 @@ export default function CourseSelectionScreen({
     return (
       <WizardFormLayout title="Loading courses..." subtitle="Fetching your program requirements...">
         <div className="flex justify-center py-12">
-          <Loader2 size={32} className="animate-spin text-indigo-600" />
+          <Loader2 size={32} className="animate-spin" style={{ color: 'var(--primary)' }} />
         </div>
       </WizardFormLayout>
     );
@@ -217,7 +217,7 @@ export default function CourseSelectionScreen({
             placeholder="Search courses by code or name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -273,7 +273,7 @@ export default function CourseSelectionScreen({
                         <p className="text-xs text-gray-600">
                           {group.programName}
                           {sectionSelectedCount > 0 && (
-                            <span className="ml-2 font-semibold text-indigo-600">
+                            <span className="ml-2 font-semibold" style={{ color: 'var(--primary)' }}>
                               ({sectionSelectedCount} selected)
                             </span>
                           )}
@@ -316,7 +316,8 @@ export default function CourseSelectionScreen({
                                   }
                                 });
                               }}
-                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mt-1 flex-shrink-0"
+                              style={{ accentColor: 'var(--primary)' }}
+                              className="w-4 h-4 rounded border-gray-300 focus:ring-primary mt-1 flex-shrink-0"
                             />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900">
@@ -355,7 +356,7 @@ export default function CourseSelectionScreen({
           <Button
             onClick={handleSubmit}
             disabled={selectedCount === 0 || isLoading}
-            className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Continuing...' : 'Continue →'}
           </Button>

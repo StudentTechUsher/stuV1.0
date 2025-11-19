@@ -572,11 +572,11 @@ export default function CourseSelectionForm({
 
   if (loadingProgramData) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className="w-full">
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
-            <p className="text-sm text-muted-foreground">Loading program requirements...</p>
+            <p className="text-sm text-gray-600">Loading program requirements...</p>
           </div>
         </div>
       </div>
@@ -585,21 +585,21 @@ export default function CourseSelectionForm({
 
   if (dataLoadError) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className="w-full">
         <Alert severity="error">{dataLoadError}</Alert>
       </div>
     );
   }
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm max-h-[600px] overflow-y-auto">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <BookOpen size={20} />
-          Select Courses for Requirements
+    <div className="w-full">
+      <div className="mb-4">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <BookOpen size={18} />
+          Select Your Courses
         </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Choose specific courses to fulfill each program requirement
+        <p className="text-xs text-gray-600 mt-1">
+          Choose courses to fulfill each requirement
         </p>
       </div>
 
@@ -618,12 +618,12 @@ export default function CourseSelectionForm({
         </Button>
       </div> */}
 
-      <div className="space-y-6">
+      <div className="space-y-3">
         {/* General Education Requirements (Undergraduate Only) */}
         {!isGraduateStudent && requirements.length > 0 && (
           <div>
-            <h4 className="font-semibold mb-4">General Education Requirements</h4>
-            <div className="space-y-6">
+            <h4 className="text-sm font-semibold mb-3 text-gray-900">General Education</h4>
+            <div className="space-y-3">
               {requirements.map((req, idx) => {
                 const dropdownCount = getDropdownCount(req);
                 const courses = requirementCoursesMap[req.subtitle] || [];
@@ -633,7 +633,7 @@ export default function CourseSelectionForm({
                 const { recommendations } = getRecommendationsForRequirement(courses);
 
                 return (
-                  <div key={`${req.subtitle}-${idx}`} className="space-y-3 border rounded-lg p-3">
+                  <div key={`${req.subtitle}-${idx}`} className="space-y-2 border border-gray-200 rounded p-2.5">
                     <button
                       type="button"
                       onClick={() => setExpandedSections(prev => ({
@@ -734,11 +734,11 @@ export default function CourseSelectionForm({
 
           return (
             <div key={programId}>
-              <h4 className="font-semibold mb-4">
+              <h4 className="text-sm font-semibold mb-3 text-gray-900">
                 {program.name} {program.version && `(${program.version})`}
               </h4>
 
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {programReqs.map((req, reqIdx) => {
                   if (!req.courses || req.courses.length === 0) return null;
 
@@ -751,7 +751,7 @@ export default function CourseSelectionForm({
                   const { recommendations: progRecommendations } = getRecommendationsForRequirement(validCourses);
 
                   return (
-                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-3 border rounded-lg p-3">
+                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-2 border border-gray-200 rounded p-2.5">
                       <button
                         type="button"
                         onClick={() => setExpandedSections(prev => ({
@@ -837,9 +837,9 @@ export default function CourseSelectionForm({
 
         {/* Elective Courses */}
         <div>
-          <h4 className="font-semibold mb-4">Additional Elective Courses (Optional)</h4>
-          <p className="text-sm text-muted-foreground mb-3">
-            Add any additional elective courses you want to take
+          <h4 className="text-sm font-semibold mb-2 text-gray-900">Additional Electives (Optional)</h4>
+          <p className="text-xs text-gray-600 mb-3">
+            Add extra courses you want to take
           </p>
 
           <div className="space-y-4">
@@ -939,8 +939,13 @@ export default function CourseSelectionForm({
               <Button
                 onClick={handleAddElective}
                 disabled={!selectedElectiveCourse}
-                className="bg-[#0a1f1a] hover:bg-[#043322] disabled:bg-gray-300"
-                style={{ minWidth: '44px', padding: '8px' }}
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'black',
+                  minWidth: '44px',
+                  padding: '8px'
+                }}
+                className="hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 <Plus size={20} />
               </Button>
@@ -967,13 +972,16 @@ export default function CourseSelectionForm({
         </div>
 
         {/* Submit Button */}
-        <div className="pt-4">
+        <div className="pt-3 flex gap-2 justify-end">
           <Button
             onClick={handleSubmit}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+            style={{
+              backgroundColor: 'var(--primary)',
+              color: 'black'
+            }}
+            className="px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            <Plus size={18} />
-            Continue with Selected Courses
+            Continue
           </Button>
         </div>
       </div>

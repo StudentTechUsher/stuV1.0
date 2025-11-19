@@ -343,7 +343,7 @@ export default function StudentInterestsScreen({
             <Button
               onClick={handleSubmit}
               disabled={!isValid || isLoading}
-              className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Continuing...' : 'Continue →'}
             </Button>
@@ -364,7 +364,7 @@ export default function StudentInterestsScreen({
                 disabled={selectedInterests.includes(interest) || isLoading}
                 className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                   selectedInterests.includes(interest)
-                    ? 'bg-indigo-600 text-white cursor-not-allowed opacity-50'
+                    ? 'bg-primary text-white cursor-not-allowed opacity-50'
                     : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                 } disabled:cursor-not-allowed`}
               >
@@ -385,7 +385,7 @@ export default function StudentInterestsScreen({
             onKeyDown={handleSearchKeyDown}
             disabled={isLoading}
             autoFocus
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-400"
           />
 
           {/* Autocomplete Suggestions Dropdown */}
@@ -396,7 +396,7 @@ export default function StudentInterestsScreen({
                   key={suggestion}
                   type="button"
                   onClick={() => handleAddInterest(suggestion)}
-                  className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-sm text-gray-900 border-b border-gray-200 last:border-b-0"
+                  className="w-full text-left px-4 py-2 hover:bg-primary bg-opacity-10 text-sm text-gray-900 border-b border-gray-200 last:border-b-0"
                 >
                   {suggestion}
                 </button>
@@ -412,19 +412,19 @@ export default function StudentInterestsScreen({
 
         {/* Selected Interests Display */}
         {selectedInterests.length > 0 && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <p className="text-sm font-medium text-indigo-900 mb-3">Selected interests ({selectedInterests.length}):</p>
+          <div className="bg-primary bg-opacity-10 border border-gray-300 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-900 mb-3">Selected interests ({selectedInterests.length}):</p>
             <div className="flex flex-wrap gap-2">
               {selectedInterests.map(interest => (
                 <div
                   key={interest}
-                  className="inline-flex items-center gap-2 bg-white border border-indigo-300 text-indigo-900 px-3 py-1 rounded-full text-sm"
+                  className="inline-flex items-center gap-2 bg-white border border-primary text-gray-900 px-3 py-1 rounded-full text-sm"
                 >
                   <span>{interest}</span>
                   <button
                     type="button"
                     onClick={() => handleRemoveInterest(interest)}
-                    className="hover:text-indigo-700 flex-shrink-0"
+                    className="hover:opacity-80 flex-shrink-0"
                   >
                     <X size={16} />
                   </button>

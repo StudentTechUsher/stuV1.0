@@ -123,7 +123,7 @@ export default function GraduationDateScreen({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || isLoading}
-            className="px-6 py-2 text-base font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Continuing...' : 'Continue →'}
           </Button>
@@ -158,7 +158,7 @@ export default function GraduationDateScreen({
             id="grad-year"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 bg-white"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white"
             disabled={isLoading}
             autoFocus
           >
