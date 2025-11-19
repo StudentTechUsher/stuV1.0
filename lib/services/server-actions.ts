@@ -546,6 +546,7 @@ export async function updateProfileForChatbotAction(
         estGradDate?: string | null;
         estGradSem?: string | null;
         careerGoals?: string | null;
+        potentialCareerPaths?: string | null;
     }
 ) {
     try {
@@ -561,20 +562,42 @@ export async function updateProfileForChatbotAction(
             return { success: false, error: 'Not authorized to modify this profile' };
         }
 
-        // Build updates object with proper field names
-        const updates: Record<string, string | null> = {};
+        // Build updates for profiles table
+        const profileUpdates: Record<string, string | null> = {};
 
         if (data.estGradDate !== undefined) {
-            updates.est_grad_date = data.estGradDate;
+            profileUpdates.est_grad_date = data.estGradDate;
         }
         if (data.estGradSem !== undefined) {
-            updates.est_grad_sem = data.estGradSem;
-        }
-        if (data.careerGoals !== undefined) {
-            updates.career_goals = data.careerGoals;
+            profileUpdates.est_grad_sem = data.estGradSem;
         }
 
-        await _updateProfile(userId, updates);
+        // Build updates for students table
+        const studentUpdates: Record<string, string | null> = {};
+
+        if (data.potentialCareerPaths !== undefined) {
+            studentUpdates.targeted_career = data.potentialCareerPaths;
+        }
+        // Note: selected_interests field expects int8[] (interest IDs from lookup table)
+        // For free-form text interests from the grad plan wizard, we're not saving those
+        // as they're meant for informational purposes during the planning process only
+
+        // Update profiles table if there are updates
+        if (Object.keys(profileUpdates).length > 0) {
+            await _updateProfile(userId, profileUpdates);
+        }
+
+        // Update student table if there are updates
+        if (Object.keys(studentUpdates).length > 0) {
+            const { error } = await supabase
+                .from('student')
+                .update(studentUpdates)
+                .eq('profile_id', userId);
+
+            if (error) {
+                throw new Error(`Failed to update student record: ${error.message}`);
+            }
+        }
 
         return {
             success: true,
@@ -582,6 +605,7 @@ export async function updateProfileForChatbotAction(
                 estGradDate: data.estGradDate ?? null,
                 estGradSem: data.estGradSem ?? null,
                 careerGoals: data.careerGoals ?? null,
+                potentialCareerPaths: data.potentialCareerPaths ?? null,
             },
         };
     } catch (error) {

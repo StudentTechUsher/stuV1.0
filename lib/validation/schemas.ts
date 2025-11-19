@@ -94,9 +94,11 @@ export type SendEmailInput = yup.InferType<typeof sendEmailSchema>;
 // ============================================================================
 
 export const courseSelectionPayloadSchema = yup.object({
-  programs: yup.mixed().required('Programs data is required'),
-  generalEducation: yup.mixed().required('General education data is required'),
-  selectionMode: yup.string().oneOf(['AUTO', 'MANUAL', 'CHOICE']).default('MANUAL'),
+  // Fields that may come from client (from create-plan-client.tsx)
+  selectedCourses: yup.mixed().optional(),
+  programs: yup.mixed().optional(),
+  studentType: yup.string().optional(),
+  selectionMode: yup.string().oneOf(['AUTO', 'MANUAL', 'CHOICE']).optional(),
   selectedPrograms: yup.array().of(
     yup.mixed() // Can be string or number
   ).optional(),
@@ -106,9 +108,30 @@ export const courseSelectionPayloadSchema = yup.object({
       title: yup.string().required('Course title is required'),
       credits: yup.number().required('Course credits are required'),
       term: yup.string().required('Course term is required'),
-      grade: yup.string().required('Course grade is required'),
-      status: yup.string().required('Course status is required'),
-      source: yup.string().required('Course source is required'),
+      grade: yup.string().optional(),
+      status: yup.string().optional(),
+      source: yup.string().optional(),
+    })
+  ).optional().default([]),
+
+  // Optional fields from SelectedClassesPayload
+  generalEducation: yup.mixed().optional(),
+  timestamp: yup.string().optional(),
+  genEdPrograms: yup.array().of(yup.string()).optional(),
+  assumptions: yup.object().optional(),
+  userAddedElectives: yup.array().of(
+    yup.object({
+      code: yup.string().required('Code is required'),
+      title: yup.string().required('Title is required'),
+      credits: yup.number().required('Credits are required'),
+    })
+  ).optional(),
+  recommendedElectives: yup.array().of(
+    yup.object({
+      code: yup.string().optional(),
+      title: yup.string().optional(),
+      score: yup.number().min(0).max(3).optional(),
+      matchReasons: yup.array().of(yup.string()).optional(),
     })
   ).optional().default([]),
 });

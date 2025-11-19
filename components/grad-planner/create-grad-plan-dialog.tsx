@@ -22,13 +22,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import { StuLoader } from '@/components/ui/StuLoader';
-import AddIcon from '@mui/icons-material/Add';
 import { Sparkles } from 'lucide-react';
 import { searchCourseOfferings, type CourseOffering } from '@/lib/services/courseOfferingService';
+import { recommendCourses, type CourseRecommendation } from '@/lib/services/courseRecommendationService';
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
-import { OrganizeCoursesIntoSemesters } from '@/lib/services/client-actions';
-import { updateGradPlanNameAction, fetchUserCoursesAction } from '@/lib/services/server-actions';
+import { fetchUserCoursesAction } from '@/lib/services/server-actions';
 import { decodeAccessIdClient } from '@/lib/utils/access-id';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import {
@@ -118,6 +117,8 @@ interface CreateGradPlanDialogProps {
   initialPlanName?: string;
   isGraduateStudent?: boolean;
   onShowSnackbar?: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
+  careerGoals?: string | null;
+  studentInterests?: string | null;
 }
 
 export default function CreateGradPlanDialog({
@@ -133,7 +134,9 @@ export default function CreateGradPlanDialog({
   prompt,
   initialPlanName,
   isGraduateStudent = false,
-  onShowSnackbar
+  onShowSnackbar,
+  careerGoals,
+  studentInterests
 }: Readonly<CreateGradPlanDialogProps>) {
 
   // State: program data (loaded dynamically)
@@ -657,9 +660,14 @@ const handleRemoveElective = (id: string) => {
     // Replace any mentions of "120 credits" in the prompt with the calculated target
     const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
 
-    const augmentedPrompt = isGraduateStudent
-      ? `${promptWithCredits}\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ${effectiveTargetCredits}`
-      : `${promptWithCredits}\n\nGenEd Sequencing Preference:\n${strategyText}\n\nTarget Total Credits: ${effectiveTargetCredits}`;
+    // Prepare prompt augmentation with recommended courses info
+    let promptAugmentation: string;
+    if (isGraduateStudent) {
+      promptAugmentation = promptWithCredits + '\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ' + effectiveTargetCredits;
+    } else {
+      promptAugmentation = promptWithCredits + '\n\nGenEd Sequencing Preference:\n' + strategyText + '\n\nTarget Total Credits: ' + effectiveTargetCredits;
+    }
+
 
     const plannerPayload = generateSelectedClassesJson;
     if (!plannerPayload || typeof plannerPayload !== 'object' || Array.isArray(plannerPayload)) {
@@ -699,13 +707,93 @@ const handleRemoveElective = (id: string) => {
       }
     }
 
-    // Add takenCourses to the payload
+    // Generate recommended elective courses based on career goals and interests
+    let recommendedElectives: CourseRecommendation[] = [];
+    let recommendationInstructions = '';
+
+    if (careerGoals || studentInterests) {
+      try {
+        // Get available courses to recommend from
+        const availableCourses = await searchCourseOfferings(universityId);
+
+        if (availableCourses && availableCourses.length > 0) {
+          // Get major/minor selections from payload (if available)
+          const selectedMajorMinors: string[] = [];
+          if (plannerPayload.selectedPrograms && Array.isArray(plannerPayload.selectedPrograms)) {
+            selectedMajorMinors.push(...plannerPayload.selectedPrograms);
+          }
+
+          // Generate recommendations based on career goals and interests
+          const recommendations = recommendCourses(
+            availableCourses.map(course => ({
+              id: String(course.offering_id),
+              code: course.course_code,
+              title: course.title,
+              credits: course.credits_decimal || 0,
+              description: course.description || ''
+            })),
+            {
+              careerGoals: careerGoals || null,
+              studentInterests: studentInterests || null,
+              selectedMajorMinors: selectedMajorMinors.length > 0 ? selectedMajorMinors : []
+            }
+          );
+
+          // Take top recommended courses (up to 20) for the AI to use
+          recommendedElectives = recommendations.slice(0, 20);
+
+          // Create instruction text for the prompt
+          if (recommendedElectives.length > 0) {
+            const courseList = recommendedElectives
+              .slice(0, 10) // Show top 10 in prompt
+              .map(r => `${r.courseCode}: ${r.courseTitle}`)
+              .join(', ');
+            recommendationInstructions = `\n\nRecommended Elective Courses (based on student's career goals and interests): ${courseList}\n\nWhen filling remaining credit requirements with elective courses, prioritize these recommended courses as they align with the student's goals and interests.`;
+          }
+
+          console.log('📚 Generated recommended electives:', {
+            count: recommendedElectives.length,
+            topRecommendations: recommendedElectives.slice(0, 5).map(r => ({
+              code: r.courseCode,
+              title: r.courseTitle,
+              score: r.score
+            }))
+          });
+        }
+      } catch (error) {
+        console.error('Error generating course recommendations:', error);
+        // Continue without recommendations if there's an error
+      }
+    }
+
+    // Add takenCourses and recommended electives to the payload
     const enrichedPayload = {
       ...plannerPayload,
       takenCourses,
+      recommendedElectives: recommendedElectives && recommendedElectives.length > 0
+        ? recommendedElectives.map(rec => ({
+            code: rec.courseCode,
+            title: rec.courseTitle,
+            score: rec.score,
+            matchReasons: rec.matchReasons || []
+          }))
+        : []
     };
 
-    const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
+    // Add recommendation instructions to the prompt
+    const finalPrompt = promptAugmentation + recommendationInstructions;
+
+    const promptPayload: OrganizePromptInput = { prompt: finalPrompt };
+
+    // Log payload details before sending
+    console.log('📤 Sending enriched payload to API:', {
+      hasPrograms: 'programs' in enrichedPayload,
+      hasGeneralEducation: 'generalEducation' in enrichedPayload,
+      hasTakenCourses: 'takenCourses' in enrichedPayload,
+      hasRecommendedElectives: 'recommendedElectives' in enrichedPayload,
+      recommendedElectivesCount: enrichedPayload.recommendedElectives?.length || 0,
+      takenCoursesCount: enrichedPayload.takenCourses?.length || 0
+    });
 
     // Show snackbar and close dialog immediately
     if (onShowSnackbar) {
@@ -714,14 +802,17 @@ const handleRemoveElective = (id: string) => {
     onClose();
 
     // Call API route to process in background (fire and forget)
+    const requestPayload = {
+      coursesData: enrichedPayload,
+      promptInput: promptPayload,
+      planName: sanitizedPlanName
+    };
+    console.log('📡 Full request payload:', JSON.stringify(requestPayload, null, 2).substring(0, 500));
+
     fetch('/api/grad-plan/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        coursesData: enrichedPayload,
-        promptInput: promptPayload,
-        planName: sanitizedPlanName
-      })
+      body: JSON.stringify(requestPayload)
     }).then(response => response.json())
       .then(result => console.log('✅ Grad plan generation started:', result))
       .catch(error => console.error('❌ Failed to start grad plan generation:', error));

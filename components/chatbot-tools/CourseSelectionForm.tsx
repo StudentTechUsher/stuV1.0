@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { StuLoader } from '@/components/ui/StuLoader';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
@@ -12,8 +13,7 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
-import { BookOpen, Plus, X, Compass } from 'lucide-react';
-import Link from 'next/link';
+import { BookOpen, Plus, X } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -23,7 +23,6 @@ import {
 import type { ProgramRow } from '@/types/program';
 import {
   parseRequirementsFromGenEd,
-  parseProgramRequirements,
   getProgramDropdownCount,
   collectCourses,
   creditText,
@@ -40,12 +39,17 @@ import {
   getDepartmentCodesAction,
   getCoursesByDepartmentAction,
 } from '@/lib/services/server-actions';
+import { recommendCourses, type CourseRecommendationContext } from '@/lib/services/courseRecommendationService';
+import CourseRecommendationPanel from './CourseRecommendationPanel';
 
 interface CourseSelectionFormProps {
   studentType: 'undergraduate' | 'graduate';
   universityId: number;
   selectedProgramIds: number[];
   genEdProgramIds?: number[];
+  careerGoals?: string | null;
+  studentInterests?: string | null;
+  selectedMajorMinors?: string[];
   onSubmit: (data: CourseSelectionInput) => void;
 }
 
@@ -54,6 +58,9 @@ export default function CourseSelectionForm({
   universityId,
   selectedProgramIds,
   genEdProgramIds = [],
+  careerGoals = null,
+  studentInterests = null,
+  selectedMajorMinors = [],
   onSubmit,
 }: Readonly<CourseSelectionFormProps>) {
   // Program data state
@@ -81,8 +88,30 @@ export default function CourseSelectionForm({
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
 
+  // Track which sections are expanded (auto-selected sections start collapsed)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
+
+  // Build recommendation context
+  const recommendationContext = useMemo<CourseRecommendationContext>(() => ({
+    careerGoals,
+    studentInterests,
+    selectedMajorMinors,
+  }), [careerGoals, studentInterests, selectedMajorMinors]);
+
+  // Helper function to process courses for recommendations
+  const processCourses = useCallback((courses: unknown[]) => {
+    return courses
+      .filter((c: any) => c.status !== 'retired' && c.credits != null && c.title && c.code)
+      .map((c: any) => ({
+        id: c.code,
+        code: c.code,
+        title: c.title || 'Unknown',
+        description: c.title || '', // Use title as fallback for description
+      }));
+  }, []);
 
   // Fetch program data when component mounts
   useEffect(() => {
@@ -238,6 +267,63 @@ export default function CourseSelectionForm({
     }
     return map;
   }, [requirements]);
+
+  // Memoized recommendations for general education requirements
+  const genEdRecommendationsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    // Only compute if we have recommendation context
+    if (!careerGoals && !studentInterests) {
+      return map;
+    }
+
+    for (const req of requirements) {
+      const courses = requirementCoursesMap[req.subtitle] || [];
+      
+      // Only show recommendations if there are more than 3 courses
+      if (courses.length <= 3) {
+        map[req.subtitle] = [];
+        continue;
+      }
+
+      const courseData = processCourses(courses);
+      map[req.subtitle] = recommendCourses(courseData, recommendationContext);
+    }
+    
+    return map;
+  }, [requirements, requirementCoursesMap, careerGoals, studentInterests, processCourses, recommendationContext]);
+
+  // Memoized recommendations for program requirements
+  const programRecommendationsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    // Only compute if we have recommendation context
+    if (!careerGoals && !studentInterests) {
+      return map;
+    }
+
+    Array.from(selectedPrograms).forEach(programId => {
+      const programReqs = programRequirementsMap[programId] || [];
+      programReqs.forEach(req => {
+        if (!req.courses || req.courses.length === 0) return;
+        
+        const validCourses = getValidCourses(req);
+        
+        // Only show recommendations if there are more than 3 courses
+        if (validCourses.length <= 3) {
+          const requirementKey = getRequirementKey(programId, req);
+          map[requirementKey] = [];
+          return;
+        }
+
+        const courseData = processCourses(validCourses);
+        const requirementKey = getRequirementKey(programId, req);
+        map[requirementKey] = recommendCourses(courseData, recommendationContext);
+      });
+    });
+    
+    return map;
+  }, [selectedPrograms, programRequirementsMap, careerGoals, studentInterests, processCourses, recommendationContext]);
 
   // Ensure state array length matches dropdown count
   const ensureSlots = useCallback((subtitle: string, count: number) => {
@@ -532,34 +618,32 @@ export default function CourseSelectionForm({
 
   if (loadingProgramData) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
-            <p className="text-sm text-muted-foreground">Loading program requirements...</p>
-          </div>
-        </div>
+      <div className="w-full flex items-center justify-center py-8">
+        <StuLoader
+          variant="card"
+          text="Loading program requirements..."
+        />
       </div>
     );
   }
 
   if (dataLoadError) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className="w-full">
         <Alert severity="error">{dataLoadError}</Alert>
       </div>
     );
   }
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm max-h-[600px] overflow-y-auto">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <BookOpen size={20} />
-          Select Courses for Requirements
+    <div className="w-full">
+      <div className="mb-4">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <BookOpen size={18} />
+          Select Your Courses
         </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Choose specific courses to fulfill each program requirement
+        <p className="text-xs text-gray-600 mt-1">
+          Choose courses to fulfill each requirement
         </p>
       </div>
 
@@ -578,26 +662,41 @@ export default function CourseSelectionForm({
         </Button>
       </div> */}
 
-      <div className="space-y-6">
+      <div className="space-y-3">
         {/* General Education Requirements (Undergraduate Only) */}
         {!isGraduateStudent && requirements.length > 0 && (
           <div>
-            <h4 className="font-semibold mb-4">General Education Requirements</h4>
-            <div className="space-y-6">
+            <h4 className="text-sm font-semibold mb-3 text-gray-900">General Education</h4>
+            <div className="space-y-3">
               {requirements.map((req, idx) => {
                 const dropdownCount = getDropdownCount(req);
                 const courses = requirementCoursesMap[req.subtitle] || [];
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                const sectionKey = `gen-ed-${req.subtitle}`;
+                const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
+                const recommendations = genEdRecommendationsMap[req.subtitle] || [];
 
                 return (
-                  <div key={`${req.subtitle}-${idx}`} className="space-y-3">
-                    <div className="flex items-center gap-2">
+                  <div key={`${req.subtitle}-${idx}`} className="space-y-2 border border-gray-200 rounded p-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedSections(prev => ({
+                        ...prev,
+                        [sectionKey]: !isExpanded,
+                      }))}
+                      className="w-full flex items-center gap-2 cursor-pointer hover:opacity-80"
+                    >
+                      <div className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </div>
                       <p className="text-sm font-medium">{req.subtitle}</p>
                       {isAutoSelected && (
                         <Chip
                           label="Auto-selected"
                           size="small"
-                          className="text-xs"
+                          className="text-xs ml-auto"
                           sx={{
                             backgroundColor: 'var(--primary)',
                             color: 'white',
@@ -605,46 +704,61 @@ export default function CourseSelectionForm({
                           }}
                         />
                       )}
-                    </div>
-                    {isAutoSelected && (
-                      <p className="text-xs text-muted-foreground italic">
-                        All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
-                      </p>
-                    )}
+                    </button>
 
-                    {Array.from({ length: dropdownCount }).map((_, slot) => (
-                      <FormControl
-                        key={`${req.subtitle}-slot-${slot}`}
-                        fullWidth
-                        size="small"
-                        sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
-                      >
-                        <InputLabel>
-                          {dropdownCount > 1
-                            ? `${req.subtitle} — Course #${slot + 1}`
-                            : req.subtitle}
-                        </InputLabel>
-                        <Select
-                          value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
-                          label={
-                            dropdownCount > 1
-                              ? `${req.subtitle} — Course #${slot + 1}`
-                              : req.subtitle
-                          }
-                          disabled={isAutoSelected}
-                          onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
-                        >
-                          <MenuItem value=""><em>Select a course</em></MenuItem>
-                          {courses
-                            .filter(c => c.status !== 'retired' && c.credits != null)
-                            .map((c) => (
-                            <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code}>
-                              {c.code} — {c.title} ({creditText(c.credits)})
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ))}
+                    {isExpanded && (
+                      <>
+                        {isAutoSelected && (
+                          <p className="text-xs text-muted-foreground italic">
+                            All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                          </p>
+                        )}
+
+                        {recommendations.length > 0 && (
+                          <div className="mt-3 mb-3">
+                            <CourseRecommendationPanel
+                              recommendations={recommendations}
+                              dropdownCount={courses.length}
+                              onCourseSelect={(courseCode) => handleCourseSelection(req.subtitle, 0, courseCode)}
+                            />
+                          </div>
+                        )}
+
+                        {Array.from({ length: dropdownCount }).map((_, slot) => (
+                          <FormControl
+                            key={`${req.subtitle}-slot-${slot}`}
+                            fullWidth
+                            size="small"
+                            sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
+                          >
+                            <InputLabel>
+                              {dropdownCount > 1
+                                ? `${req.subtitle} — Course #${slot + 1}`
+                                : req.subtitle}
+                            </InputLabel>
+                            <Select
+                              value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
+                              label={
+                                dropdownCount > 1
+                                  ? `${req.subtitle} — Course #${slot + 1}`
+                                  : req.subtitle
+                              }
+                              disabled={isAutoSelected}
+                              onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
+                            >
+                              <MenuItem value=""><em>Select a course</em></MenuItem>
+                              {courses
+                                .filter(c => c.status !== 'retired' && c.credits != null)
+                                .map((c, courseIdx) => (
+                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}-${courseIdx}`} value={c.code}>
+                                  {c.code} — {c.title} ({creditText(c.credits)})
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        ))}
+                      </>
+                    )}
 
                     {idx < requirements.length - 1 && <Divider className="my-4" />}
                   </div>
@@ -664,11 +778,11 @@ export default function CourseSelectionForm({
 
           return (
             <div key={programId}>
-              <h4 className="font-semibold mb-4">
+              <h4 className="text-sm font-semibold mb-3 text-gray-900">
                 {program.name} {program.version && `(${program.version})`}
               </h4>
 
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {programReqs.map((req, reqIdx) => {
                   if (!req.courses || req.courses.length === 0) return null;
 
@@ -676,16 +790,31 @@ export default function CourseSelectionForm({
                   const requirementKey = getRequirementKey(programId, req);
                   const validCourses = getValidCourses(req);
                   const isAutoSelected = shouldAutoSelect(req, false);
+                  const sectionKey = `prog-req-${requirementKey}`;
+                  const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
+                  const progRecommendations = programRecommendationsMap[requirementKey] || [];
 
                   return (
-                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-3">
-                      <div className="flex items-center gap-2">
+                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-2 border border-gray-200 rounded p-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSections(prev => ({
+                          ...prev,
+                          [sectionKey]: !isExpanded,
+                        }))}
+                        className="w-full flex items-center gap-2 cursor-pointer hover:opacity-80"
+                      >
+                        <div className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}>
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </div>
                         <p className="text-sm font-medium">{req.description}</p>
                         {isAutoSelected && (
                           <Chip
                             label="Auto-selected"
                             size="small"
-                            className="text-xs"
+                            className="text-xs ml-auto"
                             sx={{
                               backgroundColor: 'var(--primary)',
                               color: 'white',
@@ -693,39 +822,53 @@ export default function CourseSelectionForm({
                             }}
                           />
                         )}
-                      </div>
+                      </button>
 
-                      {Array.from({ length: dropdownCount }).map((_, slot) => (
-                        <FormControl
-                          key={`${requirementKey}-slot-${slot}`}
-                          fullWidth
-                          size="small"
-                          sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
-                        >
-                          <InputLabel>
-                            {dropdownCount > 1
-                              ? `${req.description} — Course #${slot + 1}`
-                              : req.description}
-                          </InputLabel>
-                          <Select
-                            value={(selectedProgramCourses[requirementKey]?.[slot] ?? '')}
-                            label={
-                              dropdownCount > 1
-                                ? `${req.description} — Course #${slot + 1}`
-                                : req.description
-                            }
-                            disabled={isAutoSelected}
-                            onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
-                          >
-                            <MenuItem value=""><em>Select a course</em></MenuItem>
-                            {validCourses.map((c) => (
-                              <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
-                                {c.code} — {c.title} ({c.credits} cr)
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      ))}
+                      {isExpanded && (
+                        <>
+                          {progRecommendations.length > 0 && (
+                            <div className="mt-3 mb-3">
+                              <CourseRecommendationPanel
+                                recommendations={progRecommendations}
+                                dropdownCount={validCourses.length}
+                                onCourseSelect={(courseCode) => handleProgramCourseSelection(requirementKey, 0, courseCode)}
+                              />
+                            </div>
+                          )}
+
+                          {Array.from({ length: dropdownCount }).map((_, slot) => (
+                            <FormControl
+                              key={`${requirementKey}-slot-${slot}`}
+                              fullWidth
+                              size="small"
+                              sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
+                            >
+                              <InputLabel>
+                                {dropdownCount > 1
+                                  ? `${req.description} — Course #${slot + 1}`
+                                  : req.description}
+                              </InputLabel>
+                              <Select
+                                value={(selectedProgramCourses[requirementKey]?.[slot] ?? '')}
+                                label={
+                                  dropdownCount > 1
+                                    ? `${req.description} — Course #${slot + 1}`
+                                    : req.description
+                                }
+                                disabled={isAutoSelected}
+                                onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
+                              >
+                                <MenuItem value=""><em>Select a course</em></MenuItem>
+                                {validCourses.map((c) => (
+                                  <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
+                                    {c.code} — {c.title} ({c.credits} cr)
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          ))}
+                        </>
+                      )}
 
                       {reqIdx < programReqs.length - 1 && <Divider className="my-4" />}
                     </div>
@@ -738,9 +881,9 @@ export default function CourseSelectionForm({
 
         {/* Elective Courses */}
         <div>
-          <h4 className="font-semibold mb-4">Additional Elective Courses (Optional)</h4>
-          <p className="text-sm text-muted-foreground mb-3">
-            Add any additional elective courses you want to take
+          <h4 className="text-sm font-semibold mb-2 text-gray-900">Additional Electives (Optional)</h4>
+          <p className="text-xs text-gray-600 mb-3">
+            Add extra courses you want to take
           </p>
 
           <div className="space-y-4">
@@ -840,8 +983,13 @@ export default function CourseSelectionForm({
               <Button
                 onClick={handleAddElective}
                 disabled={!selectedElectiveCourse}
-                className="bg-[#0a1f1a] hover:bg-[#043322] disabled:bg-gray-300"
-                style={{ minWidth: '44px', padding: '8px' }}
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'black',
+                  minWidth: '44px',
+                  padding: '8px'
+                }}
+                className="hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 <Plus size={20} />
               </Button>
@@ -868,13 +1016,16 @@ export default function CourseSelectionForm({
         </div>
 
         {/* Submit Button */}
-        <div className="pt-4">
+        <div className="pt-3 flex gap-2 justify-end">
           <Button
             onClick={handleSubmit}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+            style={{
+              backgroundColor: 'var(--primary)',
+              color: 'black'
+            }}
+            className="px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            <Plus size={18} />
-            Continue with Selected Courses
+            Continue
           </Button>
         </div>
       </div>

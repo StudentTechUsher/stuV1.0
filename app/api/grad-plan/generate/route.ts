@@ -39,8 +39,25 @@ export async function POST(request: NextRequest) {
         organizePromptInputSchema.validate(promptInput, VALIDATION_OPTIONS),
       ]);
     } catch (validationError) {
+      const errorMessage = validationError instanceof Error ? validationError.message : String(validationError);
+      console.error('❌ Validation error in grad-plan generate API:', errorMessage);
+
+      // Log schema validation issues
+      if (validationError instanceof Error && validationError.name === 'ValidationError') {
+        console.error('❌ Validation error details:', (validationError as any).errors);
+        console.error('❌ Validation error inner:', (validationError as any).inner);
+      }
+
+      console.error('❌ coursesData keys:', Object.keys(coursesData || {}));
+      if (coursesData) {
+        console.error('❌ coursesData.programs exists:', 'programs' in coursesData);
+        console.error('❌ coursesData.generalEducation exists:', 'generalEducation' in coursesData);
+        console.error('❌ coursesData.recommendedElectives exists:', 'recommendedElectives' in coursesData);
+      }
+      console.error('❌ Received coursesData:', JSON.stringify(coursesData, null, 2));
+      console.error('❌ Received promptInput:', JSON.stringify(promptInput, null, 2));
       return NextResponse.json(
-        { success: false, message: `Validation error: ${validationError}` },
+        { success: false, message: `Validation error: ${errorMessage}` },
         { status: 400 }
       );
     }

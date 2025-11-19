@@ -30,14 +30,16 @@ interface CoursesDataInput {
   generalEducation?: unknown;
   selectionMode?: 'AUTO' | 'MANUAL' | 'CHOICE';
   selectedPrograms?: Array<string | number>;
+  selectedCourses?: unknown;
+  studentType?: string;
   takenCourses?: Array<{
     code: string;
     title: string;
     credits: number;
     term: string;
-    grade: string;
-    status: string;
-    source: string;
+    grade?: string;
+    status?: string;
+    source?: string;
   }>;
 }
 
@@ -98,18 +100,41 @@ export async function executeJsonPrompt(config: AiPromptConfig): Promise<OpenAIJ
     max_output_tokens = 25_000,
   } = config;
 
-  const payload = {
+  // Ensure the prompt explicitly asks for JSON output when using json_object format
+  const promptWithJsonInstruction = inputText.includes("json") || inputText.includes("JSON")
+    ? inputText
+    : `${inputText}\n\nRespond with ONLY valid JSON.`;
+
+  // Use max_completion_tokens for gpt-5 and newer models, max_tokens for older models
+  const isNewModel = model && (model.includes('gpt-5') || model.includes('gpt-4.1') || model.includes('o3') || model.includes('o4'));
+  const maxTokensKey = isNewModel ? 'max_completion_tokens' : 'max_tokens';
+
+  const payload: Record<string, unknown> = {
     model,
-    input: inputText,
-    text: { format: { type: "json_object" } },
-    max_output_tokens,
+    messages: [
+      {
+        role: "user",
+        content: promptWithJsonInstruction,
+      },
+    ],
+    temperature: 1,
   };
+
+  // Add the appropriate max tokens parameter
+  payload[maxTokensKey] = max_output_tokens;
+
+  // Only add response_format for models that support it
+  if (model && !model.includes('gpt-5') && !model.includes('o4')) {
+    payload.response_format = { type: "json_object" };
+  }
 
   const trunc = (s: string, n = 800) => (s.length > n ? `${s.slice(0, n)}…[+${s.length - n}]` : s);
 
+  console.log(`🔹 executeJsonPrompt: ${prompt_name}, model: ${model}, sending to OpenAI...`);
+
   let resp: Response;
   try {
-    resp = await fetch("https://api.openai.com/v1/responses", {
+    resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -118,12 +143,14 @@ export async function executeJsonPrompt(config: AiPromptConfig): Promise<OpenAIJ
       body: JSON.stringify(payload),
     });
   } catch (networkErr) {
+    console.error(`❌ Network error for ${prompt_name}:`, networkErr);
     return { success: false, message: `Network error calling OpenAI for ${prompt_name}: ${networkErr instanceof Error ? networkErr.message : 'unknown error'}` };
   }
 
   const requestId = resp.headers.get("x-request-id") || resp.headers.get("request-id");
   if (!resp.ok) {
     const errBody = await resp.text();
+    console.error(`❌ OpenAI error for ${prompt_name} (${resp.status}):`, trunc(errBody, 500));
     let errorMessage = `OpenAI API error (${resp.status})`;
     if ([502,503,504].includes(resp.status)) {
       errorMessage = `OpenAI temporarily unavailable (${resp.status}). Retry later.`;
@@ -137,38 +164,23 @@ export async function executeJsonPrompt(config: AiPromptConfig): Promise<OpenAIJ
     return { success: false, message: errorMessage, rawText: trunc(errBody), requestId };
   }
 
-  type ResponsesApiResult = {
-    status?: string;
-    output_text?: string;
-    output?: Array<{ content?: Array<{ type?: string; text?: { value?: string } | string | null }> }>;
-    incomplete_details?: { reason?: string };
+  type ChatCompletionResponse = {
+    choices?: Array<{
+      message?: { role?: string; content?: string };
+    }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   };
 
-  let aiResponse: ResponsesApiResult;
+  let aiResponse: ChatCompletionResponse;
   try {
-    aiResponse = (await resp.json()) as ResponsesApiResult;
+    aiResponse = (await resp.json()) as ChatCompletionResponse;
   } catch (parseErr) {
     return { success: false, message: `Unable to parse OpenAI JSON for ${prompt_name}: ${parseErr instanceof Error ? parseErr.message : 'unknown error'}` };
   }
 
-  let aiText = aiResponse.output_text;
-  if (!aiText && Array.isArray(aiResponse.output)) {
-    aiText = aiResponse.output
-      .flatMap(p => p?.content ?? [])
-      .map(c => {
-        if (!c) return "";
-        if (typeof c.text === "string") return c.text.trim();
-        const v = (c.text as { value?: string })?.value;
-        return typeof v === "string" ? v.trim() : "";
-      })
-      .filter(Boolean)
-      .join("\n");
-  }
-
-  if ((aiResponse.status && aiResponse.status !== "completed") || !aiText) {
-    const reason = aiResponse.incomplete_details?.reason ?? "unknown";
-    return { success: false, message: `AI run incomplete (${aiResponse.status ?? 'unknown'}: ${reason})`, rawText: aiText, requestId, usage: aiResponse.usage };
+  const aiText = aiResponse.choices?.[0]?.message?.content;
+  if (!aiText) {
+    return { success: false, message: `No response content from AI model for ${prompt_name}`, requestId, usage: aiResponse.usage };
   }
 
   let parsedJson: unknown;
@@ -213,12 +225,19 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       };
     }
 
-    // Basic shape check: expect programs & generalEducation collections
+    // Basic shape check: accept flexible payload structure
+    // The client can send either the old format (programs, generalEducation)
+    // or the new format (selectedCourses, takenCourses, selectedPrograms, etc.)
     const cd = coursesData as CoursesDataInput;
-    if (!cd.programs || !cd.generalEducation) {
+
+    // Validate that we have at least some course/program data
+    const hasOldFormat = cd.programs || cd.generalEducation;
+    const hasNewFormat = cd.takenCourses || cd.selectedCourses || cd.selectedPrograms;
+
+    if (!hasOldFormat && !hasNewFormat) {
       return {
         success: false,
-        message: "Course data missing required 'programs' or 'generalEducation' sections."
+        message: "Course data must include either courses/programs or taken courses/selected programs."
       };
     }
 

@@ -54,6 +54,7 @@ interface PlanHeaderProps {
     est_grad_date?: string | null;
     est_grad_sem?: string | null;
     career_goals?: string | null;
+    student_interests?: string | null;
     [key: string]: unknown;
   };
   onProfileUpdate?: (updates: Record<string, string | null>) => void;
@@ -466,6 +467,8 @@ export default function PlanHeader({
           prompt={prompt}
           isGraduateStudent={programSelections.isGraduateStudent}
           onShowSnackbar={handleShowSnackbar}
+          careerGoals={studentProfile?.career_goals}
+          studentInterests={studentProfile?.student_interests as string | null | undefined}
         />
       )}
 

@@ -63,9 +63,11 @@ interface GradPlanClientProps {
    * If retrieval fails upstream we pass an empty string so the dialog can still render.
    */
   prompt: string;
+  careerGoals?: string | null;
+  studentInterests?: string | null;
 }
 
-export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, prompt }: Readonly<GradPlanClientProps>) {
+export default function GradPlanClient({ user, studentRecord, allGradPlans, activeGradPlan, prompt, careerGoals, studentInterests }: Readonly<GradPlanClientProps>) {
   const router = useRouter();
 
   // Two-step dialog flow
@@ -661,6 +663,8 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           prompt={prompt}
           isGraduateStudent={programSelections.isGraduateStudent}
           onShowSnackbar={handleShowSnackbar}
+          careerGoals={careerGoals}
+          studentInterests={studentInterests}
         />
       )}
 
