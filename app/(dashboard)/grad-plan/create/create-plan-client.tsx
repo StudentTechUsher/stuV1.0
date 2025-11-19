@@ -249,7 +249,7 @@ export default function CreatePlanClient({
     const month = dateObj.getMonth() + 1; // getMonth is 0-indexed
 
     let semester = '';
-    if (month === 4 || month === 5) {
+    if (month === 4) {
       semester = 'Winter';
     } else if (month === 5) {
       semester = 'Spring';
