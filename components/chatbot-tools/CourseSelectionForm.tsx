@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { StuLoader } from '@/components/ui/StuLoader';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
@@ -572,13 +573,11 @@ export default function CourseSelectionForm({
 
   if (loadingProgramData) {
     return (
-      <div className="w-full">
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
-            <p className="text-sm text-gray-600">Loading program requirements...</p>
-          </div>
-        </div>
+      <div className="w-full flex items-center justify-center py-8">
+        <StuLoader
+          variant="card"
+          text="Loading program requirements..."
+        />
       </div>
     );
   }
@@ -705,8 +704,8 @@ export default function CourseSelectionForm({
                               <MenuItem value=""><em>Select a course</em></MenuItem>
                               {courses
                                 .filter(c => c.status !== 'retired' && c.credits != null)
-                                .map((c) => (
-                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code}>
+                                .map((c, courseIdx) => (
+                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}-${courseIdx}`} value={c.code}>
                                   {c.code} — {c.title} ({creditText(c.credits)})
                                 </MenuItem>
                               ))}

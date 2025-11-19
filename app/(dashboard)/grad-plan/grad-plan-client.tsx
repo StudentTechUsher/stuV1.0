@@ -21,6 +21,8 @@ interface GradPlanClientProps {
   studentProfile: {
     id: string;
     university_id: number;
+    career_goals?: string | null;
+    student_interests?: string | null;
     [key: string]: unknown;
   };
   gradPlan: GradPlanRecord | null;

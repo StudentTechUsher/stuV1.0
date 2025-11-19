@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
+import { StuLoader } from '@/components/ui/StuLoader';
 import {
   ConversationState,
   ConversationStep,
@@ -193,6 +194,14 @@ export default function CreatePlanClient({
         });
       });
     }
+  }, [conversationState.currentStep, isLoading]);
+
+  // Auto-start plan generation when reaching GENERATING_PLAN step
+  useEffect(() => {
+    if (conversationState.currentStep === ConversationStep.GENERATING_PLAN && !isLoading) {
+      handleGeneratePlan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationState.currentStep, isLoading]);
 
   // Get current step number for progress bar (1-indexed)
@@ -645,7 +654,7 @@ export default function CreatePlanClient({
         {
           prompt_name: 'organize_grad_plan',
           prompt: promptTemplate,
-          model: 'gpt-4-mini',
+          model: 'gpt-5-mini',
           max_output_tokens: 25_000,
         }
       );
@@ -682,21 +691,11 @@ export default function CreatePlanClient({
     // Handle INITIALIZE step (should auto-transition, but safeguard just in case)
     if (conversationState.currentStep === ConversationStep.INITIALIZE) {
       return (
-        <div className="w-full space-y-8">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900">
-              Initializing your graduation plan...
-            </h2>
-          </div>
-          <div className="flex justify-center py-12">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
-              <div
-                className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-600 border-r-indigo-600 animate-spin"
-                style={{ animationDuration: '2s' }}
-              />
-            </div>
-          </div>
+        <div className="w-full flex items-center justify-center min-h-screen">
+          <StuLoader
+            variant="page"
+            text="Initializing your graduation plan..."
+          />
         </div>
       );
     }
@@ -779,10 +778,10 @@ export default function CreatePlanClient({
       if (conversationState.collectedData.courseSelectionMethod === 'ai') {
         return (
           <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <p className="text-sm text-muted-foreground">Generating your personalized course plan...</p>
-            </div>
+            <StuLoader
+              variant="card"
+              text="Generating your personalized course plan..."
+            />
           </div>
         );
       }
@@ -816,7 +815,7 @@ export default function CreatePlanClient({
       // Show loading indicator while auto-completing COURSE_METHOD step
       return (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <StuLoader variant="inline" />
         </div>
       );
     } else if (conversationState.currentStep === ConversationStep.ADDITIONAL_CONCERNS) {
@@ -830,14 +829,16 @@ export default function CreatePlanClient({
         />
       );
     } else if (conversationState.currentStep === ConversationStep.GENERATING_PLAN) {
-      // Automatically start generation when reaching this step
-      useEffect(() => {
-        if (conversationState.currentStep === ConversationStep.GENERATING_PLAN && !isLoading) {
-          handleGeneratePlan();
-        }
-      }, [conversationState.currentStep]);
-
       return <GeneratingPlanScreen />;
+    } else if (conversationState.currentStep === ConversationStep.COMPLETE) {
+      return (
+        <div className="w-full flex items-center justify-center min-h-screen">
+          <StuLoader
+            variant="page"
+            text="Redirecting to your graduation plan..."
+          />
+        </div>
+      );
     }
 
     return (

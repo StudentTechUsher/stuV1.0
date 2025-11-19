@@ -67,6 +67,7 @@ export default function WizardScreenRouter({
     case ConversationStep.TRANSCRIPT_CHECK:
       return (
         <TranscriptScreen
+          hasCourses={false}
           onSubmit={(hasTranscript) =>
             onStepComplete({ hasTranscript, wantsToUpload: false, wantsToUpdate: false })
           }

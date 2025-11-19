@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Circle } from 'lucide-react';
+import { StuLoader } from '@/components/ui/StuLoader';
 
 interface ProgressStep {
   id: string;
@@ -52,20 +53,7 @@ export default function GeneratingPlanScreen({
 
       {/* Animated Spinner */}
       <div className="flex justify-center py-8">
-        <div className="relative w-16 h-16">
-          {/* Outer rotating circle */}
-          <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
-          <div
-            className="absolute inset-0 rounded-full border-4 border-transparent animate-spin"
-            style={{
-              borderTopColor: 'var(--primary)',
-              borderRightColor: 'var(--primary)',
-              animationDuration: '2s'
-            }}
-          />
-          {/* Center circle */}
-          <div className="absolute inset-4 rounded-full border-4 border-gray-200" />
-        </div>
+        <StuLoader variant="card" />
       </div>
 
       {/* Progress Steps */}
