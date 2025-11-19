@@ -12,8 +12,7 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
-import { BookOpen, Plus, X, Compass } from 'lucide-react';
-import Link from 'next/link';
+import { BookOpen, Plus, X } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -23,7 +22,6 @@ import {
 import type { ProgramRow } from '@/types/program';
 import {
   parseRequirementsFromGenEd,
-  parseProgramRequirements,
   getProgramDropdownCount,
   collectCourses,
   creditText,
@@ -80,6 +78,9 @@ export default function CourseSelectionForm({
   const [loadingColleges, setLoadingColleges] = useState(false);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
+
+  // Track which sections are expanded (auto-selected sections start collapsed)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
@@ -588,16 +589,30 @@ export default function CourseSelectionForm({
                 const dropdownCount = getDropdownCount(req);
                 const courses = requirementCoursesMap[req.subtitle] || [];
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+                const sectionKey = `gen-ed-${req.subtitle}`;
+                const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
 
                 return (
-                  <div key={`${req.subtitle}-${idx}`} className="space-y-3">
-                    <div className="flex items-center gap-2">
+                  <div key={`${req.subtitle}-${idx}`} className="space-y-3 border rounded-lg p-3">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedSections(prev => ({
+                        ...prev,
+                        [sectionKey]: !isExpanded,
+                      }))}
+                      className="w-full flex items-center gap-2 cursor-pointer hover:opacity-80"
+                    >
+                      <div className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </div>
                       <p className="text-sm font-medium">{req.subtitle}</p>
                       {isAutoSelected && (
                         <Chip
                           label="Auto-selected"
                           size="small"
-                          className="text-xs"
+                          className="text-xs ml-auto"
                           sx={{
                             backgroundColor: 'var(--primary)',
                             color: 'white',
@@ -605,46 +620,51 @@ export default function CourseSelectionForm({
                           }}
                         />
                       )}
-                    </div>
-                    {isAutoSelected && (
-                      <p className="text-xs text-muted-foreground italic">
-                        All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
-                      </p>
-                    )}
+                    </button>
 
-                    {Array.from({ length: dropdownCount }).map((_, slot) => (
-                      <FormControl
-                        key={`${req.subtitle}-slot-${slot}`}
-                        fullWidth
-                        size="small"
-                        sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
-                      >
-                        <InputLabel>
-                          {dropdownCount > 1
-                            ? `${req.subtitle} — Course #${slot + 1}`
-                            : req.subtitle}
-                        </InputLabel>
-                        <Select
-                          value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
-                          label={
-                            dropdownCount > 1
-                              ? `${req.subtitle} — Course #${slot + 1}`
-                              : req.subtitle
-                          }
-                          disabled={isAutoSelected}
-                          onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
-                        >
-                          <MenuItem value=""><em>Select a course</em></MenuItem>
-                          {courses
-                            .filter(c => c.status !== 'retired' && c.credits != null)
-                            .map((c) => (
-                            <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code}>
-                              {c.code} — {c.title} ({creditText(c.credits)})
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ))}
+                    {isExpanded && (
+                      <>
+                        {isAutoSelected && (
+                          <p className="text-xs text-muted-foreground italic">
+                            All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                          </p>
+                        )}
+
+                        {Array.from({ length: dropdownCount }).map((_, slot) => (
+                          <FormControl
+                            key={`${req.subtitle}-slot-${slot}`}
+                            fullWidth
+                            size="small"
+                            sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
+                          >
+                            <InputLabel>
+                              {dropdownCount > 1
+                                ? `${req.subtitle} — Course #${slot + 1}`
+                                : req.subtitle}
+                            </InputLabel>
+                            <Select
+                              value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
+                              label={
+                                dropdownCount > 1
+                                  ? `${req.subtitle} — Course #${slot + 1}`
+                                  : req.subtitle
+                              }
+                              disabled={isAutoSelected}
+                              onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
+                            >
+                              <MenuItem value=""><em>Select a course</em></MenuItem>
+                              {courses
+                                .filter(c => c.status !== 'retired' && c.credits != null)
+                                .map((c) => (
+                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code}>
+                                  {c.code} — {c.title} ({creditText(c.credits)})
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        ))}
+                      </>
+                    )}
 
                     {idx < requirements.length - 1 && <Divider className="my-4" />}
                   </div>
@@ -676,16 +696,30 @@ export default function CourseSelectionForm({
                   const requirementKey = getRequirementKey(programId, req);
                   const validCourses = getValidCourses(req);
                   const isAutoSelected = shouldAutoSelect(req, false);
+                  const sectionKey = `prog-req-${requirementKey}`;
+                  const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
 
                   return (
-                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-3">
-                      <div className="flex items-center gap-2">
+                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-3 border rounded-lg p-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSections(prev => ({
+                          ...prev,
+                          [sectionKey]: !isExpanded,
+                        }))}
+                        className="w-full flex items-center gap-2 cursor-pointer hover:opacity-80"
+                      >
+                        <div className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}>
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </div>
                         <p className="text-sm font-medium">{req.description}</p>
                         {isAutoSelected && (
                           <Chip
                             label="Auto-selected"
                             size="small"
-                            className="text-xs"
+                            className="text-xs ml-auto"
                             sx={{
                               backgroundColor: 'var(--primary)',
                               color: 'white',
@@ -693,39 +727,43 @@ export default function CourseSelectionForm({
                             }}
                           />
                         )}
-                      </div>
+                      </button>
 
-                      {Array.from({ length: dropdownCount }).map((_, slot) => (
-                        <FormControl
-                          key={`${requirementKey}-slot-${slot}`}
-                          fullWidth
-                          size="small"
-                          sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
-                        >
-                          <InputLabel>
-                            {dropdownCount > 1
-                              ? `${req.description} — Course #${slot + 1}`
-                              : req.description}
-                          </InputLabel>
-                          <Select
-                            value={(selectedProgramCourses[requirementKey]?.[slot] ?? '')}
-                            label={
-                              dropdownCount > 1
-                                ? `${req.description} — Course #${slot + 1}`
-                                : req.description
-                            }
-                            disabled={isAutoSelected}
-                            onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
-                          >
-                            <MenuItem value=""><em>Select a course</em></MenuItem>
-                            {validCourses.map((c) => (
-                              <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
-                                {c.code} — {c.title} ({c.credits} cr)
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      ))}
+                      {isExpanded && (
+                        <>
+                          {Array.from({ length: dropdownCount }).map((_, slot) => (
+                            <FormControl
+                              key={`${requirementKey}-slot-${slot}`}
+                              fullWidth
+                              size="small"
+                              sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
+                            >
+                              <InputLabel>
+                                {dropdownCount > 1
+                                  ? `${req.description} — Course #${slot + 1}`
+                                  : req.description}
+                              </InputLabel>
+                              <Select
+                                value={(selectedProgramCourses[requirementKey]?.[slot] ?? '')}
+                                label={
+                                  dropdownCount > 1
+                                    ? `${req.description} — Course #${slot + 1}`
+                                    : req.description
+                                }
+                                disabled={isAutoSelected}
+                                onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
+                              >
+                                <MenuItem value=""><em>Select a course</em></MenuItem>
+                                {validCourses.map((c) => (
+                                  <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
+                                    {c.code} — {c.title} ({c.credits} cr)
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          ))}
+                        </>
+                      )}
 
                       {reqIdx < programReqs.length - 1 && <Divider className="my-4" />}
                     </div>

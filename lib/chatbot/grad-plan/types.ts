@@ -14,6 +14,7 @@ export enum ConversationStep {
   COURSE_METHOD = 'course_method',
   COURSE_SELECTION = 'course_selection',
   ELECTIVES = 'electives',
+  STUDENT_INTERESTS = 'student_interests',
   ADDITIONAL_CONCERNS = 'additional_concerns',
   GENERATING_PLAN = 'generating_plan',
   COMPLETE = 'complete',
@@ -89,6 +90,9 @@ export interface ConversationState {
     // Electives
     electiveCourses: ElectiveCourse[];
     needsElectives: boolean;
+
+    // Student interests
+    studentInterests: string | null;
 
     // Additional information
     additionalConcerns: string | null;

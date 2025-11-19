@@ -22,6 +22,7 @@ export default function OptionTile({
 }: OptionTileProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={`

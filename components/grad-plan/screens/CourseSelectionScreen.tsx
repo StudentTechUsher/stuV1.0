@@ -71,23 +71,31 @@ export default function CourseSelectionScreen({
       try {
         // Fetch selected programs
         if (selectedProgramIds.length > 0) {
+          const idsStr = selectedProgramIds.map(id => String(id)).join(',');
           const programsRes = await fetch(
-            `/api/programs/batch?ids=${selectedProgramIds.join(',')}&universityId=${universityId}`
+            `/api/programs/batch?ids=${idsStr}&universityId=${universityId}`
           );
           if (programsRes.ok) {
             const programsJson = await programsRes.json();
+            console.log('Fetched programs data:', programsJson);
             setProgramsData(programsJson);
+          } else {
+            console.error('Failed to fetch programs:', programsRes.status, await programsRes.text());
           }
         }
 
         // Fetch GenEd programs
         if (studentType !== 'graduate' && genEdProgramIds.length > 0) {
+          const genEdIdsStr = genEdProgramIds.map(id => String(id)).join(',');
           const genEdRes = await fetch(
-            `/api/programs/batch?ids=${genEdProgramIds.join(',')}&universityId=${universityId}`
+            `/api/programs/batch?ids=${genEdIdsStr}&universityId=${universityId}`
           );
           if (genEdRes.ok) {
             const genEdJson = await genEdRes.json();
+            console.log('Fetched GenEd data:', genEdJson);
             setGenEdData(genEdJson);
+          } else {
+            console.error('Failed to fetch GenEd programs:', genEdRes.status, await genEdRes.text());
           }
         }
       } catch (error) {
@@ -176,7 +184,7 @@ export default function CourseSelectionScreen({
         programId: Number(programId),
         selectedCourseIds: selectedCourses[programId] || [],
       })
-    );
+    ) as unknown as ProgramCourseSelection[];
 
     onSubmit({
       selectedCourses,

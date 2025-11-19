@@ -21,10 +21,11 @@ import WizardContainer from '@/components/grad-plan/WizardContainer';
 import NameScreen from '@/components/grad-plan/screens/NameScreen';
 import GraduationDateScreen from '@/components/grad-plan/screens/GraduationDateScreen';
 import CareerGoalsScreen from '@/components/grad-plan/screens/CareerGoalsScreen';
+import StudentInterestsScreen from '@/components/grad-plan/screens/StudentInterestsScreen';
 import TranscriptScreen from '@/components/grad-plan/screens/TranscriptScreen';
 import StudentTypeScreen from '@/components/grad-plan/screens/StudentTypeScreen';
 import ProgramSelectionScreen from '@/components/grad-plan/screens/ProgramSelectionScreen';
-import CourseSelectionScreen from '@/components/grad-plan/screens/CourseSelectionScreen';
+import CourseSelectionForm from '@/components/chatbot-tools/CourseSelectionForm';
 import AdditionalConcernsScreen from '@/components/grad-plan/screens/AdditionalConcernsScreen';
 import GeneratingPlanScreen from '@/components/grad-plan/screens/GeneratingPlanScreen';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction } from '@/lib/services/server-actions';
@@ -97,15 +98,49 @@ export default function CreatePlanClient({
     saveStateToLocalStorage(conversationState);
   }, [conversationState]);
 
+  // Auto-complete COURSE_METHOD step since we're always doing manual selection
+  useEffect(() => {
+    if (conversationState.currentStep === ConversationStep.COURSE_METHOD && !isLoading) {
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.COURSE_METHOD,
+          data: {
+            courseSelectionMethod: 'manual',
+          },
+          completedStep: ConversationStep.COURSE_METHOD,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    }
+  }, [conversationState.currentStep, isLoading]);
+
+  // Auto-complete ELECTIVES step since electives are collected in CourseSelectionForm
+  useEffect(() => {
+    if (conversationState.currentStep === ConversationStep.ELECTIVES && !isLoading) {
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.ELECTIVES,
+          completedStep: ConversationStep.ELECTIVES,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    }
+  }, [conversationState.currentStep, isLoading]);
+
   // Get current step number for progress bar (1-indexed)
   const getCurrentStepNumber = (): number => {
     if (conversationState.currentStep === ConversationStep.PROFILE_SETUP) {
-      // Profile has 4 sub-steps
+      // Profile has 3 sub-steps
       const profileSteps: Record<ProfileSubStep, number> = {
         name: 1,
         date: 2,
-        semester: 3,
-        career: 4,
+        career: 3,
       };
       return profileSteps[profileSubStep];
     }
@@ -114,29 +149,23 @@ export default function CreatePlanClient({
       [ConversationStep.INITIALIZE]: 1,
       [ConversationStep.PROFILE_SETUP]: 1,
       [ConversationStep.CAREER_PATHFINDER]: 1,
-      [ConversationStep.TRANSCRIPT_CHECK]: 5,
-      [ConversationStep.STUDENT_TYPE]: 6,
-      [ConversationStep.PROGRAM_SELECTION]: 7,
-      [ConversationStep.COURSE_METHOD]: 7,
-      [ConversationStep.COURSE_SELECTION]: 8,
-      [ConversationStep.ELECTIVES]: 8,
-      [ConversationStep.ADDITIONAL_CONCERNS]: 9,
-      [ConversationStep.GENERATING_PLAN]: 10,
-      [ConversationStep.COMPLETE]: 11,
+      [ConversationStep.PROGRAM_PATHFINDER]: 1,
+      [ConversationStep.STUDENT_INTERESTS]: 5,
+      [ConversationStep.TRANSCRIPT_CHECK]: 6,
+      [ConversationStep.STUDENT_TYPE]: 7,
+      [ConversationStep.PROGRAM_SELECTION]: 8,
+      [ConversationStep.COURSE_METHOD]: 8,
+      [ConversationStep.COURSE_SELECTION]: 9,
+      [ConversationStep.ELECTIVES]: 9,
+      [ConversationStep.ADDITIONAL_CONCERNS]: 10,
+      [ConversationStep.GENERATING_PLAN]: 11,
+      [ConversationStep.COMPLETE]: 12,
     };
 
     return stepNumbers[conversationState.currentStep] || 1;
   };
 
-  const getTotalSteps = (): number => {
-    // 4 (profile) + 1 (transcript) + 1 (student type) + 1 (program) + 1 (course) + 1 (concerns) + 1 (generate) = 10
-    if (conversationState.currentStep === ConversationStep.PROFILE_SETUP) {
-      return 4; // profile sub-steps
-    }
-    return 10; // total wizard steps
-  };
-
-  const handleProfileNameSubmit = async (name: string) => {
+  const handleProfileNameSubmit = async (_name: string) => {
     // Store name in state if needed (or just move forward)
     // Move to next profile sub-step
     setProfileSubStep('date');
@@ -175,11 +204,19 @@ export default function CreatePlanClient({
   const handleProfileCareerSubmit = async (careerGoals: string) => {
     setIsLoading(true);
     try {
+      // Parse careerGoals to extract potential career paths (everything except commitment level)
+      const parts = careerGoals.split(' | ');
+      const commitmentIndex = parts.findIndex(p => p.startsWith('Commitment Level:'));
+      const potentialCareerPaths = commitmentIndex >= 0
+        ? parts.slice(0, commitmentIndex).join(' | ')
+        : careerGoals;
+
       // Collect all profile data and submit
       const profileData = {
         estGradDate: conversationState.collectedData.estGradDate,
         estGradSem: conversationState.collectedData.estGradSem,
         careerGoals: careerGoals.trim() || null,
+        potentialCareerPaths: potentialCareerPaths.trim() || null,
       };
 
       // Update profile via server action
@@ -203,9 +240,6 @@ export default function CreatePlanClient({
             step: getNextStep(updated),
           });
         });
-
-        // Reset profile sub-step
-        setProfileSubStep('name');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -241,11 +275,55 @@ export default function CreatePlanClient({
             step: getNextStep(updated),
           });
         });
-
-        setProfileSubStep('name');
       }
     } catch (error) {
       console.error('Error skipping career goals:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStudentInterestsSubmit = async (interests: string) => {
+    setIsLoading(true);
+    try {
+      // Update conversation state with student interests
+      // Note: Interests are stored in the conversation state for the planning process
+      // but not persisted to the database profile at this time
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.STUDENT_INTERESTS,
+          data: {
+            studentInterests: interests.trim(),
+          },
+          completedStep: ConversationStep.STUDENT_INTERESTS,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    } catch (error) {
+      console.error('Error submitting student interests:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStudentInterestsSkip = async () => {
+    setIsLoading(true);
+    try {
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.STUDENT_INTERESTS,
+          completedStep: ConversationStep.STUDENT_INTERESTS,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    } catch (error) {
+      console.error('Error skipping student interests:', error);
     } finally {
       setIsLoading(false);
     }
@@ -259,7 +337,7 @@ export default function CreatePlanClient({
     }
   };
 
-  const handleTranscriptSubmit = async (hasTranscript: boolean) => {
+  const handleTranscriptSubmit = async (hasTranscript: boolean, _isNewStudent?: boolean) => {
     setIsLoading(true);
     try {
       setConversationState(prev => {
@@ -267,7 +345,7 @@ export default function CreatePlanClient({
           step: ConversationStep.TRANSCRIPT_CHECK,
           data: {
             hasTranscript,
-            transcriptUploaded: false,
+            transcriptUploaded: hasTranscript ? true : false,
             needsTranscriptUpdate: false,
           },
           completedStep: ConversationStep.TRANSCRIPT_CHECK,
@@ -313,7 +391,7 @@ export default function CreatePlanClient({
 
       setConversationState(prev => updateState(prev, {
         step: previousStep,
-        completedSteps: previousCompletedSteps,
+        completedStep: previousStep,
       }));
     }
   };
@@ -386,10 +464,11 @@ export default function CreatePlanClient({
     }
   };
 
-  const handleCourseSelectionSubmit = async (data: unknown) => {
+  const handleCourseSelectionSubmit = async (_data: unknown) => {
     setIsLoading(true);
     try {
-      const courseData = data as any;
+      // data is passed from CourseSelectionScreen but we just update state
+      // the actual course data is handled by the server during plan generation
 
       setConversationState(prev => {
         // Mark COURSE_METHOD as complete
@@ -588,7 +667,7 @@ export default function CreatePlanClient({
       } else {
         return (
           <CareerGoalsScreen
-            defaultGoals={studentProfile.career_goals || ''}
+            _defaultGoals={studentProfile.career_goals || ''}
             onSubmit={handleProfileCareerSubmit}
             onSkip={handleProfileCareerSkip}
             onBack={handleProfileBack}
@@ -596,9 +675,20 @@ export default function CreatePlanClient({
           />
         );
       }
+    } else if (conversationState.currentStep === ConversationStep.STUDENT_INTERESTS) {
+      return (
+        <StudentInterestsScreen
+          _defaultInterests={conversationState.collectedData.studentInterests || ''}
+          onSubmit={handleStudentInterestsSubmit}
+          onSkip={handleStudentInterestsSkip}
+          onBack={handleBack}
+          isLoading={isLoading}
+        />
+      );
     } else if (conversationState.currentStep === ConversationStep.TRANSCRIPT_CHECK) {
       return (
         <TranscriptScreen
+          hasCourses={hasCourses}
           onSubmit={handleTranscriptSubmit}
           onBack={handleBack}
           isLoading={isLoading}
@@ -630,16 +720,25 @@ export default function CreatePlanClient({
         .filter(p => p.programType === 'general_education')
         .map(p => p.programId);
 
+      console.log('Course Selection Screen - Major/Minor IDs:', majorMinorIds);
+      console.log('Course Selection Screen - GenEd IDs:', genEdIds);
+      console.log('All selected programs:', conversationState.collectedData.selectedPrograms);
+
       return (
-        <CourseSelectionScreen
+        <CourseSelectionForm
           studentType={conversationState.collectedData.studentType || 'undergraduate'}
           universityId={studentProfile.university_id}
           selectedProgramIds={majorMinorIds}
           genEdProgramIds={genEdIds}
           onSubmit={handleCourseSelectionSubmit}
-          onBack={handleBack}
-          isLoading={isLoading}
         />
+      );
+    } else if (conversationState.currentStep === ConversationStep.COURSE_METHOD) {
+      // Show loading indicator while auto-completing COURSE_METHOD step
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
       );
     } else if (conversationState.currentStep === ConversationStep.ADDITIONAL_CONCERNS) {
       return (
