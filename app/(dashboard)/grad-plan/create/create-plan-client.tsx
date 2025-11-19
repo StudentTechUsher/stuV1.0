@@ -29,6 +29,8 @@ import CourseSelectionForm from '@/components/chatbot-tools/CourseSelectionForm'
 import AdditionalConcernsScreen from '@/components/grad-plan/screens/AdditionalConcernsScreen';
 import GeneratingPlanScreen from '@/components/grad-plan/screens/GeneratingPlanScreen';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction } from '@/lib/services/server-actions';
+import { fetchInstitutionSettings } from '@/lib/services/institutionService';
+import type { SelectionMode } from '@/lib/selectionMode';
 
 interface CreatePlanClientProps {
   user: User;
@@ -69,6 +71,28 @@ export default function CreatePlanClient({
   const [profileSubStep, setProfileSubStep] = useState<ProfileSubStep>('name');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Track institution selection mode
+  const [selectionMode, setSelectionMode] = useState<SelectionMode | null>(null);
+  const [selectionModeLoaded, setSelectionModeLoaded] = useState(false);
+
+  // Fetch institution settings to determine course selection mode
+  useEffect(() => {
+    async function loadInstitutionSettings() {
+      try {
+        const settings = await fetchInstitutionSettings(studentProfile.university_id);
+        setSelectionMode(settings.selection_mode);
+      } catch (error) {
+        console.error('Error fetching institution settings:', error);
+        // Default to MANUAL if there's an error
+        setSelectionMode('MANUAL');
+      } finally {
+        setSelectionModeLoaded(true);
+      }
+    }
+
+    loadInstitutionSettings();
+  }, [studentProfile.university_id]);
+
   // Initialize or transition from INITIALIZE to PROFILE_SETUP
   useEffect(() => {
     // Check if we need to load from localStorage
@@ -98,14 +122,27 @@ export default function CreatePlanClient({
     saveStateToLocalStorage(conversationState);
   }, [conversationState]);
 
-  // Auto-complete COURSE_METHOD step since we're always doing manual selection
+  // Handle COURSE_METHOD step based on institution selection mode
   useEffect(() => {
-    if (conversationState.currentStep === ConversationStep.COURSE_METHOD && !isLoading) {
+    if (conversationState.currentStep === ConversationStep.COURSE_METHOD && !isLoading && selectionModeLoaded && selectionMode) {
+      // Auto-skip COURSE_METHOD and set selection method based on institution settings
+      // Map institution SelectionMode to CourseSelectionMethod
+      // AUTO mode -> AI (auto-plan courses)
+      // MANUAL mode -> MANUAL (student manually selects)
+      // CHOICE mode -> MANUAL (for now, show selection form but we could add a choice screen later)
+      let method: 'ai' | 'manual' = 'manual';
+
+      if (selectionMode === 'AUTO') {
+        method = 'ai'; // Use AI to auto-select courses with context
+      } else {
+        method = 'manual'; // Student manually selects or chooses method
+      }
+
       setConversationState(prev => {
         const updated = updateState(prev, {
           step: ConversationStep.COURSE_METHOD,
           data: {
-            courseSelectionMethod: 'manual',
+            courseSelectionMethod: method,
           },
           completedStep: ConversationStep.COURSE_METHOD,
         });
@@ -115,7 +152,32 @@ export default function CreatePlanClient({
         });
       });
     }
-  }, [conversationState.currentStep, isLoading]);
+  }, [conversationState.currentStep, isLoading, selectionMode, selectionModeLoaded]);
+
+  // Auto-complete COURSE_SELECTION step when using AI mode
+  // In AUTO mode, students don't manually select courses
+  useEffect(() => {
+    if (
+      conversationState.currentStep === ConversationStep.COURSE_SELECTION &&
+      !isLoading &&
+      conversationState.collectedData.courseSelectionMethod === 'ai'
+    ) {
+      // Auto-complete COURSE_SELECTION with empty courses (AI will handle it)
+      setConversationState(prev => {
+        const updated = updateState(prev, {
+          step: ConversationStep.COURSE_SELECTION,
+          data: {
+            selectedCourses: [],
+          },
+          completedStep: ConversationStep.COURSE_SELECTION,
+        });
+
+        return updateState(updated, {
+          step: getNextStep(updated),
+        });
+      });
+    }
+  }, [conversationState.currentStep, conversationState.collectedData.courseSelectionMethod, isLoading]);
 
   // Auto-complete ELECTIVES step since electives are collected in CourseSelectionForm
   useEffect(() => {
@@ -713,6 +775,19 @@ export default function CreatePlanClient({
         />
       );
     } else if (conversationState.currentStep === ConversationStep.COURSE_SELECTION) {
+      // In AUTO mode, skip the manual course selection form
+      if (conversationState.collectedData.courseSelectionMethod === 'ai') {
+        return (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+              <p className="text-sm text-muted-foreground">Generating your personalized course plan...</p>
+            </div>
+          </div>
+        );
+      }
+
+      // In MANUAL or CHOICE mode, show course selection form
       const majorMinorIds = conversationState.collectedData.selectedPrograms
         .filter(p => p.programType === 'major' || p.programType === 'minor')
         .map(p => p.programId);
@@ -720,9 +795,10 @@ export default function CreatePlanClient({
         .filter(p => p.programType === 'general_education')
         .map(p => p.programId);
 
-      console.log('Course Selection Screen - Major/Minor IDs:', majorMinorIds);
-      console.log('Course Selection Screen - GenEd IDs:', genEdIds);
-      console.log('All selected programs:', conversationState.collectedData.selectedPrograms);
+      // Get major/minor program names for recommendation context
+      const majorMinorPrograms = conversationState.collectedData.selectedPrograms
+        .filter(p => p.programType === 'major' || p.programType === 'minor')
+        .map(p => p.programName);
 
       return (
         <CourseSelectionForm
@@ -730,6 +806,9 @@ export default function CreatePlanClient({
           universityId={studentProfile.university_id}
           selectedProgramIds={majorMinorIds}
           genEdProgramIds={genEdIds}
+          careerGoals={conversationState.collectedData.careerGoals}
+          studentInterests={conversationState.collectedData.studentInterests}
+          selectedMajorMinors={majorMinorPrograms}
           onSubmit={handleCourseSelectionSubmit}
         />
       );

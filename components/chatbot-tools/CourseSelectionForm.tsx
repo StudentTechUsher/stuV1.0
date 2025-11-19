@@ -38,12 +38,17 @@ import {
   getDepartmentCodesAction,
   getCoursesByDepartmentAction,
 } from '@/lib/services/server-actions';
+import { recommendCourses, type CourseRecommendationContext } from '@/lib/services/courseRecommendationService';
+import CourseRecommendationPanel from './CourseRecommendationPanel';
 
 interface CourseSelectionFormProps {
   studentType: 'undergraduate' | 'graduate';
   universityId: number;
   selectedProgramIds: number[];
   genEdProgramIds?: number[];
+  careerGoals?: string | null;
+  studentInterests?: string | null;
+  selectedMajorMinors?: string[];
   onSubmit: (data: CourseSelectionInput) => void;
 }
 
@@ -52,6 +57,9 @@ export default function CourseSelectionForm({
   universityId,
   selectedProgramIds,
   genEdProgramIds = [],
+  careerGoals = null,
+  studentInterests = null,
+  selectedMajorMinors = [],
   onSubmit,
 }: Readonly<CourseSelectionFormProps>) {
   // Program data state
@@ -84,6 +92,37 @@ export default function CourseSelectionForm({
 
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
+
+  // Build recommendation context
+  const recommendationContext = useMemo<CourseRecommendationContext>(() => ({
+    careerGoals,
+    studentInterests,
+    selectedMajorMinors,
+  }), [careerGoals, studentInterests, selectedMajorMinors]);
+
+  // Get recommendations for a requirement based on available courses
+  const getRecommendationsForRequirement = useCallback((courses: unknown[]): { recommendations: any[]; dropdownCount: number } => {
+    const dropdownCount = courses.length;
+
+    // Only show recommendations if there are more than 3 courses and we have context
+    if (dropdownCount <= 3 || (!careerGoals && !studentInterests)) {
+      return { recommendations: [], dropdownCount };
+    }
+
+    // Convert courses to the format expected by recommendCourses
+    // Handle both CourseBlock[] and ProgramCourse[] types
+    const courseData = courses
+      .filter((c: any) => c.status !== 'retired' && c.credits != null && c.title && c.code)
+      .map((c: any) => ({
+        id: c.code,
+        code: c.code,
+        title: c.title || 'Unknown',
+        description: c.title || '', // Use title as fallback for description
+      }));
+
+    const recommendations = recommendCourses(courseData, recommendationContext);
+    return { recommendations, dropdownCount };
+  }, [careerGoals, studentInterests, selectedMajorMinors, recommendationContext]);
 
   // Fetch program data when component mounts
   useEffect(() => {
@@ -591,6 +630,7 @@ export default function CourseSelectionForm({
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
                 const sectionKey = `gen-ed-${req.subtitle}`;
                 const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
+                const { recommendations } = getRecommendationsForRequirement(courses);
 
                 return (
                   <div key={`${req.subtitle}-${idx}`} className="space-y-3 border rounded-lg p-3">
@@ -628,6 +668,16 @@ export default function CourseSelectionForm({
                           <p className="text-xs text-muted-foreground italic">
                             All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
                           </p>
+                        )}
+
+                        {recommendations.length > 0 && (
+                          <div className="mt-3 mb-3">
+                            <CourseRecommendationPanel
+                              recommendations={recommendations}
+                              dropdownCount={courses.length}
+                              onCourseSelect={(courseCode) => handleCourseSelection(req.subtitle, 0, courseCode)}
+                            />
+                          </div>
                         )}
 
                         {Array.from({ length: dropdownCount }).map((_, slot) => (
@@ -698,6 +748,7 @@ export default function CourseSelectionForm({
                   const isAutoSelected = shouldAutoSelect(req, false);
                   const sectionKey = `prog-req-${requirementKey}`;
                   const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
+                  const { recommendations: progRecommendations } = getRecommendationsForRequirement(validCourses);
 
                   return (
                     <div key={`${programId}-req-${req.requirementId}`} className="space-y-3 border rounded-lg p-3">
@@ -731,6 +782,16 @@ export default function CourseSelectionForm({
 
                       {isExpanded && (
                         <>
+                          {progRecommendations.length > 0 && (
+                            <div className="mt-3 mb-3">
+                              <CourseRecommendationPanel
+                                recommendations={progRecommendations}
+                                dropdownCount={validCourses.length}
+                                onCourseSelect={(courseCode) => handleProgramCourseSelection(requirementKey, 0, courseCode)}
+                              />
+                            </div>
+                          )}
+
                           {Array.from({ length: dropdownCount }).map((_, slot) => (
                             <FormControl
                               key={`${requirementKey}-slot-${slot}`}
