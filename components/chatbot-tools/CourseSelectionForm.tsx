@@ -101,18 +101,9 @@ export default function CourseSelectionForm({
     selectedMajorMinors,
   }), [careerGoals, studentInterests, selectedMajorMinors]);
 
-  // Get recommendations for a requirement based on available courses
-  const getRecommendationsForRequirement = useCallback((courses: unknown[]): { recommendations: any[]; dropdownCount: number } => {
-    const dropdownCount = courses.length;
-
-    // Only show recommendations if there are more than 3 courses and we have context
-    if (dropdownCount <= 3 || (!careerGoals && !studentInterests)) {
-      return { recommendations: [], dropdownCount };
-    }
-
-    // Convert courses to the format expected by recommendCourses
-    // Handle both CourseBlock[] and ProgramCourse[] types
-    const courseData = courses
+  // Helper function to process courses for recommendations
+  const processCourses = useCallback((courses: unknown[]) => {
+    return courses
       .filter((c: any) => c.status !== 'retired' && c.credits != null && c.title && c.code)
       .map((c: any) => ({
         id: c.code,
@@ -120,10 +111,7 @@ export default function CourseSelectionForm({
         title: c.title || 'Unknown',
         description: c.title || '', // Use title as fallback for description
       }));
-
-    const recommendations = recommendCourses(courseData, recommendationContext);
-    return { recommendations, dropdownCount };
-  }, [careerGoals, studentInterests, selectedMajorMinors, recommendationContext]);
+  }, []);
 
   // Fetch program data when component mounts
   useEffect(() => {
@@ -279,6 +267,63 @@ export default function CourseSelectionForm({
     }
     return map;
   }, [requirements]);
+
+  // Memoized recommendations for general education requirements
+  const genEdRecommendationsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    // Only compute if we have recommendation context
+    if (!careerGoals && !studentInterests) {
+      return map;
+    }
+
+    for (const req of requirements) {
+      const courses = requirementCoursesMap[req.subtitle] || [];
+      
+      // Only show recommendations if there are more than 3 courses
+      if (courses.length <= 3) {
+        map[req.subtitle] = [];
+        continue;
+      }
+
+      const courseData = processCourses(courses);
+      map[req.subtitle] = recommendCourses(courseData, recommendationContext);
+    }
+    
+    return map;
+  }, [requirements, requirementCoursesMap, careerGoals, studentInterests, processCourses, recommendationContext]);
+
+  // Memoized recommendations for program requirements
+  const programRecommendationsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    // Only compute if we have recommendation context
+    if (!careerGoals && !studentInterests) {
+      return map;
+    }
+
+    Array.from(selectedPrograms).forEach(programId => {
+      const programReqs = programRequirementsMap[programId] || [];
+      programReqs.forEach(req => {
+        if (!req.courses || req.courses.length === 0) return;
+        
+        const validCourses = getValidCourses(req);
+        
+        // Only show recommendations if there are more than 3 courses
+        if (validCourses.length <= 3) {
+          const requirementKey = getRequirementKey(programId, req);
+          map[requirementKey] = [];
+          return;
+        }
+
+        const courseData = processCourses(validCourses);
+        const requirementKey = getRequirementKey(programId, req);
+        map[requirementKey] = recommendCourses(courseData, recommendationContext);
+      });
+    });
+    
+    return map;
+  }, [selectedPrograms, programRequirementsMap, careerGoals, studentInterests, processCourses, recommendationContext]);
 
   // Ensure state array length matches dropdown count
   const ensureSlots = useCallback((subtitle: string, count: number) => {
@@ -629,7 +674,7 @@ export default function CourseSelectionForm({
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
                 const sectionKey = `gen-ed-${req.subtitle}`;
                 const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
-                const { recommendations } = getRecommendationsForRequirement(courses);
+                const recommendations = genEdRecommendationsMap[req.subtitle] || [];
 
                 return (
                   <div key={`${req.subtitle}-${idx}`} className="space-y-2 border border-gray-200 rounded p-2.5">
@@ -747,7 +792,7 @@ export default function CourseSelectionForm({
                   const isAutoSelected = shouldAutoSelect(req, false);
                   const sectionKey = `prog-req-${requirementKey}`;
                   const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
-                  const { recommendations: progRecommendations } = getRecommendationsForRequirement(validCourses);
+                  const progRecommendations = programRecommendationsMap[requirementKey] || [];
 
                   return (
                     <div key={`${programId}-req-${req.requirementId}`} className="space-y-2 border border-gray-200 rounded p-2.5">
