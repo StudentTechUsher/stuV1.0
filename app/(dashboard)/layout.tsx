@@ -37,7 +37,8 @@ type IconKey =
   | "system"
   | "forecast"
   | "careers"
-  | "programFlow";
+  | "programFlow"
+  | "sandbox";
 
 export type NavItem = {
   href: string;
@@ -135,6 +136,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/",                    segment: null,                 label: "Overview",             icon: "dashboard" },
         { href: "/inbox",               segment: "inbox",              label: "Inbox",                icon: "inbox", badgeCount: inboxBadge },
         { href: "/grad-plan",           segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
+        { href: "/sandbox",             segment: "sandbox",            label: "Plan Sandbox",         icon: "sandbox" },
         { href: "/academic-history",    segment: "academic-history",   label: "Academic History",     icon: "history" },
         { href: "/semester-scheduler",  segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
         { href: "/pathfinder",          segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
