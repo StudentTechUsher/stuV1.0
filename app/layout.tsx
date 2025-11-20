@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UniversityThemeProvider } from "@/contexts/university-theme-context";
+import { DarkModeProvider } from "@/contexts/dark-mode-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -107,9 +108,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <UniversityThemeProvider>
-          {children}
-        </UniversityThemeProvider>
+        <DarkModeProvider>
+          <UniversityThemeProvider>
+            {children}
+          </UniversityThemeProvider>
+        </DarkModeProvider>
         <Analytics />
       </body>
     </html>
