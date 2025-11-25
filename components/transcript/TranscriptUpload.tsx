@@ -1,23 +1,7 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { StuLoader } from "@/components/ui/StuLoader";
-import {
-  parseTranscriptText,
-  validateCourse,
-  type CourseRow,
-  type ParseResult,
-} from "@/lib/transcript/byuParser";
-import { parseTranscriptCoursesAction } from "@/lib/services/server-actions";
-import { useAuth } from "@/hooks/useAuth";
-
-// Type for parsed transcript course (matching openaiService.ts)
-interface ParsedTranscriptCourse {
-  courseCode: string;
-  title: string;
-  credits: number;
-  grade: string | null;
-}
 
 type UploadStatus = "idle" | "extracting" | "extracted" | "failed";
 
@@ -30,47 +14,22 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [rawText, setRawText] = useState<string | null>(null);
-  const [cleanedText, setCleanedText] = useState<string | null>(null);
-  const [showRaw, setShowRaw] = useState(false); // Default to showing cleaned text
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [aiCourses, setAiCourses] = useState<ParsedTranscriptCourse[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [aiParseError, setAiParseError] = useState<string | null>(null);
   const [isAiParsing, setIsAiParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
   const [parsingMessageIndex, setParsingMessageIndex] = useState(0);
+  const [uploadMode, setUploadMode] = useState<'pdf' | 'text'>('pdf');
+  const [pastedText, setPastedText] = useState<string>('');
 
   const parsingMessages = [
-    'Extracting text from your transcript...',
-    'Analyzing course information...',
-    'Identifying course codes and titles...',
+    'Reading your transcript PDF...',
+    'Analyzing course information with AI...',
+    'Extracting course codes and titles...',
     'Processing grades and credits...',
-    'Organizing courses by semester...',
+    'Validating course patterns...',
+    'Saving courses to your profile...',
   ];
-
-  const formatCredits = (credits: number) =>
-    Number.isInteger(credits) ? credits.toFixed(0) : credits.toFixed(2);
-
-  const coursesByTerm = useMemo<Record<string, CourseRow[]>>(() => {
-    if (!parseResult) return {};
-    return parseResult.courses.reduce<Record<string, CourseRow[]>>((acc, course) => {
-      const termKey = course.term && course.term.trim().length > 0 ? course.term : "Unknown";
-      if (!acc[termKey]) {
-        acc[termKey] = [];
-      }
-      acc[termKey].push(course);
-      return acc;
-    }, {});
-  }, [parseResult]);
-
-  const orderedTerms = useMemo(() => {
-    const metadataTerms = parseResult?.metadata.termsFound ?? [];
-    const groupedTerms = Object.keys(coursesByTerm);
-    const extras = groupedTerms.filter(term => !metadataTerms.includes(term));
-    return [...metadataTerms, ...extras].filter((term, index, arr) => arr.indexOf(term) === index);
-  }, [coursesByTerm, parseResult]);
 
   // Rotate parsing messages every 7 seconds
   useEffect(() => {
@@ -87,14 +46,9 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
     setStatus("extracting");
     setError(null);
     setFileName(file.name);
-    setRawText(null);
-    setCleanedText(null);
-    setParseResult(null);
-    setParseError(null);
-    setAiCourses([]);
+    setSuccessMessage(null);
     setAiParseError(null);
-    setIsAiParsing(false);
-    setShowRaw(false);
+    setIsAiParsing(true); // Start as parsing immediately
 
     try {
       // Store the PDF file locally as a data URL for viewing later
@@ -108,115 +62,61 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
       // Store PDF URL in sessionStorage for this session
       sessionStorage.setItem('transcript_pdf_url', pdfDataUrl);
 
-      // Read file as array buffer for parsing
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      // Send PDF directly to the new BYU parser API
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // Import pdfjs dynamically
-      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      const response = await fetch('/api/transcript/parse', {
+        method: 'POST',
+        body: formData,
+      });
 
-      // Set the worker source to local file
-      pdfjsLib.GlobalWorkerOptions.workerSrc = window.location.origin + '/pdf.worker.min.mjs';
-
-      // Load the PDF document
-      const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-      const pdfDocument = await loadingTask.promise;
-
-      const textPages: string[] = [];
-
-      // Extract text from each page
-      for (let i = 1; i <= pdfDocument.numPages; i++) {
-        const page = await pdfDocument.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item) => ('str' in item ? item.str : ''))
-          .join(' ');
-        textPages.push(pageText);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `API request failed: ${response.status}`);
       }
 
-      // Join pages without PAGE BREAK markers
-      const fullText = textPages.join('\n\n');
-      setRawText(fullText);
-      // TESTING: Send full text to AI instead of trimming first 200 characters
-      // const trimmedText = fullText.slice(200).trimStart();
-      const displayText = fullText; // Use full text instead of trimmed
-      setCleanedText(displayText);
+      const result = await response.json();
 
-      try {
-        const result = parseTranscriptText(displayText);
-        const validCourses = result.courses.filter(validateCourse);
-        const sanitizedResult: ParseResult = {
-          courses: validCourses,
-          metadata: {
-            ...result.metadata,
-            coursesFound: validCourses.length,
-            termsFound: result.metadata.termsFound
-              .filter((term, index, arr) => arr.indexOf(term) === index)
-              .sort(),
-          },
-        };
+      if (result.success && result.report) {
+        const report = result.report;
 
-        setParseResult(sanitizedResult);
+        // Show success - courses were parsed and saved
+        if (report.courses_found > 0) {
+          setAiParseError(null);
 
-        if (sanitizedResult.courses.length === 0) {
-          setParseError("No courses were detected in the uploaded transcript.");
-        } else if (validCourses.length !== result.courses.length) {
-          setParseError("Some rows could not be validated and were skipped.");
-        }
-      } catch (parseErr) {
-        console.error("Transcript parsing failed:", parseErr);
-        setParseResult(null);
-        setParseError("We couldn't interpret the transcript contents. Please review the extracted text.");
-      }
+          // Create a summary message
+          let summaryMessage = `✅ Successfully parsed ${report.courses_found} course${report.courses_found !== 1 ? 's' : ''} from ${report.terms_detected?.length || 0} semester${report.terms_detected?.length !== 1 ? 's' : ''}.`;
 
-      setIsAiParsing(true);
-      setAiParseError(null);
-      try {
-        const result = await parseTranscriptCoursesAction({
-          transcriptText: displayText,
-          userId: user?.id || null,
-        });
-
-        if (result.success && result.courses) {
-          setAiCourses(result.courses);
-
-          // Handle different result states
-          if (result.courses.length === 0) {
-            setAiParseError("The AI couldn't find any course entries in the transcript.");
-          } else if (result.isPartial) {
-            setAiParseError(
-              `⚠️ Partial results shown (${result.courses.length} courses found). ` +
-              `The transcript may contain more courses. Try uploading a shorter section if some are missing.`
-            );
+          if (report.used_byu_parser) {
+            summaryMessage += ' (BYU-specific parser)';
           }
 
-          // Log database save status for debugging
-          if (result.savedToDb === false) {
-            console.warn('⚠️ Transcript parsing succeeded but failed to save to database');
+          // Check for validation issues
+          if (report.validation_report && report.validation_report.invalidCourses > 0) {
+            summaryMessage += `\n\n⚠️ ${report.validation_report.invalidCourses} course${report.validation_report.invalidCourses !== 1 ? 's' : ''} failed validation and were excluded.`;
           }
 
-          // Call onParsingComplete if courses were successfully saved
-          if (result.savedToDb && result.courses.length > 0) {
-            await onParsingComplete?.();
-          }
+          setSuccessMessage(summaryMessage);
+
+          // Call completion callback
+          await onParsingComplete?.();
         } else {
-          throw new Error(result.error || "Unknown error during AI parsing");
+          setAiParseError("No courses were detected in the uploaded transcript.");
         }
-      } catch (aiErr) {
-        console.error("AI transcript parsing failed:", aiErr);
-        setAiCourses([]);
-        const errorMessage = aiErr instanceof Error ? aiErr.message : "We couldn't parse the course list automatically.";
-        setAiParseError(`Failed to parse transcript: ${errorMessage}`);
-      } finally {
-        setIsAiParsing(false);
-      }
 
-      setStatus("extracted");
-      onTextExtracted?.(fullText);
+        setStatus("extracted");
+      } else {
+        throw new Error(result.error || "Parsing failed");
+      }
     } catch (err) {
-      console.error('PDF extraction failed:', err);
-      setError(err instanceof Error ? err.message : "Failed to extract text from PDF");
+      console.error('Transcript parsing failed:', err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to parse transcript";
+      setError(errorMessage);
+      setAiParseError(`Failed to parse transcript: ${errorMessage}`);
       setStatus("failed");
+    } finally {
+      setIsAiParsing(false);
     }
   };
 
@@ -227,39 +127,153 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
     }
   };
 
+  const handleTextPaste = async () => {
+    if (!pastedText || pastedText.trim().length < 100) {
+      setError('Please paste at least 100 characters of transcript text');
+      return;
+    }
+
+    setStatus("extracting");
+    setError(null);
+    setFileName('Pasted Text');
+    setSuccessMessage(null);
+    setAiParseError(null);
+    setIsAiParsing(true);
+
+    try {
+      // Send text directly to the API
+      const response = await fetch('/api/transcript/parse?mode=text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: pastedText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `API request failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.report) {
+        const report = result.report;
+
+        if (report.courses_found > 0) {
+          setAiParseError(null);
+
+          let summaryMessage = `✅ Successfully parsed ${report.courses_found} course${report.courses_found !== 1 ? 's' : ''} from ${report.terms_detected?.length || 0} semester${report.terms_detected?.length !== 1 ? 's' : ''}.`;
+
+          if (report.used_byu_parser) {
+            summaryMessage += ' (BYU-specific parser)';
+          }
+
+          if (report.validation_report && report.validation_report.invalidCourses > 0) {
+            summaryMessage += `\n\n⚠️ ${report.validation_report.invalidCourses} course${report.validation_report.invalidCourses !== 1 ? 's' : ''} failed validation and were excluded.`;
+          }
+
+          setSuccessMessage(summaryMessage);
+          await onParsingComplete?.();
+        } else {
+          setAiParseError("No courses were detected in the pasted text.");
+        }
+
+        setStatus("extracted");
+      } else {
+        throw new Error(result.error || "Parsing failed");
+      }
+    } catch (err) {
+      console.error('Transcript parsing failed:', err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to parse transcript";
+      setError(errorMessage);
+      setAiParseError(`Failed to parse transcript: ${errorMessage}`);
+      setStatus("failed");
+    } finally {
+      setIsAiParsing(false);
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <h3 className="font-semibold text-lg mb-4 text-center">Upload Transcript</h3>
 
       {status === "idle" || status === "failed" ? (
         <>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed rounded-xl p-8 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
-          >
-            <svg
-              className="mx-auto h-12 w-12 text-muted-foreground mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {/* Mode Toggle */}
+          <div className="flex gap-2 mb-4 justify-center">
+            <button
+              onClick={() => setUploadMode('pdf')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                uploadMode === 'pdf'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-            <p className="text-sm mb-1">Drag &amp; drop or click to upload your transcript PDF</p>
-            <p className="text-xs text-muted-foreground">PDF only, max 10MB</p>
+              Upload PDF
+            </button>
+            <button
+              onClick={() => setUploadMode('text')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                uploadMode === 'text'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              Paste Text
+            </button>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
+
+          {uploadMode === 'pdf' ? (
+            <>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed rounded-xl p-8 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
+              >
+                <svg
+                  className="mx-auto h-12 w-12 text-muted-foreground mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                <p className="text-sm mb-1">Drag &amp; drop or click to upload your transcript PDF</p>
+                <p className="text-xs text-muted-foreground">PDF only, max 10MB</p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground text-center">
+                Copy text from your transcript and paste it below
+              </p>
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste your transcript text here..."
+                className="w-full h-64 p-4 rounded-lg border border-border bg-background text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                onClick={handleTextPaste}
+                disabled={!pastedText || pastedText.trim().length < 100}
+                className="w-full py-3 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Parse Transcript
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <div className="py-8">
@@ -272,31 +286,23 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
               />
             </div>
           )}
-          {status === "extracted" && cleanedText && (
+          {status === "extracted" && (
             <div>
               <div className="text-center mb-4">
-                <p className="text-primary font-semibold text-lg mb-2">Text extracted successfully!</p>
-                <p className="text-sm text-muted-foreground">
-                  {cleanedText.length} characters (cleaned) / {rawText?.length || 0} characters (raw)
-                </p>
-                <div className="flex gap-2 justify-center mt-3">
-                  <button
-                    onClick={() => setShowRaw(!showRaw)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {showRaw ? "Show Cleaned Text" : "Show Raw Text"}
-                  </button>
-                  <span className="text-muted-foreground">|</span>
+                <p className="text-primary font-semibold text-lg mb-2">✅ Transcript parsed successfully!</p>
+                {successMessage && (
+                  <div className="mt-4 p-4 rounded-lg bg-green-50 border border-green-200 text-left">
+                    <pre className="text-sm text-green-900 whitespace-pre-wrap font-sans">
+                      {successMessage}
+                    </pre>
+                  </div>
+                )}
+                <div className="flex gap-2 justify-center mt-4">
                   <button
                     onClick={() => {
                       setStatus("idle");
-                      setRawText(null);
-                      setCleanedText(null);
                       setFileName(null);
-                      setShowRaw(false);
-                      setParseResult(null);
-                      setParseError(null);
-                      setAiCourses([]);
+                      setSuccessMessage(null);
                       setAiParseError(null);
                       setIsAiParsing(false);
                     }}
@@ -306,120 +312,11 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
                   </button>
                 </div>
               </div>
-              <div className="mt-4 p-4 rounded-lg bg-muted border border-border text-left max-h-96 overflow-y-auto">
-                <p className="text-xs font-semibold mb-2 text-muted-foreground">
-                  {showRaw ? "Raw Extracted Text:" : "Cleaned Text:"}
-                </p>
-                <pre className="text-xs whitespace-pre-wrap font-mono">
-                  {showRaw ? rawText : cleanedText}
-                </pre>
-              </div>
 
-              <div className="mt-6 text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-muted-foreground">AI Parsed Courses</p>
-                  {isAiParsing && (
-                    <span className="text-xs text-blue-600 animate-pulse">Analyzing...</span>
-                  )}
-                </div>
-
-                {aiParseError && (
-                  <div className="mb-3 p-3 rounded-lg bg-amber-100 border border-amber-200 text-left">
-                    <p className="text-sm font-semibold text-amber-900">AI parsing notice</p>
-                    <p className="text-sm text-amber-800 mt-1">{aiParseError}</p>
-                  </div>
-                )}
-
-                {!isAiParsing && aiCourses.length > 0 && (
-                  <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                    {aiCourses.map((course, index) => (
-                      <li
-                        key={`${course.courseCode}-${course.title}-${index}`}
-                        className="rounded-md border border-border/70 bg-muted/40 p-3"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-sm font-semibold tracking-wide">
-                            {course.courseCode}
-                          </span>
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {formatCredits(course.credits)} credit{course.credits === 1 ? "" : "s"}
-                          </span>
-                        </div>
-                        <p className="text-sm text-foreground mt-1">{course.title}</p>
-                        {course.grade && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Grade:{" "}
-                            <span className="font-medium text-foreground">{course.grade}</span>
-                          </p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {!isAiParsing && aiCourses.length === 0 && !aiParseError && (
-                  <p className="text-xs text-muted-foreground">
-                    No courses detected yet. Confirm the transcript text looks correct above.
-                  </p>
-                )}
-              </div>
-
-              {parseResult && parseResult.courses.length > 0 && (
-                <div className="mt-6 text-left">
-                  <div className="mb-3">
-                    <p className="text-sm font-semibold text-muted-foreground">
-                      Parsed {parseResult.courses.length} course{parseResult.courses.length === 1 ? "" : "s"} across {orderedTerms.length} term{orderedTerms.length === 1 ? "" : "s"}.
-                    </p>
-                    {parseResult.metadata.unknownLines > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {parseResult.metadata.unknownLines} line{parseResult.metadata.unknownLines === 1 ? "" : "s"} could not be matched to a course.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
-                    {orderedTerms.map((term) => {
-                      const coursesForTerm = coursesByTerm[term] ?? [];
-                      if (coursesForTerm.length === 0) {
-                        return null;
-                      }
-
-                      return (
-                        <div key={term} className="rounded-lg border border-border bg-background/60 p-3 shadow-sm">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-semibold text-foreground">{term}</h4>
-                            <span className="text-xs text-muted-foreground">
-                              {coursesForTerm.length} course{coursesForTerm.length === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                          <ul className="space-y-2">
-                            {coursesForTerm.map((course) => (
-                              <li
-                                key={`${term}-${course.subject}-${course.number}-${course.title}`}
-                                className="rounded-md border border-border/70 bg-muted/40 p-3"
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <span className="text-sm font-semibold tracking-wide">
-                                    {course.subject} {course.number}
-                                  </span>
-                                  <span className="text-xs font-medium text-muted-foreground">
-                                    {formatCredits(course.credits)} credit{course.credits === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-foreground mt-1">{course.title}</p>
-                                {course.grade && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Grade:{" "}
-                                    <span className="font-medium text-foreground">{course.grade}</span>
-                                  </p>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })}
-                  </div>
+              {aiParseError && (
+                <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200 text-left">
+                  <p className="text-sm font-semibold text-amber-900">⚠️ Parsing Notice</p>
+                  <p className="text-sm text-amber-800 mt-1 whitespace-pre-wrap">{aiParseError}</p>
                 </div>
               )}
             </div>

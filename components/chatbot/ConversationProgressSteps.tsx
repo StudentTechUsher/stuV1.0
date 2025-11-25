@@ -12,6 +12,7 @@ interface ConversationProgressStepsProps {
 // Main visible steps for the progress indicator (simplified for UI)
 const MAIN_STEPS: ConversationStep[] = [
   ConversationStep.PROFILE_SETUP,
+  ConversationStep.CAREER_SELECTION,
   ConversationStep.TRANSCRIPT_CHECK,
   ConversationStep.STUDENT_TYPE,
   ConversationStep.PROGRAM_SELECTION,
@@ -37,7 +38,7 @@ export default function ConversationProgressSteps({
   const currentStepIndex = MAIN_STEPS.indexOf(currentStep);
 
   return (
-    <div className="w-full py-4 pb-12">
+    <div className="w-full py-2 pb-8">
       {/* Mobile: Show current step only */}
       <div className="block lg:hidden">
         <div className="text-center mb-3">
@@ -63,7 +64,6 @@ export default function ConversationProgressSteps({
             const status = getStepStatus(step);
             const isCompleted = status === 'completed';
             const isCurrent = status === 'current';
-            const isUpcoming = status === 'upcoming';
             const isLast = index === MAIN_STEPS.length - 1;
 
             return (
@@ -93,7 +93,7 @@ export default function ConversationProgressSteps({
                   {/* Step label below */}
                   <p
                     className={`
-                      absolute top-10 text-xs text-center w-24 leading-tight
+                      absolute top-9 text-xs text-center w-24 leading-tight
                       ${isCurrent ? 'font-semibold text-foreground' : 'text-muted-foreground'}
                     `}
                   >

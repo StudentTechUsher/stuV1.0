@@ -199,10 +199,6 @@ export async function getStudentsWithProgramsServer(): Promise<AdvisorStudentRow
       };
     }));
 
-    console.log(`✅ Returning ${result.length} students with Gravatar URLs:`,
-      result.map(r => ({ name: `${r.fname} ${r.lname}`, email: emailMap.get(r.id), avatar_url: r.avatar_url }))
-    );
-
     return result;
   } catch (error) {
     console.error('❌ Server fetch students failed:', error);

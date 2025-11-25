@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf .next",
     "clean:all": "rm -rf .next node_modules && pnpm install",
-    "dev:clean": "pnpm clean && pnpm dev"
+    "dev:clean": "pnpm clean && pnpm dev",
+    "db:types": "pnpm dlx supabase gen types --lang=typescript --project-id bjpdmssagrqurlgzkxlr --schema public > lib/database/types.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

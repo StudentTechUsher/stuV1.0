@@ -6,6 +6,7 @@
 export enum ConversationStep {
   INITIALIZE = 'initialize',
   PROFILE_SETUP = 'profile_setup',
+  CAREER_SELECTION = 'career_selection',
   CAREER_PATHFINDER = 'career_pathfinder',
   PROGRAM_PATHFINDER = 'program_pathfinder',
   TRANSCRIPT_CHECK = 'transcript_check',

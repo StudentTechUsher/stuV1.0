@@ -63,9 +63,8 @@ export default function AcademicHistoryPage() {
 
   const loadingMessages = [
     'Loading your academic history...',
-    'Organizing courses by program...',
-    'Calculating progress metrics...',
-    'Matching courses to requirements...',
+    'Organizing courses by semester...',
+    'Preparing your transcript data...',
   ];
 
   // Helper function to calculate total required credits or courses from program requirements
@@ -490,13 +489,13 @@ export default function AcademicHistoryPage() {
             type="button"
             onClick={editable ? () => handleEditCourse(course) : undefined}
             disabled={!editable}
-            className="rounded-lg border px-3 py-2 shadow-sm transition-all duration-200 hover:shadow-md disabled:cursor-default"
+            className="rounded border px-2 py-1 shadow-sm transition-all duration-200 hover:shadow-md disabled:cursor-default"
             style={{
               backgroundColor: bgColor,
               borderColor: borderColor,
             }}
           >
-            <span className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+            <span className="font-body-semi text-xs font-semibold text-[var(--foreground)]">
               {course.subject} {course.number}
             </span>
           </button>
@@ -638,7 +637,7 @@ export default function AcademicHistoryPage() {
             Academic History
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)]">
-            Your courses organized by program requirements.
+            Your courses organized by semester.
           </p>
         </div>
 
@@ -716,201 +715,121 @@ export default function AcademicHistoryPage() {
 
       {/* Scrollable Content Area */}
       <div className="flex flex-1 flex-col gap-6 overflow-auto">
-        {/* Warning when no grad plan */}
-        {!activeGradPlan && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-            <p className="font-body text-sm font-medium text-amber-900">
-              No active graduation plan found. Create one to see how your courses map to program requirements.
-            </p>
-          </div>
-        )}
-
-        {/* Gen Ed Program Container - Always show if we have matches */}
-        {genEdMatches && genEdMatches.matchedCourses.length > 0 && genEdProgram && (() => {
-          const { total: totalRequired, unit } = calculateProgramTotals(genEdProgram);
-          const earned = unit === 'credits'
-            ? genEdMatches.matchedCourses.reduce((sum, course) => sum + (course.credits || 0), 0)
-            : genEdMatches.matchedCourses.length;
-          const percentage = totalRequired > 0 ? Math.min((earned / totalRequired) * 100, 100) : 0;
-
-          return (
-            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-              {/* Bold black header matching other dashboard components */}
-              <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Circular Progress Indicator */}
-                    <div className="relative flex h-14 w-14 items-center justify-center">
-                      <svg className="h-14 w-14 -rotate-90 transform">
-                        <circle
-                          cx="28"
-                          cy="28"
-                          r="24"
-                          stroke="rgba(255,255,255,0.2)"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <circle
-                          cx="28"
-                          cy="28"
-                          r="24"
-                          stroke="var(--primary)"
-                          strokeWidth="4"
-                          fill="none"
-                          strokeDasharray={`${2 * Math.PI * 24}`}
-                          strokeDashoffset={`${2 * Math.PI * 24 * (1 - percentage / 100)}`}
-                          strokeLinecap="round"
-                          className="transition-all duration-700"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="font-header-bold text-sm font-bold text-white">
-                          {Math.round(percentage)}%
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-header text-lg font-bold text-white">
-                        General Education
-                      </h3>
-                      <p className="font-body text-xs text-white/70">
-                        {earned} of {totalRequired} {unit}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-black">
-                    {genEdMatches.matchedCourses.length} course{genEdMatches.matchedCourses.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-
-              {/* Courses Grid */}
-              <div className="p-6">
-                <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '2' : '4'}`}>
-                  {genEdMatches.matchedCourses.map((course) =>
-                    renderCourseCard(course, 'rgba(34, 197, 94, 0.1)', 'rgb(34, 197, 94)')
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Program Containers - Only show if grad plan exists */}
-        {activeGradPlan && programMatches.map((programMatch) => {
-          const { total: totalRequired, unit } = calculateProgramTotals(programMatch.program);
-          const earned = unit === 'credits'
-            ? programMatch.matchedCourses.reduce((sum, course) => sum + (course.credits || 0), 0)
-            : programMatch.matchedCourses.length;
-          const percentage = totalRequired > 0 ? Math.min((earned / totalRequired) * 100, 100) : 0;
-
-          return (
-            <div key={programMatch.program.id} className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-              {/* Bold black header */}
-              <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Circular Progress Indicator */}
-                    <div className="relative flex h-14 w-14 items-center justify-center">
-                      <svg className="h-14 w-14 -rotate-90 transform">
-                        <circle
-                          cx="28"
-                          cy="28"
-                          r="24"
-                          stroke="rgba(255,255,255,0.2)"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <circle
-                          cx="28"
-                          cy="28"
-                          r="24"
-                          stroke="var(--primary)"
-                          strokeWidth="4"
-                          fill="none"
-                          strokeDasharray={`${2 * Math.PI * 24}`}
-                          strokeDashoffset={`${2 * Math.PI * 24 * (1 - percentage / 100)}`}
-                          strokeLinecap="round"
-                          className="transition-all duration-700"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="font-header-bold text-sm font-bold text-white">
-                          {Math.round(percentage)}%
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-header text-lg font-bold text-white">
-                        {programMatch.program.name}
-                      </h3>
-                      <p className="font-body text-xs text-white/60">
-                        {programMatch.program.program_type}
-                      </p>
-                      <p className="font-body text-xs text-white/70">
-                        {earned} of {totalRequired} {unit}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-black">
-                    {programMatch.matchedCourses.length} course{programMatch.matchedCourses.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-
-              {/* Courses Grid */}
-              <div className="p-6">
-                {programMatch.matchedCourses.length > 0 ? (
-                  <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '2' : '4'}`}>
-                    {programMatch.matchedCourses.map((course) =>
-                      renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
-                    )}
-                  </div>
-                ) : (
-                  <p className="font-body text-sm text-[var(--muted-foreground)]">
-                    No courses matched to this program yet.
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Display unmatched courses - Always show if there are any */}
+        {/* Group courses by term/semester */}
         {(() => {
-          const allMatchedIds = new Set(
-            [...programMatches, ...(genEdMatches ? [genEdMatches] : [])]
-              .flatMap((pm) => pm.matchedCourses.map((c) => c.id))
+          // Helper function to parse and sort terms chronologically
+          const parseTermForSorting = (termString: string): { year: number; semester: number; raw: string } => {
+            // Extract year (4-digit number)
+            const yearMatch = termString.match(/\b(19|20)\d{2}\b/);
+            const year = yearMatch ? parseInt(yearMatch[0], 10) : 0;
+
+            // Determine semester order: Winter=1, Spring=2, Summer=3, Fall=4
+            let semester = 0;
+            const lowerTerm = termString.toLowerCase();
+            if (lowerTerm.includes('winter')) semester = 1;
+            else if (lowerTerm.includes('spring')) semester = 2;
+            else if (lowerTerm.includes('summer')) semester = 3;
+            else if (lowerTerm.includes('fall')) semester = 4;
+
+            return { year, semester, raw: termString };
+          };
+
+          // Group courses by term
+          const coursesByTerm = userCourses.reduce((acc, course) => {
+            const term = course.term || 'Unknown Term';
+            if (!acc[term]) {
+              acc[term] = [];
+            }
+            acc[term].push(course);
+            return acc;
+          }, {} as Record<string, ParsedCourse[]>);
+
+          // Sort terms chronologically (newest first)
+          const sortedTerms = Object.keys(coursesByTerm).sort((a, b) => {
+            const parsedA = parseTermForSorting(a);
+            const parsedB = parseTermForSorting(b);
+
+            // Sort by year descending (newest first)
+            if (parsedA.year !== parsedB.year) {
+              return parsedB.year - parsedA.year;
+            }
+
+            // If same year, sort by semester descending (Fall -> Summer -> Spring -> Winter)
+            return parsedB.semester - parsedA.semester;
+          });
+
+          // Calculate total credits
+          const totalCredits = userCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
+          const totalCourses = userCourses.length;
+
+          // Determine grid columns based on total semesters
+          const getGridCols = (count: number): string => {
+            if (count >= 7) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'; // 4 per row
+            if (count >= 5) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'; // 3 per row
+            if (count >= 3) return 'grid-cols-1 md:grid-cols-2'; // 2 per row
+            return 'grid-cols-1'; // 1 per row
+          };
+
+          return (
+            <>
+              {/* Summary Card */}
+              <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
+                <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-header text-lg font-bold text-white">
+                        Academic Summary
+                      </h3>
+                      <p className="font-body text-xs text-white/70">
+                        Total: {totalCredits.toFixed(1)} credits • {totalCourses} courses
+                      </p>
+                    </div>
+                    <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-black">
+                      {sortedTerms.length} semester{sortedTerms.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Term Containers Grid */}
+              <div className={`grid ${getGridCols(sortedTerms.length)} gap-6`}>
+                {sortedTerms.map((term) => {
+                  const termCourses = coursesByTerm[term];
+                  const termCredits = termCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
+
+                  return (
+                    <div key={term} className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+                      {/* Header */}
+                      <div className="border-b px-4 py-2.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                        <div className="flex flex-col gap-0.5">
+                          <h3 className="font-header text-sm font-bold text-white">
+                            {term}
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            <p className="font-body text-xs text-white/60">
+                              {termCredits.toFixed(1)} cr
+                            </p>
+                            <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 font-body-semi text-xs font-semibold text-black">
+                              {termCourses.length}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Courses Grid */}
+                      <div className="p-3">
+                        <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '1.5' : '2'}`}>
+                          {termCourses.map((course) =>
+                            renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           );
-          const unmatchedCourses = userCourses.filter((c) => !allMatchedIds.has(c.id));
-
-          return unmatchedCourses.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-              {/* Header */}
-              <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-header text-lg font-bold text-white">
-                    No Category Assigned
-                  </h3>
-                  <span className="rounded-lg bg-gray-200 px-3 py-1.5 font-body-semi text-xs font-semibold text-gray-700">
-                    {unmatchedCourses.length} course{unmatchedCourses.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                <p className="font-body mb-4 text-sm text-[var(--muted-foreground)]">
-                  These courses did not match any program requirements. They may be electives or courses from other programs.
-                </p>
-                <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '2' : '4'}`}>
-                  {unmatchedCourses.map((course) =>
-                    renderCourseCard(course, 'rgba(0,0,0,0.03)', 'rgba(0,0,0,0.2)')
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null;
         })()}
       </div>
 

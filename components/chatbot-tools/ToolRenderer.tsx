@@ -32,6 +32,7 @@ interface ToolRendererProps {
     universityId?: number;
     selectedProgramIds?: number[];
     genEdProgramIds?: number[];
+    userId?: string;
     careerSuggestions?: CareerSuggestionsInput;
     programSuggestions?: ProgramSuggestionsInput;
     suggestedPrograms?: Array<{ programName: string; programType: string }>;
@@ -100,6 +101,7 @@ export default function ToolRenderer({
           universityId={toolData.universityId}
           selectedProgramIds={toolData.selectedProgramIds}
           genEdProgramIds={toolData.genEdProgramIds}
+          userId={toolData.userId}
           onSubmit={(data: CourseSelectionInput) => onToolComplete(data)}
         />
       );

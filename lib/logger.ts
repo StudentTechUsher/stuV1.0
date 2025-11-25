@@ -16,6 +16,8 @@ interface LogContext {
   httpStatus?: number;  // HTTP status codes (safe)
   startDate?: string;   // ISO timestamps are safe
   endDate?: string;     // ISO timestamps are safe
+  model?: string;       // AI model name (safe)
+  textLength?: number;  // Text/content length in characters (safe)
   // NEVER include: student data, course info, grades, names, emails, file content
 }
 

@@ -136,6 +136,14 @@ export function validateStepCompletion(
     case ConversationStep.PROGRAM_SELECTION:
       if (state.collectedData.selectedPrograms.length === 0) {
         errors.push('At least one program must be selected');
+      } else {
+        // For undergraduates, ensure they have at least one major (not just gen ed)
+        const nonGenEdPrograms = state.collectedData.selectedPrograms.filter(
+          p => p.programType !== 'general_education'
+        );
+        if (state.collectedData.studentType === 'undergraduate' && nonGenEdPrograms.length === 0) {
+          errors.push('At least one major or minor must be selected');
+        }
       }
       break;
 
@@ -252,14 +260,22 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
-  // Programs
+  // Programs (excluding gen ed requirements since they're always required for undergrads)
   if (state.collectedData.selectedPrograms.length > 0) {
-    collectedFields.push({
-      field: 'programs',
-      label: 'Programs',
-      value: state.collectedData.selectedPrograms.map(p => p.programName),
-      completed: true,
-    });
+    // Filter out general education programs for display
+    const nonGenEdPrograms = state.collectedData.selectedPrograms.filter(
+      p => p.programType !== 'general_education'
+    );
+
+    // Only show non-gen-ed programs (majors, minors, graduate programs)
+    if (nonGenEdPrograms.length > 0) {
+      collectedFields.push({
+        field: 'programs',
+        label: 'Programs',
+        value: nonGenEdPrograms.map(p => p.programName),
+        completed: true,
+      });
+    }
   }
 
   // Course selection method
@@ -308,17 +324,18 @@ export function getStepLabel(step: ConversationStep): string {
   const labels: Record<ConversationStep, string> = {
     [ConversationStep.INITIALIZE]: 'Initializing',
     [ConversationStep.PROFILE_SETUP]: 'Profile Setup',
+    [ConversationStep.CAREER_SELECTION]: 'Career Selection',
     [ConversationStep.CAREER_PATHFINDER]: 'Career Exploration',
     [ConversationStep.PROGRAM_PATHFINDER]: 'Program Exploration',
     [ConversationStep.TRANSCRIPT_CHECK]: 'Transcript Review',
     [ConversationStep.STUDENT_TYPE]: 'Student Classification',
     [ConversationStep.PROGRAM_SELECTION]: 'Program Selection',
-    [ConversationStep.COURSE_METHOD]: 'Course Selection Method',
+    [ConversationStep.COURSE_METHOD]: 'Course Selection',
     [ConversationStep.COURSE_SELECTION]: 'Course Selection',
     [ConversationStep.ELECTIVES]: 'Elective Courses',
     [ConversationStep.STUDENT_INTERESTS]: 'Your Interests',
     [ConversationStep.ADDITIONAL_CONCERNS]: 'Additional Information',
-    [ConversationStep.GENERATING_PLAN]: 'Generating Your Plan',
+    [ConversationStep.GENERATING_PLAN]: 'Generate Plan',
     [ConversationStep.COMPLETE]: 'Complete',
   };
 
@@ -345,6 +362,14 @@ export function isReadyForGeneration(state: ConversationState): ValidationResult
 
   if (state.collectedData.selectedPrograms.length === 0) {
     errors.push('At least one program must be selected');
+  } else {
+    // For undergraduates, ensure they have at least one major (not just gen ed)
+    const nonGenEdPrograms = state.collectedData.selectedPrograms.filter(
+      p => p.programType !== 'general_education'
+    );
+    if (state.collectedData.studentType === 'undergraduate' && nonGenEdPrograms.length === 0) {
+      errors.push('At least one major or minor must be selected');
+    }
   }
 
   if (!state.collectedData.courseSelectionMethod) {

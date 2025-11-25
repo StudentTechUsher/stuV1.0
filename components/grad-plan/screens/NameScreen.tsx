@@ -30,8 +30,8 @@ export default function NameScreen({
 
   return (
     <WizardFormLayout
-      title=""
-      subtitle=""
+      title="What's your name?"
+      subtitle="We'll use this to personalize your graduation plan"
       footerButtons={
         <div className="flex gap-2 md:gap-3">
           <Button

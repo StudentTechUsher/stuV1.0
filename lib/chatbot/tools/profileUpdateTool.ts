@@ -8,8 +8,9 @@ import { z } from 'zod';
 // Input validation schema
 export const ProfileUpdateSchema = z.object({
   estGradDate: z.string().optional().nullable(),
-  estGradSem: z.enum(['Fall', 'Spring', 'Summer']).optional().nullable(),
+  estGradSem: z.enum(['Fall', 'Spring', 'Summer', 'Winter']).optional().nullable(),
   careerGoals: z.string().min(1).optional().nullable(),
+  isGraduationOnly: z.boolean().optional(),
 });
 
 export type ProfileUpdateInput = z.infer<typeof ProfileUpdateSchema>;
