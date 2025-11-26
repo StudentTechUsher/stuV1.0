@@ -30,7 +30,8 @@ export interface CourseMatch {
  * Normalizes a course code by removing spaces and converting to uppercase
  * e.g., "CS 142", "CS142", "cs 142" -> "CS142"
  */
-function normalizeCourseCode(code: string): string {
+function normalizeCourseCode(code: string | null | undefined): string | null {
+  if (!code) return null;
   return code.replace(/\s+/g, '').toUpperCase();
 }
 
@@ -39,8 +40,9 @@ function normalizeCourseCode(code: string): string {
  * e.g., "CS142" -> { subject: "CS", number: "142" }
  * Also handles "CS 142" format
  */
-function parseCourseCode(code: string): { subject: string; number: string } | null {
+function parseCourseCode(code: string | null | undefined): { subject: string; number: string } | null {
   const normalized = normalizeCourseCode(code);
+  if (!normalized) return null;
   const match = normalized.match(/^([A-Z]+)(\d+[A-Z]?)$/);
   if (!match) return null;
   return {
@@ -53,7 +55,9 @@ function parseCourseCode(code: string): { subject: string; number: string } | nu
  * Calculates similarity score between two strings (0-1)
  * Uses simple word overlap for course titles
  */
-function calculateTitleSimilarity(title1: string, title2: string): number {
+function calculateTitleSimilarity(title1: string | null | undefined, title2: string | null | undefined): number {
+  if (!title1 || !title2) return 0;
+
   const normalize = (str: string) =>
     str.toLowerCase()
       .replace(/[^\w\s]/g, '')
@@ -147,7 +151,8 @@ export function autoMatchTranscriptCourses(
 
   // First pass: exact and high confidence matches
   for (const transcriptCourse of transcriptCourses) {
-    if (usedCourses.has(transcriptCourse.code)) continue;
+    // Skip courses with missing or invalid code
+    if (!transcriptCourse.code || usedCourses.has(transcriptCourse.code)) continue;
 
     for (const requirement of requirements) {
       const match = matchCourseToRequirement(transcriptCourse, requirement);
@@ -168,7 +173,8 @@ export function autoMatchTranscriptCourses(
 
   // Second pass: medium confidence matches for remaining courses
   for (const transcriptCourse of transcriptCourses) {
-    if (usedCourses.has(transcriptCourse.code)) continue;
+    // Skip courses with missing or invalid code
+    if (!transcriptCourse.code || usedCourses.has(transcriptCourse.code)) continue;
 
     for (const requirement of requirements) {
       const match = matchCourseToRequirement(transcriptCourse, requirement);
