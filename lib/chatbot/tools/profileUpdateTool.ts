@@ -10,6 +10,8 @@ export const ProfileUpdateSchema = z.object({
   estGradDate: z.string().optional().nullable(),
   estGradSem: z.enum(['Fall', 'Spring', 'Summer', 'Winter']).optional().nullable(),
   careerGoals: z.string().min(1).optional().nullable(),
+  admissionYear: z.number().int().optional().nullable(),
+  isTransfer: z.boolean().optional().nullable(),
   isGraduationOnly: z.boolean().optional(),
 });
 
@@ -63,11 +65,14 @@ export const profileUpdateToolDefinition = {
 
 /**
  * Determines if profile update is needed based on existing data
+ * Note: These fields now come from the student table, not profiles
  */
-export function shouldRequestProfileUpdate(profile: {
+export function shouldRequestProfileUpdate(student: {
   est_grad_date?: string | null;
-  est_grad_sem?: string | null;
+  est_grad_plan?: string | null;
   career_goals?: string | null;
+  admission_year?: number | null;
+  is_transfer?: boolean | null;
 }): {
   needsUpdate: boolean;
   missingFields: string[];
@@ -75,19 +80,25 @@ export function shouldRequestProfileUpdate(profile: {
 } {
   const missingFields: string[] = [];
 
-  if (!profile.est_grad_date) {
+  if (!student.est_grad_date) {
     missingFields.push('graduation date');
   }
-  if (!profile.est_grad_sem) {
+  if (!student.est_grad_plan) {
     missingFields.push('graduation semester');
   }
-  if (!profile.career_goals) {
+  if (!student.admission_year) {
+    missingFields.push('admission year');
+  }
+  if (student.is_transfer === null || student.is_transfer === undefined) {
+    missingFields.push('transfer status');
+  }
+  if (!student.career_goals) {
     missingFields.push('career goals');
   }
 
   return {
     needsUpdate: missingFields.length > 0,
     missingFields,
-    hasValues: missingFields.length < 3,
+    hasValues: missingFields.length < 5,
   };
 }

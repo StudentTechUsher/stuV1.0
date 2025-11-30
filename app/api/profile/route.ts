@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidSem } from '@/lib/gradDate';
 import {
-  updateProfile,
+  updateStudent,
 } from '@/lib/services/profileService.server';
 import { ProfileUpdateError } from '@/lib/services/errors/profileErrors';
 import { logError } from '@/lib/logger';
@@ -60,7 +60,8 @@ async function handleUpdateProfile(request: NextRequest) {
           { status: 400 }
         );
       }
-      updates.est_grad_sem = est_grad_sem;
+      // Map est_grad_sem to est_grad_plan in student table
+      updates.est_grad_plan = est_grad_sem;
     }
 
     if (est_grad_date !== undefined) {
@@ -98,8 +99,8 @@ async function handleUpdateProfile(request: NextRequest) {
       return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 });
     }
 
-    // Update profile using service layer
-    await updateProfile(user.id, updates);
+    // Update student record using service layer
+    await updateStudent(user.id, updates);
 
     return NextResponse.json({ success: true });
   } catch (error) {

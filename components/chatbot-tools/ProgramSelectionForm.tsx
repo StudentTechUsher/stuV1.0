@@ -12,10 +12,13 @@ import {
   ProgramOption,
   fetchProgramsByType,
 } from '@/lib/chatbot/tools/programSelectionTool';
+import CourseFlowModal from './CourseFlowModal';
 
 interface ProgramSelectionFormProps {
   studentType: 'undergraduate' | 'graduate';
   universityId: number;
+  studentAdmissionYear?: number | null;
+  studentIsTransfer?: boolean | null;
   onSubmit: (data: ProgramSelectionInput) => void;
   onProgramPathfinderClick?: () => void;
   suggestedPrograms?: Array<{ programName: string; programType: string }>;
@@ -24,6 +27,8 @@ interface ProgramSelectionFormProps {
 export default function ProgramSelectionForm({
   studentType,
   universityId,
+  studentAdmissionYear,
+  studentIsTransfer,
   onSubmit,
   onProgramPathfinderClick,
   suggestedPrograms,
@@ -46,6 +51,10 @@ export default function ProgramSelectionForm({
   const [loadingGenEds, setLoadingGenEds] = useState(false);
   const [loadingGraduate, setLoadingGraduate] = useState(false);
 
+  // Course flow modal state
+  const [courseFlowModalOpen, setCourseFlowModalOpen] = useState(false);
+  const [selectedProgramForFlow, setSelectedProgramForFlow] = useState<ProgramOption | null>(null);
+
   // Fetch programs based on student type
   useEffect(() => {
     if (studentType === 'undergraduate') {
@@ -61,9 +70,12 @@ export default function ProgramSelectionForm({
         .then(setMinors)
         .finally(() => setLoadingMinors(false));
 
-      // Fetch gen eds
+      // Fetch gen eds with student metadata for filtering
       setLoadingGenEds(true);
-      fetchProgramsByType(universityId, 'gen_ed')
+      fetchProgramsByType(universityId, 'gen_ed', {
+        admissionYear: studentAdmissionYear ?? undefined,
+        isTransfer: studentIsTransfer ?? undefined,
+      })
         .then((genEdPrograms) => {
           setGenEds(genEdPrograms);
           // Auto-select if only one gen ed option
@@ -170,6 +182,17 @@ export default function ProgramSelectionForm({
     ? selectedMajors.length > 0
     : selectedGraduatePrograms.length > 0;
 
+  const handleViewCourseFlow = (program: ProgramOption, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent the chip from being removed
+    setSelectedProgramForFlow(program);
+    setCourseFlowModalOpen(true);
+  };
+
+  const handleCloseCourseFlowModal = () => {
+    setCourseFlowModalOpen(false);
+    setSelectedProgramForFlow(null);
+  };
+
   return (
     <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
       <div className="mb-6">
@@ -217,6 +240,28 @@ export default function ProgramSelectionForm({
                 value={selectedMajors}
                 onChange={(_event, newValue) => setSelectedMajors(newValue)}
                 loading={loadingMajors}
+                renderOption={(props, option) => {
+                  const { key, ...otherProps } = props;
+                  return (
+                    <li key={key} {...otherProps}>
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span className="flex-1">{option.name}</span>
+                        {option.course_flow && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewCourseFlow(option, e);
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                          >
+                            View Program
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -226,13 +271,24 @@ export default function ProgramSelectionForm({
                 )}
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      size="small"
-                      className="bg-[var(--primary)] text-white"
-                    />
+                    <div key={option.id} className="inline-flex items-center gap-1">
+                      <Chip
+                        {...getTagProps({ index })}
+                        label={option.name}
+                        size="small"
+                        className="bg-[var(--primary)] text-white"
+                      />
+                      {option.course_flow && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleViewCourseFlow(option, e)}
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                          title="View Program"
+                        >
+                          View
+                        </button>
+                      )}
+                    </div>
                   ))
                 }
               />
@@ -250,6 +306,28 @@ export default function ProgramSelectionForm({
                 value={selectedMinors}
                 onChange={(_event, newValue) => setSelectedMinors(newValue)}
                 loading={loadingMinors}
+                renderOption={(props, option) => {
+                  const { key, ...otherProps } = props;
+                  return (
+                    <li key={key} {...otherProps}>
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span className="flex-1">{option.name}</span>
+                        {option.course_flow && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewCourseFlow(option, e);
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                          >
+                            View Program
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -259,12 +337,23 @@ export default function ProgramSelectionForm({
                 )}
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      size="small"
-                    />
+                    <div key={option.id} className="inline-flex items-center gap-1">
+                      <Chip
+                        {...getTagProps({ index })}
+                        label={option.name}
+                        size="small"
+                      />
+                      {option.course_flow && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleViewCourseFlow(option, e)}
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                          title="View Program"
+                        >
+                          View
+                        </button>
+                      )}
+                    </div>
                   ))
                 }
               />
@@ -283,6 +372,28 @@ export default function ProgramSelectionForm({
                   value={selectedGenEds}
                   onChange={(_event, newValue) => setSelectedGenEds(newValue)}
                   loading={loadingGenEds}
+                  renderOption={(props, option) => {
+                    const { key, ...otherProps } = props;
+                    return (
+                      <li key={key} {...otherProps}>
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <span className="flex-1">{option.name}</span>
+                          {option.course_flow && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewCourseFlow(option, e);
+                              }}
+                              className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                            >
+                              View Program
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -292,12 +403,23 @@ export default function ProgramSelectionForm({
                   )}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
-                      <Chip
-                        {...getTagProps({ index })}
-                        key={option.id}
-                        label={option.name}
-                        size="small"
-                      />
+                      <div key={option.id} className="inline-flex items-center gap-1">
+                        <Chip
+                          {...getTagProps({ index })}
+                          label={option.name}
+                          size="small"
+                        />
+                        {option.course_flow && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleViewCourseFlow(option, e)}
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                            title="View Program"
+                          >
+                            View
+                          </button>
+                        )}
+                      </div>
                     ))
                   }
                 />
@@ -327,6 +449,28 @@ export default function ProgramSelectionForm({
               value={selectedGraduatePrograms}
               onChange={(_event, newValue) => setSelectedGraduatePrograms(newValue)}
               loading={loadingGraduate}
+              renderOption={(props, option) => {
+                const { key, ...otherProps } = props;
+                return (
+                  <li key={key} {...otherProps}>
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <span className="flex-1">{option.name}</span>
+                      {option.course_flow && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewCourseFlow(option, e);
+                          }}
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                        >
+                          View Program
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -336,13 +480,24 @@ export default function ProgramSelectionForm({
               )}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip
-                    {...getTagProps({ index })}
-                    key={option.id}
-                    label={option.name}
-                    size="small"
-                    className="bg-[var(--primary)] text-white"
-                  />
+                  <div key={option.id} className="inline-flex items-center gap-1">
+                    <Chip
+                      {...getTagProps({ index })}
+                      label={option.name}
+                      size="small"
+                      className="bg-[var(--primary)] text-white"
+                    />
+                    {option.course_flow && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleViewCourseFlow(option, e)}
+                        className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                        title="View Program"
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
                 ))
               }
             />
@@ -361,6 +516,15 @@ export default function ProgramSelectionForm({
           </Button>
         </div>
       </div>
+
+      {/* Course Flow Modal */}
+      {selectedProgramForFlow && (
+        <CourseFlowModal
+          open={courseFlowModalOpen}
+          onClose={handleCloseCourseFlowModal}
+          program={selectedProgramForFlow}
+        />
+      )}
     </div>
   );
 }

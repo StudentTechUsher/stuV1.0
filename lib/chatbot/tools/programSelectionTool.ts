@@ -37,6 +37,8 @@ export interface ProgramOption {
   name: string;
   program_type: string;
   slug?: string;
+  course_flow?: unknown | null;
+  requirements?: unknown | null;
 }
 
 // Tool result type
@@ -120,12 +122,29 @@ export const programSelectionToolDefinition = {
  */
 export async function fetchProgramsByType(
   universityId: number,
-  programType: 'major' | 'minor' | 'graduate' | 'gen_ed'
+  programType: 'major' | 'minor' | 'graduate' | 'gen_ed',
+  studentMetadata?: {
+    admissionYear?: number | null;
+    isTransfer?: boolean | null;
+  }
 ): Promise<ProgramOption[]> {
   try {
-    const response = await fetch(
-      `/api/programs?universityId=${universityId}&type=${programType}`
-    );
+    const params = new URLSearchParams({
+      universityId: String(universityId),
+      type: programType,
+    });
+
+    // Add student metadata for gen_ed filtering
+    if (programType === 'gen_ed' && studentMetadata) {
+      if (studentMetadata.admissionYear) {
+        params.append('admissionYear', String(studentMetadata.admissionYear));
+      }
+      if (studentMetadata.isTransfer !== null && studentMetadata.isTransfer !== undefined) {
+        params.append('isTransfer', String(studentMetadata.isTransfer));
+      }
+    }
+
+    const response = await fetch(`/api/programs?${params.toString()}`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch ${programType} programs`);

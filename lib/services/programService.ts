@@ -202,11 +202,16 @@ export async function GetMinorsForUniversity(university_id: number): Promise<Pro
  * @param options - Filter options (type, universityId)
  * @returns Array of matching programs
  */
-export async function fetchPrograms(options?: { type?: string; universityId?: number }) {
+export async function fetchPrograms(options?: {
+  type?: string;
+  universityId?: number;
+  studentAdmissionYear?: number;
+  studentIsTransfer?: boolean;
+}) {
   try {
     let query = db
       .from('program')
-      .select('id,name,university_id,program_type')
+      .select('id,name,university_id,program_type,course_flow,requirements,applicable_start_year,applicable_end_year,applies_to_transfers,applies_to_freshmen,priority')
       .order('name');
 
     if (options?.type) {
@@ -223,7 +228,39 @@ export async function fetchPrograms(options?: { type?: string; universityId?: nu
       throw new ProgramFetchError('Failed to fetch programs', error);
     }
 
-    return data ?? [];
+    let programs = data ?? [];
+
+    // Filter gen_ed programs based on student metadata
+    if (options?.type === 'gen_ed' && (options.studentAdmissionYear || options.studentIsTransfer !== undefined)) {
+      programs = programs.filter(program => {
+        // Check admission year range
+        if (options.studentAdmissionYear) {
+          if (program.applicable_start_year && options.studentAdmissionYear < program.applicable_start_year) {
+            return false;
+          }
+          if (program.applicable_end_year && options.studentAdmissionYear > program.applicable_end_year) {
+            return false;
+          }
+        }
+
+        // Check transfer status
+        if (options.studentIsTransfer !== undefined) {
+          if (options.studentIsTransfer && program.applies_to_transfers === false) {
+            return false;
+          }
+          if (!options.studentIsTransfer && program.applies_to_freshmen === false) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // Sort by priority (highest first) if multiple gen eds match
+      programs.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    }
+
+    return programs;
   } catch (error) {
     if (error instanceof ProgramFetchError) {
       throw error;

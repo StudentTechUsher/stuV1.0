@@ -11,6 +11,8 @@ interface ProfileUpdateFormProps {
     est_grad_date?: string | null;
     est_grad_sem?: string | null;
     career_goals?: string | null;
+    admission_year?: number | null;
+    is_transfer?: boolean | null;
   };
   onSubmit: (data: ProfileUpdateInput) => void;
   onSkip?: () => void;
@@ -28,7 +30,7 @@ const INDUSTRY_OPTIONS = [
   'Creative & Media',
 ] as const;
 
-type ProfileStep = 'graduation' | 'industry-choice' | 'industry-selection' | 'career';
+type ProfileStep = 'graduation' | 'admission' | 'industry-choice' | 'industry-selection' | 'career';
 
 /**
  * Calculates the graduation date based on semester and year
@@ -92,6 +94,14 @@ export default function ProfileUpdateForm({
   const [step, setStep] = useState<ProfileStep>('graduation');
   const [semester, setSemester] = useState<string>(initialData.semester);
   const [year, setYear] = useState<string>(String(initialData.year));
+  const [admissionYear, setAdmissionYear] = useState<string>(
+    currentValues.admission_year ? String(currentValues.admission_year) : ''
+  );
+  const [isTransfer, setIsTransfer] = useState<boolean | null>(
+    currentValues.is_transfer !== null && currentValues.is_transfer !== undefined
+      ? currentValues.is_transfer
+      : null
+  );
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [customIndustry, setCustomIndustry] = useState('');
   const [careerGoals, setCareerGoals] = useState(currentValues.career_goals || '');
@@ -105,17 +115,36 @@ export default function ProfileUpdateForm({
     return years;
   }, [currentYear]);
 
+  // Generate admission year options (10 years ago to current year)
+  const admissionYearOptions = useMemo(() => {
+    const years = [];
+    for (let i = 10; i >= 0; i--) {
+      years.push(currentYear - i);
+    }
+    return years;
+  }, [currentYear]);
+
   const isGraduationValid = semester && year;
+  const isAdmissionValid = admissionYear && isTransfer !== null;
   const isIndustryValid = selectedIndustries.length > 0 || customIndustry.trim().length > 0;
   const isCareerValid = careerGoals.trim().length > 0;
 
   const handleGraduationContinue = () => {
     if (isGraduationValid) {
-      // Submit graduation info first
+      // Move to admission info step
+      setStep('admission');
+    }
+  };
+
+  const handleAdmissionContinue = () => {
+    if (admissionYear && isTransfer !== null) {
+      // Submit graduation and admission info together
       const gradDate = calculateGraduationDate(semester, Number(year));
       onSubmit({
         estGradDate: gradDate,
         estGradSem: (semester as ProfileUpdateInput['estGradSem']),
+        admissionYear: Number(admissionYear),
+        isTransfer,
         isGraduationOnly: true,
       });
       setStep('industry-choice');
@@ -227,7 +256,82 @@ export default function ProfileUpdateForm({
     );
   }
 
-  // Step 2: Industry Choice
+  // Step 2: Admission Info
+  if (step === 'admission') {
+    return (
+      <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">When were you admitted?</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            This helps us determine which requirements apply to you.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {/* Admission Year Selection */}
+          <div>
+            <label htmlFor="admission-year" className="block text-sm font-medium text-gray-900 mb-2">
+              Admission Year
+            </label>
+            <select
+              id="admission-year"
+              value={admissionYear}
+              onChange={(e) => setAdmissionYear(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+            >
+              <option value="">Select a year</option>
+              {admissionYearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Transfer Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Student Type
+            </label>
+            <div className="space-y-2">
+              <OptionTile
+                title="Freshman (started here)"
+                description="I started my undergraduate degree at this university"
+                selected={isTransfer === false}
+                onClick={() => setIsTransfer(false)}
+              />
+              <OptionTile
+                title="Transfer Student"
+                description="I transferred from another institution"
+                selected={isTransfer === true}
+                onClick={() => setIsTransfer(true)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 mt-5">
+          <Button
+            variant="outline"
+            onClick={() => setStep('graduation')}
+            className="px-6"
+          >
+            ← Back
+          </Button>
+          <Button
+            onClick={handleAdmissionContinue}
+            disabled={!isAdmissionValid}
+            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+          >
+            Continue
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Industry Choice
   if (step === 'industry-choice') {
     const hasExistingCareerGoal = currentValues.career_goals && currentValues.career_goals.trim().length > 0;
 
@@ -291,7 +395,7 @@ export default function ProfileUpdateForm({
         <div className="mt-5">
           <Button
             variant="ghost"
-            onClick={() => setStep('graduation')}
+            onClick={() => setStep('admission')}
             className="w-full"
           >
             ← Back
@@ -301,7 +405,7 @@ export default function ProfileUpdateForm({
     );
   }
 
-  // Step 3: Industry Selection
+  // Step 4: Industry Selection
   if (step === 'industry-selection') {
     return (
       <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
@@ -369,7 +473,7 @@ export default function ProfileUpdateForm({
     );
   }
 
-  // Step 4: Career Goals (Direct Entry)
+  // Step 5: Career Goals (Direct Entry)
   return (
     <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
       <div className="mb-6">

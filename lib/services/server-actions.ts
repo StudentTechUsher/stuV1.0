@@ -547,6 +547,8 @@ export async function updateProfileForChatbotAction(
         estGradSem?: string | null;
         careerGoals?: string | null;
         potentialCareerPaths?: string | null;
+        admissionYear?: number | null;
+        isTransfer?: boolean | null;
     }
 ) {
     try {
@@ -562,30 +564,31 @@ export async function updateProfileForChatbotAction(
             return { success: false, error: 'Not authorized to modify this profile' };
         }
 
-        // Build updates for profiles table
-        const profileUpdates: Record<string, string | null> = {};
+        // Build updates for student table
+        const studentUpdates: Record<string, string | number | boolean | null> = {};
 
         if (data.estGradDate !== undefined) {
-            profileUpdates.est_grad_date = data.estGradDate;
+            studentUpdates.est_grad_date = data.estGradDate;
         }
         if (data.estGradSem !== undefined) {
-            profileUpdates.est_grad_sem = data.estGradSem;
+            // Map est_grad_sem to est_grad_plan in student table
+            studentUpdates.est_grad_plan = data.estGradSem;
         }
-
-        // Build updates for students table
-        const studentUpdates: Record<string, string | null> = {};
-
+        if (data.careerGoals !== undefined) {
+            studentUpdates.career_goals = data.careerGoals;
+        }
         if (data.potentialCareerPaths !== undefined) {
             studentUpdates.targeted_career = data.potentialCareerPaths;
+        }
+        if (data.admissionYear !== undefined) {
+            studentUpdates.admission_year = data.admissionYear;
+        }
+        if (data.isTransfer !== undefined) {
+            studentUpdates.is_transfer = data.isTransfer;
         }
         // Note: selected_interests field expects int8[] (interest IDs from lookup table)
         // For free-form text interests from the grad plan wizard, we're not saving those
         // as they're meant for informational purposes during the planning process only
-
-        // Update profiles table if there are updates
-        if (Object.keys(profileUpdates).length > 0) {
-            await _updateProfile(userId, profileUpdates);
-        }
 
         // Update student table if there are updates
         if (Object.keys(studentUpdates).length > 0) {

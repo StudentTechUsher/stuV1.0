@@ -400,11 +400,8 @@ export type Database = {
         Row: {
           authorization_agreed: boolean
           authorization_agreed_at: string | null
-          career_goals: string | null
           created_at: string
           email: string | null
-          est_grad_date: string | null
-          est_grad_sem: string | null
           fname: string
           id: string
           lname: string
@@ -417,11 +414,8 @@ export type Database = {
         Insert: {
           authorization_agreed?: boolean
           authorization_agreed_at?: string | null
-          career_goals?: string | null
           created_at?: string
           email?: string | null
-          est_grad_date?: string | null
-          est_grad_sem?: string | null
           fname?: string
           id: string
           lname?: string
@@ -434,11 +428,8 @@ export type Database = {
         Update: {
           authorization_agreed?: boolean
           authorization_agreed_at?: string | null
-          career_goals?: string | null
           created_at?: string
           email?: string | null
-          est_grad_date?: string | null
-          est_grad_sem?: string | null
           fname?: string
           id?: string
           lname?: string
@@ -538,33 +529,39 @@ export type Database = {
       }
       student: {
         Row: {
+          career_goals: string | null
           class_preferences: number[] | null
           created_at: string
+          est_grad_date: string | null
+          est_grad_plan: string | null
           id: number
           profile_id: string | null
           selected_interests: number[] | null
           selected_programs: number[] | null
-          targeted_career: string | null
           year_in_school: Database["public"]["Enums"]["Year In School"]
         }
         Insert: {
+          career_goals?: string | null
           class_preferences?: number[] | null
           created_at?: string
+          est_grad_date?: string | null
+          est_grad_plan?: string | null
           id?: number
           profile_id?: string | null
           selected_interests?: number[] | null
           selected_programs?: number[] | null
-          targeted_career?: string | null
           year_in_school?: Database["public"]["Enums"]["Year In School"]
         }
         Update: {
+          career_goals?: string | null
           class_preferences?: number[] | null
           created_at?: string
+          est_grad_date?: string | null
+          est_grad_plan?: string | null
           id?: number
           profile_id?: string | null
           selected_interests?: number[] | null
           selected_programs?: number[] | null
-          targeted_career?: string | null
           year_in_school?: Database["public"]["Enums"]["Year In School"]
         }
         Relationships: [

@@ -127,6 +127,8 @@ export default function CreatePlanClient({
               est_grad_date: studentProfile.est_grad_date,
               est_grad_sem: studentProfile.est_grad_sem,
               career_goals: studentProfile.career_goals,
+              admission_year: (studentProfile as { admission_year?: number | null }).admission_year,
+              is_transfer: (studentProfile as { is_transfer?: boolean | null }).is_transfer,
             },
           },
         },
@@ -169,7 +171,14 @@ export default function CreatePlanClient({
 
     try {
       if (toolType === 'profile_update') {
-        const profileData = result as { estGradDate?: string | null; estGradSem?: string | null; careerGoals?: string | null; isGraduationOnly?: boolean };
+        const profileData = result as {
+          estGradDate?: string | null;
+          estGradSem?: string | null;
+          careerGoals?: string | null;
+          admissionYear?: number | null;
+          isTransfer?: boolean | null;
+          isGraduationOnly?: boolean;
+        };
 
         // Check if this is just graduation info (step 1) or complete profile (with career)
         const isGraduationOnly = profileData.isGraduationOnly === true;
@@ -179,13 +188,15 @@ export default function CreatePlanClient({
 
         if (updateResult.success) {
           if (isGraduationOnly) {
-            // Just completed graduation info - complete PROFILE_SETUP step
+            // Just completed graduation and admission info - complete PROFILE_SETUP step
             setConversationState(prev => {
               const updated = updateState(prev, {
                 step: ConversationStep.PROFILE_SETUP,
                 data: {
                   estGradDate: profileData.estGradDate ?? null,
                   estGradSem: profileData.estGradSem ?? null,
+                  admissionYear: profileData.admissionYear ?? null,
+                  isTransfer: profileData.isTransfer ?? null,
                 },
                 completedStep: ConversationStep.PROFILE_SETUP,
               });
@@ -349,6 +360,8 @@ export default function CreatePlanClient({
               toolData: {
                 studentType: studentTypeData.studentType,
                 universityId: studentProfile.university_id,
+                studentAdmissionYear: conversationState.collectedData.admissionYear,
+                studentIsTransfer: conversationState.collectedData.isTransfer,
               },
             },
           ]);
@@ -796,6 +809,8 @@ One last question: On a scale of 1-10, how committed are you to this career path
               toolData: {
                 studentType: conversationState.collectedData.studentType || 'undergraduate',
                 universityId: conversationState.universityId,
+                studentAdmissionYear: conversationState.collectedData.admissionYear,
+                studentIsTransfer: conversationState.collectedData.isTransfer,
                 suggestedPrograms: programSelections,
               },
             },
@@ -833,6 +848,8 @@ One last question: On a scale of 1-10, how committed are you to this career path
             estGradDate: studentProfile.est_grad_date || null,
             estGradSem: studentProfile.est_grad_sem || null,
             careerGoals: studentProfile.career_goals || null,
+            admissionYear: (studentProfile as { admission_year?: number | null }).admission_year || null,
+            isTransfer: (studentProfile as { is_transfer?: boolean | null }).is_transfer || null,
           },
           completedStep: ConversationStep.PROFILE_SETUP,
         });

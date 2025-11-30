@@ -177,15 +177,25 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             throw new GradPlanFetchError('Failed to fetch related student record', studentError);
         }
 
-        // 3. Profile names and graduation timeline
+        // 3. Profile names
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('fname, lname, est_grad_sem, est_grad_date')
+            .select('fname, lname')
             .eq('id', studentData.profile_id)
             .single();
         if (profileError) {
             console.error('❌ Error fetching profile data:', profileError);
             throw new GradPlanFetchError('Failed to fetch profile data', profileError);
+        }
+
+        // 3b. Student graduation timeline
+        const { data: studentGradData, error: studentGradError } = await supabase
+            .from('student')
+            .select('est_grad_plan, est_grad_date')
+            .eq('id', gradPlanData.student_id)
+            .maybeSingle();
+        if (studentGradError) {
+            console.error('❌ Error fetching student graduation data:', studentGradError);
         }
 
         // 4. Program details
@@ -210,8 +220,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             plan_details: gradPlanData.plan_details,
             student_id: gradPlanData.student_id,
             programs,
-            est_grad_sem: profileData.est_grad_sem,
-            est_grad_date: profileData.est_grad_date,
+            est_grad_sem: studentGradData?.est_grad_plan || null,
+            est_grad_date: studentGradData?.est_grad_date || null,
             advisor_notes: gradPlanData.advisor_notes || null,
             plan_name: gradPlanData.plan_name ?? null
         };

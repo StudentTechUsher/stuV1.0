@@ -341,6 +341,32 @@ export async function updateProfile(userId: string, updates: Record<string, stri
 }
 
 /**
+ * AUTHORIZATION: AUTHENTICATED STUDENTS (updating their own student record)
+ * Updates student fields for the authenticated user
+ * @param userId - The authenticated user's ID (profile_id in student table)
+ * @param updates - Object containing fields to update
+ */
+export async function updateStudent(userId: string, updates: Record<string, string | null>) {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { error } = await supabase
+      .from('student')
+      .update(updates)
+      .eq('profile_id', userId);
+
+    if (error) {
+      throw new ProfileUpdateError('Failed to update student record', error);
+    }
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error updating student record', error);
+  }
+}
+
+/**
  * AUTHORIZATION: AUTHENTICATED USERS (completing their own onboarding)
  * Completes the onboarding process by setting university, role, and marking as onboarded
  * If no profile exists, creates one first
@@ -398,8 +424,6 @@ export async function completeOnboarding(
       if (fname) profileData.fname = fname;
       if (lname) profileData.lname = lname;
       if (email) profileData.email = email;
-      if (estGradSem) profileData.est_grad_sem = estGradSem;
-      if (estGradDate) profileData.est_grad_date = estGradDate;
 
       const { error: insertError } = await supabase
         .from('profiles')
@@ -425,8 +449,6 @@ export async function completeOnboarding(
       if (fname) updateData.fname = fname;
       if (lname) updateData.lname = lname;
       if (email) updateData.email = email;
-      if (estGradSem) updateData.est_grad_sem = estGradSem;
-      if (estGradDate) updateData.est_grad_date = estGradDate;
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -448,18 +470,40 @@ export async function completeOnboarding(
         .maybeSingle();
 
       if (!existingStudent) {
+        const studentData: Record<string, unknown> = {
+          profile_id: userId,
+          selected_programs: [],
+          selected_interests: [],
+          class_preferences: [],
+        };
+
+        if (estGradSem) studentData.est_grad_plan = estGradSem;
+        if (estGradDate) studentData.est_grad_date = estGradDate;
+
         const { error: studentInsertError } = await supabase
           .from('student')
-          .insert({
-            profile_id: userId,
-            selected_programs: [],
-            selected_interests: [],
-            class_preferences: [],
-          });
+          .insert(studentData);
 
         if (studentInsertError) {
           console.error('Student record insert error:', studentInsertError);
           throw new ProfileUpdateError('Failed to create student record', studentInsertError);
+        }
+      } else {
+        // Update existing student record with graduation info
+        const studentUpdateData: Record<string, unknown> = {};
+        if (estGradSem) studentUpdateData.est_grad_plan = estGradSem;
+        if (estGradDate) studentUpdateData.est_grad_date = estGradDate;
+
+        if (Object.keys(studentUpdateData).length > 0) {
+          const { error: studentUpdateError } = await supabase
+            .from('student')
+            .update(studentUpdateData)
+            .eq('profile_id', userId);
+
+          if (studentUpdateError) {
+            console.error('Student record update error:', studentUpdateError);
+            throw new ProfileUpdateError('Failed to update student record', studentUpdateError);
+          }
         }
       }
     }
