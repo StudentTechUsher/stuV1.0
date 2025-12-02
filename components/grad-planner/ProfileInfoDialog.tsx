@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import { Sparkles, Info, Upload } from 'lucide-react';
-import { updateProfileClient } from '@/lib/services/profileService';
+import { updateStudentClient } from '@/lib/services/profileService';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { fetchUserCourses, type ParsedCourse } from '@/lib/services/userCoursesService';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
@@ -127,10 +127,10 @@ export default function ProfileInfoDialog({
 
     setIsSaving(true);
     try {
-      // Save the profile data using client-side service
-      const result = await updateProfileClient({
+      // Save the student data using client-side service
+      const result = await updateStudentClient({
         est_grad_date: estGradDate.trim(),
-        est_grad_sem: estGradSem.trim(),
+        est_grad_plan: estGradSem.trim(), // Map to est_grad_plan in student table
         career_goals: careerGoals.trim(),
       });
 

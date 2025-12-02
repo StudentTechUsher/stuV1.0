@@ -9,13 +9,20 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContentText from '@mui/material/DialogContentText';
 import EditablePlanTitle from '@/components/EditablePlanTitle';
 import ProgramSelectionDialog, { type ProgramSelections } from '@/components/grad-planner/ProgramSelectionDialog';
 import CreateGradPlanDialog from '@/components/grad-planner/create-grad-plan-dialog';
 import ProfileInfoDialog, { type ProfileData } from '@/components/grad-planner/ProfileInfoDialog';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, Trash2 } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 import { updateGradPlanNameAction } from '@/lib/services/server-actions';
+import { deleteGradPlan } from '@/lib/services/gradPlanService';
 
 interface Term {
   term: string;
@@ -91,6 +98,16 @@ export default function PlanHeader({
     open: false,
     message: '',
     severity: 'success',
+  });
+
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    planId: string | null;
+    planName: string | null;
+  }>({
+    open: false,
+    planId: null,
+    planName: null,
   });
 
   const selectedPlanName =
@@ -265,6 +282,68 @@ export default function PlanHeader({
     setNotification((prev) => ({ ...prev, open: false }));
   }, []);
 
+  const handleDeleteClick = useCallback((planId: string, planName: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent the select from opening
+    setDeleteDialog({
+      open: true,
+      planId,
+      planName,
+    });
+  }, []);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteDialog({
+      open: false,
+      planId: null,
+      planName: null,
+    });
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteDialog.planId) return;
+
+    try {
+      const result = await deleteGradPlan(deleteDialog.planId);
+
+      if (result.success) {
+        setNotification({
+          open: true,
+          message: 'Graduation plan deleted successfully.',
+          severity: 'success',
+        });
+
+        // If we deleted the currently selected plan, switch to another plan
+        if (selectedGradPlan?.id === deleteDialog.planId) {
+          const remainingPlans = allGradPlans.filter(p => p.id !== deleteDialog.planId);
+          onPlanChange?.(remainingPlans[0] || null);
+        }
+
+        // Close the dialog
+        setDeleteDialog({
+          open: false,
+          planId: null,
+          planName: null,
+        });
+
+        // Refresh the page to update the plan list
+        router.refresh();
+      } else {
+        setNotification({
+          open: true,
+          message: result.error || 'Failed to delete graduation plan.',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+      setNotification({
+        open: true,
+        message: 'Error deleting graduation plan. Please try again.',
+        severity: 'error',
+      });
+    }
+  }, [deleteDialog.planId, selectedGradPlan, allGradPlans, onPlanChange, router]);
+
   return (
     <>
       <section className="rounded-lg border border-gray-400 bg-gray-200/50 px-6 py-6">
@@ -304,11 +383,6 @@ export default function PlanHeader({
                   </span>
                 )}
               </div>
-              {selectedGradPlan && !selectedPlanName && (
-                <p className="max-w-xl text-sm leading-relaxed text-[color-mix(in_srgb,var(--muted-foreground)_68%,black_32%)]">
-                  Click on the title above to give this plan a name.
-                </p>
-              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -389,14 +463,41 @@ export default function PlanHeader({
                   {allGradPlans.map((plan) => {
                     const planName =
                       typeof plan.plan_name === 'string' ? (plan.plan_name ?? '').trim() : '';
+                    const isActive = plan.is_active === true;
                     try {
                       const createdAt = plan.created_at
                         ? new Date(plan.created_at as string).toLocaleString()
                         : 'Unknown Date';
                       const label = planName.length > 0 ? planName : `Plan made on ${createdAt}`;
                       return (
-                        <MenuItem key={plan.id} value={plan.id} className="font-body">
-                          {label}
+                        <MenuItem
+                          key={plan.id}
+                          value={plan.id}
+                          className="font-body"
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            pr: 1,
+                          }}
+                        >
+                          <span style={{ flex: 1 }}>{label}</span>
+                          {!isActive && (
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleDeleteClick(plan.id, label, e)}
+                              sx={{
+                                ml: 1,
+                                color: '#ef4444',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                },
+                              }}
+                              title="Delete this plan"
+                            >
+                              <Trash2 size={16} />
+                            </IconButton>
+                          )}
                         </MenuItem>
                       );
                     } catch (error) {
@@ -415,8 +516,34 @@ export default function PlanHeader({
                           ? planName
                           : `Plan ${String(plan.id).slice(0, 8)} • ${fallbackCreatedAt}`;
                       return (
-                        <MenuItem key={plan.id} value={plan.id} className="font-body">
-                          {fallbackLabel}
+                        <MenuItem
+                          key={plan.id}
+                          value={plan.id}
+                          className="font-body"
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            pr: 1,
+                          }}
+                        >
+                          <span style={{ flex: 1 }}>{fallbackLabel}</span>
+                          {!isActive && (
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleDeleteClick(plan.id, fallbackLabel, e)}
+                              sx={{
+                                ml: 1,
+                                color: '#ef4444',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                },
+                              }}
+                              title="Delete this plan"
+                            >
+                              <Trash2 size={16} />
+                            </IconButton>
+                          )}
                         </MenuItem>
                       );
                     }
@@ -471,6 +598,36 @@ export default function PlanHeader({
           studentInterests={studentProfile?.student_interests as string | null | undefined}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Delete Graduation Plan
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete "{deleteDialog.planName}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Notifications */}
       <Snackbar

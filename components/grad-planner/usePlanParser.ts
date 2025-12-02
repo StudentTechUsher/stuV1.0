@@ -38,6 +38,11 @@ export function usePlanParser(plan?: Record<string, unknown> | GraduationPlan | 
       return planRecord.terms as Term[];
     }
 
+    // Check for plannedTerms property (AI response format variant)
+    if (Array.isArray(planRecord.plannedTerms)) {
+      return planRecord.plannedTerms as Term[];
+    }
+
     return [];
   }, [plan]);
 

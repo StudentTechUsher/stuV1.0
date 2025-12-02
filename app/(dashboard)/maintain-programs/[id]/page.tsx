@@ -4,8 +4,13 @@ import { fetchMyProfile } from '@/lib/services/profileService.server';
 import { fetchProgramById } from '@/lib/services/programService';
 import ProgramEditor from '@/components/maintain-programs/program-editor';
 
-export default async function ProgramEditPage({ params }: { params: { id: string } }) {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function ProgramEditPage({ params }: Readonly<PageProps>) {
   try {
+    const { id } = await params;
     const user = await getSessionUser();
     const profile = await fetchMyProfile(user.id);
 
@@ -15,7 +20,7 @@ export default async function ProgramEditPage({ params }: { params: { id: string
     }
 
     // Fetch the program
-    const program = await fetchProgramById(params.id);
+    const program = await fetchProgramById(id);
 
     return <ProgramEditor program={program} />;
   } catch (error) {

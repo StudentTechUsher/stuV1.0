@@ -26,12 +26,18 @@ interface ToolRendererProps {
       est_grad_date?: string | null;
       est_grad_sem?: string | null;
       career_goals?: string | null;
+      admission_year?: number | null;
+      is_transfer?: boolean | null;
     };
     hasCourses?: boolean;
     studentType?: 'undergraduate' | 'graduate';
     universityId?: number;
     selectedProgramIds?: number[];
     genEdProgramIds?: number[];
+    userId?: string;
+    profileId?: string;
+    studentAdmissionYear?: number | null;
+    studentIsTransfer?: boolean | null;
     careerSuggestions?: CareerSuggestionsInput;
     programSuggestions?: ProgramSuggestionsInput;
     suggestedPrograms?: Array<{ programName: string; programType: string }>;
@@ -84,6 +90,9 @@ export default function ToolRenderer({
         <ProgramSelectionForm
           studentType={toolData.studentType}
           universityId={toolData.universityId}
+          studentAdmissionYear={toolData.studentAdmissionYear}
+          studentIsTransfer={toolData.studentIsTransfer}
+          profileId={toolData.profileId as string | undefined}
           onSubmit={(data: ProgramSelectionInput) => onToolComplete(data)}
           onProgramPathfinderClick={onProgramPathfinderClick}
           suggestedPrograms={toolData.suggestedPrograms}
@@ -100,6 +109,7 @@ export default function ToolRenderer({
           universityId={toolData.universityId}
           selectedProgramIds={toolData.selectedProgramIds}
           genEdProgramIds={toolData.genEdProgramIds}
+          userId={toolData.userId}
           onSubmit={(data: CourseSelectionInput) => onToolComplete(data)}
         />
       );

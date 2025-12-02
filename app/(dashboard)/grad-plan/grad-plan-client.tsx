@@ -32,23 +32,18 @@ interface GradPlanClientProps {
 }
 
 export default function GradPlanClient({
-  user,
   studentProfile: initialStudentProfile,
   gradPlan,
   allGradPlans,
   prompt,
 }: Readonly<GradPlanClientProps>) {
-  const [isZoomOut, setIsZoomOut] = useState(true); // Default to space view
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isZoomOut, setIsZoomOut] = useState(true); // Default to space view (sandbox UX)
+  const [isEditMode] = useState(false); // Clean code from main (no unused setter)
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(gradPlan);
   const [studentProfile, setStudentProfile] = useState(initialStudentProfile);
 
   // Parse the plan data - only if we have a plan
   const { planData, assumptions } = usePlanParser(selectedGradPlan || undefined);
-
-  // Check if plan is approved
-  const isApproved = (selectedGradPlan?.is_active as boolean) || false;
-  const isActive = (selectedGradPlan?.is_active as boolean) || false;
 
   // Handle profile updates
   const handleProfileUpdate = (updates: Record<string, string | null>) => {
@@ -84,7 +79,7 @@ export default function GradPlanClient({
             <div className="mb-4 text-6xl">📋</div>
             <h2 className="text-2xl font-bold mb-2">No Graduation Plan Yet</h2>
             <p className="text-muted-foreground mb-4">
-              You haven't created any graduation plans yet. Click "Create New Plan" above to get started with our AI-powered planner!
+              You haven&apos;t created any graduation plans yet. Click &quot;Create New Plan&quot; above to get started with our AI-powered planner!
             </p>
           </div>
         </div>

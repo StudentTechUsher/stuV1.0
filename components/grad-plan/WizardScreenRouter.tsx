@@ -12,6 +12,8 @@ import StudentTypeScreen from './screens/StudentTypeScreen';
 interface WizardScreenRouterProps {
   currentStep: ConversationStep;
   profileData: {
+    fname?: string;
+    lname?: string;
     name?: string;
     est_grad_date?: string | null;
     est_grad_sem?: string | null;
@@ -55,9 +57,14 @@ export default function WizardScreenRouter({
   // Note: Profile setup will be subdivided into multiple screens
   switch (currentStep) {
     case ConversationStep.PROFILE_SETUP:
+      // Combine fname and lname if available, otherwise fall back to name field
+      const fullName = profileData.fname && profileData.lname
+        ? `${profileData.fname} ${profileData.lname}`
+        : profileData.fname || profileData.name || '';
+
       return (
         <NameScreen
-          defaultName={profileData.name || ''}
+          defaultName={fullName}
           onSubmit={(name) => onStepComplete({ type: 'name', name })}
           onBack={onStepBack}
           isLoading={isLoading}

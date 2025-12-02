@@ -60,24 +60,51 @@ export async function getVerifiedUser(): Promise<User | null> {
 /**
  * Get user profile data with verification
  * Only returns profile data for the authenticated user
+ * For students, also includes student-specific fields from the student table
  */
 export async function getVerifiedUserProfile() {
   const user = await getVerifiedUser()
   if (!user) return null
-  
+
   try {
     const supabase = await createSupabaseServerComponentClient()
-    const { data: profile, error } = await supabase
+
+    // Fetch profile
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
-    
-    if (error) {
-      console.error('Error fetching user profile:', error)
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError)
       return null
     }
-    
+
+    // If user is a student (role_id = 3), join with student table
+    if (profile.role_id === 3) {
+      const { data: student, error: studentError } = await supabase
+        .from('student')
+        .select('est_grad_date, est_grad_plan, career_goals, admission_year, is_transfer')
+        .eq('profile_id', user.id)
+        .maybeSingle()
+
+      if (studentError) {
+        console.error('Error fetching student data:', studentError)
+      } else if (student) {
+        // Merge student fields into profile
+        // Map est_grad_plan to est_grad_sem for backward compatibility
+        return {
+          ...profile,
+          est_grad_date: student.est_grad_date,
+          est_grad_sem: student.est_grad_plan,
+          career_goals: student.career_goals,
+          admission_year: student.admission_year,
+          is_transfer: student.is_transfer,
+        }
+      }
+    }
+
     return profile
   } catch (error) {
     console.error('Error in getVerifiedUserProfile:', error)

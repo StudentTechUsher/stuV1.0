@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    # DO NOT mount node_modules or .next from host
+    # These must be built inside the container
+    volumes:
+      # Only mount specific files/folders if needed for development
+      # Avoid mounting the entire project directory
+      - ./.env.local:/app/.env.local:ro
+    restart: unless-stopped
+
+  # Development service (if needed)
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    # For development, you can mount source but exclude node_modules
+    volumes:
+      - .:/app
+      - /app/node_modules  # This prevents host node_modules from overriding
+      - /app/.next         # This prevents host .next from overriding
+    restart: unless-stopped

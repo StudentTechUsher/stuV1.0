@@ -92,12 +92,19 @@ export default function AcademicSummary() {
             }
           }
 
-          // Fetch profile data for graduation timeline
+          // Fetch profile data for name
           const { data: profileData } = await supabase
             .from("profiles")
-            .select("fname, lname, est_grad_sem, est_grad_date")
+            .select("fname, lname")
             .eq("id", user.id)
             .single();
+
+          // Fetch student data for graduation timeline
+          const { data: studentData } = await supabase
+            .from("student")
+            .select("est_grad_plan, est_grad_date")
+            .eq("profile_id", user.id)
+            .maybeSingle();
 
           const displayName = profileData?.fname && profileData?.lname
             ? `${profileData.fname} ${profileData.lname}`
@@ -115,8 +122,8 @@ export default function AcademicSummary() {
 
           // Format graduation date if available
           let formattedGradDate = DEFAULT_DATA.estGradDate;
-          if (profileData?.est_grad_date) {
-            const date = new Date(profileData.est_grad_date);
+          if (studentData?.est_grad_date) {
+            const date = new Date(studentData.est_grad_date);
             formattedGradDate = date.toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
@@ -131,7 +138,7 @@ export default function AcademicSummary() {
             ...prev,
             name: displayName,
             standing: classYear,
-            estSemester: profileData?.est_grad_sem || prev.estSemester,
+            estSemester: studentData?.est_grad_plan || prev.estSemester,
             estGradDate: formattedGradDate,
             earnedCredits,
             requiredCredits,

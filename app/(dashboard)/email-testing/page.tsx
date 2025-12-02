@@ -126,7 +126,7 @@ export default function EmailTestingPage() {
           2. Customize the test data if needed
         </Typography>
         <Typography variant="body2" sx={{ mb: 1 }}>
-          3. Click "Send Test Email" to trigger the email
+          3. Click &quot;Send Test Email&quot; to trigger the email
         </Typography>
         <Typography variant="body2" sx={{ mb: 1 }}>
           4. Check your inbox (and spam folder) for the email

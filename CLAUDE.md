@@ -575,6 +575,47 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImF
 
 ---
 
+### 8. Documentation File Standards
+
+**ALL markdown documentation files MUST be placed in the `docs/` folder**
+
+When creating documentation files (`.md`), they must be placed in the appropriate subdirectory under `docs/`:
+
+```
+docs/
+├── architecture/        # System design & architecture docs
+├── features/           # Feature implementations & guides
+├── setup/              # Setup & configuration guides
+├── components/         # Component documentation
+├── database/           # Database & migration docs
+└── roadmaps/           # Roadmaps & summaries
+```
+
+**Choosing the right subdirectory:**
+- `architecture/` - System design, data flow, technical architecture
+- `features/` - Feature specs, implementation guides, user-facing functionality
+- `setup/` - Installation, configuration, environment setup, testing guides
+- `components/` - React component documentation, usage examples
+- `database/` - Schema, migrations, database operations
+- `roadmaps/` - Project summaries, implementation progress, future plans
+
+**Exceptions:**
+- `README.md` - Keep in project root
+- `CLAUDE.md` - Keep in project root
+
+**❌ NEVER create documentation files in:**
+- Component directories (e.g., `components/some-component/README.md`)
+- Feature directories (e.g., `app/some-route/GUIDE.md`)
+- Library directories (e.g., `lib/some-lib/README.md`)
+- Project root (except `README.md` and `CLAUDE.md`)
+
+**✅ ALWAYS:**
+- Place all documentation in the appropriate `docs/` subdirectory
+- Use descriptive file names (e.g., `TRANSCRIPT_PARSER.md` not `README.md`)
+- Update existing docs rather than creating new ones when possible
+
+---
+
 ## Quick Checklist
 
 When writing code, Claude should:
@@ -596,6 +637,35 @@ When writing code, Claude should:
 - [ ] Use descriptive error variable names (error not e)
 - [ ] Configure ESLint rules for project-wide patterns
 - [ ] Use underscore prefix for intentional unused variables
+- [ ] Place all documentation files in appropriate `docs/` subdirectory
+
+---
+
+## Database Types Reference
+
+**For database schema and table types, always reference [`lib/database/types.ts`](lib/database/types.ts)**
+
+This file is auto-generated from the Supabase schema using `pnpm db:types`. It contains:
+- All table Row, Insert, and Update types
+- Enum types
+- Relationship definitions
+
+**Usage examples:**
+```typescript
+import { Tables, TablesInsert, Enums } from '@/lib/database/types';
+
+// Get row type for a table
+type Profile = Tables<'profiles'>;
+
+// Get insert type (for creating records)
+type NewProfile = TablesInsert<'profiles'>;
+
+// Get enum values
+type YearInSchool = Enums<'Year In School'>;
+```
+
+**When to regenerate types:**
+Run `pnpm db:types` after any schema changes (new tables, columns, etc.)
 
 ---
 

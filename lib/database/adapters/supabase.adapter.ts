@@ -17,7 +17,7 @@ import type {
   DatabaseAuth,
   DatabaseUser,
   AuthResponse,
-} from '../types';
+} from '../interfaces';
 
 /**
  * Wraps Supabase's query builder to match our interface
