@@ -2,6 +2,7 @@ import React from 'react';
 import { TermCard, TermBlock } from './TermCard';
 import { Event } from '../grad-planner/types';
 import { EventCard } from '../grad-planner/EventCard';
+import { Maximize2 } from 'lucide-react';
 
 export interface PlanSpaceView {
   planName: string;
@@ -17,9 +18,10 @@ interface SpaceViewProps {
   modifiedTerms?: Set<number>;
   onEditEvent?: (event: Event) => void;
   onDeleteEvent?: (eventId: string) => void;
+  onToggleView?: () => void;
 }
 
-export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent }: Readonly<SpaceViewProps>) {
+export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent, onToggleView }: Readonly<SpaceViewProps>) {
   // Calculate optimal terms per row (3-4 terms) based on total term count
   const termsPerRow = React.useMemo(() => {
     const totalTerms = plan.terms.length;
@@ -111,41 +113,53 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
 
   return (
     <div className="space-y-3">
-      {/* Top inputs row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-0.5">
-            Plan Name
-          </label>
-          <input
-            type="text"
-            value={plan.planName}
-            readOnly
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
-          />
+      {/* Top inputs row with toggle button */}
+      <div className="flex items-end justify-between gap-3 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+              Plan Name
+            </label>
+            <input
+              type="text"
+              value={plan.planName}
+              readOnly
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+              Programs
+            </label>
+            <input
+              type="text"
+              value={plan.degree}
+              readOnly
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+              Graduation Semester
+            </label>
+            <input
+              type="text"
+              value={plan.gradSemester}
+              readOnly
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-0.5">
-            Programs
-          </label>
-          <input
-            type="text"
-            value={plan.degree}
-            readOnly
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-0.5">
-            Graduation Semester
-          </label>
-          <input
-            type="text"
-            value={plan.gradSemester}
-            readOnly
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
-          />
-        </div>
+        {onToggleView && (
+          <button
+            type="button"
+            onClick={onToggleView}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+          >
+            <Maximize2 size={16} strokeWidth={2} />
+            Detailed View
+          </button>
+        )}
       </div>
 
       {/* Term cards and event cards - Row-based layout maintaining 4 terms per row */}

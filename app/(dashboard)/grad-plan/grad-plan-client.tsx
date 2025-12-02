@@ -6,6 +6,7 @@ import { PlanOverview } from '@/components/grad-planner/PlanOverview';
 import { SpaceView } from '@/components/space/SpaceView';
 import { usePlanParser } from '@/components/grad-planner/usePlanParser';
 import PlanHeader from '@/components/grad-planner/PlanHeader';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface GradPlanRecord {
   id: string;
@@ -36,8 +37,8 @@ export default function GradPlanClient({
   allGradPlans,
   prompt,
 }: Readonly<GradPlanClientProps>) {
-  const [isZoomOut, setIsZoomOut] = useState(false);
-  const [isEditMode] = useState(false);
+  const [isZoomOut, setIsZoomOut] = useState(true); // Default to space view
+  const [isEditMode, setIsEditMode] = useState(false);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(gradPlan);
   const [studentProfile, setStudentProfile] = useState(initialStudentProfile);
 
@@ -53,9 +54,10 @@ export default function GradPlanClient({
   };
 
   return (
-    <div className="min-h-screen p-6 space-y-6">
-      {/* Plan Header - Always show */}
-      <PlanHeader
+    <TooltipProvider>
+      <div className="min-h-screen p-6 space-y-6">
+        {/* Plan Header - Always show */}
+        <PlanHeader
         selectedGradPlan={selectedGradPlan}
         allGradPlans={allGradPlans}
         onPlanChange={setSelectedGradPlan}
@@ -84,18 +86,20 @@ export default function GradPlanClient({
       ) : (
         <>
 
-      {/* Plan Overview Component */}
-      <PlanOverview
-        currentPlanData={planData}
-        durationYears={Math.ceil(planData.length / 2)} // Rough estimate
-        fulfilledRequirements={[]} // TODO: Calculate from plan data
-        isEditMode={isEditMode}
-        isSpaceView={isZoomOut}
-        onToggleView={() => setIsZoomOut(!isZoomOut)}
-        onAddEvent={() => {/* TODO: Implement */}}
-        programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
-        estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
-      />
+      {/* Plan Overview Component - Only show in detail view */}
+      {!isZoomOut && (
+        <PlanOverview
+          currentPlanData={planData}
+          durationYears={Math.ceil(planData.length / 2)} // Rough estimate
+          fulfilledRequirements={[]} // TODO: Calculate from plan data
+          isEditMode={isEditMode}
+          isSpaceView={isZoomOut}
+          onToggleView={() => setIsZoomOut(!isZoomOut)}
+          onAddEvent={() => {/* TODO: Implement */}}
+          programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
+          estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
+        />
+      )}
 
       {/* Terms View - Grid or Zoom out */}
       <div>
@@ -124,10 +128,21 @@ export default function GradPlanClient({
                 })),
               }}
               isEditMode={isEditMode}
+              onToggleView={() => setIsZoomOut(!isZoomOut)}
             />
           </div>
         ) : (
-          <div>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-header-bold text-[var(--foreground)]">Detailed View</h2>
+              <button
+                type="button"
+                onClick={() => setIsZoomOut(!isZoomOut)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+              >
+                Return to Space View
+              </button>
+            </div>
             <div className={`grid gap-6 ${
               planData.length <= 4 ? 'grid-cols-4' :
               planData.length <= 6 ? 'grid-cols-3' :
@@ -136,10 +151,10 @@ export default function GradPlanClient({
               {planData.map((term, index) => (
                 <div key={index} className="relative min-h-[450px]">
                   {/* Term Card */}
-                  <div className="border rounded-lg p-4 bg-card shadow-sm h-full flex flex-col">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-lg">{term.term || `Term ${index + 1}`}</h3>
-                      <span className="text-sm font-semibold text-muted-foreground">
+                  <div className="border border-[var(--border)] rounded-lg p-5 bg-[var(--card)] shadow-sm h-full flex flex-col transition-all duration-300 hover:shadow-md">
+                    <div className="flex items-start justify-between mb-4 pb-3 border-b border-[var(--border)]">
+                      <h3 className="font-header-bold text-lg text-[var(--primary)] uppercase tracking-wide">{term.term || `Term ${index + 1}`}</h3>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1.5 text-sm font-body-semi text-white whitespace-nowrap">
                         {term.courses?.reduce((sum, course) => sum + (course.credits || 0), 0) || 0} credits
                       </span>
                     </div>
@@ -147,19 +162,22 @@ export default function GradPlanClient({
                       {term.courses?.map((course, courseIndex) => (
                         <div
                           key={courseIndex}
-                          className="p-2 bg-muted rounded text-sm"
+                          className="p-3 bg-[var(--secondary)] rounded-md text-sm transition-all duration-200 hover:bg-[var(--primary-15)]"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium">{course.code}</div>
-                              <div className="text-xs text-muted-foreground truncate">{course.title}</div>
+                              <div className="font-header-bold text-[var(--foreground)]">{course.code}</div>
+                              <div className="text-xs text-[var(--muted-foreground)] truncate">{course.title}</div>
                             </div>
-                            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                            <span className="text-xs font-body-semi text-[var(--foreground)] whitespace-nowrap">
                               {course.credits || 0} cr
                             </span>
                           </div>
                         </div>
                       ))}
+                      {!term.courses || term.courses.length === 0 && (
+                        <p className="text-xs text-[var(--muted-foreground)] text-center py-8">No courses</p>
+                      )}
                     </div>
 
                   </div>
@@ -170,13 +188,13 @@ export default function GradPlanClient({
                      planData.length <= 6 ? (index + 1) % 3 !== 0 :
                      (index + 1) % 4 !== 0) && (
                       <div className="absolute left-full top-1/2 -translate-y-1/2 w-6 flex items-center justify-center">
-                        <div className="bg-gray-100 rounded-full p-1.5">
+                        <div className="bg-[var(--secondary)] rounded-full p-1.5">
                           <svg
                             width="32"
                             height="32"
                             viewBox="0 0 32 32"
                             fill="none"
-                            className="text-gray-900 drop-shadow-lg"
+                            className="text-[var(--primary)] drop-shadow-lg"
                           >
                             <path
                               d="M4 16 L22 16 M22 16 L17 11 M22 16 L17 21"
@@ -214,6 +232,7 @@ export default function GradPlanClient({
       )}
         </>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

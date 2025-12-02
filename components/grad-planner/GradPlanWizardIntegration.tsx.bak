@@ -1,0 +1,356 @@
+'use client';
+
+/**
+ * Integration wrapper for GradPlanWizard
+ * Bridges the new Figma-style wizard with existing backend services
+ * Replaces CreateGradPlanDialog with new UX while preserving all functionality
+ */
+
+import React, { useCallback, useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import { GradPlanWizard } from './GradPlanWizard';
+import { WizardState } from './wizard/types';
+import type { ProgramRow } from '@/types/program';
+import type { CourseOffering } from '@/lib/services/courseOfferingService';
+import type { OrganizePromptInput } from '@/lib/validation/schemas';
+import {
+  collectCourses,
+  creditText,
+  getFlattenedRequirements,
+  parseRequirementsFromGenEd,
+  parseProgramRequirements,
+  getDropdownCount,
+  type SelectedClassesPayload,
+} from './helpers/grad-plan-helpers';
+import { searchCourseOfferings } from '@/lib/services/courseOfferingService';
+import { validatePlanName } from '@/lib/utils/plan-name-validation';
+
+interface Term {
+  term: string;
+  notes?: string;
+  courses?: Array<{
+    code: string;
+    title: string;
+    credits: number;
+    fulfills?: string[];
+  }>;
+  credits_planned?: number;
+}
+
+interface GradPlanWizardIntegrationProps {
+  open: boolean;
+  onClose: () => void;
+  selectedProgramIds: string[];
+  genEdProgramIds: string[];
+  genEdStrategy: 'early' | 'balanced';
+  planMode: 'AUTO' | 'MANUAL';
+  universityId: number;
+  programsData: ProgramRow[];
+  genEdData: ProgramRow[];
+  prompt: string;
+  studentName?: string;
+  studentId?: string;
+  initialPlanName?: string;
+  isGraduateStudent?: boolean;
+  onPlanCreated?: (aiGeneratedPlan: Term[], selectedProgramIds: number[], accessId?: string, planName?: string) => void;
+  onShowSnackbar?: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
+}
+
+export const GradPlanWizardIntegration: React.FC<GradPlanWizardIntegrationProps> = ({
+  open,
+  onClose,
+  selectedProgramIds,
+  genEdProgramIds,
+  genEdStrategy,
+  planMode,
+  universityId,
+  programsData,
+  genEdData,
+  prompt,
+  studentName = '',
+  studentId = '',
+  initialPlanName = '',
+  isGraduateStudent = false,
+  onPlanCreated,
+  onShowSnackbar,
+}) => {
+  const [snackbarState, setSnackbarState] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({ open: false, message: '', severity: 'info' });
+
+  const showSnackbar = useCallback(
+    (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+      if (onShowSnackbar) {
+        onShowSnackbar(message, severity);
+      } else {
+        setSnackbarState({ open: true, message, severity });
+      }
+    },
+    [onShowSnackbar]
+  );
+
+  // Transform wizard state to backend payload
+  const transformWizardStateToPayload = useCallback(
+    (wizardState: WizardState): {
+      payload: SelectedClassesPayload;
+      prompt: string;
+    } => {
+      // Build programs object from selected programs
+      const selectedPrograms = wizardState.selectedPrograms;
+      const programsMap: Record<string, any> = {};
+
+      selectedPrograms.forEach((programId) => {
+        const programData = programsData.find((p) => p.id === programId);
+        if (programData) {
+          const requirements = parseProgramRequirements(programsData, new Set([programId]));
+          const requirements_obj: Record<string, any> = {};
+
+          requirements.forEach((req) => {
+            const reqKey = req.description || String(req.requirementId);
+            const selectedCourses = wizardState.selectedCourses[reqKey] || [];
+            requirements_obj[req.requirementId] = {
+              description: req.description,
+              courses: selectedCourses.map((courseCode) => {
+                const course = req.courses?.find((c) => c.code === courseCode);
+                return {
+                  code: courseCode,
+                  title: course?.title || courseCode,
+                  credits: course?.credits || 0,
+                };
+              }),
+            };
+          });
+
+          programsMap[programId] = {
+            programId,
+            programName: programData.name,
+            programType: programData.program_type,
+            version: programData.version,
+            requirements: requirements_obj,
+          };
+        }
+      });
+
+      // Build gen ed object (undergrad only)
+      const generalEducationMap: Record<string, any> = {};
+      if (!isGraduateStudent && genEdData.length > 0) {
+        const requirements = parseRequirementsFromGenEd(genEdData);
+        requirements.forEach((req) => {
+          const reqKey = req.subtitle;
+          const selectedCourses = wizardState.selectedCourses[reqKey] || [];
+          generalEducationMap[reqKey] = selectedCourses.map((courseCode) => {
+            const courseItem = req.blocks?.find((block) => {
+              if (block.type === 'course') return (block as any).code === courseCode;
+              return false;
+            }) as any;
+            return {
+              code: courseCode,
+              title: courseItem?.title || courseCode,
+              credits: courseItem?.credits?.fixed || 0,
+            };
+          });
+        });
+      }
+
+      // Build the payload
+      const payload: SelectedClassesPayload = {
+        timestamp: new Date().toISOString(),
+        selectedPrograms: wizardState.selectedPrograms,
+        genEdPrograms: !isGraduateStudent ? genEdProgramIds : [],
+        assumptions: {
+          genEdStrategy: wizardState.genEdStrategy || 'balanced',
+        },
+        selectionMode: wizardState.planMode as 'AUTO' | 'MANUAL',
+        programs: programsMap,
+        generalEducation: generalEducationMap,
+        userAddedElectives: wizardState.userElectives,
+      };
+
+      // Calculate target credits
+      const allSelectedProgramData = isGraduateStudent ? programsData : [...programsData, ...genEdData];
+      const totalTargetCredits = allSelectedProgramData.reduce((sum, prog) => {
+        const credits = (prog.target_total_credits as number | null | undefined) ?? 0;
+        return sum + credits;
+      }, 0);
+
+      const defaultCredits = isGraduateStudent ? 30 : 120;
+      const effectiveTargetCredits = totalTargetCredits > 0 ? totalTargetCredits : defaultCredits;
+
+      // Build augmented prompt
+      const strategyText =
+        !isGraduateStudent && wizardState.genEdStrategy === 'early'
+          ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
+          : !isGraduateStudent
+            ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
+            : '';
+
+      const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
+      const augmentedPrompt = isGraduateStudent
+        ? `${promptWithCredits}\n\nStudent Type: Graduate (no general education requirements)\n\nTarget Total Credits: ${effectiveTargetCredits}`
+        : `${promptWithCredits}\n\nGenEd Sequencing Preference:\n${strategyText}\n\nTarget Total Credits: ${effectiveTargetCredits}`;
+
+      return { payload, prompt: augmentedPrompt };
+    },
+    [programsData, genEdData, genEdProgramIds, isGraduateStudent, prompt]
+  );
+
+  // Handle wizard completion
+  const handleSubmitPlan = useCallback(
+    async (wizardState: WizardState) => {
+      // Validate plan name
+      const nameValidation = validatePlanName(wizardState.planName, { allowEmpty: true });
+      if (!nameValidation.isValid) {
+        return { success: false, error: nameValidation.error };
+      }
+      const sanitizedPlanName = nameValidation.sanitizedValue;
+
+      try {
+        // Transform wizard state to backend payload
+        const { payload, prompt: augmentedPrompt } = transformWizardStateToPayload(wizardState);
+
+        // Validate payload
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+          return {
+            success: false,
+            error: 'Course selection data is invalid. Please review your selections and try again.',
+          };
+        }
+
+        const promptPayload: OrganizePromptInput = { prompt: augmentedPrompt };
+
+        // Show success message and close dialog
+        showSnackbar('🎓 Your graduation plan is being generated! You\'ll be notified when it\'s ready.', 'info');
+        onClose();
+
+        // Call API route to process in background (fire and forget)
+        const response = await fetch('/api/grad-plan/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            coursesData: payload,
+            promptInput: promptPayload,
+            planName: sanitizedPlanName,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('❌ Failed to start grad plan generation:', errorData);
+          return {
+            success: false,
+            error: errorData.error || 'Failed to create graduation plan',
+          };
+        }
+
+        const result = await response.json();
+        console.log('✅ Grad plan generation started:', result);
+
+        // Call the completion callback if provided
+        if (onPlanCreated) {
+          onPlanCreated([], selectedProgramIds.map(Number), result.accessId, sanitizedPlanName);
+        }
+
+        return { success: true };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        console.error('❌ Error creating plan:', error);
+        return { success: false, error: errorMessage };
+      }
+    },
+    [transformWizardStateToPayload, onClose, showSnackbar, onPlanCreated, selectedProgramIds]
+  );
+
+  // Load programs dynamically
+  const handleLoadPrograms = useCallback(
+    async (univId: string) => {
+      // Return already loaded programs/gen-ed data
+      return [...programsData, ...genEdData];
+    },
+    [programsData, genEdData]
+  );
+
+  // Load requirements dynamically
+  const handleLoadRequirements = useCallback(
+    async (programIds: string[]) => {
+      const requirements: any[] = [];
+
+      // Load program requirements
+      programIds.forEach((programId) => {
+        const program = programsData.find((p) => p.id === programId);
+        if (program) {
+          const reqs = parseProgramRequirements(programsData, new Set([programId]));
+          requirements.push(...reqs);
+        }
+      });
+
+      // Load gen-ed requirements (undergrad only)
+      if (!isGraduateStudent && genEdData.length > 0) {
+        const reqs = parseRequirementsFromGenEd(genEdData);
+        requirements.push(...reqs);
+      }
+
+      return requirements;
+    },
+    [programsData, genEdData, isGraduateStudent]
+  );
+
+  // Search courses
+  const handleSearchCourses = useCallback(
+    async (query: string) => {
+      try {
+        const results = await searchCourseOfferings(query);
+        return results.map((course: CourseOffering) => ({
+          code: course.code,
+          title: course.title,
+          credits: course.credits,
+        }));
+      } catch (error) {
+        console.error('Failed to search courses:', error);
+        return [];
+      }
+    },
+    []
+  );
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          backgroundColor: 'var(--background)',
+          color: 'var(--foreground)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--border)',
+        },
+      }}
+    >
+      <GradPlanWizard
+        studentName={studentName}
+        studentId={studentId}
+        prefilledData={{
+          studentName: studentName || '',
+          studentType: isGraduateStudent ? 'graduate' : 'undergraduate',
+          selectedPrograms: selectedProgramIds,
+          genEdStrategy: genEdStrategy,
+          planMode: planMode,
+          planName: initialPlanName,
+        }}
+        onLoadPrograms={handleLoadPrograms}
+        onLoadRequirements={handleLoadRequirements}
+        onSearchCourses={handleSearchCourses}
+        onSubmitPlan={handleSubmitPlan}
+        onComplete={() => {
+          onClose();
+        }}
+        onClose={onClose}
+      />
+    </Dialog>
+  );
+};
+
+export default GradPlanWizardIntegration;
