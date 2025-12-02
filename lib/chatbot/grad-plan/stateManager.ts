@@ -33,6 +33,8 @@ export function createInitialState(
       estGradDate: null,
       estGradSem: null,
       careerGoals: null,
+      admissionYear: null,
+      isTransfer: null,
       hasTranscript: false,
       needsTranscriptUpdate: false,
       transcriptUploaded: false,
@@ -227,6 +229,15 @@ export function getConversationProgress(state: ConversationState): ConversationP
       field: 'estGradSem',
       label: 'Graduation Semester',
       value: state.collectedData.estGradSem,
+      completed: true,
+    });
+  }
+
+  if (state.collectedData.admissionYear) {
+    collectedFields.push({
+      field: 'admissionYear',
+      label: 'Admission Year',
+      value: state.collectedData.admissionYear.toString(),
       completed: true,
     });
   }

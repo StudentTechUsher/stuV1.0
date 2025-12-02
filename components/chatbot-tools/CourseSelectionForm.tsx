@@ -1242,7 +1242,7 @@ export default function CourseSelectionForm({
                                     fontWeight: 'bold',
                                     fontSize: '0.7rem',
                                     height: '22px',
-                                    mb: 0.5,
+                                    mb: 1.5,
                                   }}
                                 />
                               )}
@@ -1445,7 +1445,7 @@ export default function CourseSelectionForm({
                                       fontWeight: 'bold',
                                       fontSize: '0.7rem',
                                       height: '22px',
-                                      mb: 0.5,
+                                      mb: 1.5,
                                     }}
                                   />
                                 )}

@@ -215,7 +215,12 @@ export async function fetchPrograms(options?: {
       .order('name');
 
     if (options?.type) {
-      query = query.eq('program_type', options.type);
+      // For gen_ed type, filter by is_general_ed flag instead of program_type
+      if (options.type === 'gen_ed') {
+        query = query.eq('is_general_ed', true);
+      } else {
+        query = query.eq('program_type', options.type);
+      }
     }
 
     if (options?.universityId) {
@@ -235,10 +240,13 @@ export async function fetchPrograms(options?: {
       programs = programs.filter(program => {
         // Check admission year range
         if (options.studentAdmissionYear) {
-          if (program.applicable_start_year && options.studentAdmissionYear < program.applicable_start_year) {
+          const startYear = program.applicable_start_year as number | null | undefined;
+          const endYear = program.applicable_end_year as number | null | undefined;
+
+          if (startYear && typeof startYear === 'number' && options.studentAdmissionYear < startYear) {
             return false;
           }
-          if (program.applicable_end_year && options.studentAdmissionYear > program.applicable_end_year) {
+          if (endYear && typeof endYear === 'number' && options.studentAdmissionYear > endYear) {
             return false;
           }
         }
@@ -257,7 +265,11 @@ export async function fetchPrograms(options?: {
       });
 
       // Sort by priority (highest first) if multiple gen eds match
-      programs.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+      programs.sort((a, b) => {
+        const priorityA = typeof a.priority === 'number' ? a.priority : 0;
+        const priorityB = typeof b.priority === 'number' ? b.priority : 0;
+        return priorityB - priorityA;
+      });
     }
 
     return programs;

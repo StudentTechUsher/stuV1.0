@@ -35,6 +35,7 @@ interface ToolRendererProps {
     selectedProgramIds?: number[];
     genEdProgramIds?: number[];
     userId?: string;
+    profileId?: string;
     studentAdmissionYear?: number | null;
     studentIsTransfer?: boolean | null;
     careerSuggestions?: CareerSuggestionsInput;
@@ -91,6 +92,7 @@ export default function ToolRenderer({
           universityId={toolData.universityId}
           studentAdmissionYear={toolData.studentAdmissionYear}
           studentIsTransfer={toolData.studentIsTransfer}
+          profileId={toolData.profileId as string | undefined}
           onSubmit={(data: ProgramSelectionInput) => onToolComplete(data)}
           onProgramPathfinderClick={onProgramPathfinderClick}
           suggestedPrograms={toolData.suggestedPrograms}

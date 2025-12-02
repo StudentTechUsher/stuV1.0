@@ -1,18 +1,30 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next"
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { UniversityThemeProvider } from "@/contexts/university-theme-context";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: [
+    {
+      path: "./fonts/Geist-Variable.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: [
+    {
+      path: "./fonts/GeistMono-Variable.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {

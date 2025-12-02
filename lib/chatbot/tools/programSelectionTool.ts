@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { Json } from '@/lib/database/types';
 
 // Program selection for undergraduate students
 export const UndergraduateProgramSchema = z.object({
@@ -37,8 +38,8 @@ export interface ProgramOption {
   name: string;
   program_type: string;
   slug?: string;
-  course_flow?: unknown | null;
-  requirements?: unknown | null;
+  course_flow?: Json | null;
+  requirements?: Json | null;
 }
 
 // Tool result type

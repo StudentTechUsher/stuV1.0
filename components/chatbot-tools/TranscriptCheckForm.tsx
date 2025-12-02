@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, Check, X } from 'lucide-react';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
 import TranscriptReviewDisplay from './TranscriptReviewDisplay';
 import { TranscriptCheckInput } from '@/lib/chatbot/tools/transcriptCheckTool';
 import { useAuth } from '@/hooks/useAuth';
-import { fetchUserCoursesAction } from '@/lib/services/server-actions';
+import { fetchUserCoursesAction, fetchUserCoursesMetadataAction } from '@/lib/services/server-actions';
 
 interface ParsedCourse {
   courseCode: string;
@@ -34,6 +34,22 @@ export default function TranscriptCheckForm({
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[] | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  // Fetch last updated date when component mounts if user has courses
+  useEffect(() => {
+    if (hasCourses && user?.id) {
+      fetchUserCoursesMetadataAction(user.id)
+        .then(result => {
+          if (result.success && result.hasData && result.lastUpdated) {
+            setLastUpdated(result.lastUpdated);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching courses metadata:', error);
+        });
+    }
+  }, [hasCourses, user?.id]);
 
   const handleUploadClick = () => {
     setShowUpload(true);
@@ -201,6 +217,17 @@ export default function TranscriptCheckForm({
               <p className="text-xs text-muted-foreground">
                 Your courses have been uploaded and processed
               </p>
+              {lastUpdated && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last updated: {new Date(lastUpdated).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
+                </p>
+              )}
             </div>
           </div>
 

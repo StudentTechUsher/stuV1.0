@@ -362,6 +362,7 @@ export default function CreatePlanClient({
                 universityId: studentProfile.university_id,
                 studentAdmissionYear: conversationState.collectedData.admissionYear,
                 studentIsTransfer: conversationState.collectedData.isTransfer,
+                profileId: user.id,
               },
             },
           ]);
@@ -811,6 +812,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                 universityId: conversationState.universityId,
                 studentAdmissionYear: conversationState.collectedData.admissionYear,
                 studentIsTransfer: conversationState.collectedData.isTransfer,
+                profileId: user.id,
                 suggestedPrograms: programSelections,
               },
             },
@@ -1366,8 +1368,8 @@ One last question: On a scale of 1-10, how committed are you to this career path
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-2 w-full min-h-0 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-full">
+      <div className="flex-1 max-w-[1920px] mx-auto px-6 py-2 w-full min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
           {/* Chat Area - Takes 3/4 on large screens */}
           <div className="lg:col-span-3 h-full min-h-0">
             <div className="border rounded-xl bg-gray-50 shadow-sm flex flex-col h-full max-h-full">

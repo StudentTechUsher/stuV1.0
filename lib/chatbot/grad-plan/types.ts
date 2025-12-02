@@ -72,6 +72,8 @@ export interface ConversationState {
     estGradDate: string | null;
     estGradSem: string | null;
     careerGoals: string | null;
+    admissionYear: number | null;
+    isTransfer: boolean | null;
 
     // Transcript status
     hasTranscript: boolean;

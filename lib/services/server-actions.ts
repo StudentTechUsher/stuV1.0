@@ -25,6 +25,7 @@ import {
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
     updateGradPlanName as _updateGradPlanName,
     deleteGradPlan as _deleteGradPlan,
+    GetActiveGradPlan as _getActiveGradPlan,
 } from './gradPlanService';
 import {
     fetchProfileBasicInfo as _fetchProfileBasicInfo,
@@ -36,10 +37,12 @@ import {
 } from './openaiService';
 import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
+    fetchProgramsBatch as _fetchProgramsBatch,
     deleteProgram as _deleteProgram,
 } from './programService';
 import {
     fetchUserCoursesArray as _fetchUserCoursesArray,
+    fetchUserCourses as _fetchUserCourses,
     formatCoursesForDisplay,
     saveManualCourses as _saveManualCourses,
     updateUserCourseTags as _updateUserCourseTags,
@@ -94,6 +97,37 @@ export async function fetchGradPlanById(gradPlanId: string) {
 
 export async function fetchPendingGradPlans() {
     return await _fetchPendingGradPlans();
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own grad plan only)
+ * Fetches the active grad plan for a user and returns program details
+ */
+export async function fetchActiveGradPlanProgramsAction(profileId: string) {
+    try {
+        const gradPlan = await _getActiveGradPlan(profileId);
+
+        if (!gradPlan || !gradPlan.programs_in_plan || !Array.isArray(gradPlan.programs_in_plan) || gradPlan.programs_in_plan.length === 0) {
+            return { success: true, hasGradPlan: false, programs: [] };
+        }
+
+        // Convert to strings and fetch program details
+        const programIds = gradPlan.programs_in_plan.map(String);
+        const programs = await _fetchProgramsBatch(programIds);
+
+        return {
+            success: true,
+            hasGradPlan: true,
+            programs: programs.map(p => ({
+                id: String(p.id),
+                name: p.name,
+                program_type: p.program_type,
+            }))
+        };
+    } catch (error) {
+        console.error('Error fetching active grad plan programs:', error);
+        return { success: false, error: 'Failed to fetch grad plan programs' };
+    }
 }
 
 export async function updateGradPlanWithAdvisorNotes(gradPlanId: string, advisorNotes: string) {
@@ -396,6 +430,31 @@ export async function fetchUserCoursesAction(userId: string) {
     } catch (error) {
         console.error('Error fetching user courses:', error);
         return { success: false, error: 'Failed to fetch user courses' };
+    }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ * Fetches user courses metadata including last updated date
+ */
+export async function fetchUserCoursesMetadataAction(userId: string) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const record = await _fetchUserCourses(supabase, userId);
+
+        if (!record) {
+            return { success: true, hasData: false, lastUpdated: null };
+        }
+
+        return {
+            success: true,
+            hasData: true,
+            lastUpdated: record.inserted_at,
+            courseCount: record.courses?.length || 0
+        };
+    } catch (error) {
+        console.error('Error fetching user courses metadata:', error);
+        return { success: false, error: 'Failed to fetch user courses metadata' };
     }
 }
 
