@@ -1,9 +1,18 @@
 import { getStudentsWithProgramsServer } from '@/lib/services/profileService.server';
 import AdvisorStudentsTable from '@/components/advisor/advisor-students-table';
+import { getVerifiedUserProfile } from '@/lib/supabase/auth';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdviseesPage() {
+  // Check user's role - only admins (1) and advisors (2) can access
+  const profile = await getVerifiedUserProfile();
+
+  if (!profile || (profile.role_id !== 1 && profile.role_id !== 2)) {
+    redirect('/dashboard');
+  }
+
   const rows = await getStudentsWithProgramsServer();
 
   return (

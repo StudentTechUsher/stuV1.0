@@ -29,6 +29,8 @@ export default function EditablePlanTitle({
   const [hovering, setHovering] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  const displayName = name || 'Untitled Graduation Plan';
+
   useEffect(() => {
     setName(initialName);
   }, [initialName]);
@@ -50,6 +52,10 @@ export default function EditablePlanTitle({
   function startEditing() {
     setEditing(true);
     setError(null);
+    // If name is empty, clear the placeholder text when editing starts
+    if (!name && ref.current) {
+      ref.current.textContent = '';
+    }
     requestAnimationFrame(() => {
       if (!ref.current) return;
       const r = document.createRange();
@@ -66,8 +72,9 @@ export default function EditablePlanTitle({
     // Early validations
     if (!normalized.length) {
       setError('Name cannot be empty.');
-      // keep editing; restore text to previous valid value
-      if (ref.current) ref.current.textContent = name;
+      setEditing(false);
+      // Restore placeholder if name was empty
+      if (ref.current) ref.current.textContent = displayName;
       return;
     }
     if (normalized.length > MAX_LEN) {
@@ -146,14 +153,17 @@ export default function EditablePlanTitle({
           borderRadius: '2px',
           paddingLeft: '2px',
           paddingRight: '2px',
-          fontWeight: '700'
+          fontWeight: '700',
+          cursor: 'pointer'
         } : {}}
         className={clsx(
           // Base: no box styling
           'outline-none border-none',
           'transition-all duration-100',
           // Hover shows I-beam cursor when not editing
-          !editing && 'cursor-text',
+          !editing && 'cursor-pointer hover:opacity-80',
+          // Show placeholder style when no name
+          !name && !editing && 'opacity-60 italic',
           // Inherit heading styles from parent - applied always to keep size consistent
           className
         )}
@@ -164,7 +174,7 @@ export default function EditablePlanTitle({
           document.execCommand('insertText', false, text);
         }}
       >
-        {name}
+        {displayName}
       </div>
 
       {/* Inline help/error */}

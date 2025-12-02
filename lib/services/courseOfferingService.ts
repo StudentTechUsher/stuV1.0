@@ -370,30 +370,24 @@ export async function searchCourseOfferings(
  */
 export async function getColleges(universityId: number): Promise<string[]> {
   try {
-    // Fetch all college values (Supabase default limit is 1000, but we can increase if needed)
+    // Fetch all colleges using ORM (no limit needed - deduplication is fast)
+    // Supabase handles pagination automatically if needed
     const { data, error } = await supabase
       .from('course_offerings')
       .select('college')
       .eq('university_id', universityId)
-      .not('college', 'is', null)
-      .limit(10000); // Increase limit to ensure we get all rows
+      .not('college', 'is', null);
 
     if (error) {
       throw new CourseOfferingFetchError('Failed to fetch colleges', error);
     }
 
-    // Deduplicate and sort in memory
-    const seen = new Set<string>();
-    const colleges: string[] = [];
+    // Deduplicate and sort in memory (very fast for a few thousand strings)
+    const uniqueColleges = Array.from(
+      new Set((data || []).map(row => row.college).filter(Boolean))
+    );
 
-    for (const row of data || []) {
-      if (row.college && !seen.has(row.college)) {
-        seen.add(row.college);
-        colleges.push(row.college);
-      }
-    }
-
-    return colleges.sort();
+    return uniqueColleges.sort();
   } catch (error) {
     if (error instanceof CourseOfferingFetchError) {
       throw error;
@@ -414,30 +408,24 @@ export async function getDepartmentCodes(
   college: string
 ): Promise<string[]> {
   try {
+    // Fetch all departments using ORM (no limit needed - deduplication is fast)
     const { data, error } = await supabase
       .from('course_offerings')
       .select('department_code')
       .eq('university_id', universityId)
       .eq('college', college)
-      .not('department_code', 'is', null)
-      .limit(10000);
+      .not('department_code', 'is', null);
 
     if (error) {
       throw new CourseOfferingFetchError('Failed to fetch department codes', error);
     }
 
-    // Deduplicate and sort department codes
-    const seen = new Set<string>();
-    const departments: string[] = [];
+    // Deduplicate and sort in memory (very fast for a few thousand strings)
+    const uniqueDepartments = Array.from(
+      new Set((data || []).map(row => row.department_code).filter(Boolean))
+    );
 
-    for (const row of data || []) {
-      if (row.department_code && !seen.has(row.department_code)) {
-        seen.add(row.department_code);
-        departments.push(row.department_code);
-      }
-    }
-
-    return departments.sort();
+    return uniqueDepartments.sort();
   } catch (error) {
     if (error instanceof CourseOfferingFetchError) {
       throw error;

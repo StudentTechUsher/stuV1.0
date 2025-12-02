@@ -13,7 +13,7 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
-import { BookOpen, Plus, X } from 'lucide-react';
+import { BookOpen, Plus, X, Repeat, Zap, Scale } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -38,15 +38,23 @@ import {
   getCollegesAction,
   getDepartmentCodesAction,
   getCoursesByDepartmentAction,
+  fetchUserCoursesAction,
 } from '@/lib/services/server-actions';
 import { recommendCourses, type CourseRecommendationContext } from '@/lib/services/courseRecommendationService';
 import CourseRecommendationPanel from './CourseRecommendationPanel';
+import {
+  autoMatchTranscriptCourses,
+  groupMatchesByRequirement,
+  type RequirementOption,
+  type CourseMatch,
+} from '@/lib/utils/course-requirement-matcher';
 
 interface CourseSelectionFormProps {
   studentType: 'undergraduate' | 'graduate';
   universityId: number;
   selectedProgramIds: number[];
   genEdProgramIds?: number[];
+  userId?: string;
   careerGoals?: string | null;
   studentInterests?: string | null;
   selectedMajorMinors?: string[];
@@ -58,6 +66,7 @@ export default function CourseSelectionForm({
   universityId,
   selectedProgramIds,
   genEdProgramIds = [],
+  userId,
   careerGoals = null,
   studentInterests = null,
   selectedMajorMinors = [],
@@ -73,9 +82,16 @@ export default function CourseSelectionForm({
   const [selectedCourses, setSelectedCourses] = useState<Record<string, string[]>>({});
   const [selectedProgramCourses, setSelectedProgramCourses] = useState<Record<string, string[]>>({});
 
+  // User transcript courses state
+  const [transcriptCourses, setTranscriptCourses] = useState<Array<{ code: string; title: string; credits: number }>>([]);
+  const [completedCourses, setCompletedCourses] = useState<Set<string>>(new Set());
+
   // User electives state
   const [userElectives, setUserElectives] = useState<Array<{ id: string; code: string; title: string; credits: number }>>([]);
   const [electiveError, setElectiveError] = useState<string | null>(null);
+
+  // Gen Ed distribution preference
+  const [genEdDistribution, setGenEdDistribution] = useState<'early' | 'balanced'>('balanced');
 
   // Three-step dropdown state for electives
   const [colleges, setColleges] = useState<string[]>([]);
@@ -88,11 +104,81 @@ export default function CourseSelectionForm({
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
 
+  // Substitution state
+  const [substitutionDialogOpen, setSubstitutionDialogOpen] = useState(false);
+  const [substitutionTarget, setSubstitutionTarget] = useState<{ requirementKey: string; slot: number; isGenEd: boolean } | null>(null);
+  const [substitutionCollege, setSubstitutionCollege] = useState('');
+  const [substitutionDepartment, setSubstitutionDepartment] = useState('');
+  const [substitutionCourse, setSubstitutionCourse] = useState<CourseOffering | null>(null);
+  const [substitutionColleges, setSubstitutionColleges] = useState<string[]>([]);
+  const [substitutionDepartments, setSubstitutionDepartments] = useState<string[]>([]);
+  const [substitutionCourses, setSubstitutionCourses] = useState<CourseOffering[]>([]);
+  const [loadingSubstitutionColleges, setLoadingSubstitutionColleges] = useState(false);
+  const [loadingSubstitutionDepartments, setLoadingSubstitutionDepartments] = useState(false);
+  const [loadingSubstitutionCourses, setLoadingSubstitutionCourses] = useState(false);
+
   // Track which sections are expanded (auto-selected sections start collapsed)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
+  // Auto-matching state
+  const [autoMatches, setAutoMatches] = useState<CourseMatch[]>([]);
+  const [autoMatchedKeys, setAutoMatchedKeys] = useState<Set<string>>(new Set());
+  const [completedRequirementKeys, setCompletedRequirementKeys] = useState<Set<string>>(new Set());
+
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
+
+  // Build a map of course codes to the programs/requirements they fulfill
+  const courseToProgramsMap = useMemo(() => {
+    const map = new Map<string, Array<{ programName: string; requirementDesc: string }>>();
+
+    // Process program requirements
+    programsData.forEach(program => {
+      if (!program.requirements || typeof program.requirements !== 'object') return;
+
+      const requirements = program.requirements as Record<string, unknown>;
+      Object.entries(requirements).forEach(([_key, value]) => {
+        const requirement = value as ProgramRequirement;
+        if (!requirement || !requirement.courses) return;
+
+        const validCourses = getValidCourses(requirement);
+        validCourses.forEach(course => {
+          if (!course.code) return;
+
+          if (!map.has(course.code)) {
+            map.set(course.code, []);
+          }
+
+          map.get(course.code)!.push({
+            programName: program.name || 'Unknown Program',
+            requirementDesc: requirement.description || 'Requirement',
+          });
+        });
+      });
+    });
+
+    // Process GenEd requirements
+    const genEdParsedReqs = parseRequirementsFromGenEd(genEdData);
+    genEdParsedReqs.forEach(richReq => {
+      if (!richReq.blocks) return;
+
+      const courses = collectCourses(richReq.blocks);
+      courses.forEach(course => {
+        if (!course.code) return;
+
+        if (!map.has(course.code)) {
+          map.set(course.code, []);
+        }
+
+        map.get(course.code)!.push({
+          programName: 'General Education',
+          requirementDesc: richReq.subtitle,
+        });
+      });
+    });
+
+    return map;
+  }, [programsData, genEdData]);
 
   // Build recommendation context
   const recommendationContext = useMemo<CourseRecommendationContext>(() => ({
@@ -101,18 +187,9 @@ export default function CourseSelectionForm({
     selectedMajorMinors,
   }), [careerGoals, studentInterests, selectedMajorMinors]);
 
-  // Get recommendations for a requirement based on available courses
-  const getRecommendationsForRequirement = useCallback((courses: unknown[]): { recommendations: any[]; dropdownCount: number } => {
-    const dropdownCount = courses.length;
-
-    // Only show recommendations if there are more than 3 courses and we have context
-    if (dropdownCount <= 3 || (!careerGoals && !studentInterests)) {
-      return { recommendations: [], dropdownCount };
-    }
-
-    // Convert courses to the format expected by recommendCourses
-    // Handle both CourseBlock[] and ProgramCourse[] types
-    const courseData = courses
+  // Helper function to process courses for recommendations
+  const processCourses = useCallback((courses: unknown[]) => {
+    return courses
       .filter((c: any) => c.status !== 'retired' && c.credits != null && c.title && c.code)
       .map((c: any) => ({
         id: c.code,
@@ -120,10 +197,7 @@ export default function CourseSelectionForm({
         title: c.title || 'Unknown',
         description: c.title || '', // Use title as fallback for description
       }));
-
-    const recommendations = recommendCourses(courseData, recommendationContext);
-    return { recommendations, dropdownCount };
-  }, [careerGoals, studentInterests, selectedMajorMinors, recommendationContext]);
+  }, []);
 
   // Fetch program data when component mounts
   useEffect(() => {
@@ -159,6 +233,147 @@ export default function CourseSelectionForm({
 
     fetchProgramData();
   }, [selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
+
+  // Fetch user's transcript courses
+  useEffect(() => {
+    async function fetchTranscriptCourses() {
+      if (!userId) return;
+
+      try {
+        const result = await fetchUserCoursesAction(userId);
+        if (result.success && result.courses && result.courses.length > 0) {
+          // Courses are already formatted with code field from server action
+          const formattedCourses = result.courses.map(course => ({
+            code: course.code, // Already formatted as "SUBJECT NUMBER"
+            title: course.title,
+            credits: course.credits || 0,
+          }));
+          console.log('[CourseSelection] Loaded transcript courses:', formattedCourses);
+          setTranscriptCourses(formattedCourses);
+        }
+      } catch (error) {
+        console.error('Error fetching transcript courses:', error);
+      }
+    }
+
+    fetchTranscriptCourses();
+  }, [userId]);
+
+  // Auto-match transcript courses to requirements when data is available
+  useEffect(() => {
+    if (transcriptCourses.length === 0 || (programsData.length === 0 && genEdData.length === 0)) {
+      return;
+    }
+
+    // Build list of all requirements with their available courses
+    const allRequirements: RequirementOption[] = [];
+
+    // Process major/minor programs
+    programsData.forEach(program => {
+      if (!program.requirements || typeof program.requirements !== 'object') return;
+
+      const requirements = program.requirements as Record<string, unknown>;
+      Object.entries(requirements).forEach(([key, value]) => {
+        const requirement = value as ProgramRequirement;
+        if (!requirement || !requirement.courses) return;
+
+        const validCourses = getValidCourses(requirement);
+        if (validCourses.length === 0) return;
+
+        allRequirements.push({
+          requirementKey: `${program.id}_${key}`,
+          requirementTitle: requirement.description || key,
+          availableCourses: validCourses.map(c => ({
+            type: 'course' as const,
+            code: c.code,
+            title: c.title || '',
+            credits: typeof c.credits === 'object' ? c.credits : (typeof c.credits === 'number' ? { fixed: c.credits } : null),
+          })),
+        });
+      });
+    });
+
+    // Process GenEd requirements
+    const genEdParsedReqs = parseRequirementsFromGenEd(genEdData);
+    genEdParsedReqs.forEach((richReq, index) => {
+      if (!richReq.blocks) return;
+
+      const courses = collectCourses(richReq.blocks);
+      if (courses.length === 0) return;
+
+      // Use the first genEd program id if available
+      const genEdId = genEdData.length > 0 ? genEdData[0].id : 'default';
+
+      allRequirements.push({
+        requirementKey: `genEd_${genEdId}_${index}`,
+        requirementTitle: richReq.subtitle,
+        availableCourses: courses.map(c => ({
+          type: 'course' as const,
+          code: c.code,
+          title: c.title || '',
+          credits: typeof c.credits === 'object' ? c.credits : (typeof c.credits === 'number' ? { fixed: c.credits } : null),
+        })),
+        dropdownIndex: index,
+      });
+    });
+
+    // Perform auto-matching
+    const matches = autoMatchTranscriptCourses(transcriptCourses, allRequirements);
+    console.log('[Auto-Match Debug] Transcript courses:', transcriptCourses);
+    console.log('[Auto-Match Debug] All requirements:', allRequirements);
+    console.log('[Auto-Match Debug] Matches found:', matches);
+    setAutoMatches(matches);
+
+    // Apply auto-matches to selected courses
+    const groupedMatches = groupMatchesByRequirement(matches);
+    console.log('[Auto-Match Debug] Grouped matches:', groupedMatches);
+
+    // Build a map of requirement keys to their subtitles/descriptions for GenEd requirements
+    const genEdKeyToSubtitle = new Map<string, string>();
+    allRequirements.forEach(req => {
+      if (req.requirementKey.startsWith('genEd_')) {
+        genEdKeyToSubtitle.set(req.requirementKey, req.requirementTitle);
+      }
+    });
+
+    setSelectedCourses(prev => {
+      const updated = { ...prev };
+      Object.entries(groupedMatches).forEach(([key, courses]) => {
+        // For GenEd requirements, use the subtitle as the key
+        if (key.startsWith('genEd_')) {
+          const subtitle = genEdKeyToSubtitle.get(key);
+          if (subtitle) {
+            updated[subtitle] = courses;
+          }
+        } else {
+          updated[key] = courses;
+        }
+      });
+      return updated;
+    });
+
+    // Track which keys were auto-matched
+    setAutoMatchedKeys(new Set(Object.keys(groupedMatches)));
+
+    // Track which requirement keys have completed courses (using subtitle for GenEd)
+    const completedKeys = new Set<string>();
+    Object.keys(groupedMatches).forEach(key => {
+      if (key.startsWith('genEd_')) {
+        const subtitle = genEdKeyToSubtitle.get(key);
+        if (subtitle) {
+          completedKeys.add(subtitle);
+        }
+      } else {
+        completedKeys.add(key);
+      }
+    });
+    setCompletedRequirementKeys(completedKeys);
+
+    // Mark auto-matched transcript courses as completed
+    const matchedCourseCodes = new Set(matches.map(m => m.transcriptCourse.code));
+    setCompletedCourses(matchedCourseCodes);
+
+  }, [transcriptCourses, programsData, genEdData]);
 
   // Load colleges when component mounts
   useEffect(() => {
@@ -280,6 +495,63 @@ export default function CourseSelectionForm({
     return map;
   }, [requirements]);
 
+  // Memoized recommendations for general education requirements
+  const genEdRecommendationsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    // Only compute if we have recommendation context
+    if (!careerGoals && !studentInterests) {
+      return map;
+    }
+
+    for (const req of requirements) {
+      const courses = requirementCoursesMap[req.subtitle] || [];
+      
+      // Only show recommendations if there are more than 3 courses
+      if (courses.length <= 3) {
+        map[req.subtitle] = [];
+        continue;
+      }
+
+      const courseData = processCourses(courses);
+      map[req.subtitle] = recommendCourses(courseData, recommendationContext);
+    }
+    
+    return map;
+  }, [requirements, requirementCoursesMap, careerGoals, studentInterests, processCourses, recommendationContext]);
+
+  // Memoized recommendations for program requirements
+  const programRecommendationsMap = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    
+    // Only compute if we have recommendation context
+    if (!careerGoals && !studentInterests) {
+      return map;
+    }
+
+    Array.from(selectedPrograms).forEach(programId => {
+      const programReqs = programRequirementsMap[programId] || [];
+      programReqs.forEach(req => {
+        if (!req.courses || req.courses.length === 0) return;
+        
+        const validCourses = getValidCourses(req);
+        
+        // Only show recommendations if there are more than 3 courses
+        if (validCourses.length <= 3) {
+          const requirementKey = getRequirementKey(programId, req);
+          map[requirementKey] = [];
+          return;
+        }
+
+        const courseData = processCourses(validCourses);
+        const requirementKey = getRequirementKey(programId, req);
+        map[requirementKey] = recommendCourses(courseData, recommendationContext);
+      });
+    });
+    
+    return map;
+  }, [selectedPrograms, programRequirementsMap, careerGoals, studentInterests, processCourses, recommendationContext]);
+
   // Ensure state array length matches dropdown count
   const ensureSlots = useCallback((subtitle: string, count: number) => {
     setSelectedCourses(prev => {
@@ -400,6 +672,114 @@ export default function CourseSelectionForm({
     return () => clearTimeout(timer);
   }, [selectedPrograms, programRequirementsMap]);
 
+  // Auto-select transcript courses that match requirements
+  useEffect(() => {
+    if (transcriptCourses.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const newCompletedCourses = new Set<string>();
+
+      // Match general requirements
+      requirements.forEach(req => {
+        const courses = requirementCoursesMap[req.subtitle] || [];
+        const dropdownCount = getDropdownCount(req);
+
+        setSelectedCourses(prev => {
+          const existing = prev[req.subtitle] ?? [];
+          const next = [...existing];
+          while (next.length < dropdownCount) next.push('');
+
+          // For each requirement option, check if user has completed it
+          courses.forEach((reqCourse, index) => {
+            if (index >= dropdownCount) return;
+
+            const transcriptMatch = transcriptCourses.find(tc =>
+              tc.code.toUpperCase() === reqCourse.code.toUpperCase()
+            );
+
+            if (transcriptMatch && (!next[index] || next[index].trim() === '')) {
+              next[index] = reqCourse.code;
+              newCompletedCourses.add(reqCourse.code);
+            }
+          });
+
+          return { ...prev, [req.subtitle]: next };
+        });
+      });
+
+      // Match program-specific requirements
+      Array.from(selectedPrograms).forEach(programId => {
+        const programReqs = programRequirementsMap[programId] || [];
+        programReqs.forEach(req => {
+          if (req.courses) {
+            const validCourses = getValidCourses(req);
+            const dropdownCount = getProgramDropdownCount(req);
+            const requirementKey = getRequirementKey(programId, req);
+
+            setSelectedProgramCourses(prev => {
+              const existing = prev[requirementKey] ?? [];
+              const next = [...existing];
+              while (next.length < dropdownCount) next.push('');
+
+              validCourses.forEach((reqCourse, index) => {
+                if (index >= dropdownCount) return;
+
+                const transcriptMatch = transcriptCourses.find(tc =>
+                  tc.code.toUpperCase() === reqCourse.code?.toUpperCase()
+                );
+
+                if (transcriptMatch && (!next[index] || next[index].trim() === '')) {
+                  next[index] = reqCourse.code || '';
+                  if (reqCourse.code) {
+                    newCompletedCourses.add(reqCourse.code);
+                  }
+                }
+              });
+
+              return { ...prev, [requirementKey]: next };
+            });
+          }
+
+          // Handle sub-requirements
+          if (req.subRequirements) {
+            req.subRequirements.forEach(subReq => {
+              const validCourses = getValidCourses(subReq);
+              const dropdownCount = getProgramDropdownCount(subReq);
+              const subReqKey = getRequirementKey(programId, subReq, true);
+
+              setSelectedProgramCourses(prev => {
+                const existing = prev[subReqKey] ?? [];
+                const next = [...existing];
+                while (next.length < dropdownCount) next.push('');
+
+                validCourses.forEach((reqCourse, index) => {
+                  if (index >= dropdownCount) return;
+
+                  const transcriptMatch = transcriptCourses.find(tc =>
+                    tc.code.toUpperCase() === reqCourse.code?.toUpperCase()
+                  );
+
+                  if (transcriptMatch && (!next[index] || next[index].trim() === '')) {
+                    next[index] = reqCourse.code || '';
+                    if (reqCourse.code) {
+                      newCompletedCourses.add(reqCourse.code);
+                    }
+                  }
+                });
+
+                return { ...prev, [subReqKey]: next };
+              });
+            });
+          }
+        });
+      });
+
+      setCompletedCourses(newCompletedCourses);
+    }, 600); // Run after auto-populate effects
+
+    return () => clearTimeout(timer);
+  }, [transcriptCourses, requirements, requirementCoursesMap, selectedPrograms, programRequirementsMap]);
+
   const handleCourseSelection = (subtitle: string, slotIndex: number, courseCode: string) => {
     setSelectedCourses(prev => {
       const existing = prev[subtitle] ?? [];
@@ -443,6 +823,108 @@ export default function CourseSelectionForm({
 
   const handleRemoveElective = (id: string) => {
     setUserElectives(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Substitution handlers
+  const handleOpenSubstitution = (requirementKey: string, slot: number, isGenEd: boolean) => {
+    setSubstitutionTarget({ requirementKey, slot, isGenEd });
+    setSubstitutionDialogOpen(true);
+    setSubstitutionCollege('');
+    setSubstitutionDepartment('');
+    setSubstitutionCourse(null);
+
+    // Load colleges for substitution
+    setLoadingSubstitutionColleges(true);
+    getCollegesAction(universityId)
+      .then(result => {
+        if (result.success && result.colleges) {
+          setSubstitutionColleges(result.colleges);
+        }
+      })
+      .catch(error => console.error('Failed to load colleges:', error))
+      .finally(() => setLoadingSubstitutionColleges(false));
+  };
+
+  const handleSubstitutionCollegeChange = async (college: string) => {
+    setSubstitutionCollege(college);
+    setSubstitutionDepartment('');
+    setSubstitutionCourse(null);
+    setSubstitutionCourses([]);
+
+    if (!college) {
+      setSubstitutionDepartments([]);
+      return;
+    }
+
+    setLoadingSubstitutionDepartments(true);
+    try {
+      const result = await getDepartmentCodesAction(universityId, college);
+      if (result.success && result.departments) {
+        setSubstitutionDepartments(result.departments);
+      }
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    } finally {
+      setLoadingSubstitutionDepartments(false);
+    }
+  };
+
+  const handleSubstitutionDepartmentChange = async (department: string) => {
+    setSubstitutionDepartment(department);
+    setSubstitutionCourse(null);
+
+    if (!department) {
+      setSubstitutionCourses([]);
+      return;
+    }
+
+    setLoadingSubstitutionCourses(true);
+    try {
+      const result = await getCoursesByDepartmentAction(universityId, substitutionCollege, department);
+      if (result.success && result.courses) {
+        setSubstitutionCourses(result.courses);
+      }
+    } catch (error) {
+      console.error('Failed to load courses:', error);
+    } finally {
+      setLoadingSubstitutionCourses(false);
+    }
+  };
+
+  const handleApplySubstitution = () => {
+    if (!substitutionTarget || !substitutionCourse) return;
+
+    const courseCode = substitutionCourse.course_code.trim().toUpperCase();
+    const { requirementKey, slot, isGenEd } = substitutionTarget;
+
+    if (isGenEd) {
+      // Update gen ed selection
+      setSelectedCourses(prev => {
+        const updated = { ...prev };
+        if (!updated[requirementKey]) {
+          updated[requirementKey] = [];
+        }
+        updated[requirementKey][slot] = courseCode;
+        return updated;
+      });
+    } else {
+      // Update program selection
+      setSelectedProgramCourses(prev => {
+        const updated = { ...prev };
+        if (!updated[requirementKey]) {
+          updated[requirementKey] = [];
+        }
+        updated[requirementKey][slot] = courseCode;
+        return updated;
+      });
+    }
+
+    // Close dialog and reset
+    setSubstitutionDialogOpen(false);
+    setSubstitutionTarget(null);
+    setSubstitutionCollege('');
+    setSubstitutionDepartment('');
+    setSubstitutionCourse(null);
   };
 
   const getCourseDetails = (courseCode: string, coursesList: Array<{ code: string; title: string; credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null }>): CourseEntry => {
@@ -566,6 +1048,7 @@ export default function CourseSelectionForm({
           credits: e.credits,
         })),
       }),
+      genEdDistribution,
     };
 
     onSubmit(courseSelectionData);
@@ -602,6 +1085,38 @@ export default function CourseSelectionForm({
         </p>
       </div>
 
+      {/* Gen Ed Distribution Preference - Only for undergraduates */}
+      {!isGraduateStudent && (
+        <div className="mb-4 flex justify-center">
+          <div className="inline-flex items-center bg-white border border-gray-200 rounded-full shadow-sm p-1">
+            <button
+              type="button"
+              onClick={() => setGenEdDistribution('early')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                genEdDistribution === 'early'
+                  ? 'bg-[#0a1f1a] text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Zap size={16} />
+              Early Gen Eds
+            </button>
+            <button
+              type="button"
+              onClick={() => setGenEdDistribution('balanced')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                genEdDistribution === 'balanced'
+                  ? 'bg-[#0a1f1a] text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Scale size={16} />
+              Balanced Distribution
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Pathfinder Help Button - Hidden for now */}
       {/* <div className="flex justify-center mb-6">
         <Button
@@ -627,9 +1142,14 @@ export default function CourseSelectionForm({
                 const dropdownCount = getDropdownCount(req);
                 const courses = requirementCoursesMap[req.subtitle] || [];
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+
+                // Check if this requirement has a completed course from transcript
+                const hasCompletedCourse = completedRequirementKeys.has(req.subtitle);
+
                 const sectionKey = `gen-ed-${req.subtitle}`;
-                const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
-                const { recommendations } = getRecommendationsForRequirement(courses);
+                // Expand by default if has completed course, otherwise collapse if auto-selected
+                const isExpanded = expandedSections[sectionKey] ?? (hasCompletedCourse || !isAutoSelected);
+                const recommendations = genEdRecommendationsMap[req.subtitle] || [];
 
                 return (
                   <div key={`${req.subtitle}-${idx}`} className="space-y-2 border border-gray-200 rounded p-2.5">
@@ -647,7 +1167,18 @@ export default function CourseSelectionForm({
                         </svg>
                       </div>
                       <p className="text-sm font-medium">{req.subtitle}</p>
-                      {isAutoSelected && (
+                      {hasCompletedCourse ? (
+                        <Chip
+                          label="Completed"
+                          size="small"
+                          className="text-xs ml-auto"
+                          sx={{
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            height: '20px',
+                          }}
+                        />
+                      ) : isAutoSelected ? (
                         <Chip
                           label="Auto-selected"
                           size="small"
@@ -658,7 +1189,7 @@ export default function CourseSelectionForm({
                             height: '20px',
                           }}
                         />
-                      )}
+                      ) : null}
                     </button>
 
                     {isExpanded && (
@@ -679,39 +1210,118 @@ export default function CourseSelectionForm({
                           </div>
                         )}
 
-                        {Array.from({ length: dropdownCount }).map((_, slot) => (
-                          <FormControl
-                            key={`${req.subtitle}-slot-${slot}`}
-                            fullWidth
-                            size="small"
-                            sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
-                          >
-                            <InputLabel>
-                              {dropdownCount > 1
-                                ? `${req.subtitle} — Course #${slot + 1}`
-                                : req.subtitle}
-                            </InputLabel>
-                            <Select
-                              value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
-                              label={
-                                dropdownCount > 1
-                                  ? `${req.subtitle} — Course #${slot + 1}`
-                                  : req.subtitle
-                              }
+                        {Array.from({ length: dropdownCount }).map((_, slot) => {
+                          // Check if this specific slot has an auto-matched course
+                          const selectedCourse = selectedCourses[req.subtitle]?.[slot];
+                          // Use subtitle as the key since we don't have direct genEd reference here
+                          const possibleKeys = autoMatches
+                            .filter(m => m.matchedCourseCode === selectedCourse)
+                            .map(m => m.requirementKey);
+                          const isAutoMatched = selectedCourse && possibleKeys.some(key => autoMatchedKeys.has(key));
+                          const matchInfo = isAutoMatched
+                            ? autoMatches.find(m =>
+                                possibleKeys.includes(m.requirementKey) &&
+                                m.matchedCourseCode === selectedCourse
+                              )
+                            : null;
+
+                          // Get all selected courses for this requirement except current slot
+                          const otherSelectedCourses = (selectedCourses[req.subtitle] || [])
+                            .filter((_: string, index: number) => index !== slot && _)
+                            .map((code: string) => code);
+
+                          return (
+                            <Box key={`${req.subtitle}-slot-${slot}`} sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}>
+                              {isAutoMatched && matchInfo && (
+                                <Chip
+                                  label={`✓ From your transcript (${matchInfo.confidence} match)`}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: matchInfo.confidence === 'exact' ? '#10b981' : '#3b82f6',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.7rem',
+                                    height: '22px',
+                                    mb: 1.5,
+                                  }}
+                                />
+                              )}
+                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                <FormControl
+                                  fullWidth
+                                  size="small"
+                                >
+                                  <InputLabel>
+                                    {dropdownCount > 1
+                                      ? `${req.subtitle} — Course #${slot + 1}`
+                                      : req.subtitle}
+                                  </InputLabel>
+                                  <Select
+                                    value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
+                                    label={
+                                      dropdownCount > 1
+                                        ? `${req.subtitle} — Course #${slot + 1}`
+                                        : req.subtitle
+                                    }
+                                    disabled={isAutoSelected}
+                                    onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
+                                  >
+                                <MenuItem value=""><em>Select a course</em></MenuItem>
+                                {courses
+                                  .filter(c => c.status !== 'retired' && c.credits != null && c.code && c.title)
+                                  .filter(c => !otherSelectedCourses.includes(c.code))
+                                  .map((c, courseIdx) => {
+                                    const isCompleted = completedCourses.has(c.code);
+                                    // Get other programs/requirements this course fulfills
+                                    const otherFulfillments = (courseToProgramsMap.get(c.code) || [])
+                                      .filter(f => f.requirementDesc !== req.subtitle); // Exclude current requirement
+
+                                    return (
+                                      <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}-${courseIdx}`} value={c.code}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                            <span>{c.code} — {c.title} ({creditText(c.credits)})</span>
+                                            {isCompleted && (
+                                              <Chip
+                                                label="Completed"
+                                                size="small"
+                                                sx={{
+                                                  bgcolor: '#10b981',
+                                                  color: 'white',
+                                                  fontWeight: 'bold',
+                                                  fontSize: '0.7rem',
+                                                  height: '20px',
+                                                  ml: 'auto',
+                                                }}
+                                              />
+                                            )}
+                                          </Box>
+                                          {otherFulfillments.length > 0 && (
+                                            <Box sx={{ pl: 0.5 }}>
+                                              <span style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
+                                                Also fulfills: {otherFulfillments.map(f => f.programName).join(', ')}
+                                              </span>
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      </MenuItem>
+                                    );
+                                  })}
+                              </Select>
+                            </FormControl>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSubstitution(req.subtitle, slot, true)}
                               disabled={isAutoSelected}
-                              onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
+                              className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Find a substitution course"
                             >
-                              <MenuItem value=""><em>Select a course</em></MenuItem>
-                              {courses
-                                .filter(c => c.status !== 'retired' && c.credits != null)
-                                .map((c, courseIdx) => (
-                                <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}-${courseIdx}`} value={c.code}>
-                                  {c.code} — {c.title} ({creditText(c.credits)})
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        ))}
+                              <Repeat size={20} />
+                            </button>
+                          </Box>
+                        </Box>
+                          );
+                        })}
                       </>
                     )}
 
@@ -745,9 +1355,14 @@ export default function CourseSelectionForm({
                   const requirementKey = getRequirementKey(programId, req);
                   const validCourses = getValidCourses(req);
                   const isAutoSelected = shouldAutoSelect(req, false);
+
+                  // Check if this requirement has a completed course from transcript
+                  const hasCompletedCourse = autoMatchedKeys.has(requirementKey) && completedRequirementKeys.has(requirementKey);
+
                   const sectionKey = `prog-req-${requirementKey}`;
-                  const isExpanded = expandedSections[sectionKey] ?? !isAutoSelected; // Expand by default, except auto-selected
-                  const { recommendations: progRecommendations } = getRecommendationsForRequirement(validCourses);
+                  // Expand by default if has completed course, otherwise collapse if auto-selected
+                  const isExpanded = expandedSections[sectionKey] ?? (hasCompletedCourse || !isAutoSelected);
+                  const progRecommendations = programRecommendationsMap[requirementKey] || [];
 
                   return (
                     <div key={`${programId}-req-${req.requirementId}`} className="space-y-2 border border-gray-200 rounded p-2.5">
@@ -765,7 +1380,18 @@ export default function CourseSelectionForm({
                           </svg>
                         </div>
                         <p className="text-sm font-medium">{req.description}</p>
-                        {isAutoSelected && (
+                        {hasCompletedCourse ? (
+                          <Chip
+                            label="Completed"
+                            size="small"
+                            className="text-xs ml-auto"
+                            sx={{
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              height: '20px',
+                            }}
+                          />
+                        ) : isAutoSelected ? (
                           <Chip
                             label="Auto-selected"
                             size="small"
@@ -776,7 +1402,7 @@ export default function CourseSelectionForm({
                               height: '20px',
                             }}
                           />
-                        )}
+                        ) : null}
                       </button>
 
                       {isExpanded && (
@@ -791,37 +1417,113 @@ export default function CourseSelectionForm({
                             </div>
                           )}
 
-                          {Array.from({ length: dropdownCount }).map((_, slot) => (
-                            <FormControl
-                              key={`${requirementKey}-slot-${slot}`}
-                              fullWidth
-                              size="small"
-                              sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}
-                            >
-                              <InputLabel>
-                                {dropdownCount > 1
-                                  ? `${req.description} — Course #${slot + 1}`
-                                  : req.description}
-                              </InputLabel>
-                              <Select
-                                value={(selectedProgramCourses[requirementKey]?.[slot] ?? '')}
-                                label={
-                                  dropdownCount > 1
-                                    ? `${req.description} — Course #${slot + 1}`
-                                    : req.description
-                                }
+                          {Array.from({ length: dropdownCount }).map((_, slot) => {
+                            // Check if this specific slot has an auto-matched course
+                            const selectedCourse = selectedProgramCourses[requirementKey]?.[slot];
+                            const isAutoMatched = selectedCourse && autoMatchedKeys.has(requirementKey);
+                            const matchInfo = isAutoMatched
+                              ? autoMatches.find(m =>
+                                  m.requirementKey === requirementKey &&
+                                  m.matchedCourseCode === selectedCourse
+                                )
+                              : null;
+
+                            // Get all selected courses for this requirement except current slot
+                            const otherSelectedCourses = (selectedProgramCourses[requirementKey] || [])
+                              .filter((_: string, index: number) => index !== slot && _)
+                              .map((code: string) => code);
+
+                            return (
+                              <Box key={`${requirementKey}-slot-${slot}`} sx={{ mb: slot < dropdownCount - 1 ? 2 : 0 }}>
+                                {isAutoMatched && matchInfo && (
+                                  <Chip
+                                    label={`✓ From your transcript (${matchInfo.confidence} match)`}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: matchInfo.confidence === 'exact' ? '#10b981' : '#3b82f6',
+                                      color: 'white',
+                                      fontWeight: 'bold',
+                                      fontSize: '0.7rem',
+                                      height: '22px',
+                                      mb: 1.5,
+                                    }}
+                                  />
+                                )}
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                  <FormControl
+                                    fullWidth
+                                    size="small"
+                                  >
+                                    <InputLabel>
+                                      {dropdownCount > 1
+                                        ? `${req.description} — Course #${slot + 1}`
+                                        : req.description}
+                                    </InputLabel>
+                                    <Select
+                                      value={(selectedProgramCourses[requirementKey]?.[slot] ?? '')}
+                                      label={
+                                        dropdownCount > 1
+                                          ? `${req.description} — Course #${slot + 1}`
+                                          : req.description
+                                      }
+                                      disabled={isAutoSelected}
+                                      onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
+                                    >
+                                  <MenuItem value=""><em>Select a course</em></MenuItem>
+                                  {validCourses
+                                    .filter(c => !otherSelectedCourses.includes(c.code || ''))
+                                    .map((c) => {
+                                    const isCompleted = c.code && completedCourses.has(c.code);
+                                    // Get other programs/requirements this course fulfills
+                                    const otherFulfillments = c.code ? (courseToProgramsMap.get(c.code) || [])
+                                      .filter(f => f.requirementDesc !== req.description) : []; // Exclude current requirement
+
+                                    return (
+                                      <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                            <span>{c.code} — {c.title} ({c.credits} cr)</span>
+                                            {isCompleted && (
+                                              <Chip
+                                                label="Completed"
+                                                size="small"
+                                                sx={{
+                                                  bgcolor: '#10b981',
+                                                  color: 'white',
+                                                  fontWeight: 'bold',
+                                                  fontSize: '0.7rem',
+                                                  height: '20px',
+                                                  ml: 'auto',
+                                                }}
+                                              />
+                                            )}
+                                          </Box>
+                                          {otherFulfillments.length > 0 && (
+                                            <Box sx={{ pl: 0.5 }}>
+                                              <span style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
+                                                Also fulfills: {otherFulfillments.map(f => f.programName).join(', ')}
+                                              </span>
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      </MenuItem>
+                                    );
+                                  })}
+                                </Select>
+                              </FormControl>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSubstitution(requirementKey, slot, false)}
                                 disabled={isAutoSelected}
-                                onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
+                                className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Find a substitution course"
                               >
-                                <MenuItem value=""><em>Select a course</em></MenuItem>
-                                {validCourses.map((c) => (
-                                  <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
-                                    {c.code} — {c.title} ({c.credits} cr)
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          ))}
+                                <Repeat size={20} />
+                              </button>
+                            </Box>
+                          </Box>
+                            );
+                          })}
                         </>
                       )}
 
@@ -837,118 +1539,124 @@ export default function CourseSelectionForm({
         {/* Elective Courses */}
         <div>
           <h4 className="text-sm font-semibold mb-2 text-gray-900">Additional Electives (Optional)</h4>
-          <p className="text-xs text-gray-600 mb-3">
+          <p className="text-xs text-gray-600 mb-4">
             Add extra courses you want to take
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Step 1: College */}
-            <TextField
-              select
-              fullWidth
-              label="1. Select College"
-              value={selectedCollege}
-              onChange={(e) => {
-                setSelectedCollege(e.target.value);
-                setSelectedDepartment('');
-                setSelectedElectiveCourse(null);
-              }}
-              disabled={loadingColleges}
-              size="small"
-            >
-              {loadingColleges ? (
-                <MenuItem value="">
-                  <CircularProgress size={20} />
-                </MenuItem>
-              ) : colleges.length === 0 ? (
-                <MenuItem value="" disabled>
-                  No colleges available
-                </MenuItem>
-              ) : (
-                colleges.map((college) => (
-                  <MenuItem key={college} value={college}>
-                    {college}
-                  </MenuItem>
-                ))
-              )}
-            </TextField>
-
-            {/* Step 2: Department */}
-            <TextField
-              select
-              fullWidth
-              label="2. Select Department"
-              value={selectedDepartment}
-              onChange={(e) => {
-                setSelectedDepartment(e.target.value);
-                setSelectedElectiveCourse(null);
-              }}
-              disabled={!selectedCollege || loadingDepartments}
-              size="small"
-            >
-              {loadingDepartments ? (
-                <MenuItem value="">
-                  <CircularProgress size={20} />
-                </MenuItem>
-              ) : departments.length === 0 ? (
-                <MenuItem value="" disabled>
-                  {selectedCollege ? 'No departments available' : 'Select a college first'}
-                </MenuItem>
-              ) : (
-                departments.map((dept) => (
-                  <MenuItem key={dept} value={dept}>
-                    {dept}
-                  </MenuItem>
-                ))
-              )}
-            </TextField>
-
-            {/* Step 3: Course with Add Button */}
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <div>
               <TextField
                 select
                 fullWidth
-                label="3. Select Course"
-                value={selectedElectiveCourse?.offering_id.toString() || ''}
+                label="1. Select College"
+                value={selectedCollege}
                 onChange={(e) => {
-                  const course = availableCourses.find(c => c.offering_id.toString() === e.target.value);
-                  setSelectedElectiveCourse(course || null);
+                  setSelectedCollege(e.target.value);
+                  setSelectedDepartment('');
+                  setSelectedElectiveCourse(null);
                 }}
-                disabled={!selectedDepartment || loadingCourses}
+                disabled={loadingColleges}
                 size="small"
-                sx={{ flex: 1 }}
               >
-                {loadingCourses ? (
+                {loadingColleges ? (
                   <MenuItem value="">
                     <CircularProgress size={20} />
                   </MenuItem>
-                ) : availableCourses.length === 0 ? (
+                ) : colleges.length === 0 ? (
                   <MenuItem value="" disabled>
-                    {selectedDepartment ? 'No courses available' : 'Select a department first'}
+                    No colleges available
                   </MenuItem>
                 ) : (
-                  availableCourses.map((course) => (
-                    <MenuItem key={course.offering_id} value={course.offering_id.toString()}>
-                      {course.course_code} - {course.title} ({course.credits_decimal || 0} cr)
+                  colleges.map((college) => (
+                    <MenuItem key={college} value={college}>
+                      {college}
                     </MenuItem>
                   ))
                 )}
               </TextField>
+            </div>
 
-              <Button
-                onClick={handleAddElective}
-                disabled={!selectedElectiveCourse}
-                style={{
-                  backgroundColor: 'var(--primary)',
-                  color: 'black',
-                  minWidth: '44px',
-                  padding: '8px'
+            {/* Step 2: Department */}
+            <div>
+              <TextField
+                select
+                fullWidth
+                label="2. Select Department"
+                value={selectedDepartment}
+                onChange={(e) => {
+                  setSelectedDepartment(e.target.value);
+                  setSelectedElectiveCourse(null);
                 }}
-                className="hover:opacity-90 disabled:opacity-50 transition-opacity"
+                disabled={!selectedCollege || loadingDepartments}
+                size="small"
               >
-                <Plus size={20} />
-              </Button>
-            </Box>
+                {loadingDepartments ? (
+                  <MenuItem value="">
+                    <CircularProgress size={20} />
+                  </MenuItem>
+                ) : departments.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    {selectedCollege ? 'No departments available' : 'Select a college first'}
+                  </MenuItem>
+                ) : (
+                  departments.map((dept) => (
+                    <MenuItem key={dept} value={dept}>
+                      {dept}
+                    </MenuItem>
+                  ))
+                )}
+              </TextField>
+            </div>
+
+            {/* Step 3: Course with Add Button */}
+            <div>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="3. Select Course"
+                  value={selectedElectiveCourse?.offering_id.toString() || ''}
+                  onChange={(e) => {
+                    const course = availableCourses.find(c => c.offering_id.toString() === e.target.value);
+                    setSelectedElectiveCourse(course || null);
+                  }}
+                  disabled={!selectedDepartment || loadingCourses}
+                  size="small"
+                  sx={{ flex: 1 }}
+                >
+                  {loadingCourses ? (
+                    <MenuItem value="">
+                      <CircularProgress size={20} />
+                    </MenuItem>
+                  ) : availableCourses.length === 0 ? (
+                    <MenuItem value="" disabled>
+                      {selectedDepartment ? 'No courses available' : 'Select a department first'}
+                    </MenuItem>
+                  ) : (
+                    availableCourses.map((course) => (
+                      <MenuItem key={course.offering_id} value={course.offering_id.toString()}>
+                        {course.course_code} - {course.title} ({course.credits_decimal || 0} cr)
+                      </MenuItem>
+                    ))
+                  )}
+                </TextField>
+
+                <Button
+                  onClick={handleAddElective}
+                  disabled={!selectedElectiveCourse}
+                  style={{
+                    backgroundColor: 'var(--primary)',
+                    color: 'black',
+                    minWidth: '44px',
+                    padding: '8px'
+                  }}
+                  className="hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  <Plus size={20} />
+                </Button>
+              </Box>
+            </div>
 
             {electiveError && (
               <p className="text-xs text-red-500">{electiveError}</p>
@@ -969,6 +1677,128 @@ export default function CourseSelectionForm({
             )}
           </div>
         </div>
+
+        {/* Substitution Dialog */}
+        {substitutionDialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+                <h2 className="font-header text-xl font-bold text-[var(--foreground)]">
+                  Select Substitution Course
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSubstitutionDialogOpen(false)}
+                  className="rounded-lg p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="space-y-4 p-6">
+                <p className="text-sm text-muted-foreground">
+                  Browse all available courses to find a substitution for this requirement.
+                </p>
+
+                {/* Step 1: College */}
+                <TextField
+                  select
+                  fullWidth
+                  label="1. Select College"
+                  value={substitutionCollege}
+                  onChange={(e) => handleSubstitutionCollegeChange(e.target.value)}
+                  disabled={loadingSubstitutionColleges}
+                  size="small"
+                >
+                  <MenuItem value="">
+                    <em>Select a college</em>
+                  </MenuItem>
+                  <MenuItem value="" disabled>
+                    {loadingSubstitutionColleges ? 'Loading colleges...' : '---'}
+                  </MenuItem>
+                  {substitutionColleges.map((college) => (
+                    <MenuItem key={college} value={college}>
+                      {college}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                {/* Step 2: Department */}
+                <TextField
+                  select
+                  fullWidth
+                  label="2. Select Department"
+                  value={substitutionDepartment}
+                  onChange={(e) => handleSubstitutionDepartmentChange(e.target.value)}
+                  disabled={!substitutionCollege || loadingSubstitutionDepartments}
+                  size="small"
+                >
+                  <MenuItem value="">
+                    <em>Select a department</em>
+                  </MenuItem>
+                  <MenuItem value="" disabled>
+                    {loadingSubstitutionDepartments ? 'Loading departments...' : substitutionCollege ? '---' : 'Select a college first'}
+                  </MenuItem>
+                  {substitutionDepartments.map((dept) => (
+                    <MenuItem key={dept} value={dept}>
+                      {dept}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                {/* Step 3: Course */}
+                <TextField
+                  select
+                  fullWidth
+                  label="3. Select Course"
+                  value={substitutionCourse?.offering_id.toString() || ''}
+                  onChange={(e) => {
+                    const course = substitutionCourses.find(c => c.offering_id.toString() === e.target.value);
+                    setSubstitutionCourse(course || null);
+                  }}
+                  disabled={!substitutionDepartment || loadingSubstitutionCourses}
+                  size="small"
+                >
+                  <MenuItem value="">
+                    <em>Select a course</em>
+                  </MenuItem>
+                  <MenuItem value="" disabled>
+                    {loadingSubstitutionCourses ? 'Loading courses...' : substitutionDepartment ? (substitutionCourses.length > 0 ? '---' : 'No courses available') : 'Select a department first'}
+                  </MenuItem>
+                  {substitutionCourses.map((course) => (
+                    <MenuItem key={course.offering_id} value={course.offering_id.toString()}>
+                      {course.course_code} — {course.title} ({course.credits_decimal || 0} credits)
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] px-6 py-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setSubstitutionDialogOpen(false)}
+                  className="text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleApplySubstitution}
+                  disabled={!substitutionCourse}
+                  style={{
+                    backgroundColor: substitutionCourse ? 'var(--primary)' : 'var(--muted)',
+                    color: substitutionCourse ? 'black' : 'var(--muted-foreground)'
+                  }}
+                  className="text-sm font-medium"
+                >
+                  Apply Substitution
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Submit Button */}
         <div className="pt-3 flex gap-2 justify-end">

@@ -1,6 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { parseTranscriptText, validateCourse, type CourseRow } from '@/lib/transcript/parser';
 import { logError, logInfo } from '@/lib/logger';
+import {
+  parseByuTranscriptWithOpenAI,
+  deduplicateByuCourses,
+  type ByuTranscriptValidationReport,
+} from '@/lib/transcript/byuTranscriptParserOpenAI';
+import { randomUUID } from 'crypto';
 
 export interface TranscriptParseReport {
   success: boolean;
@@ -11,12 +17,14 @@ export interface TranscriptParseReport {
   total_lines: number;
   used_ocr: boolean;
   used_llm: boolean;
+  used_byu_parser?: boolean;
   confidence_stats: {
     avg: number;
     min: number;
     max: number;
     low_confidence_count: number;
   };
+  validation_report?: ByuTranscriptValidationReport;
   errors: string[];
   timestamp: string;
 }
@@ -26,6 +34,7 @@ export interface ParseTranscriptFromBufferOptions {
   fileBuffer: Buffer;
   fileName?: string;
   useLlmFallback?: boolean;
+  useByuParser?: boolean; // Use BYU-specific OpenAI parser (recommended for BYU transcripts)
   documentId?: string;
   supabaseClient?: SupabaseClient;
 }
@@ -73,33 +82,27 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 async function extractTextFromPdf(pdfBuffer: Buffer): Promise<{ text: string; usedOcr: boolean }> {
-  // Use pdfjs-dist which works reliably in Next.js
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  try {
+    // Use pdf-parse which works better in Node.js without worker issues
+    // CommonJS module - need to access it correctly
+    const pdfParseModule = await import('pdf-parse');
+    const pdfParse = pdfParseModule.default || pdfParseModule;
 
-  // Convert Buffer to Uint8Array
-  const uint8Array = new Uint8Array(pdfBuffer);
+    // @ts-expect-error - pdf-parse has complex module export structure
+    const data = await pdfParse(pdfBuffer);
+    const text = data.text || '';
+    const trimmed = text.trim();
+    const usedOcr = trimmed.length < 800;
 
-  // Load the PDF document
-  const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-  const pdfDocument = await loadingTask.promise;
+    return { text, usedOcr };
+  } catch (error) {
+    logError('PDF text extraction failed', error, {
+      action: 'extract_text_from_pdf',
+    });
 
-  const textPages: string[] = [];
-
-  // Extract text from each page
-  for (let i = 1; i <= pdfDocument.numPages; i++) {
-    const page = await pdfDocument.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ');
-    textPages.push(pageText);
+    // Fallback: return empty text
+    return { text: '', usedOcr: true };
   }
-
-  const text = textPages.join('\n');
-  const trimmed = text.trim();
-  const usedOcr = trimmed.length < 800;
-
-  return { text, usedOcr };
 }
 
 function shouldUseLlmFallback(
@@ -387,11 +390,139 @@ function computeConfidenceStats(courses: CourseRow[]) {
 export async function parseTranscriptFromBuffer(
   options: ParseTranscriptFromBufferOptions
 ): Promise<TranscriptParseReport> {
-  const { userId, fileBuffer, useLlmFallback, documentId } = options;
+  const { userId, fileBuffer, useLlmFallback, useByuParser, documentId } = options;
   const supabaseClient = options.supabaseClient;
   const errors: string[] = [];
   let usedLlm = false;
 
+  // If BYU parser is requested, extract text first then use BYU parser
+  if (useByuParser) {
+    try {
+      logInfo('Using BYU-specific OpenAI parser', {
+        userId,
+        action: 'transcript_parse_byu_start',
+      });
+
+      // Extract text from PDF first
+      const { text } = await extractTextFromPdf(fileBuffer);
+
+      if (!text || text.trim().length < 100) {
+        throw new Error('Insufficient text extracted from PDF');
+      }
+
+      const byuResult = await parseByuTranscriptWithOpenAI(text, userId);
+
+      if (byuResult.success && byuResult.courses.length > 0) {
+        const dedupedCourses = deduplicateByuCourses(byuResult.courses);
+
+        // Upsert courses to database
+        const client = supabaseClient ?? getSupabaseAdmin();
+
+        // Convert BYU courses to the format expected by user_courses table
+        // The table stores courses as a JSON array in the 'courses' column
+        const coursesJson = dedupedCourses.map((course) => ({
+          id: randomUUID(),
+          subject: course.subject,
+          number: course.number,
+          title: course.title,
+          credits: course.credits,
+          grade: course.grade.trim() === '' ? null : course.grade,
+          term: course.term,
+          tags: [],
+          origin: 'parsed',
+        }));
+
+        // Check if user already has a courses record
+        const { data: existingRecord } = await client
+          .from('user_courses')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (existingRecord) {
+          // Update existing record
+          const { error: updateError } = await client
+            .from('user_courses')
+            .update({ courses: coursesJson })
+            .eq('user_id', userId);
+
+          if (updateError) {
+            logError('Failed to update courses (BYU parser)', updateError, {
+              userId,
+              action: 'byu_update_courses',
+            });
+            throw new Error(`Failed to update courses: ${updateError.message}`);
+          }
+        } else {
+          // Insert new record
+          const { error: insertError } = await client
+            .from('user_courses')
+            .insert({
+              user_id: userId,
+              courses: coursesJson,
+            });
+
+          if (insertError) {
+            logError('Failed to insert courses (BYU parser)', insertError, {
+              userId,
+              action: 'byu_insert_courses',
+            });
+            throw new Error(`Failed to insert courses: ${insertError.message}`);
+          }
+        }
+
+        const coursesUpserted = dedupedCourses.length;
+
+        // Extract unique terms
+        const termsDetected = Array.from(new Set(dedupedCourses.map(c => c.term)));
+
+        logInfo('BYU transcript parsing successful', {
+          userId,
+          action: 'transcript_parse_byu_success',
+          count: dedupedCourses.length,
+        });
+
+        return {
+          success: true,
+          courses_found: dedupedCourses.length,
+          courses_upserted: coursesUpserted,
+          terms_detected: termsDetected,
+          unknown_lines: 0,
+          total_lines: 0,
+          used_ocr: false,
+          used_llm: false,
+          used_byu_parser: true,
+          confidence_stats: {
+            avg: 1.0,
+            min: 1.0,
+            max: 1.0,
+            low_confidence_count: 0,
+          },
+          validation_report: byuResult.validationReport,
+          errors: byuResult.validationReport.invalidCourses > 0
+            ? [`${byuResult.validationReport.invalidCourses} courses failed validation`]
+            : [],
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        errors.push('BYU parser returned no courses');
+        logError('BYU parser returned no courses', new Error('No courses found'), {
+          userId,
+          action: 'byu_parser_no_courses',
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(`BYU parser failed: ${message}`);
+      logError('BYU parser failed, falling back to legacy parser', error, {
+        userId,
+        action: 'byu_parser_failure',
+      });
+      // Fall through to legacy parser below
+    }
+  }
+
+  // Legacy parser (text extraction + pattern matching or LLM fallback)
   const { text, usedOcr } = await extractTextFromPdf(fileBuffer);
   const { courses: parsedCourses, metadata } = parseTranscriptText(text);
 

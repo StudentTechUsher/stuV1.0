@@ -17,8 +17,19 @@ async function handleGetPrograms(request: NextRequest) {
     const universityIdStr = searchParams.get('universityId');
     const universityId = universityIdStr ? Number(universityIdStr) : undefined;
 
+    // Student metadata for filtering gen_ed programs
+    const admissionYearStr = searchParams.get('admissionYear');
+    const studentAdmissionYear = admissionYearStr ? Number(admissionYearStr) : undefined;
+    const isTransferStr = searchParams.get('isTransfer');
+    const studentIsTransfer = isTransferStr === 'true' ? true : isTransferStr === 'false' ? false : undefined;
+
     // Fetch programs using service layer
-    const programs = await fetchPrograms({ type, universityId });
+    const programs = await fetchPrograms({
+      type,
+      universityId,
+      studentAdmissionYear,
+      studentIsTransfer,
+    });
 
     return NextResponse.json(programs);
   } catch (error) {

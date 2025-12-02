@@ -34,6 +34,7 @@ export const CourseSelectionSchema = z.object({
   generalEducation: z.array(RequirementCoursesSchema).optional(),
   programs: z.array(ProgramCourseSelectionSchema).min(1, 'At least one program is required'),
   userAddedElectives: z.array(CourseEntrySchema).optional(),
+  genEdDistribution: z.enum(['early', 'balanced']).optional(),
 });
 
 export type CourseSelectionInput = z.infer<typeof CourseSelectionSchema>;

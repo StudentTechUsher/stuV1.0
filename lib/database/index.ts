@@ -24,7 +24,7 @@
 
 import { createBrowserClient } from '@supabase/ssr';
 import { SupabaseDatabaseAdapter } from './adapters/supabase.adapter';
-import type { DatabaseClient } from './types';
+import type { DatabaseClient } from './interfaces';
 
 // =============================================================================
 // CONFIGURATION - Change this section to switch database providers
@@ -78,4 +78,4 @@ export type {
   DatabaseAuth,
   DatabaseUser,
   TableName,
-} from './types';
+} from './interfaces';

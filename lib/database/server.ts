@@ -22,7 +22,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { type NextRequest, type NextResponse } from 'next/server';
 import { SupabaseDatabaseAdapter } from './adapters/supabase.adapter';
-import type { DatabaseClient } from './types';
+import type { DatabaseClient } from './interfaces';
 
 /**
  * Create a database client for Server Components

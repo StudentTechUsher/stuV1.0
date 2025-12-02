@@ -25,6 +25,7 @@ import {
     updateGradPlanDetailsAndAdvisorNotes as _updateGradPlanDetailsAndAdvisorNotes,
     updateGradPlanName as _updateGradPlanName,
     deleteGradPlan as _deleteGradPlan,
+    GetActiveGradPlan as _getActiveGradPlan,
 } from './gradPlanService';
 import {
     fetchProfileBasicInfo as _fetchProfileBasicInfo,
@@ -36,10 +37,12 @@ import {
 } from './openaiService';
 import {
     fetchProgramsByUniversity as _fetchProgramsByUniversity,
+    fetchProgramsBatch as _fetchProgramsBatch,
     deleteProgram as _deleteProgram,
 } from './programService';
 import {
     fetchUserCoursesArray as _fetchUserCoursesArray,
+    fetchUserCourses as _fetchUserCourses,
     formatCoursesForDisplay,
     saveManualCourses as _saveManualCourses,
     updateUserCourseTags as _updateUserCourseTags,
@@ -94,6 +97,37 @@ export async function fetchGradPlanById(gradPlanId: string) {
 
 export async function fetchPendingGradPlans() {
     return await _fetchPendingGradPlans();
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own grad plan only)
+ * Fetches the active grad plan for a user and returns program details
+ */
+export async function fetchActiveGradPlanProgramsAction(profileId: string) {
+    try {
+        const gradPlan = await _getActiveGradPlan(profileId);
+
+        if (!gradPlan || !gradPlan.programs_in_plan || !Array.isArray(gradPlan.programs_in_plan) || gradPlan.programs_in_plan.length === 0) {
+            return { success: true, hasGradPlan: false, programs: [] };
+        }
+
+        // Convert to strings and fetch program details
+        const programIds = gradPlan.programs_in_plan.map(String);
+        const programs = await _fetchProgramsBatch(programIds);
+
+        return {
+            success: true,
+            hasGradPlan: true,
+            programs: programs.map(p => ({
+                id: String(p.id),
+                name: p.name,
+                program_type: p.program_type,
+            }))
+        };
+    } catch (error) {
+        console.error('Error fetching active grad plan programs:', error);
+        return { success: false, error: 'Failed to fetch grad plan programs' };
+    }
 }
 
 export async function updateGradPlanWithAdvisorNotes(gradPlanId: string, advisorNotes: string) {
@@ -399,6 +433,31 @@ export async function fetchUserCoursesAction(userId: string) {
     }
 }
 
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ * Fetches user courses metadata including last updated date
+ */
+export async function fetchUserCoursesMetadataAction(userId: string) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const record = await _fetchUserCourses(supabase, userId);
+
+        if (!record) {
+            return { success: true, hasData: false, lastUpdated: null };
+        }
+
+        return {
+            success: true,
+            hasData: true,
+            lastUpdated: record.inserted_at,
+            courseCount: record.courses?.length || 0
+        };
+    } catch (error) {
+        console.error('Error fetching user courses metadata:', error);
+        return { success: false, error: 'Failed to fetch user courses metadata' };
+    }
+}
+
 // Transcript parsing with AI
 export async function parseTranscriptCoursesAction(args: {
     transcriptText: string;
@@ -547,6 +606,8 @@ export async function updateProfileForChatbotAction(
         estGradSem?: string | null;
         careerGoals?: string | null;
         potentialCareerPaths?: string | null;
+        admissionYear?: number | null;
+        isTransfer?: boolean | null;
     }
 ) {
     try {
@@ -562,30 +623,31 @@ export async function updateProfileForChatbotAction(
             return { success: false, error: 'Not authorized to modify this profile' };
         }
 
-        // Build updates for profiles table
-        const profileUpdates: Record<string, string | null> = {};
+        // Build updates for student table
+        const studentUpdates: Record<string, string | number | boolean | null> = {};
 
         if (data.estGradDate !== undefined) {
-            profileUpdates.est_grad_date = data.estGradDate;
+            studentUpdates.est_grad_date = data.estGradDate;
         }
         if (data.estGradSem !== undefined) {
-            profileUpdates.est_grad_sem = data.estGradSem;
+            // Map est_grad_sem to est_grad_plan in student table
+            studentUpdates.est_grad_plan = data.estGradSem;
         }
-
-        // Build updates for students table
-        const studentUpdates: Record<string, string | null> = {};
-
+        if (data.careerGoals !== undefined) {
+            studentUpdates.career_goals = data.careerGoals;
+        }
         if (data.potentialCareerPaths !== undefined) {
             studentUpdates.targeted_career = data.potentialCareerPaths;
+        }
+        if (data.admissionYear !== undefined) {
+            studentUpdates.admission_year = data.admissionYear;
+        }
+        if (data.isTransfer !== undefined) {
+            studentUpdates.is_transfer = data.isTransfer;
         }
         // Note: selected_interests field expects int8[] (interest IDs from lookup table)
         // For free-form text interests from the grad plan wizard, we're not saving those
         // as they're meant for informational purposes during the planning process only
-
-        // Update profiles table if there are updates
-        if (Object.keys(profileUpdates).length > 0) {
-            await _updateProfile(userId, profileUpdates);
-        }
 
         // Update student table if there are updates
         if (Object.keys(studentUpdates).length > 0) {

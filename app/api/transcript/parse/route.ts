@@ -17,6 +17,94 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Check if mode=text (direct text input)
+  const url = new URL(request.url);
+  const mode = url.searchParams.get('mode');
+
+  if (mode === 'text') {
+    // Handle direct text input
+    try {
+      const body = await request.json();
+      const text = body.text;
+
+      if (!text || typeof text !== 'string' || text.trim().length < 100) {
+        return NextResponse.json({ error: 'Text must be at least 100 characters' }, { status: 400 });
+      }
+
+      // Parse text directly using BYU parser
+      const { parseByuTranscriptWithOpenAI } = await import('@/lib/transcript/byuTranscriptParserOpenAI');
+      const { deduplicateByuCourses } = await import('@/lib/transcript/byuTranscriptParserOpenAI');
+      const { randomUUID } = await import('crypto');
+
+      const byuResult = await parseByuTranscriptWithOpenAI(text, user.id);
+
+      if (byuResult.success && byuResult.courses.length > 0) {
+        const dedupedCourses = deduplicateByuCourses(byuResult.courses);
+
+        // Convert to DB format
+        const coursesJson = dedupedCourses.map((course) => ({
+          id: randomUUID(),
+          subject: course.subject,
+          number: course.number,
+          title: course.title,
+          credits: course.credits,
+          grade: course.grade.trim() === '' ? null : course.grade,
+          term: course.term,
+          tags: [],
+          origin: 'parsed',
+        }));
+
+        // Check if user has existing record
+        const { data: existingRecord } = await supabase
+          .from('user_courses')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingRecord) {
+          await supabase
+            .from('user_courses')
+            .update({ courses: coursesJson })
+            .eq('user_id', user.id);
+        } else {
+          await supabase
+            .from('user_courses')
+            .insert({ user_id: user.id, courses: coursesJson });
+        }
+
+        const termsDetected = Array.from(new Set(dedupedCourses.map(c => c.term)));
+
+        return NextResponse.json({
+          success: true,
+          report: {
+            success: true,
+            courses_found: dedupedCourses.length,
+            courses_upserted: dedupedCourses.length,
+            terms_detected: termsDetected,
+            unknown_lines: 0,
+            total_lines: 0,
+            used_ocr: false,
+            used_llm: false,
+            used_byu_parser: true,
+            confidence_stats: { avg: 1.0, min: 1.0, max: 1.0, low_confidence_count: 0 },
+            validation_report: byuResult.validationReport,
+            errors: [],
+            timestamp: new Date().toISOString(),
+          },
+        });
+      } else {
+        return NextResponse.json({ error: 'No courses found in text' }, { status: 422 });
+      }
+    } catch (error) {
+      logError('Text parsing failed', error, { userId: user.id, action: 'transcript_parse_text' });
+      return NextResponse.json(
+        { error: 'Failed to parse text', details: error instanceof Error ? error.message : String(error) },
+        { status: 500 }
+      );
+    }
+  }
+
+  // Handle PDF upload (original logic)
   const contentType = request.headers.get('content-type') ?? '';
   const isMultipart = contentType.includes('multipart/form-data');
 
@@ -69,10 +157,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Use BYU parser by default (can be overridden with query param ?useByuParser=false)
+    const url = new URL(request.url);
+    const useByuParser = url.searchParams.get('useByuParser') !== 'false'; // Default to true
+
     const report = await parseTranscriptFromBuffer({
       userId: user.id,
       fileBuffer: buffer,
       fileName,
+      useByuParser, // Enable BYU-specific OpenAI parser
       supabaseClient: supabase,
     });
 

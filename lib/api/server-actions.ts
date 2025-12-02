@@ -47,39 +47,100 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
 
     // Prepare the prompt for OpenAI
     const prompt = `
-    You are an academic advisor AI. Given the following selected courses and program requirements, 
-    organize them into a logical semester-by-semester plan for a 4-year degree.
-    
-    Consider:
-    - Prerequisites and course dependencies
-    - Typical course load (12-18 credits per semester)
-    - General education requirements should be spread throughout
-    - Major requirements should be sequenced appropriately
-    - Electives should fill gaps and meet credit requirements
-    - Most students take 8 semesters (4 years), but can adjust if needed
+    You are an academic advisor AI. Given the selected programs, general-education requirements, and (optionally) a list of courses the student has already taken, produce a term-by-term plan.
 
-    Output:
-    - Return **ONLY** JSON matching this schema exactly (no extra text):
+Goals
+- Create a term-by-term plan that balances workload and sequencing.
+- The number of future terms is flexible; use as many or as few as needed to meet program requirements.
+- Prioritize making sure each planned (future) term has at least 12 credits (minimum full-time load).
+- Use only data provided in the input; do not invent courses.
+- Select real elective courses from the catalog to reach credit targets. Only use "General Elective" placeholder if absolutely no valid catalog courses remain.
 
-    Example format:
-    ${JSON.stringify(exampleStructure, null, 2)}
-    
-    Input data:
-    ${JSON.stringify(coursesData, null, 2)}
+NEW: Previously taken coursework (must handle if provided)
+- Input may include \`takenCourses\` (or similarly named list) with items that can contain fields like: \`code\`, \`title\`, \`credits\`, \`term\`, \`year\`, \`grade\`, \`source\` (e.g., Transfer/AP/Institutional), \`fulfills\` (buckets/requirements), and \`status\` (e.g., Completed/In-Progress).
+- Treat courses in \`takenCourses\` as already completed (or in-progress if explicitly marked).
+  - Do NOT schedule a course again if it appears in \`takenCourses\` with a passing grade or status Completed.
+  - If a minimum grade is required (as stated in the catalog text) and the taken grade is below the minimum, the course must be planned as a retake.
+  - If a course is marked In-Progress for the current/most recent term, count it as occupying that term; do not reschedule it in future terms.
+- Place all \`takenCourses\` at the beginning of the returned plan in their original terms (historical terms), before any planned future terms.
+  - These historical terms are part of the output so the full journey is visible, but you must NOT change their contents.
+  - Credits from historical terms count toward the target total and toward requirement/bucket fulfillment.
+- Apply fulfillment: any requirements/general-education buckets satisfied by \`takenCourses\` must be marked as fulfilled; do not plan them again.
+- Prerequisites: courses in \`takenCourses\` with passing grades satisfy prerequisites for later planned courses.
+
+Hard constraints (must follow)
+- Catalog scope: Use only courses present in the input's \`programs\` and \`generalEducation\` sections.
+  - The only allowed placeholder is:
+    { "code": "ELECTIVE", "title": "General Elective", "credits": X, "fulfills": ["Elective"] }.
+  - X must be between 1–4 credits (typical course size).
+  - Before using a placeholder, attempt to select real courses from the catalog that:
+    * Are not already in the plan or in \`takenCourses\` (no duplicates)
+    * Have prerequisites satisfied by prior (historical or earlier planned) terms
+    * Fit within the term's 12–18 credit limit
+  - Prefer courses from the student's program area or related subjects when available.
+- Credit load per planned term: 12–18 credits.
+- Total credits: Use input \`target_total_credits\` if provided; otherwise default to 120.
+  - First, count credits from \`takenCourses\` and any In-Progress terms toward the total.
+  - If below target after scheduling requirements, add real elective courses first; use "ELECTIVE" placeholder only if catalog is exhausted.
+- No duplicates: A course code may appear at most once across \`takenCourses\` and planned future terms, unless a retake is required due to grade/minimum-grade policy explicitly stated in input text.
+- Elective selection priority (AUTO mode):
+  1. Check if the input includes a course catalog or list of available electives
+  2. Select real courses (not placeholders) that fit prerequisites and term load
+  3. Favor upper-level courses (300+) when filling later terms
+  4. Only use { "code": "ELECTIVE", "title": "General Elective", "credits": 1–4 } if catalog is exhausted
+  5. Never create ELECTIVE entries with credits > 4
+- Fulfillment tagging:
+  - For general education, use the exact bucket names from the input (use the provided strings verbatim).
+  - For program requirements, use the exact requirement keys from the input (e.g., "requirement-2", "subrequirement-1.1"). Do not invent labels.
+  - For the elective placeholder, use ["Elective"] as the fulfills list.
+- Sequencing and prerequisites:
+  - Respect textual prerequisites in the input. Do not place a course before its prerequisites are planned in an earlier term or satisfied by a historical term in \`takenCourses\`.
+  - If a course or requirement mentions program admission (e.g., "Acceptance into the program", "Junior Core"), schedule an "Apply/Admission" checkpoint before those courses and place such courses only in terms after that checkpoint.
+- Distribution of requirements:
+  - Spread general education across the first several planned terms when possible; avoid front-loading or back-loading.
+  - Do not schedule a term composed only of "ELECTIVE" placeholders if unmet non-elective requirements remain.
+  - Fill elective needs with real catalog courses first (3–4 credits each). Only use "ELECTIVE" placeholders (1–4 credits max) if no valid catalog courses remain for that term.
+  - Never create a single ELECTIVE course worth more than 4 credits; use multiple smaller courses/placeholders instead.
+
+Planning heuristics (should follow)
+- Aim for 14–16 credits per planned term when feasible.
+- Prefer pairing small-credit courses together to reduce underloaded terms.
+- If multiple programs are selected, interleave their requirements and avoid conflicts; count a course once even if it satisfies multiple buckets, and reflect that in "fulfills".
+- Prefer the next logical start term: if \`takenCourses\` includes a latest historical term, begin planning from the immediately following term unless the input specifies a different start.
+- If given Advisor instructions that conflict with these, prioritize the Advisor instructions.
+
+Edge cases & tie-breakers
+- Transfer/AP/waiver/substitution entries in \`takenCourses\`: count credits and fulfillments exactly as indicated by the input; do not attempt to reschedule them.
+- Minimum grade policies: only treat a prerequisite as satisfied if the taken grade meets the specified minimum; otherwise schedule a retake.
+- Co-requisites: if explicitly permitted by the input, co-requisites may be placed in the same term; otherwise treat them as prerequisites.
+- Final small shortfall: if all non-elective requirements are complete and fewer than 12 credits remain to reach the target total, fill with real catalog electives (prefer 3–4 credits) and, only if exhausted, use 1–4 credit ELECTIVE placeholders to reach the target total while keeping each term within 12–18 credits.
+
+Output format
+- Return ONLY JSON in this exact schema (no extra text):
+  Example format:
+  ${JSON.stringify(exampleStructure, null, 2)}
+
+Input data:
+${JSON.stringify(coursesData, null, 2)}
     `;
 
     const payload = {
       model: "gpt-5-mini",
-      input: prompt,
-      text: { format: { type: "json_object" } }, // 👈 object, not "json_object" string
-      max_output_tokens: 10000,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_completion_tokens: 10000,
+      temperature: 1,
     };
 
     // Call OpenAI
     let resp: Response;
     const tOpenAI = Date.now();
     try {
-      resp = await fetch("https://api.openai.com/v1/responses", {
+      resp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -101,51 +162,27 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       throw new Error(`OpenAI error ${resp.status}`);
     }
 
-    type ResponsesApiResult = {
-      status?: string; // "completed" | "incomplete" | ...
-      output_text?: string;
-      output?: Array<{
-        content?: Array<{ type?: string; text?: { value?: string } | null }>;
+    type ChatCompletionResponse = {
+      choices?: Array<{
+        message?: { role?: string; content?: string };
       }>;
-      incomplete_details?: { reason?: string };
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
     };
 
-    let aiResponse: ResponsesApiResult;
+    let aiResponse: ChatCompletionResponse;
     try {
-      aiResponse = (await resp.json()) as ResponsesApiResult;
+      aiResponse = (await resp.json()) as ChatCompletionResponse;
       console.log("🤖 OpenAI JSON parsed (preview):", trunc(JSON.stringify(aiResponse)));
     } catch (parseErr) {
       console.error("❌ Failed to parse OpenAI JSON:", parseErr);
       throw new Error("Unable to parse OpenAI response");
     }
 
-    // Preferred: concatenated text
-    let aiText = aiResponse.output_text;
-
-    // Fallback: stitch any text parts (supports both string and { value } shapes)
-    type ContentType = { type?: string; text?: string | { value?: string } | null };
-    if (!aiText && Array.isArray(aiResponse.output)) {
-      aiText = aiResponse.output
-        .flatMap(p => p?.content ?? [])
-        .map((c: ContentType) => {
-          if (!c) return "";
-          if (typeof c.text === "string") return c.text.trim();
-          const v = (c.text as { value?: string })?.value;
-          return typeof v === "string" ? v.trim() : "";
-        })
-        .filter(Boolean)
-        .join("\n");
-    }
-
-    console.log("🧩 aiResponse.status:", aiResponse.status, "| aiText present:", Boolean(aiText));
-    if ((aiResponse.status && aiResponse.status !== "completed") || !aiText) {
-      const reason = aiResponse.incomplete_details?.reason ?? "unknown";
-      console.error("❌ Incomplete/empty AI response:", { status: aiResponse.status, reason, requestId: reqId });
-      throw new Error(
-        aiText
-          ? `Run incomplete: ${aiResponse.status} (${reason})`
-          : `No content received from OpenAI (status=${aiResponse.status ?? "unknown"}, reason=${reason})`,
-      );
+    const aiText = aiResponse.choices?.[0]?.message?.content;
+    console.log("🧩 aiText present:", Boolean(aiText));
+    if (!aiText) {
+      console.error("❌ No content in AI response:", { requestId: reqId, usage: aiResponse.usage });
+      throw new Error("No content received from OpenAI");
     }
 
     // Parse JSON (we asked for JSON mode)

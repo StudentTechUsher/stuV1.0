@@ -17,14 +17,21 @@ export function getNextStep(state: ConversationState): ConversationStep {
       return ConversationStep.PROFILE_SETUP;
 
     case ConversationStep.PROFILE_SETUP:
-      // Profile setup can optionally lead to career pathfinder
-      // This will be determined by user clicking "Help me find my career"
-      // By default, move to student interests
-      return ConversationStep.STUDENT_INTERESTS;
+      // After basic profile setup (graduation info), go to career selection
+      return ConversationStep.CAREER_SELECTION;
+
+    case ConversationStep.CAREER_SELECTION:
+      // Career selection can optionally lead to career pathfinder
+      // By default, move to transcript check
+      return ConversationStep.TRANSCRIPT_CHECK;
 
     case ConversationStep.CAREER_PATHFINDER:
-      // After career pathfinder, go to student interests
-      return ConversationStep.STUDENT_INTERESTS;
+      // After career pathfinder, go back to career selection to finalize
+      return ConversationStep.CAREER_SELECTION;
+
+    case ConversationStep.PROGRAM_PATHFINDER:
+      // After program pathfinder, go to program selection
+      return ConversationStep.PROGRAM_SELECTION;
 
     case ConversationStep.STUDENT_INTERESTS:
       // After student interests, go to transcript check
@@ -118,8 +125,14 @@ export function getPreviousStep(state: ConversationState): ConversationStep | nu
     case ConversationStep.PROFILE_SETUP:
       return ConversationStep.INITIALIZE;
 
-    case ConversationStep.CAREER_PATHFINDER:
+    case ConversationStep.CAREER_SELECTION:
       return ConversationStep.PROFILE_SETUP;
+
+    case ConversationStep.CAREER_PATHFINDER:
+      return ConversationStep.CAREER_SELECTION;
+
+    case ConversationStep.PROGRAM_PATHFINDER:
+      return ConversationStep.PROGRAM_SELECTION;
 
     case ConversationStep.STUDENT_INTERESTS:
       // Could have come from profile or career pathfinder
@@ -129,8 +142,7 @@ export function getPreviousStep(state: ConversationState): ConversationStep | nu
       return ConversationStep.PROFILE_SETUP;
 
     case ConversationStep.TRANSCRIPT_CHECK:
-      // Could have come from student interests
-      return ConversationStep.STUDENT_INTERESTS;
+      return ConversationStep.CAREER_SELECTION;
 
     case ConversationStep.STUDENT_TYPE:
       return ConversationStep.TRANSCRIPT_CHECK;
@@ -210,7 +222,7 @@ export function getRequiredSteps(state: ConversationState): ConversationStep[] {
   const required: ConversationStep[] = [
     ConversationStep.INITIALIZE,
     ConversationStep.PROFILE_SETUP,
-    ConversationStep.STUDENT_INTERESTS,
+    ConversationStep.CAREER_SELECTION,
     ConversationStep.TRANSCRIPT_CHECK,
     ConversationStep.STUDENT_TYPE,
     ConversationStep.PROGRAM_SELECTION,
@@ -248,12 +260,17 @@ export function canProceedToNextStep(state: ConversationState): boolean {
     case ConversationStep.PROFILE_SETUP:
       return !!(
         collectedData.estGradDate &&
-        collectedData.estGradSem &&
-        collectedData.careerGoals
+        collectedData.estGradSem
       );
 
+    case ConversationStep.CAREER_SELECTION:
+      return !!collectedData.careerGoals;
+
     case ConversationStep.CAREER_PATHFINDER:
-      return !!collectedData.careerGoals; // Must have career goal from pathfinder
+      return true; // Career pathfinder is optional, doesn't block progression
+
+    case ConversationStep.PROGRAM_PATHFINDER:
+      return true; // Program pathfinder is optional, doesn't block progression
 
     case ConversationStep.TRANSCRIPT_CHECK:
       return true; // Just asking questions, always can proceed
