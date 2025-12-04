@@ -19,6 +19,7 @@ import {
   createInitialState,
   updateState,
   getConversationProgress,
+  getStepLabel,
 } from '@/lib/chatbot/grad-plan/stateManager';
 import {
   generateConversationId,
@@ -26,11 +27,13 @@ import {
   loadStateFromLocalStorage,
 } from '@/lib/chatbot/grad-plan/statePersistence';
 import { getNextStep } from '@/lib/chatbot/grad-plan/conversationState';
+import { navigateToStep } from '@/lib/chatbot/grad-plan/stepNavigation';
 import { shouldRequestProfileUpdate } from '@/lib/chatbot/tools/profileUpdateTool';
 import { getStudentTypeConfirmationMessage } from '@/lib/chatbot/tools/studentTypeTool';
 import { getProgramSelectionConfirmationMessage, type ProgramSelectionInput } from '@/lib/chatbot/tools/programSelectionTool';
 import { getCourseSelectionConfirmationMessage, countTotalCourses, type CourseSelectionInput } from '@/lib/chatbot/tools/courseSelectionTool';
 import { getAdditionalConcernsConfirmationMessage, type AdditionalConcernsInput } from '@/lib/chatbot/tools/additionalConcernsTool';
+import { getMilestoneConfirmationMessage, type MilestoneInput } from '@/lib/chatbot/tools/milestoneTool';
 import { CAREER_PATHFINDER_INITIAL_MESSAGE, getCareerSelectionConfirmationMessage, type CareerSuggestionsInput, CAREER_PATHFINDER_SYSTEM_PROMPT, careerSuggestionsToolDefinition } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { type ProgramSuggestionsInput, programSuggestionsToolDefinition, buildProgramPathfinderSystemPrompt, fetchAvailableProgramsForRAG } from '@/lib/chatbot/tools/programSuggestionsTool';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction } from '@/lib/services/server-actions';
@@ -166,6 +169,179 @@ export default function CreatePlanClient({
     }
   }, [isProcessing, activeTool]);
 
+  const handleStepNavigation = (targetStep: ConversationStep) => {
+    // Navigate to the target step (this also resets dependent steps)
+    const updatedState = navigateToStep(conversationState, targetStep);
+    setConversationState(updatedState);
+
+    // Close any active tools
+    setActiveTool(null);
+    setIsProcessing(true);
+
+    // Clear chat window and add a message indicating we're going back to this step
+    setMessages([
+      {
+        role: 'assistant',
+        content: `Okay, let's go back to the **${getStepLabel(targetStep)}** step. I've reset any steps that depended on this information.`,
+        timestamp: new Date(),
+      },
+    ]);
+
+    // Show the appropriate tool for the target step after a brief delay
+    setTimeout(() => {
+      let toolMessage: Message | null = null;
+
+      switch (targetStep) {
+        case ConversationStep.PROFILE_SETUP:
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'profile_update',
+            toolData: {
+              currentValues: {
+                est_grad_date: updatedState.collectedData.estGradDate,
+                est_grad_sem: updatedState.collectedData.estGradSem,
+                career_goals: updatedState.collectedData.careerGoals,
+                admission_year: updatedState.collectedData.admissionYear,
+                is_transfer: updatedState.collectedData.isTransfer,
+              },
+            },
+          };
+          setActiveTool('profile_update');
+          break;
+
+        case ConversationStep.CAREER_SELECTION:
+          // Career selection is part of the profile_update tool (second phase)
+          // Show profile_update with graduation info populated
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'profile_update',
+            toolData: {
+              currentValues: {
+                est_grad_date: updatedState.collectedData.estGradDate,
+                est_grad_sem: updatedState.collectedData.estGradSem,
+                career_goals: updatedState.collectedData.careerGoals,
+                admission_year: updatedState.collectedData.admissionYear,
+                is_transfer: updatedState.collectedData.isTransfer,
+              },
+            },
+          };
+          setActiveTool('profile_update');
+          break;
+
+        case ConversationStep.TRANSCRIPT_CHECK:
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'transcript_check',
+            toolData: {
+              hasCourses,
+            },
+          };
+          setActiveTool('transcript_check');
+          break;
+
+        case ConversationStep.STUDENT_TYPE:
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'student_type',
+            toolData: {},
+          };
+          setActiveTool('student_type');
+          break;
+
+        case ConversationStep.PROGRAM_SELECTION:
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'program_selection',
+            toolData: {
+              studentType: updatedState.collectedData.studentType || 'undergraduate',
+              universityId: updatedState.universityId,
+              studentAdmissionYear: updatedState.collectedData.admissionYear,
+              studentIsTransfer: updatedState.collectedData.isTransfer,
+              profileId: user.id,
+            },
+          };
+          setActiveTool('program_selection');
+          break;
+
+        case ConversationStep.COURSE_SELECTION:
+          // For course selection, we need the program info
+          const selectedPrograms = updatedState.collectedData.selectedPrograms || [];
+          const majorMinorIds = selectedPrograms
+            .filter(p => p.programType === 'major' || p.programType === 'minor')
+            .map(p => p.programId);
+          const genEdIds = selectedPrograms
+            .filter(p => p.programType === 'general_education')
+            .map(p => p.programId);
+
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'course_selection',
+            toolData: {
+              studentType: updatedState.collectedData.studentType || 'undergraduate',
+              universityId: updatedState.universityId,
+              selectedProgramIds: majorMinorIds,
+              genEdProgramIds: genEdIds,
+              userId: user.id,
+            },
+          };
+          setActiveTool('course_selection');
+          break;
+
+        case ConversationStep.MILESTONES:
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'milestones',
+            toolData: {},
+          };
+          setActiveTool('milestones');
+          break;
+
+        case ConversationStep.ADDITIONAL_CONCERNS:
+          toolMessage = {
+            role: 'tool',
+            content: '',
+            timestamp: new Date(),
+            toolType: 'additional_concerns',
+            toolData: {},
+          };
+          setActiveTool('additional_concerns');
+          break;
+
+        default:
+          // For other steps, just show a message
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'Please use the chat to continue from this step.',
+              timestamp: new Date(),
+            },
+          ]);
+          setIsProcessing(false);
+          return;
+      }
+
+      if (toolMessage) {
+        setMessages(prev => [...prev, toolMessage!]);
+      }
+      setIsProcessing(false);
+    }, 500);
+  };
+
   const handleToolComplete = async (toolType: ToolType, result: unknown) => {
     setIsProcessing(true);
 
@@ -288,9 +464,14 @@ export default function CreatePlanClient({
         });
 
         // Add appropriate message based on their choice
-        const nextMessage = transcriptData.wantsToUpload
-          ? 'Great! Your transcript has been uploaded. Now let\'s determine what type of student you are.'
-          : 'Okay, we can proceed without a transcript. Now let\'s determine what type of student you are.';
+        let nextMessage: string;
+        if (transcriptData.wantsToUpload) {
+          nextMessage = 'Great! Your transcript has been uploaded. Now let\'s determine what type of student you are.';
+        } else if (transcriptData.hasTranscript) {
+          nextMessage = 'Perfect! We\'ll use your current transcript. Now let\'s determine what type of student you are.';
+        } else {
+          nextMessage = 'Okay, we can proceed without a transcript. Now let\'s determine what type of student you are.';
+        }
 
         setMessages(prev => [
           ...prev,
@@ -491,10 +672,9 @@ export default function CreatePlanClient({
             completedStep: ConversationStep.COURSE_SELECTION,
           });
 
-          // Finally mark ADDITIONAL_CONCERNS as complete (skipping it)
+          // Move to MILESTONES step
           return updateState(withSelection, {
-            step: ConversationStep.ADDITIONAL_CONCERNS,
-            completedStep: ConversationStep.ADDITIONAL_CONCERNS,
+            step: ConversationStep.MILESTONES,
           });
         });
 
@@ -510,106 +690,90 @@ export default function CreatePlanClient({
           },
         ]);
 
-        // Skip additional concerns and go directly to plan generation
-        setTimeout(async () => {
+        // Show milestones tool
+        setTimeout(() => {
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'tool',
+              content: '',
+              timestamp: new Date(),
+              toolType: 'milestones',
+              toolData: {},
+            },
+          ]);
+          setActiveTool('milestones');
+          setIsProcessing(false);
+        }, 1000);
+
+      } else if (toolType === 'milestones') {
+        setActiveTool(null);
+        const milestoneData = result as MilestoneInput;
+
+        // Update conversation state
+        setConversationState(prev => {
+          const updated = updateState(prev, {
+            step: ConversationStep.MILESTONES,
+            data: {
+              // Always save the full object with hasMilestones boolean
+              milestones: JSON.stringify(milestoneData),
+            },
+            completedStep: ConversationStep.MILESTONES,
+          });
+
+          // Move to ADDITIONAL_CONCERNS step
+          return updateState(updated, {
+            step: ConversationStep.ADDITIONAL_CONCERNS,
+          });
+        });
+
+        // Add confirmation message
+        const confirmationMessage = getMilestoneConfirmationMessage(milestoneData);
+
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Show additional concerns tool
+        setTimeout(() => {
           setMessages(prev => [
             ...prev,
             {
               role: 'assistant',
-              content: 'Perfect! Now let me generate your personalized graduation plan. This may take a moment...',
+              content: 'One last thing - do you have any additional preferences or constraints we should consider when creating your plan?',
               timestamp: new Date(),
             },
+            {
+              role: 'tool',
+              content: '',
+              timestamp: new Date(),
+              toolType: 'additional_concerns',
+              toolData: {},
+            },
           ]);
-
-          try {
-            // Get the prompt from database
-            const promptTemplate = await getAiPromptAction('organize_grad_plan');
-            if (!promptTemplate) {
-              throw new Error('Prompt template not found');
-            }
-
-            // Fetch user's taken courses from database
-            const userCoursesResult = await fetchUserCoursesAction(user.id);
-            const takenCourses = userCoursesResult.success && userCoursesResult.courses
-              ? userCoursesResult.courses
-                  .filter(course => course.code && course.title) // Only include valid courses
-                  .map(course => ({
-                    code: course.code,
-                    title: course.title,
-                    credits: course.credits || 3,
-                    term: course.term || 'Unknown',
-                    grade: course.grade || 'Completed',
-                    status: 'Completed',
-                    source: 'Institutional',
-                    fulfills: []
-                  }))
-              : [];
-
-            // Transform courseData to match the expected schema
-            const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
-            const transformedCourseData = {
-              ...courseData,
-              takenCourses,
-              selectionMode: 'MANUAL' as const,
-              selectedPrograms: programIds,
-            };
-
-            // Call the existing organize courses server action
-            const result = await organizeCoursesIntoSemestersAction(
-              transformedCourseData,
-              {
-                prompt_name: 'organize_grad_plan',
-                prompt: promptTemplate,
-                model: 'gpt-5-mini',
-                max_output_tokens: 25_000,
-              }
-            );
-
-            if (!result.success || !result.accessId) {
-              throw new Error(result.message || 'Failed to generate graduation plan');
-            }
-
-            // Display success message
-            setMessages(prev => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: `${result.message}\n\n🎉 Your graduation plan has been saved! Redirecting you to the plan editor...`,
-                timestamp: new Date(),
-              },
-            ]);
-
-            // Navigate to the grad plan page after a brief delay
-            setTimeout(() => {
-              router.push(`/grad-plan/${result.accessId}`);
-            }, 1500);
-          } catch (error) {
-            console.error('Error generating graduation plan:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            setMessages(prev => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: `I encountered an error while generating your plan:\n\n**Error:** ${errorMessage}\n\nPlease try again or contact support if the issue persists.`,
-                timestamp: new Date(),
-              },
-            ]);
-            setIsProcessing(false);
-          }
+          setActiveTool('additional_concerns');
+          setIsProcessing(false);
         }, 1000);
 
       } else if (toolType === 'additional_concerns') {
         setActiveTool(null);
         const concernsData = result as AdditionalConcernsInput;
 
+        // Capture the milestone data before state update (it was saved in previous step)
+        const milestonesJson = conversationState.collectedData.milestones;
+
         // Update conversation state
         setConversationState(prev => {
           const updated = updateState(prev, {
             step: ConversationStep.ADDITIONAL_CONCERNS,
             data: {
-              additionalConcerns: concernsData.hasAdditionalConcerns
-                ? JSON.stringify(concernsData)
-                : null,
+              // Always save the full object with hasAdditionalConcerns boolean
+              additionalConcerns: JSON.stringify(concernsData),
             },
             completedStep: ConversationStep.ADDITIONAL_CONCERNS,
           });
@@ -634,7 +798,11 @@ export default function CreatePlanClient({
 
         // Trigger plan generation
         setTimeout(async () => {
+          // Store loading message index before try-catch so it's accessible in catch block
+          const loadingMessageIndex = messages.length;
+
           try {
+            // Add loading message
             setMessages(prev => [
               ...prev,
               {
@@ -671,12 +839,17 @@ export default function CreatePlanClient({
               : [];
 
             // Transform courseData to match the expected schema
+            // Use the data we just collected and captured, not from potentially stale state
             const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
             const transformedCourseData = {
               ...courseData,
               takenCourses,
               selectionMode: 'MANUAL' as const,
               selectedPrograms: programIds,
+              // Use captured milestone data from before state update
+              milestones: milestonesJson ? JSON.parse(milestonesJson) : undefined,
+              // Use the concernsData we just collected directly
+              additionalConcerns: concernsData,
             };
 
             // Call the existing organize courses server action
@@ -711,14 +884,19 @@ export default function CreatePlanClient({
           } catch (error) {
             console.error('Error generating graduation plan:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            setMessages(prev => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: `I encountered an error while generating your plan:\n\n**Error:** ${errorMessage}\n\nPlease try again or contact support if the issue persists.`,
-                timestamp: new Date(),
-              },
-            ]);
+
+            // Remove the loading message and replace with error message
+            setMessages(prev => {
+              const filtered = prev.filter((_, index) => index !== loadingMessageIndex);
+              return [
+                ...filtered,
+                {
+                  role: 'assistant',
+                  content: `I encountered an error while generating your plan:\n\n**Error:** ${errorMessage}\n\nPlease try again or contact support if the issue persists.`,
+                  timestamp: new Date(),
+                },
+              ];
+            });
             setIsProcessing(false);
           }
         }, 1000);
@@ -1362,6 +1540,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
             <ConversationProgressSteps
               currentStep={conversationState.currentStep}
               completedSteps={conversationState.completedSteps}
+              onStepClick={handleStepNavigation}
             />
           </div>
         </div>
