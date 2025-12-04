@@ -45,71 +45,56 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
     return 3;
   }, [plan.terms.length]);
 
-  const rows = React.useMemo(() => {
-    const result: React.ReactNode[] = [];
+  const allCards = React.useMemo(() => {
+    const cards: React.ReactNode[] = [];
 
-    for (let i = 0; i < plan.terms.length; i += termsPerRow) {
-      const rowTerms = plan.terms.slice(i, i + termsPerRow);
-      const rowStartIndex = i;
+    plan.terms.forEach((term, index) => {
+      const termNumber = index + 1;
 
-      result.push(
+      // Add term card
+      cards.push(
         <div
-          key={`row-${i}`}
-          className="flex items-stretch gap-3 w-full transition-all duration-300 ease-in-out"
+          key={`term-${term.id}`}
+          className="min-w-0 transition-all duration-250 ease-in-out"
+          style={{
+            width: `calc((100% - (${termsPerRow - 1} * 0.75rem)) / ${termsPerRow})`,
+            flexShrink: 0
+          }}
         >
-          {rowTerms.map((term, indexInRow) => {
-            const globalIndex = rowStartIndex + indexInRow;
-            const termNumber = globalIndex + 1;
-
-            // Get events that should appear after this specific term
-            const eventsAfterThisTerm = plan.events?.filter(e => e.afterTerm === termNumber) || [];
-
-            return (
-              <React.Fragment key={`term-group-${term.id}`}>
-                {/* Term Card */}
-                <div
-                  className="min-w-0 transition-all duration-250 ease-in-out"
-                  style={{
-                    width: `calc((100% - (${termsPerRow - 1} * 0.75rem)) / ${termsPerRow})`,
-                    flexShrink: 0
-                  }}
-                >
-                  <TermCard
-                    term={term}
-                    isEditMode={isEditMode}
-                    modifiedTerms={modifiedTerms}
-                  />
-                </div>
-
-                {/* Events after this term (inline in the same row) */}
-                {eventsAfterThisTerm.map((event) => (
-                  <div
-                    key={`event-${event.id}`}
-                    className="shrink-0 transition-all duration-250 ease-in-out"
-                    style={{
-                      width: '140px',
-                      minWidth: '140px',
-                      maxWidth: '140px',
-                    }}
-                  >
-                    <EventCard
-                      event={event}
-                      isEditMode={isEditMode}
-                      variant="grid"
-                      onEdit={onEditEvent}
-                      onDelete={onDeleteEvent}
-                    />
-                  </div>
-                ))}
-              </React.Fragment>
-            );
-          })}
+          <TermCard
+            term={term}
+            isEditMode={isEditMode}
+            modifiedTerms={modifiedTerms}
+          />
         </div>
       );
-    }
 
-    return result;
-  }, [plan.terms, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent]);
+      // Add events that come after this term
+      const eventsAfterThisTerm = plan.events?.filter(e => e.afterTerm === termNumber) || [];
+      eventsAfterThisTerm.forEach((event) => {
+        cards.push(
+          <div
+            key={`event-${event.id}`}
+            className="min-w-0 transition-all duration-250 ease-in-out"
+            style={{
+              width: `calc((100% - (${termsPerRow - 1} * 0.75rem)) / ${termsPerRow})`,
+              flexShrink: 0
+            }}
+          >
+            <EventCard
+              event={event}
+              isEditMode={isEditMode}
+              variant="grid"
+              onEdit={onEditEvent}
+              onDelete={onDeleteEvent}
+            />
+          </div>
+        );
+      });
+    });
+
+    return cards;
+  }, [plan.terms, plan.events, termsPerRow, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent]);
 
   return (
     <div className="space-y-3">
@@ -162,9 +147,9 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
         )}
       </div>
 
-      {/* Term cards and event cards - Row-based layout maintaining 4 terms per row */}
-      <div className="flex flex-col gap-3">
-        {rows}
+      {/* Term cards and event cards - Flex wrap layout maintaining terms per row */}
+      <div className="flex flex-wrap items-stretch gap-3 w-full">
+        {allCards}
       </div>
 
       {/* Bottom legend */}

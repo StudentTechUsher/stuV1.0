@@ -13,13 +13,23 @@ export type EventType =
   | 'Research Project'
   | 'Teaching Assistant'
   | 'Co-op'
+  | 'Apply for Graduate School'
+  | 'Apply for Graduation'
   | 'Other';
 
+export type MilestoneTiming =
+  | 'ai_choose'
+  | 'beginning'
+  | 'middle'
+  | 'before_last_year'
+  | 'after_graduation';
+
 export interface Event {
-  id: string;
+  id?: string; // Optional - only needed for React keys in UI
   type: EventType;
   title: string;
   afterTerm: number;
+  timingPreference?: MilestoneTiming; // Optional: used during plan creation to indicate user's timing preference
 }
 
 export interface Term {

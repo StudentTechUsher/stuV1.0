@@ -13,6 +13,7 @@ interface PlanOverviewProps {
   onAddEvent: () => void;
   programs?: Array<{ id: number; name: string }>;
   estGradSem?: string;
+  createdWithTranscript?: boolean;
 }
 
 export function PlanOverview({
@@ -24,7 +25,8 @@ export function PlanOverview({
   onToggleView,
   onAddEvent,
   programs,
-  estGradSem
+  estGradSem,
+  createdWithTranscript
 }: PlanOverviewProps) {
   const totalCredits = currentPlanData.reduce((total, term) => {
     const termCredits = term.credits_planned ||
@@ -95,6 +97,26 @@ export function PlanOverview({
                 Expected Grad: {estGradSem}
               </span>
             )}
+            {/* Transcript Status Badge */}
+            {createdWithTranscript !== undefined && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-xs font-semibold tracking-wide",
+                  createdWithTranscript
+                    ? "border-[color-mix(in_srgb,#10b981_38%,transparent)] bg-[color-mix(in_srgb,#10b981_15%,white)] text-[color-mix(in_srgb,var(--foreground)_78%,#10b981_22%)]"
+                    : "border-[color-mix(in_srgb,#f59e0b_38%,transparent)] bg-[color-mix(in_srgb,#f59e0b_15%,white)] text-[color-mix(in_srgb,var(--foreground)_78%,#f59e0b_22%)]"
+                )}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                {createdWithTranscript ? 'Created with transcript' : 'Created without transcript'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -103,7 +125,7 @@ export function PlanOverview({
             <button
               type="button"
               onClick={onAddEvent}
-              className="inline-flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_48%,transparent)] bg-[color-mix(in_srgb,var(--primary)_16%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_78%,var(--primary)_22%)] shadow-[0_28px_68px_-48px_rgba(18,249,135,0.55)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,var(--primary)_20%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              className="inline-flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,#a855f7_48%,transparent)] bg-[color-mix(in_srgb,#a855f7_16%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_78%,#a855f7_22%)] shadow-[0_28px_68px_-48px_rgba(168,85,247,0.45)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,#a855f7_22%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_srgb,#a855f7_75%,black_25%)]"
             >
               <Plus size={18} strokeWidth={2} aria-hidden="true" />
               Add milestone

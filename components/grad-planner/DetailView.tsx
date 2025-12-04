@@ -10,6 +10,7 @@ interface DetailViewProps {
   modifiedTerms: Set<number>;
   movedCourses: Set<string>;
   onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
+  onDeleteTerm?: (termIndex: number) => void;
   onEditEvent: (event?: Event) => void;
   onDeleteEvent: (eventId: string) => void;
 }
@@ -21,6 +22,7 @@ export function DetailView({
   modifiedTerms,
   movedCourses,
   onMoveCourse,
+  onDeleteTerm,
   onEditEvent,
   onDeleteEvent
 }: Readonly<DetailViewProps>) {
@@ -81,6 +83,7 @@ export function DetailView({
               modifiedTerms={modifiedTerms}
               movedCourses={movedCourses}
               onMoveCourse={onMoveCourse}
+              onDeleteTerm={onDeleteTerm}
             />
           </div>
         );
@@ -102,6 +105,7 @@ export function DetailView({
                 modifiedTerms={modifiedTerms}
                 movedCourses={movedCourses}
                 onMoveCourse={onMoveCourse}
+                onDeleteTerm={onDeleteTerm}
               />
             </div>
           ) : null;

@@ -15,6 +15,7 @@ interface TermCardProps {
   modifiedTerms: Set<number>;
   movedCourses: Set<string>;
   onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
+  onDeleteTerm?: (termIndex: number) => void;
 }
 
 const statBadgeBase =
@@ -33,12 +34,14 @@ export function TermCard({
   modifiedTerms,
   movedCourses,
   onMoveCourse,
+  onDeleteTerm,
 }: Readonly<TermCardProps>) {
   const termCredits =
     term.credits_planned ||
     (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
   const totalCourses = term.courses?.length ?? 0;
   const visibleTermLabel = term.term?.trim() || `Term ${termIndex + 1}`;
+  const isEmpty = !term.courses || term.courses.length === 0;
 
   return (
     <DroppableTerm
@@ -154,8 +157,34 @@ export function TermCard({
             </div>
           </section>
         ) : (
-          <div className="flex items-center justify-center rounded-[7px] border border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_38%,var(--border)_62%)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-4 py-10 text-sm font-medium text-[color-mix(in_srgb,var(--muted-foreground)_78%,var(--foreground)_22%)]">
-            No courses defined for this term yet
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-center rounded-[7px] border border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_38%,var(--border)_62%)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-4 py-10 text-sm font-medium text-[color-mix(in_srgb,var(--muted-foreground)_78%,var(--foreground)_22%)]">
+              No courses defined for this term yet
+            </div>
+            {isEditMode && isEmpty && onDeleteTerm && (
+              <button
+                type="button"
+                onClick={() => onDeleteTerm(termIndex)}
+                className="flex items-center justify-center gap-2 rounded-[7px] border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition-all hover:bg-red-100 hover:border-red-300"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                </svg>
+                Delete Empty Term
+              </button>
+            )}
           </div>
         )}
       </article>

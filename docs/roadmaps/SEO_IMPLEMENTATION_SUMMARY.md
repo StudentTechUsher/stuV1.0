@@ -10,7 +10,7 @@ All SEO improvements have been successfully implemented for **stuplanning.com**.
 
 ### 1. **robots.txt Created** (`public/robots.txt`)
 - Tells search engines what to crawl and what to avoid
-- Allows public pages: `/`, `/about-us`, `/students`, `/how-it-works`, `/demo`, `/privacy-policy`
+- Allows public pages: `/`, `/about-us`, `/how-it-works`, `/demo`, `/privacy-policy`
 - Disallows authenticated areas: `/dashboard/`, `/auth/`, `/login`, `/signup`, `/api/`
 - Points to sitemap location
 
@@ -35,10 +35,10 @@ All SEO improvements have been successfully implemented for **stuplanning.com**.
 - Structured data: Organization, Software, Website schemas
 - Canonical URL set
 
-#### Students Page (`app/students/page.tsx`)
+#### Students Experience (now part of `app/page.tsx`)
 - Title: "For Students - Graduate On Time"
 - Student-focused keywords
-- Converted to Server Component with client component wrapper
+- Content merged into the root page for a unified audience experience
 
 #### How It Works Page (`app/how-it-works/page.tsx`)
 - Title: "How It Works - Academic Planning Made Simple"
@@ -221,8 +221,7 @@ Implemented on home page with 3 schema types.
 - `public/robots.txt`
 - `app/sitemap.ts`
 - `lib/seo/structured-data.ts`
-- `app/students/page.tsx` (new server component wrapper)
-- `app/students/students-page-client.tsx` (renamed)
+- Students experience is handled directly in `app/page.tsx`
 - `app/how-it-works/page.tsx` (new server component wrapper)
 - `app/how-it-works/how-it-works-client.tsx` (renamed)
 - `app/demo/page.tsx` (new server component wrapper)

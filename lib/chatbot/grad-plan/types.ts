@@ -16,6 +16,7 @@ export enum ConversationStep {
   COURSE_SELECTION = 'course_selection',
   ELECTIVES = 'electives',
   STUDENT_INTERESTS = 'student_interests',
+  MILESTONES = 'milestones',
   ADDITIONAL_CONCERNS = 'additional_concerns',
   GENERATING_PLAN = 'generating_plan',
   COMPLETE = 'complete',
@@ -96,6 +97,9 @@ export interface ConversationState {
 
     // Student interests
     studentInterests: string | null;
+
+    // Milestones
+    milestones: string | null; // JSON string of milestone data
 
     // Additional information
     additionalConcerns: string | null;

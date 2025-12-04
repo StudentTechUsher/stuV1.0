@@ -38,6 +38,10 @@ const getEventIcon = (type: EventType) => {
       return BusinessCenterIcon;
     case 'Sabbatical':
       return SelfImprovementIcon;
+    case 'Apply for Graduate School':
+      return SchoolIcon;
+    case 'Apply for Graduation':
+      return SchoolIcon;
     case 'Other':
       return MoreHorizIcon;
     default:
@@ -62,6 +66,10 @@ const getEventColor = (type: EventType): string => {
       return '#795548';
     case 'Sabbatical':
       return '#00BCD4';
+    case 'Apply for Graduate School':
+      return '#673AB7';
+    case 'Apply for Graduation':
+      return '#1976D2';
     case 'Other':
       return '#607D8B';
     default:
@@ -81,6 +89,10 @@ export function EventCard({
   const tintedBackground = `color-mix(in srgb, ${eventColor} 70%, white)`;
   const borderColor = `color-mix(in srgb, ${eventColor}, transparent)`;
   const glowShadow = `${eventColor}33`;
+  const handleDelete = () => {
+    if (!event.id) return;
+    onDelete?.(event.id);
+  };
 
   if (variant === 'grid') {
     return (
@@ -119,7 +131,7 @@ export function EventCard({
             </button>
             <button
               type="button"
-              onClick={() => onDelete?.(event.id)}
+              onClick={handleDelete}
               className="flex h-5 w-5 items-center justify-center rounded-[4px] border transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
               style={{
                 borderColor: 'color-mix(in srgb, #ef4444 50%, transparent)',
@@ -192,7 +204,7 @@ export function EventCard({
           </button>
           <button
             type="button"
-            onClick={() => onDelete?.(event.id)}
+            onClick={handleDelete}
             className="flex h-8 items-center gap-1 rounded-[7px] border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destructive)]"
             style={{
               color: `color-mix(in srgb, #7f1d1d 75%, ${eventColor} 25%)`,

@@ -5,6 +5,7 @@ import TranscriptCheckForm from './TranscriptCheckForm';
 import StudentTypeForm from './StudentTypeForm';
 import ProgramSelectionForm from './ProgramSelectionForm';
 import CourseSelectionForm from './CourseSelectionForm';
+import MilestoneForm from './MilestoneForm';
 import AdditionalConcernsForm from './AdditionalConcernsForm';
 import CareerSuggestionsDisplay from './CareerSuggestionsDisplay';
 import ProgramSuggestionsDisplay from './ProgramSuggestionsDisplay';
@@ -13,11 +14,12 @@ import { TranscriptCheckInput } from '@/lib/chatbot/tools/transcriptCheckTool';
 import { StudentTypeInput } from '@/lib/chatbot/tools/studentTypeTool';
 import { ProgramSelectionInput } from '@/lib/chatbot/tools/programSelectionTool';
 import { CourseSelectionInput } from '@/lib/chatbot/tools/courseSelectionTool';
+import { MilestoneInput } from '@/lib/chatbot/tools/milestoneTool';
 import { AdditionalConcernsInput } from '@/lib/chatbot/tools/additionalConcernsTool';
 import { CareerSuggestionsInput } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { ProgramSuggestionsInput } from '@/lib/chatbot/tools/programSuggestionsTool';
 
-export type ToolType = 'profile_update' | 'transcript_check' | 'student_type' | 'career_pathfinder' | 'program_pathfinder' | 'program_selection' | 'course_selection' | 'additional_concerns' | 'career_suggestions' | 'program_suggestions';
+export type ToolType = 'profile_update' | 'transcript_check' | 'student_type' | 'career_pathfinder' | 'program_pathfinder' | 'program_selection' | 'course_selection' | 'milestones' | 'additional_concerns' | 'career_suggestions' | 'program_suggestions';
 
 interface ToolRendererProps {
   toolType: ToolType;
@@ -30,6 +32,7 @@ interface ToolRendererProps {
       is_transfer?: boolean | null;
     };
     hasCourses?: boolean;
+    hasTranscript?: boolean;
     studentType?: 'undergraduate' | 'graduate';
     universityId?: number;
     selectedProgramIds?: number[];
@@ -110,7 +113,15 @@ export default function ToolRenderer({
           selectedProgramIds={toolData.selectedProgramIds}
           genEdProgramIds={toolData.genEdProgramIds}
           userId={toolData.userId}
+          hasTranscript={toolData.hasTranscript ?? false}
           onSubmit={(data: CourseSelectionInput) => onToolComplete(data)}
+        />
+      );
+
+    case 'milestones':
+      return (
+        <MilestoneForm
+          onSubmit={(data: MilestoneInput) => onToolComplete(data)}
         />
       );
 

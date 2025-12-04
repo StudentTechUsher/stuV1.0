@@ -6,6 +6,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabaseClient';
 import { Suspense, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
@@ -53,12 +54,12 @@ function LoginContent() {
   return (
     <main className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-        <a
-          href="/students"
+        <Link
+          href="/"
           className="absolute top-6 left-6 text-black text-4xl font-brand"
         >
           stu.
-        </a>
+        </Link>
 
         <div className="flex justify-center mb-2">
           <Image

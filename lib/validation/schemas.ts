@@ -134,6 +134,22 @@ export const courseSelectionPayloadSchema = yup.object({
       matchReasons: yup.array().of(yup.string()).optional(),
     })
   ).optional().default([]),
+  additionalConcerns: yup.object({
+    hasAdditionalConcerns: yup.boolean().required(),
+    workStatus: yup.string().oneOf(['not_working', 'part_time', 'full_time']).optional(),
+    academicPriority: yup.string().oneOf(['graduate_quickly', 'explore_options', 'balanced']).optional(),
+    otherConcerns: yup.string().optional(),
+  }).optional(),
+  milestones: yup.object({
+    hasMilestones: yup.boolean().required(),
+    milestones: yup.array().of(
+      yup.object({
+        type: yup.string().required(),
+        title: yup.string().required(),
+        timing: yup.string().oneOf(['ai_choose', 'beginning', 'middle', 'before_last_year', 'after_graduation']).required(),
+      })
+    ).optional(),
+  }).optional(),
 });
 
 export type CourseSelectionPayloadInput = yup.InferType<typeof courseSelectionPayloadSchema>;

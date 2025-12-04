@@ -294,6 +294,7 @@ export default function CreatePlanClient({
               selectedProgramIds: majorMinorIds,
               genEdProgramIds: genEdIds,
               userId: user.id,
+              hasTranscript: updatedState.collectedData.hasTranscript ?? false,
             },
           };
           setActiveTool('course_selection');
@@ -637,6 +638,7 @@ export default function CreatePlanClient({
                 selectedProgramIds: majorMinorIds,
                 genEdProgramIds: genEdIds,
                 userId: user.id,
+                hasTranscript: conversationState.collectedData.hasTranscript ?? false,
               },
             },
           ]);
@@ -821,22 +823,34 @@ export default function CreatePlanClient({
             // Get course data from conversation state
             const courseData = conversationState.collectedData.selectedCourses || {};
 
-            // Fetch user's taken courses from database
-            const userCoursesResult = await fetchUserCoursesAction(user.id);
-            const takenCourses = userCoursesResult.success && userCoursesResult.courses
-              ? userCoursesResult.courses
-                  .filter(course => course.code && course.title) // Only include valid courses
-                  .map(course => ({
-                    code: course.code,
-                    title: course.title,
-                    credits: course.credits || 3,
-                    term: course.term || 'Unknown',
-                    grade: course.grade || 'Completed',
-                    status: 'Completed',
-                    source: 'Institutional',
-                    fulfills: []
-                  }))
-              : [];
+            // Fetch user's taken courses from database only if they want to use transcript
+            let takenCourses: Array<{
+              code: string;
+              title: string;
+              credits: number;
+              term: string;
+              grade: string;
+              status: string;
+              source: string;
+              fulfills: string[];
+            }> = [];
+            if (conversationState.collectedData.hasTranscript) {
+              const userCoursesResult = await fetchUserCoursesAction(user.id);
+              takenCourses = userCoursesResult.success && userCoursesResult.courses
+                ? userCoursesResult.courses
+                    .filter(course => course.code && course.title) // Only include valid courses
+                    .map(course => ({
+                      code: course.code,
+                      title: course.title,
+                      credits: course.credits || 3,
+                      term: course.term || 'Unknown',
+                      grade: course.grade || 'Completed',
+                      status: 'Completed',
+                      source: 'Institutional',
+                      fulfills: []
+                    }))
+                : [];
+            }
 
             // Transform courseData to match the expected schema
             // Use the data we just collected and captured, not from potentially stale state
@@ -850,6 +864,8 @@ export default function CreatePlanClient({
               milestones: milestonesJson ? JSON.parse(milestonesJson) : undefined,
               // Use the concernsData we just collected directly
               additionalConcerns: concernsData,
+              // Track whether this plan was created with transcript data
+              created_with_transcript: conversationState.collectedData.hasTranscript ?? false,
             };
 
             // Call the existing organize courses server action

@@ -26,7 +26,6 @@ import { PlanAssumptions } from './PlanAssumptions';
 import { EventDialog } from './EventDialog';
 import { TrashZone } from './TrashZone';
 import { DraggableCourseOverlay } from './DraggableCourseOverlay';
-import { EditModeBanner } from './EditModeBanner';
 import { PlanOverview } from './PlanOverview';
 import { DetailView } from './DetailView';
 
@@ -163,13 +162,19 @@ export default function GraduationPlanner({
   }, [externalOnOpenEventDialog, handleOpenEventDialog]);
 
   const handleSaveEvent = () => {
+    console.log('🎯 handleSaveEvent called');
+    console.log('  Current events:', events);
+    console.log('  Using external events?', !!externalEvents);
+
     if (editingEvent) {
       // Update existing event
-      setEvents(events.map(e =>
+      const updatedEvents = events.map(e =>
         e.id === editingEvent.id
           ? { ...e, type: newEventType, title: newEventTitle || newEventType, afterTerm: newEventAfterTerm }
           : e
-      ));
+      );
+      console.log('  Updating event, new array:', updatedEvents);
+      setEvents(updatedEvents);
     } else {
       // Create new event
       const newEvent: Event = {
@@ -178,7 +183,10 @@ export default function GraduationPlanner({
         title: newEventTitle || newEventType,
         afterTerm: newEventAfterTerm
       };
-      setEvents([...events, newEvent]);
+      const updatedEvents = [...events, newEvent];
+      console.log('  Creating new event:', newEvent);
+      console.log('  New events array:', updatedEvents);
+      setEvents(updatedEvents);
     }
     setShowEventDialog(false);
     setEditingEvent(null);
@@ -231,6 +239,30 @@ export default function GraduationPlanner({
 
       setModifiedTerms(prev => new Set(prev).add(termIndex));
 
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      return newData;
+    });
+  };
+
+  // Function to delete an empty term
+  const deleteTerm = (termIndex: number) => {
+    if (!isEditMode) return;
+
+    setEditablePlanData(prevData => {
+      // Check if term exists and is empty
+      const term = prevData[termIndex];
+      if (!term || (term.courses && term.courses.length > 0)) {
+        console.warn('Cannot delete term: term does not exist or has courses');
+        return prevData;
+      }
+
+      // Remove the term
+      const newData = prevData.filter((_, idx) => idx !== termIndex);
+
+      // Notify parent component of the change
       if (onPlanUpdate) {
         onPlanUpdate(newData);
       }
@@ -372,15 +404,6 @@ export default function GraduationPlanner({
       onDragEnd={handleDragEnd}
     >
       <Box sx={{ p: 2 }}>
-        {isEditMode && (
-          <EditModeBanner
-            editablePlanData={editablePlanData}
-            events={events}
-            onSave={onSave}
-            role={editorRole}
-          />
-        )}
-
         {/* Trash Zone - Only visible when dragging */}
         {activeCourse && isEditMode && <TrashZone />}
 
@@ -395,6 +418,7 @@ export default function GraduationPlanner({
             onAddEvent={() => handleOpenEventDialog()}
             programs={(plan as Record<string, unknown>)?.programs as Array<{ id: number; name: string }> | undefined}
             estGradSem={(plan as Record<string, unknown>)?.est_grad_sem as string | undefined}
+            createdWithTranscript={(plan as Record<string, unknown>)?.created_with_transcript as boolean | undefined}
           />
 
           {/* Display terms with events between them */}
@@ -414,6 +438,7 @@ export default function GraduationPlanner({
               modifiedTerms={modifiedTerms}
               movedCourses={movedCourses}
               onMoveCourse={moveCourse}
+              onDeleteTerm={deleteTerm}
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
             />

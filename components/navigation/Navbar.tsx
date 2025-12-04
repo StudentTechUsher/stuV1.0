@@ -27,7 +27,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
       : variant === "about"
       ? [
           { href: "/#features", label: "Features" },
-          { href: "/students", label: "For Students" },
+          { href: "/", label: "For Students" },
           { href: "/demo", label: "Request Demo" },
           { href: "/about-us", label: "About Us" },
         ]
@@ -104,7 +104,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
           </div>
         ) : (
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/students" className="text-base font-medium hover:text-primary transition-colors">
+            <Link href="/" className="text-base font-medium hover:text-primary transition-colors">
               For Students
             </Link>
             <Link href="/demo">
@@ -165,7 +165,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
               ) : (
                 <>
                   <Link
-                    href="/students"
+                    href="/"
                     className="text-base font-medium hover:text-primary"
                     onClick={() => setMobileMenuOpen(false)}
                   >

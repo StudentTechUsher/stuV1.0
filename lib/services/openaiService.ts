@@ -41,6 +41,7 @@ interface CoursesDataInput {
     status?: string;
     source?: string;
   }>;
+  created_with_transcript?: boolean;
 }
 
 interface CareerOption {
@@ -361,6 +362,12 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     if (typeof planData === 'string') {
       try { planData = JSON.parse(planData); } catch {/* leave as string if it can't parse */}
     }
+
+    // Add metadata to plan data before storing
+    if (planData && typeof planData === 'object') {
+      (planData as Record<string, unknown>).created_with_transcript = cd.created_with_transcript ?? false;
+    }
+
     const { accessId } = await InsertGeneratedGradPlan({
       studentId: studentData.id,
       planData,

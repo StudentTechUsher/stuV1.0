@@ -28,13 +28,13 @@ export default function HowItWorksClient() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="/students#features" className="text-base font-medium hover:text-primary transition-colors">
+            <Link href="/#features" className="text-base font-medium hover:text-primary transition-colors">
               Features
             </Link>
             <Link href="/how-it-works" className="text-base font-medium hover:text-primary transition-colors">
               How It Works
             </Link>
-            <Link href="/students#testimonials" className="text-base font-medium hover:text-primary transition-colors">
+            <Link href="/#testimonials" className="text-base font-medium hover:text-primary transition-colors">
               Student Stories
             </Link>
           </nav>
@@ -56,7 +56,7 @@ export default function HowItWorksClient() {
           <div className="md:hidden border-t border-zinc-100">
             <div className="container mx-auto px-6 py-6 flex flex-col gap-6">
               <Link
-                href="/students#features"
+                href="/#features"
                 className="text-base font-medium hover:text-primary"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -70,7 +70,7 @@ export default function HowItWorksClient() {
                 How It Works
               </Link>
               <Link
-                href="/students#testimonials"
+                href="/#testimonials"
                 className="text-base font-medium hover:text-primary"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -91,7 +91,7 @@ export default function HowItWorksClient() {
       </header>
 
       <main className="flex-1">
-        <Link href="/students" className="self-start mb-8 text-muted-foreground hover:text-primary transition-colors">
+        <Link href="/" className="self-start mb-8 text-muted-foreground hover:text-primary transition-colors">
           <ArrowLeft className="inline-block mr-2 h-4 w-4" />
           Back
         </Link>
@@ -178,7 +178,7 @@ export default function HowItWorksClient() {
               <h3 className="text-sm font-medium">Product</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/students#features" className="text-muted-foreground hover:text-primary">
+                  <Link href="/#features" className="text-muted-foreground hover:text-primary">
                     Features
                   </Link>
                 </li>
@@ -188,7 +188,7 @@ export default function HowItWorksClient() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/students#testimonials" className="text-muted-foreground hover:text-primary">
+                  <Link href="/#testimonials" className="text-muted-foreground hover:text-primary">
                     Student Stories
                   </Link>
                 </li>

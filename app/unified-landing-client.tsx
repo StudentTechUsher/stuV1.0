@@ -18,6 +18,25 @@ export function UnifiedLandingClient() {
   const { university } = useUniversityTheme()
   const router = useRouter()
 
+  // Force the landing page to always render in light mode, regardless of user preference.
+  useEffect(() => {
+    const htmlElement = document.documentElement
+    const bodyElement = document.body
+    const wasDark = htmlElement.classList.contains('dark')
+
+    htmlElement.classList.remove('dark')
+    htmlElement.dataset.forceLightLanding = 'true'
+    bodyElement.dataset.forceLightLanding = 'true'
+
+    return () => {
+      delete htmlElement.dataset.forceLightLanding
+      delete bodyElement.dataset.forceLightLanding
+      if (wasDark) {
+        htmlElement.classList.add('dark')
+      }
+    }
+  }, [])
+
   // Listen for auth state changes and redirect authenticated users to dashboard
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()

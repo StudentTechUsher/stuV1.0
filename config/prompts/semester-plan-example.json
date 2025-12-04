@@ -290,6 +290,12 @@
       "credits_planned": 12
     },
     {
+      "id": "event-apply-graduation-example",
+      "type": "Apply for Graduation",
+      "title": "Apply for Graduation",
+      "afterTerm": 7
+    },
+    {
       "term": "8",
       "notes": "Complete exit survey; verify all GE/Religion totals.",
       "courses": [

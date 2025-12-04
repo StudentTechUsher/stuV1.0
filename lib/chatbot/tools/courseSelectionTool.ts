@@ -175,7 +175,7 @@ export function getCourseSelectionConfirmationMessage(
   programCount: number,
   totalCourses: number
 ): string {
-  return `Excellent! I've recorded your course selections for ${programCount} program${programCount > 1 ? 's' : ''} (${totalCourses} courses total). Now I'll organize these into a graduation timeline.`;
+  return `Excellent! I've recorded your course selections for ${programCount} program${programCount > 1 ? 's' : ''} (${totalCourses} courses total).`;
 }
 
 /**

@@ -16,6 +16,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import GradSchoolIcon from '@mui/icons-material/School';
 import { Event, EventType } from './types';
 
 interface EventManagerProps {
@@ -43,6 +44,10 @@ const getEventIcon = (type: EventType) => {
       return BusinessCenterIcon;
     case 'Sabbatical':
       return SelfImprovementIcon;
+    case 'Apply for Graduate School':
+      return GradSchoolIcon;
+    case 'Apply for Graduation':
+      return GradSchoolIcon;
     case 'Other':
       return MoreHorizIcon;
     default:
@@ -66,6 +71,10 @@ const getEventColor = (type: EventType): string => {
       return '#795548';
     case 'Sabbatical':
       return '#00BCD4';
+    case 'Apply for Graduate School':
+      return '#673AB7';
+    case 'Apply for Graduation':
+      return '#1976D2';
     case 'Other':
       return '#607D8B';
     default:
@@ -263,7 +272,10 @@ export function EventManager({
                               </IconButton>
                               <IconButton
                                 size="small"
-                                onClick={() => onDeleteEvent(event.id)}
+                                onClick={() => {
+                                  if (!event.id) return;
+                                  onDeleteEvent(event.id);
+                                }}
                                 sx={{
                                   color: 'var(--action-cancel)',
                                   '&:hover': { backgroundColor: 'rgba(244,67,54,0.12)' },

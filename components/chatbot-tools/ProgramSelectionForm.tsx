@@ -340,14 +340,17 @@ export default function ProgramSelectionForm({
                   />
                 )}
                 renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
-                  value.map((option: ProgramOption, index: number) => (
-                    <div key={option.id} className="inline-flex items-center gap-1">
-                      <Chip
-                        {...getTagProps({ index })}
-                        label={option.name}
-                        size="small"
-                        className="bg-[var(--primary)] text-white"
-                      />
+                  value.map((option: ProgramOption, index: number) => {
+                    // Extract key from getTagProps to avoid spreading it (React warning)
+                    const { key, ...chipProps } = getTagProps({ index });
+                    return (
+                      <div key={option.id} className="inline-flex items-center gap-1">
+                        <Chip
+                          {...chipProps}
+                          label={option.name}
+                          size="small"
+                          className="bg-[var(--primary)] text-white"
+                        />
                       {option.course_flow && (
                         <button
                           type="button"
@@ -359,7 +362,8 @@ export default function ProgramSelectionForm({
                         </button>
                       )}
                     </div>
-                  ))
+                    );
+                  })
                 }
               />
             </div>
@@ -406,25 +410,29 @@ export default function ProgramSelectionForm({
                   />
                 )}
                 renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
-                  value.map((option: ProgramOption, index: number) => (
-                    <div key={option.id} className="inline-flex items-center gap-1">
-                      <Chip
-                        {...getTagProps({ index })}
-                        label={option.name}
-                        size="small"
-                      />
-                      {option.course_flow && (
-                        <button
-                          type="button"
-                          onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
-                          title="View Program"
-                        >
-                          View
-                        </button>
-                      )}
-                    </div>
-                  ))
+                  value.map((option: ProgramOption, index: number) => {
+                    // Extract key from getTagProps to avoid spreading it (React warning)
+                    const { key, ...chipProps } = getTagProps({ index });
+                    return (
+                      <div key={option.id} className="inline-flex items-center gap-1">
+                        <Chip
+                          {...chipProps}
+                          label={option.name}
+                          size="small"
+                        />
+                        {option.course_flow && (
+                          <button
+                            type="button"
+                            onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                            title="View Program"
+                          >
+                            View
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
                 }
               />
             </div>
@@ -531,26 +539,30 @@ export default function ProgramSelectionForm({
                 />
               )}
               renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
-                value.map((option: ProgramOption, index: number) => (
-                  <div key={option.id} className="inline-flex items-center gap-1">
-                    <Chip
-                      {...getTagProps({ index })}
-                      label={option.name}
-                      size="small"
-                      className="bg-[var(--primary)] text-white"
-                    />
-                    {option.course_flow && (
-                      <button
-                        type="button"
-                        onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                        className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
-                        title="View Program"
-                      >
-                        View
-                      </button>
-                    )}
-                  </div>
-                ))
+                value.map((option: ProgramOption, index: number) => {
+                  // Extract key from getTagProps to avoid spreading it (React warning)
+                  const { key, ...chipProps } = getTagProps({ index });
+                  return (
+                    <div key={option.id} className="inline-flex items-center gap-1">
+                      <Chip
+                        {...chipProps}
+                        label={option.name}
+                        size="small"
+                        className="bg-[var(--primary)] text-white"
+                      />
+                      {option.course_flow && (
+                        <button
+                          type="button"
+                          onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                          title="View Program"
+                        >
+                          View
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
               }
             />
           </div>

@@ -231,21 +231,35 @@ export default function TranscriptCheckForm({
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <Button
-              onClick={handleUpdateClick}
-              className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3">
+              <Button
+                onClick={handleUpdateClick}
+                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+              >
+                <Upload size={18} />
+                Update Transcript
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleSkip}
+                className="flex-1"
+              >
+                Continue with Current
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onSubmit({
+                hasTranscript: false,
+                wantsToUpload: false,
+                wantsToUpdate: false,
+              })}
+              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
             >
-              <Upload size={18} />
-              Update Transcript
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSkip}
-              className="flex-1"
-            >
-              Continue with Current
-            </Button>
+              Continue without transcript
+            </button>
           </div>
         </div>
       ) : (
@@ -271,21 +285,24 @@ export default function TranscriptCheckForm({
             </ul>
           </div>
 
-          <div className="flex gap-3">
-            <Button
-              onClick={handleUploadClick}
-              className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
-            >
-              <Upload size={18} />
-              Upload Transcript
-            </Button>
-            <Button
-              variant="outline"
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3">
+              <Button
+                onClick={handleUploadClick}
+                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+              >
+                <Upload size={18} />
+                Upload Transcript
+              </Button>
+            </div>
+
+            <button
+              type="button"
               onClick={handleSkip}
-              className="flex-1"
+              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
             >
-              Skip for Now
-            </Button>
+              Continue without transcript
+            </button>
           </div>
         </div>
       )}

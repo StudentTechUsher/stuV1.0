@@ -54,20 +54,20 @@ export default async function HomePage() {
 
         {/* Top Left Links */}
         <>
-          <a
-            href="/students"
+          <Link
+            href="/"
             className="absolute top-6 left-6 text-foreground text-4xl"
             style={{fontFamily: "var(--font-geist-sans)", fontWeight: 700}}
           >
             stu.
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/login"
             className="absolute top-[62px] left-6 text-[var(--primary)] text-base hover:text-[var(--hover-green)] font-body-semi"
           >
             Login.
-          </a>
+          </Link>
         </>
 
         {/* Welcome box */}

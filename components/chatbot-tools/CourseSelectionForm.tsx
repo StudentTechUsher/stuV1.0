@@ -55,6 +55,7 @@ interface CourseSelectionFormProps {
   selectedProgramIds: number[];
   genEdProgramIds?: number[];
   userId?: string;
+  hasTranscript?: boolean;
   careerGoals?: string | null;
   studentInterests?: string | null;
   selectedMajorMinors?: string[];
@@ -67,6 +68,7 @@ export default function CourseSelectionForm({
   selectedProgramIds,
   genEdProgramIds = [],
   userId,
+  hasTranscript = false,
   careerGoals = null,
   studentInterests = null,
   selectedMajorMinors = [],
@@ -234,10 +236,10 @@ export default function CourseSelectionForm({
     fetchProgramData();
   }, [selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
 
-  // Fetch user's transcript courses
+  // Fetch user's transcript courses (only if user opted to use transcript)
   useEffect(() => {
     async function fetchTranscriptCourses() {
-      if (!userId) return;
+      if (!userId || !hasTranscript) return;
 
       try {
         const result = await fetchUserCoursesAction(userId);
@@ -257,11 +259,11 @@ export default function CourseSelectionForm({
     }
 
     fetchTranscriptCourses();
-  }, [userId]);
+  }, [userId, hasTranscript]);
 
   // Auto-match transcript courses to requirements when data is available
   useEffect(() => {
-    if (transcriptCourses.length === 0 || (programsData.length === 0 && genEdData.length === 0)) {
+    if (!hasTranscript || transcriptCourses.length === 0 || (programsData.length === 0 && genEdData.length === 0)) {
       return;
     }
 
@@ -373,7 +375,7 @@ export default function CourseSelectionForm({
     const matchedCourseCodes = new Set(matches.map(m => m.transcriptCourse.code));
     setCompletedCourses(matchedCourseCodes);
 
-  }, [transcriptCourses, programsData, genEdData]);
+  }, [transcriptCourses, programsData, genEdData, hasTranscript]);
 
   // Load colleges when component mounts
   useEffect(() => {
@@ -674,7 +676,7 @@ export default function CourseSelectionForm({
 
   // Auto-select transcript courses that match requirements
   useEffect(() => {
-    if (transcriptCourses.length === 0) return;
+    if (!hasTranscript || transcriptCourses.length === 0) return;
 
     const timer = setTimeout(() => {
       const newCompletedCourses = new Set<string>();

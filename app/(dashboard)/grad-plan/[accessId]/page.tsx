@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanForEditing, submitGradPlanForApproval, decodeAccessIdServerAction } from '@/lib/services/server-actions';
+import { fetchGradPlanForEditing, updateStudentGradPlanAction, decodeAccessIdServerAction } from '@/lib/services/server-actions';
 import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
@@ -14,6 +14,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
 import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
 import EditablePlanTitle from '@/components/EditablePlanTitle';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface GradPlanDetails {
   id: string;
@@ -60,6 +61,44 @@ const isTermArray = (value: unknown): value is Term[] => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+// Helper to check if an item is an Event (vs a Term)
+const isEvent = (item: unknown): item is Event => {
+  if (typeof item !== 'object' || item === null) return false;
+  const candidate = item as Record<string, unknown>;
+  return typeof candidate.type === 'string' && typeof candidate.afterTerm === 'number';
+};
+
+// Helper to merge events into plan array at correct positions
+const mergePlanWithEvents = (terms: Term[], events: Event[]): Array<Term | Event> => {
+  const result: Array<Term | Event> = [];
+
+  for (let i = 0; i < terms.length; i++) {
+    result.push(terms[i]);
+
+    // Add events that come after this term
+    const eventsAfterThisTerm = events.filter(e => e.afterTerm === i + 1);
+    result.push(...eventsAfterThisTerm);
+  }
+
+  return result;
+};
+
+// Helper to extract terms and events from merged plan array
+const extractTermsAndEvents = (planArray: unknown[]): { terms: Term[]; events: Event[] } => {
+  const terms: Term[] = [];
+  const events: Event[] = [];
+
+  for (const item of planArray) {
+    if (isEvent(item)) {
+      events.push(item);
+    } else if (typeof item === 'object' && item !== null && 'term' in item) {
+      terms.push(item as Term);
+    }
+  }
+
+  return { terms, events };
+};
+
 const extractPlanArray = (details: unknown): Term[] | null => {
   let rawDetails: unknown = details;
 
@@ -79,13 +118,20 @@ const extractPlanArray = (details: unknown): Term[] | null => {
     const candidate = rawDetails;
     const candidateKeys: Array<keyof typeof candidate> = ['plan', 'semesters', 'terms'];
     for (const key of candidateKeys) {
-      if (isTermArray(candidate[key])) {
-        return candidate[key] as Term[];
+      if (Array.isArray(candidate[key])) {
+        // Extract just the terms from the array (filter out events)
+        const { terms } = extractTermsAndEvents(candidate[key] as unknown[]);
+        if (terms.length > 0) {
+          return terms;
+        }
       }
     }
     const nested = candidate.plan_details;
-    if (isRecord(nested) && isTermArray(nested.plan)) {
-      return nested.plan;
+    if (isRecord(nested) && Array.isArray(nested.plan)) {
+      const { terms } = extractTermsAndEvents(nested.plan as unknown[]);
+      if (terms.length > 0) {
+        return terms;
+      }
     }
   }
 
@@ -150,8 +196,15 @@ export default function EditGradPlanPage() {
   } | null>(null);
   const [events, setEvents] = React.useState<Event[]>([]);
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
+  const [showJsonDebug, setShowJsonDebug] = React.useState(false);
 
   const isEditMode = true; // Always in edit mode for this page
+  const isDev = process.env.NEXT_PUBLIC_ENV === 'development' || process.env.NODE_ENV === 'development';
+
+  // Debug: Log when events state changes
+  React.useEffect(() => {
+    console.log('📊 Parent events state updated:', events);
+  }, [events]);
 
   // Extract advisor changes from localStorage (if coming from notification)
   React.useEffect(() => {
@@ -176,6 +229,7 @@ export default function EditGradPlanPage() {
     message: '',
     severity: 'info'
   });
+  const [requestAdvisorReview, setRequestAdvisorReview] = React.useState(false);
 
   const supabase = createSupabaseBrowserClient();
 
@@ -196,10 +250,9 @@ export default function EditGradPlanPage() {
     setEvents(planEvents);
     const eventCount = planEvents.length;
     const eventMessage = eventCount > 0
-      ? `Plan saved! ${eventCount} event${eventCount === 1 ? '' : 's'} stored locally for now.`
+      ? `Plan saved! ${eventCount} event${eventCount === 1 ? '' : 's'} tracked.`
       : 'Plan saved!';
     showSnackbar(eventMessage, 'success');
-    // TODO: In the future, persist events to database
   };
 
   // Callback to receive the event dialog opener from GraduationPlanner (not used in UI, but passed to component)
@@ -268,10 +321,35 @@ export default function EditGradPlanPage() {
         }
         setGradPlan(planData);
 
-        // Initialize currentPlanData with the fetched plan so Submit is enabled for new plans
-        const planArray = extractPlanArray(planData.plan_details);
-        if (planArray) {
-          setCurrentPlanData(planArray);
+        // Extract terms and events from the plan
+        if (isRecord(planData.plan_details)) {
+          const candidate = planData.plan_details;
+
+          // Try to get the plan array
+          let rawPlanArray: unknown[] | null = null;
+          if (Array.isArray(candidate.plan)) {
+            rawPlanArray = candidate.plan;
+          } else if (Array.isArray(candidate.semesters)) {
+            rawPlanArray = candidate.semesters;
+          } else if (Array.isArray(candidate.terms)) {
+            rawPlanArray = candidate.terms;
+          }
+
+          if (rawPlanArray) {
+            const { terms, events: extractedEvents } = extractTermsAndEvents(rawPlanArray);
+            if (terms.length > 0) {
+              setCurrentPlanData(terms);
+            }
+            if (extractedEvents.length > 0) {
+              setEvents(extractedEvents);
+            }
+          } else {
+            // Fallback to old method
+            const planArray = extractPlanArray(planData.plan_details);
+            if (planArray) {
+              setCurrentPlanData(planArray);
+            }
+          }
         }
 
         setIsCheckingAccess(false);
@@ -313,23 +391,25 @@ export default function EditGradPlanPage() {
     setIsSubmitting(true);
 
     try {
-      // For students, submit for approval with program IDs
-      const programIds = gradPlan.programs.map(p => p.id);
+      // Merge events into plan array at correct positions
+      const mergedPlan = mergePlanWithEvents(currentPlanData, events);
 
-      // Get current user session to get profile_id
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('User session not found');
-      }
+      const planDetailsWithEvents = {
+        plan: mergedPlan,
+        est_grad_sem: gradPlan.est_grad_sem,
+        est_grad_date: gradPlan.est_grad_date,
+        requestAdvisorReview,
+      };
 
-      const result = await submitGradPlanForApproval(session.user.id, currentPlanData, programIds, currentPlanName);
+      // Update the existing plan (students can only update their own plans)
+      const result = await updateStudentGradPlanAction(gradPlan.id, planDetailsWithEvents);
 
       if (result.success) {
-        showSnackbar('Changes submitted for approval successfully!', 'success');
+        showSnackbar('Changes saved successfully!', 'success');
         // Optionally redirect back after a delay
         setTimeout(() => handleBack(), 2000);
       } else {
-        showSnackbar(`Failed to submit changes: ${result.message}`, 'error');
+        showSnackbar(`Failed to save changes: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error('Error saving graduation plan:', error);
@@ -440,17 +520,18 @@ export default function EditGradPlanPage() {
   });
 
   return (
-    <Box
-      sx={{
-        px: { xs: 2, md: 3 },
-        py: { xs: 2, md: 3 },
-        maxWidth: '1400px',
-        mx: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}
-    >
+    <TooltipProvider>
+      <Box
+        sx={{
+          px: { xs: 2, md: 3 },
+          py: { xs: 2, md: 3 },
+          maxWidth: '1400px',
+          mx: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}
+      >
       <Box
         component="section"
         sx={{
@@ -593,34 +674,56 @@ export default function EditGradPlanPage() {
           </Box>
 
           {isStudent && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-              <Button
-                variant="contained"
-                startIcon={<Save />}
-                onClick={handleSaveChanges}
-                disabled={isSubmitting || !currentPlanData || !isPlanNameValid}
-                sx={{
-                  backgroundColor: '#0a1f1a',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  letterSpacing: '0.06em',
-                  px: 3,
-                  py: 1.25,
-                  borderRadius: '7px',
-                  '&:hover': {
-                    backgroundColor: '#043322',
-                    boxShadow: '0 10px 26px -18px rgba(10,31,26,0.6)',
-                  },
-                  '&:disabled': {
-                    backgroundColor: 'var(--muted)',
-                    color: 'var(--muted-foreground)',
-                    boxShadow: 'none',
-                  },
-                }}
-              >
-                {isSubmitting ? 'Submitting…' : 'Submit for Approval'}
-              </Button>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'flex-start' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<Save />}
+                  onClick={handleSaveChanges}
+                  disabled={isSubmitting || !currentPlanData || !isPlanNameValid}
+                  sx={{
+                    backgroundColor: '#0a1f1a',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    letterSpacing: '0.06em',
+                    px: 3,
+                    py: 1.25,
+                    borderRadius: '7px',
+                    '&:hover': {
+                      backgroundColor: '#043322',
+                      boxShadow: '0 10px 26px -18px rgba(10,31,26,0.6)',
+                    },
+                    '&:disabled': {
+                      backgroundColor: 'var(--muted)',
+                      color: 'var(--muted-foreground)',
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {isSubmitting ? 'Saving…' : 'Save Changes'}
+                </Button>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      color="primary"
+                      checked={requestAdvisorReview}
+                      onChange={(event) => setRequestAdvisorReview(event.target.checked)}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  label="Request Advisor Review"
+                  sx={{
+                    m: 0,
+                    '.MuiFormControlLabel-label': {
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.06em',
+                      color: 'color-mix(in srgb, var(--foreground) 78%, var(--primary) 22%)',
+                    },
+                  }}
+                />
+              </Box>
               <Button
                 variant="outlined"
                 startIcon={<Cancel />}
@@ -647,6 +750,29 @@ export default function EditGradPlanPage() {
               >
                 Cancel
               </Button>
+              {isDev && (
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowJsonDebug(true)}
+                  sx={{
+                    borderColor: '#6366f1',
+                    color: '#6366f1',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    letterSpacing: '0.06em',
+                    px: 2,
+                    py: 1.25,
+                    borderRadius: '7px',
+                    fontSize: '0.75rem',
+                    '&:hover': {
+                      borderColor: '#4f46e5',
+                      backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                    },
+                  }}
+                >
+                  View JSON
+                </Button>
+              )}
             </Box>
           )}
         </Box>
@@ -688,6 +814,7 @@ export default function EditGradPlanPage() {
                 plan_name: gradPlan.plan_name,
                 programs: gradPlan.programs,
               };
+              console.log('🔄 Rendering GraduationPlanner with events:', events);
               return (
                 <GraduationPlanner
                   plan={enrichedPlan}
@@ -771,6 +898,69 @@ export default function EditGradPlanPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+
+      {/* Debug JSON Dialog - Only in Development */}
+      {isDev && (
+        <Dialog
+          open={showJsonDebug}
+          onClose={() => setShowJsonDebug(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+              Plan Data Debug (Development Only)
+            </Typography>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#6366f1' }}>
+                  Events in State ({events.length} total):
+                </Typography>
+                <pre style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  overflow: 'auto',
+                  fontSize: '12px',
+                  border: '1px solid #e5e7eb',
+                }}>
+                  {JSON.stringify(events, null, 2)}
+                </pre>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#10b981' }}>
+                  Plan with Inline Events (What will be saved):
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#6b7280', mb: 1, display: 'block' }}>
+                  Events are merged into the plan array at their correct positions
+                </Typography>
+                <pre style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  overflow: 'auto',
+                  fontSize: '12px',
+                  border: '1px solid #e5e7eb',
+                }}>
+                  {JSON.stringify({
+                    plan: currentPlanData && events ? mergePlanWithEvents(currentPlanData, events) : currentPlanData,
+                    est_grad_sem: gradPlan?.est_grad_sem,
+                    est_grad_date: gradPlan?.est_grad_date,
+                  }, null, 2)}
+                </pre>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowJsonDebug(false)} sx={{ textTransform: 'none' }}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+      </Box>
+    </TooltipProvider>
   );
 }

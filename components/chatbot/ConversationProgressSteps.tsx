@@ -7,6 +7,7 @@ import { getStepLabel } from '@/lib/chatbot/grad-plan/stateManager';
 interface ConversationProgressStepsProps {
   currentStep: ConversationStep;
   completedSteps: ConversationStep[];
+  onStepClick?: (step: ConversationStep) => void;
 }
 
 // Main visible steps for the progress indicator (simplified for UI)
@@ -16,14 +17,15 @@ const MAIN_STEPS: ConversationStep[] = [
   ConversationStep.TRANSCRIPT_CHECK,
   ConversationStep.STUDENT_TYPE,
   ConversationStep.PROGRAM_SELECTION,
-  ConversationStep.COURSE_METHOD,
+  ConversationStep.COURSE_SELECTION,
+  ConversationStep.MILESTONES,
   ConversationStep.ADDITIONAL_CONCERNS,
-  ConversationStep.GENERATING_PLAN,
 ];
 
 export default function ConversationProgressSteps({
   currentStep,
   completedSteps,
+  onStepClick,
 }: Readonly<ConversationProgressStepsProps>) {
   const getStepStatus = (step: ConversationStep): 'completed' | 'current' | 'upcoming' => {
     if (completedSteps.includes(step)) {
@@ -33,6 +35,14 @@ export default function ConversationProgressSteps({
       return 'current';
     }
     return 'upcoming';
+  };
+
+  const handleStepClick = (step: ConversationStep) => {
+    const status = getStepStatus(step);
+    // Only allow clicking on completed steps
+    if (status === 'completed' && onStepClick) {
+      onStepClick(step);
+    }
   };
 
   const currentStepIndex = MAIN_STEPS.indexOf(currentStep);
@@ -71,17 +81,19 @@ export default function ConversationProgressSteps({
                 {/* Step Circle */}
                 <div className="flex flex-col items-center relative">
                   <div
+                    onClick={() => handleStepClick(step)}
                     className={`
                       w-8 h-8 rounded-full flex items-center justify-center
                       border-3 transition-all duration-300
                       ${
                         isCompleted
-                          ? 'bg-[var(--primary)] border-[var(--primary)] text-black shadow-md'
+                          ? 'bg-[var(--primary)] border-[var(--primary)] text-black shadow-md cursor-pointer hover:scale-110 hover:shadow-lg'
                           : isCurrent
                           ? 'bg-white border-[var(--primary)] text-[var(--primary)] shadow-sm border-[2px]'
                           : 'bg-white border-gray-300 text-gray-400 border-[1.5px]'
                       }
                     `}
+                    title={isCompleted ? `Click to return to ${getStepLabel(step)}` : undefined}
                   >
                     {isCompleted ? (
                       <Check size={16} strokeWidth={3} />
@@ -92,10 +104,13 @@ export default function ConversationProgressSteps({
 
                   {/* Step label below */}
                   <p
+                    onClick={() => handleStepClick(step)}
                     className={`
                       absolute top-9 text-xs text-center w-24 leading-tight
                       ${isCurrent ? 'font-semibold text-foreground' : 'text-muted-foreground'}
+                      ${isCompleted ? 'cursor-pointer hover:text-foreground' : ''}
                     `}
+                    title={isCompleted ? `Click to return to ${getStepLabel(step)}` : undefined}
                   >
                     {getStepLabel(step)}
                   </p>

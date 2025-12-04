@@ -34,7 +34,6 @@ function handleAuthRedirects(
     '/',
     '/login',
     '/signup',
-    '/students',
     '/demo',
     '/about-us',
     '/privacy-policy',

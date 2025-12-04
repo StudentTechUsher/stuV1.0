@@ -235,6 +235,55 @@ export async function updateGradPlanDetailsAction(gradPlanId: string, planDetail
     }
 }
 
+/**
+ * AUTHORIZED FOR STUDENTS - Update their own graduation plan
+ * Students can only update plans they own
+ */
+export async function updateStudentGradPlanAction(gradPlanId: string, planDetails: unknown) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        // Get student_id from profile
+        const { data: studentData, error: studentError } = await supabaseSrv
+            .from('student')
+            .select('id')
+            .eq('profile_id', user.id)
+            .single();
+
+        if (studentError || !studentData) {
+            console.error('Error fetching student record:', studentError);
+            return { success: false, error: 'Student record not found' };
+        }
+
+        // Verify the student owns this grad plan
+        const { data: gradPlan, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (planError || !gradPlan) {
+            console.error('Error fetching grad plan:', planError);
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        if (gradPlan.student_id !== studentData.id) {
+            return { success: false, error: 'Not authorized to edit this plan' };
+        }
+
+        // Update the plan (planDetails should be the plan_details object)
+        // No validation needed - just pass it through to the service
+        return await _updateGradPlanDetails(gradPlanId, planDetails);
+    } catch (error) {
+        console.error('Error updating student grad plan:', error);
+        return { success: false, error: 'Failed to update graduation plan' };
+    }
+}
+
 // Save plan edits + advisor notes (suggestions) together
 export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: string, planDetails: unknown, advisorNotes: string) {
     // Enforce advisor-only access on server (most critical: suggestions/notes)

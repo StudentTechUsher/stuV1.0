@@ -97,6 +97,12 @@ export function EventDialog({
               <MenuItem value="Sabbatical" className="font-body">
                 Sabbatical
               </MenuItem>
+              <MenuItem value="Apply for Graduate School" className="font-body">
+                Apply for Graduate School
+              </MenuItem>
+              <MenuItem value="Apply for Graduation" className="font-body">
+                Apply for Graduation
+              </MenuItem>
               <MenuItem value="Other" className="font-body">
                 Other
               </MenuItem>
@@ -156,9 +162,9 @@ export function EventDialog({
                 },
               }}
             >
-              {planData.map((_, index) => (
+              {planData.map((term, index) => (
                 <MenuItem key={index + 1} value={index + 1} className="font-body">
-                  After Term {index + 1}
+                  After {term.term || `Term ${index + 1}`}
                 </MenuItem>
               ))}
             </Select>

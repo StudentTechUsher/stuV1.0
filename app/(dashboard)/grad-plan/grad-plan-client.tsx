@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { PlanOverview } from '@/components/grad-planner/PlanOverview';
 import { SpaceView } from '@/components/space/SpaceView';
 import { usePlanParser } from '@/components/grad-planner/usePlanParser';
 import PlanHeader from '@/components/grad-planner/PlanHeader';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import type { Event, EventType } from '@/components/grad-planner/types';
 
 interface GradPlanRecord {
   id: string;
@@ -44,6 +45,62 @@ export default function GradPlanClient({
 
   // Parse the plan data - only if we have a plan
   const { planData, assumptions } = usePlanParser(selectedGradPlan || undefined);
+
+  // Extract events from the plan (they're stored inline in the plan array)
+  const events = useMemo<Event[]>(() => {
+    if (!selectedGradPlan?.plan_details) return [];
+
+    let rawPlanArray: unknown[] = [];
+
+    // Try to get the plan array from plan_details
+    if (typeof selectedGradPlan.plan_details === 'object' && selectedGradPlan.plan_details !== null) {
+      const details = selectedGradPlan.plan_details as Record<string, unknown>;
+      if (Array.isArray(details.plan)) {
+        rawPlanArray = details.plan;
+      } else if (Array.isArray(details.semesters)) {
+        rawPlanArray = details.semesters;
+      } else if (Array.isArray(details.terms)) {
+        rawPlanArray = details.terms;
+      }
+    }
+
+    // Extract events from the plan array
+    const EVENT_TYPES: EventType[] = [
+      'Major/Minor Application',
+      'Internship',
+      'Sabbatical',
+      'Study Abroad',
+      'Research Project',
+      'Teaching Assistant',
+      'Co-op',
+      'Apply for Graduate School',
+      'Apply for Graduation',
+      'Other',
+    ];
+
+    const isEventType = (value: unknown): value is EventType =>
+      typeof value === 'string' && EVENT_TYPES.includes(value as EventType);
+
+    const extractedEvents: Event[] = [];
+    for (const item of rawPlanArray) {
+      if (typeof item === 'object' && item !== null) {
+        const candidate = item as Record<string, unknown>;
+        // Check if this is an event (has type and afterTerm but not term)
+        if (isEventType(candidate.type) &&
+            typeof candidate.afterTerm === 'number' &&
+            !('term' in candidate)) {
+          extractedEvents.push({
+            type: candidate.type,
+            title: typeof candidate.title === 'string' ? candidate.title : candidate.type,
+            afterTerm: candidate.afterTerm,
+            id: typeof candidate.id === 'string' ? candidate.id : undefined,
+          });
+        }
+      }
+    }
+
+    return extractedEvents;
+  }, [selectedGradPlan]);
 
   // Handle profile updates
   const handleProfileUpdate = (updates: Record<string, string | null>) => {
@@ -126,6 +183,7 @@ export default function GradPlanClient({
                   termIndex: index,
                   rawTerm: term,
                 })),
+                events: events,
               }}
               isEditMode={isEditMode}
               onToggleView={() => setIsZoomOut(!isZoomOut)}

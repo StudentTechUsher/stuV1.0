@@ -50,6 +50,7 @@ export type GraduationPlan = {
   checkpoints?: PlanCheckpoint[];
   plan: PlanTerm[];
   terms_planned?: number;   // how many terms the student plans on
+  created_with_transcript?: boolean;  // whether plan was created using transcript data
   [k: string]: unknown;
 };
 

@@ -45,6 +45,7 @@ export function createInitialState(
       electiveCourses: [],
       needsElectives: false,
       studentInterests: null,
+      milestones: null,
       additionalConcerns: null,
     },
     pendingToolCall: null,
@@ -319,6 +320,34 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
+  // Milestones
+  if (state.collectedData.milestones) {
+    try {
+      const milestonesData = JSON.parse(state.collectedData.milestones) as {
+        hasMilestones: boolean;
+        milestones?: Array<{ type: string; title: string; timing: string }>;
+      };
+
+      if (milestonesData.hasMilestones && milestonesData.milestones && milestonesData.milestones.length > 0) {
+        collectedFields.push({
+          field: 'milestones',
+          label: 'Milestones',
+          value: `${milestonesData.milestones.length} milestone${milestonesData.milestones.length > 1 ? 's' : ''} set`,
+          completed: true,
+        });
+      } else {
+        collectedFields.push({
+          field: 'milestones',
+          label: 'Milestones',
+          value: 'None',
+          completed: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing milestones:', error);
+    }
+  }
+
   return {
     currentStepNumber: currentStepIndex + 1,
     totalSteps: stepOrder.length,
@@ -345,6 +374,7 @@ export function getStepLabel(step: ConversationStep): string {
     [ConversationStep.COURSE_SELECTION]: 'Course Selection',
     [ConversationStep.ELECTIVES]: 'Elective Courses',
     [ConversationStep.STUDENT_INTERESTS]: 'Your Interests',
+    [ConversationStep.MILESTONES]: 'Academic Milestones',
     [ConversationStep.ADDITIONAL_CONCERNS]: 'Additional Information',
     [ConversationStep.GENERATING_PLAN]: 'Generate Plan',
     [ConversationStep.COMPLETE]: 'Complete',
