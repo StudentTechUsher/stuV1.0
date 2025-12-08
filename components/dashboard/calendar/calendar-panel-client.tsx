@@ -10,6 +10,30 @@ import { useEffect, useState } from "react";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
 
+// Determine current/upcoming semester based on BYU schedule
+function getCurrentSemester(): string {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const currentYear = now.getFullYear();
+
+  // BYU Semester start months
+  // Fall: September (9), Winter: January (1), Spring: May (5), Summer: July (7)
+
+  if (currentMonth >= 9 && currentMonth <= 12) {
+    // September-December: Fall semester
+    return `Your Fall ${currentYear} Schedule`;
+  } else if (currentMonth >= 1 && currentMonth <= 4) {
+    // January-April: Winter semester
+    return `Your Winter ${currentYear} Schedule`;
+  } else if (currentMonth >= 5 && currentMonth <= 6) {
+    // May-June: Spring semester
+    return `Your Spring ${currentYear} Schedule`;
+  } else {
+    // July-August: Summer semester
+    return `Your Summer ${currentYear} Schedule`;
+  }
+}
+
 export type CalendarEvent = {
   id?: string;
   title: string;
@@ -73,8 +97,8 @@ export default function CalendarPanelClient({
   slotMinTime = "08:00:00",
   slotMaxTime = "18:00:00",
   firstDay = 1,
-  hiddenDays = [0],
-  semester = "Upcoming Winter 2026",
+  hiddenDays = [0, 6], // Hide Sunday and Saturday
+  semester = getCurrentSemester(),
   showSchedulerButton = false,
 }: Readonly<Props>) {
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>(initialEvents);

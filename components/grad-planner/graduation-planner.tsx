@@ -28,6 +28,7 @@ import { TrashZone } from './TrashZone';
 import { DraggableCourseOverlay } from './DraggableCourseOverlay';
 import { PlanOverview } from './PlanOverview';
 import { DetailView } from './DetailView';
+import { AddCourseModal } from './AddCourseModal';
 
 // Import hooks
 import { usePlanParser } from './usePlanParser';
@@ -44,6 +45,7 @@ interface GraduationPlannerProps {
     university_id: number;
     [key: string]: unknown;
   };
+  universityId?: number;
   advisorChanges?: {
     movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
     hasSuggestions: boolean;
@@ -60,11 +62,15 @@ export default function GraduationPlanner({
   onSave,
   initialSpaceView = true,
   editorRole = 'student',
+  studentProfile,
+  universityId,
   advisorChanges,
   externalEvents,
   onEventsChange,
   onOpenEventDialog: externalOnOpenEventDialog
 }: Readonly<GraduationPlannerProps>) {
+  // Use universityId from prop or fallback to studentProfile
+  const effectiveUniversityId = universityId ?? studentProfile?.university_id ?? 1;
   // Parse plan data using custom hook
   const { planData, assumptions, durationYears } = usePlanParser(plan);
   // State for managing plan data when in edit mode
@@ -85,6 +91,9 @@ export default function GraduationPlanner({
   const [newEventType, setNewEventType] = useState<EventType>('Major/Minor Application');
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventAfterTerm, setNewEventAfterTerm] = useState<number>(1);
+  // Add Course Modal state
+  const [showAddCourseModal, setShowAddCourseModal] = useState(false);
+  const [selectedTermForCourse, setSelectedTermForCourse] = useState<number | null>(null);
 
   // Set up DnD sensors
   const sensors = useSensors(
@@ -101,12 +110,25 @@ export default function GraduationPlanner({
     })
   );
 
-  // Initialize editable plan data when plan changes or edit mode changes
+  // Initialize editable plan data when plan changes or when entering edit mode
+  // Track the previous edit mode to only reset when transitioning into edit mode
+  const prevIsEditMode = React.useRef(isEditMode);
+
   useEffect(() => {
+    const wasNotEditMode = !prevIsEditMode.current;
+    const isNowEditMode = isEditMode;
+
+    // Only reset editablePlanData when:
+    // 1. Entering edit mode for the first time (wasNotEditMode && isNowEditMode)
+    // 2. editablePlanData is empty (initialization)
     if (planData && planData.length > 0) {
-      setEditablePlanData(JSON.parse(JSON.stringify(planData))); // Deep copy
+      if ((wasNotEditMode && isNowEditMode) || editablePlanData.length === 0) {
+        setEditablePlanData(JSON.parse(JSON.stringify(planData))); // Deep copy
+      }
     }
-  }, [planData, isEditMode]);
+
+    prevIsEditMode.current = isEditMode;
+  }, [planData, isEditMode, editablePlanData.length]);
 
   // Use editable data when in edit mode, otherwise use original data
   const currentPlanData = isEditMode ? editablePlanData : planData;
@@ -331,6 +353,50 @@ export default function GraduationPlanner({
     });
   };
 
+  // Function to open the add course modal for a specific term
+  const handleOpenAddCourseModal = (termIndex: number) => {
+    setSelectedTermForCourse(termIndex);
+    setShowAddCourseModal(true);
+  };
+
+  // Function to add a course to a term
+  const handleAddCourse = (course: { code: string; title: string; credits: number }) => {
+    if (!isEditMode || selectedTermForCourse === null) return;
+
+    // Calculate new data first
+    const newData = editablePlanData.map((term, idx) => {
+      if (idx === selectedTermForCourse) {
+        const newCourse: Course = {
+          code: course.code,
+          title: course.title,
+          credits: course.credits,
+          fulfills: [],
+        };
+        const updatedCourses = term.courses ? [...term.courses, newCourse] : [newCourse];
+        const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+        return {
+          ...term,
+          courses: updatedCourses,
+          credits_planned: updatedCredits
+        };
+      }
+      return term;
+    });
+
+    // Update state
+    setEditablePlanData(newData);
+    setModifiedTerms(prev => new Set(prev).add(selectedTermForCourse));
+
+    // Notify parent after state update
+    if (onPlanUpdate) {
+      onPlanUpdate(newData);
+    }
+
+    // Close modal
+    setShowAddCourseModal(false);
+    setSelectedTermForCourse(null);
+  };
+
   // Transform current plan data to SpaceView format - MUST be before early return
   const spaceViewData: PlanSpaceView = useMemo(() => {
     if (!currentPlanData || currentPlanData.length === 0) {
@@ -417,7 +483,6 @@ export default function GraduationPlanner({
             onToggleView={() => setIsSpaceView(!isSpaceView)}
             onAddEvent={() => handleOpenEventDialog()}
             programs={(plan as Record<string, unknown>)?.programs as Array<{ id: number; name: string }> | undefined}
-            estGradSem={(plan as Record<string, unknown>)?.est_grad_sem as string | undefined}
             createdWithTranscript={(plan as Record<string, unknown>)?.created_with_transcript as boolean | undefined}
           />
 
@@ -429,6 +494,7 @@ export default function GraduationPlanner({
               modifiedTerms={modifiedTerms}
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
+              onAddCourse={handleOpenAddCourseModal}
             />
           ) : (
             <DetailView
@@ -441,6 +507,7 @@ export default function GraduationPlanner({
               onDeleteTerm={deleteTerm}
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
+              onAddCourse={handleOpenAddCourseModal}
             />
           )}
         </Box>
@@ -467,6 +534,17 @@ export default function GraduationPlanner({
         onTypeChange={setNewEventType}
         onTitleChange={setNewEventTitle}
         onAfterTermChange={setNewEventAfterTerm}
+      />
+
+      {/* Add Course Modal */}
+      <AddCourseModal
+        open={showAddCourseModal}
+        onClose={() => {
+          setShowAddCourseModal(false);
+          setSelectedTermForCourse(null);
+        }}
+        onAddCourse={handleAddCourse}
+        universityId={effectiveUniversityId}
       />
     </DndContext>
   );

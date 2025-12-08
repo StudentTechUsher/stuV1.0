@@ -19,82 +19,59 @@ interface SpaceViewProps {
   onEditEvent?: (event: Event) => void;
   onDeleteEvent?: (eventId: string) => void;
   onToggleView?: () => void;
+  onAddCourse?: (termIndex: number) => void;
 }
 
-export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent, onToggleView }: Readonly<SpaceViewProps>) {
-  // Calculate optimal terms per row (3-4 terms) based on total term count
-  const termsPerRow = React.useMemo(() => {
-    const totalTerms = plan.terms.length;
-
-    // If we can divide evenly by 4, use 4
-    if (totalTerms % 4 === 0) return 4;
-
-    // If we can divide evenly by 3, use 3
-    if (totalTerms % 3 === 0) return 3;
-
-    // Otherwise, check which gives a better last row
-    const remainder4 = totalTerms % 4;
-    const remainder3 = totalTerms % 3;
-
-    // If 4-per-row leaves 3 or fewer in last row, prefer 3-per-row
-    // But if 3-per-row leaves only 1 in last row and 4-per-row leaves 2+, use 4
-    if (remainder4 >= 3 || (remainder3 === 1 && remainder4 >= 2)) {
-      return 4;
-    }
-
-    return 3;
-  }, [plan.terms.length]);
-
-  const allCards = React.useMemo(() => {
-    const cards: React.ReactNode[] = [];
+export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent, onToggleView, onAddCourse }: Readonly<SpaceViewProps>) {
+  const termRows = React.useMemo(() => {
+    const rows: React.ReactNode[] = [];
 
     plan.terms.forEach((term, index) => {
       const termNumber = index + 1;
-
-      // Add term card
-      cards.push(
-        <div
-          key={`term-${term.id}`}
-          className="min-w-0 transition-all duration-250 ease-in-out"
-          style={{
-            width: `calc((100% - (${termsPerRow - 1} * 0.75rem)) / ${termsPerRow})`,
-            flexShrink: 0
-          }}
-        >
-          <TermCard
-            term={term}
-            isEditMode={isEditMode}
-            modifiedTerms={modifiedTerms}
-          />
-        </div>
-      );
-
-      // Add events that come after this term
       const eventsAfterThisTerm = plan.events?.filter(e => e.afterTerm === termNumber) || [];
-      eventsAfterThisTerm.forEach((event) => {
-        cards.push(
-          <div
-            key={`event-${event.id}`}
-            className="min-w-0 transition-all duration-250 ease-in-out"
-            style={{
-              width: `calc((100% - (${termsPerRow - 1} * 0.75rem)) / ${termsPerRow})`,
-              flexShrink: 0
-            }}
-          >
-            <EventCard
-              event={event}
+
+      rows.push(
+        <div key={`term-row-${term.id}`} className="flex flex-col gap-3">
+          {/* Term Card - Full Width */}
+          <div className="w-full transition-all duration-250 ease-in-out">
+            <TermCard
+              term={term}
               isEditMode={isEditMode}
-              variant="grid"
-              onEdit={onEditEvent}
-              onDelete={onDeleteEvent}
+              modifiedTerms={modifiedTerms}
+              onAddCourse={onAddCourse}
             />
           </div>
-        );
-      });
+
+          {/* Events after this term - Horizontal row below the term */}
+          {eventsAfterThisTerm.length > 0 && (
+            <div className="flex flex-wrap gap-3 pl-8">
+              {eventsAfterThisTerm.map((event) => (
+                <div
+                  key={`event-${event.id}`}
+                  className="shrink-0 transition-all duration-250 ease-in-out"
+                  style={{
+                    width: '280px',
+                    minWidth: '280px',
+                    maxWidth: '280px',
+                  }}
+                >
+                  <EventCard
+                    event={event}
+                    isEditMode={isEditMode}
+                    variant="grid"
+                    onEdit={onEditEvent}
+                    onDelete={onDeleteEvent}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
     });
 
-    return cards;
-  }, [plan.terms, plan.events, termsPerRow, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent]);
+    return rows;
+  }, [plan.terms, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent, onAddCourse]);
 
   return (
     <div className="space-y-3">
@@ -147,9 +124,9 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
         )}
       </div>
 
-      {/* Term cards and event cards - Flex wrap layout maintaining terms per row */}
-      <div className="flex flex-wrap items-stretch gap-3 w-full">
-        {allCards}
+      {/* Term cards and event cards - One term per row with milestones below */}
+      <div className="flex flex-col gap-4 w-full">
+        {termRows}
       </div>
 
       {/* Bottom legend */}

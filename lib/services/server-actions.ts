@@ -26,6 +26,7 @@ import {
     updateGradPlanName as _updateGradPlanName,
     deleteGradPlan as _deleteGradPlan,
     GetActiveGradPlan as _getActiveGradPlan,
+    setGradPlanActive,
 } from './gradPlanService';
 import {
     fetchProfileBasicInfo as _fetchProfileBasicInfo,
@@ -49,6 +50,11 @@ import {
     upsertUserCourses as _upsertUserCourses,
     type ParsedCourse,
 } from './userCoursesService';
+import {
+    markAllNotificationsRead as _markAllNotificationsRead,
+    deleteNotification as _deleteNotification,
+    deleteAllReadNotifications as _deleteAllReadNotifications,
+} from './notifService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
 export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: unknown) {
@@ -281,6 +287,38 @@ export async function updateStudentGradPlanAction(gradPlanId: string, planDetail
     } catch (error) {
         console.error('Error updating student grad plan:', error);
         return { success: false, error: 'Failed to update graduation plan' };
+    }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS - Set a graduation plan as active
+ * Students can only activate plans they own
+ */
+export async function setGradPlanActiveAction(gradPlanId: string) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        // Get student_id from profile
+        const { data: studentData, error: studentError } = await supabaseSrv
+            .from('student')
+            .select('id')
+            .eq('profile_id', user.id)
+            .single();
+
+        if (studentError || !studentData) {
+            console.error('Error fetching student record:', studentError);
+            return { success: false, error: 'Student record not found' };
+        }
+
+        // Call the service function
+        return await setGradPlanActive(gradPlanId, studentData.id);
+    } catch (error) {
+        console.error('Error setting active grad plan:', error);
+        return { success: false, error: 'Failed to set active graduation plan' };
     }
 }
 
@@ -786,6 +824,57 @@ export async function getCoursesByDepartmentAction(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to fetch courses',
+        };
+    }
+}
+
+/**
+ * Server action to mark all notifications as read for the current user
+ * AUTHORIZATION: USERS can only mark their own notifications
+ */
+export async function markAllNotificationsReadAction(userId: string) {
+    try {
+        const result = await _markAllNotificationsRead(userId);
+        return result;
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to mark notifications as read',
+        };
+    }
+}
+
+/**
+ * Server action to delete a single notification
+ * AUTHORIZATION: USERS can only delete their own notifications
+ */
+export async function deleteNotificationAction(notifId: string, userId: string) {
+    try {
+        const result = await _deleteNotification(notifId, userId);
+        return result;
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to delete notification',
+        };
+    }
+}
+
+/**
+ * Server action to delete all read notifications for the current user
+ * AUTHORIZATION: USERS can only delete their own notifications
+ */
+export async function deleteAllReadNotificationsAction(userId: string) {
+    try {
+        const result = await _deleteAllReadNotifications(userId);
+        return result;
+    } catch (error) {
+        console.error('Error deleting read notifications:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to delete read notifications',
         };
     }
 }

@@ -370,21 +370,27 @@ export async function searchCourseOfferings(
  */
 export async function getColleges(universityId: number): Promise<string[]> {
   try {
-    // Fetch all colleges using ORM (no limit needed - deduplication is fast)
-    // Supabase handles pagination automatically if needed
+    // Fetch all colleges - use a large limit to ensure we get all rows
+    // PostgREST has default pagination, so we need to explicitly set a high limit
     const { data, error } = await supabase
       .from('course_offerings')
       .select('college')
       .eq('university_id', universityId)
-      .not('college', 'is', null);
+      .not('college', 'is', null)
+      .limit(100000); // High limit to ensure we get all data
 
     if (error) {
       throw new CourseOfferingFetchError('Failed to fetch colleges', error);
     }
 
     // Deduplicate and sort in memory (very fast for a few thousand strings)
+    // Filter out null, empty strings, and trim whitespace
     const uniqueColleges = Array.from(
-      new Set((data || []).map(row => row.college).filter(Boolean))
+      new Set(
+        (data || [])
+          .map(row => row.college?.trim())
+          .filter(college => college && college.length > 0)
+      )
     );
 
     return uniqueColleges.sort();
@@ -393,6 +399,43 @@ export async function getColleges(universityId: number): Promise<string[]> {
       throw error;
     }
     throw new CourseOfferingFetchError('Unexpected error fetching colleges', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Get distinct department codes for a university (all colleges)
+ * @param universityId - University ID to filter courses
+ * @returns Array of unique department codes
+ */
+export async function getAllDepartmentCodes(universityId: number): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('course_offerings')
+      .select('department_code')
+      .eq('university_id', universityId)
+      .not('department_code', 'is', null)
+      .limit(100000);
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch department codes', error);
+    }
+
+    // Deduplicate and sort in memory
+    const uniqueDepartments = Array.from(
+      new Set(
+        (data || [])
+          .map(row => row.department_code?.trim())
+          .filter(dept => dept && dept.length > 0)
+      )
+    );
+
+    return uniqueDepartments.sort();
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching department codes', error);
   }
 }
 
@@ -421,8 +464,13 @@ export async function getDepartmentCodes(
     }
 
     // Deduplicate and sort in memory (very fast for a few thousand strings)
+    // Filter out null, empty strings, and trim whitespace
     const uniqueDepartments = Array.from(
-      new Set((data || []).map(row => row.department_code).filter(Boolean))
+      new Set(
+        (data || [])
+          .map(row => row.department_code?.trim())
+          .filter(dept => dept && dept.length > 0)
+      )
     );
 
     return uniqueDepartments.sort();
@@ -431,6 +479,55 @@ export async function getDepartmentCodes(
       throw error;
     }
     throw new CourseOfferingFetchError('Unexpected error fetching department codes', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Get distinct courses for a university and department (all colleges)
+ * Returns unique courses by course_code (no duplicates across sections)
+ * @param universityId - University ID to filter courses
+ * @param departmentCode - Department code to filter by
+ * @returns Array of unique course offerings
+ */
+export async function getCoursesByDepartmentCode(
+  universityId: number,
+  departmentCode: string
+): Promise<CourseOffering[]> {
+  try {
+    const { data, error } = await supabase
+      .from('course_offerings')
+      .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
+      .eq('university_id', universityId)
+      .eq('department_code', departmentCode)
+      .not('course_code', 'is', null)
+      .not('title', 'is', null)
+      .limit(10000);
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch courses', error);
+    }
+
+    // Deduplicate by course_code (ignore sections) and sort
+    const seen = new Set<string>();
+    const uniqueCourses: CourseOffering[] = [];
+
+    for (const course of data || []) {
+      if (course.course_code && !seen.has(course.course_code)) {
+        seen.add(course.course_code);
+        uniqueCourses.push(course);
+      }
+    }
+
+    // Sort by course code
+    uniqueCourses.sort((a, b) => a.course_code.localeCompare(b.course_code));
+
+    return uniqueCourses;
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching courses by department code', error);
   }
 }
 
@@ -449,7 +546,7 @@ export async function getCoursesByDepartment(
   departmentCode: string
 ): Promise<CourseOffering[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('course_offerings')
       .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
       .eq('university_id', universityId)

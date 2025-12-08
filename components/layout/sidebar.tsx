@@ -29,6 +29,7 @@ import {
   Briefcase,
   Moon,
   Sun,
+  Bot,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -69,9 +70,11 @@ const iconMap: Record<string, LucideIcon> = {
 interface SidebarProps {
   items: NavItem[];
   onSignOut: () => void;
+  role?: 'student' | 'advisor' | 'admin';
+  onOpenChat?: () => void;
 }
 
-export function Sidebar({ items, onSignOut }: SidebarProps) {
+export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -243,6 +246,22 @@ export function Sidebar({ items, onSignOut }: SidebarProps) {
             )}
 
             <ul className="space-y-1">
+              {/* AI Assistant (only for students) */}
+              {role === 'student' && onOpenChat && (
+                <li>
+                  <button
+                    onClick={onOpenChat}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg transition-all duration-150 min-h-[40px] ${
+                      isExpanded ? '' : 'justify-center'
+                    } text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-slate-100 dark:hover:text-slate-100 light:hover:text-slate-800 hover:bg-slate-800/40 dark:hover:bg-slate-800/40 light:hover:bg-slate-200/30 focus:outline-none focus:ring-2 focus:ring-[#12F987]/50 focus:ring-offset-2 dark:focus:ring-offset-[#020617] light:focus:ring-offset-white`}
+                    aria-label="AI Assistant"
+                  >
+                    <Bot size={ICON_SIZE} className="flex-shrink-0" />
+                    {isExpanded && <span className="text-sm font-medium">AI Assistant</span>}
+                  </button>
+                </li>
+              )}
+
               {/* Settings */}
               <li>
                 <NavItem

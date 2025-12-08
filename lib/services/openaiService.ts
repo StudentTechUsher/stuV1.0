@@ -4,6 +4,7 @@ import { GetMajorsForUniversity } from '../services/programService';
 import { getVerifiedUser } from "../supabase/auth";
 // encodeAccessId no longer needed here after persistence refactor
 import { InsertGeneratedGradPlan, InsertAiChatExchange } from './aiDbService';
+import { insertMilestonesIntoPlan, type MilestoneInput } from './milestoneInsertionService';
 import path from 'path';
 import { promises as fs } from 'fs';
 
@@ -42,6 +43,10 @@ interface CoursesDataInput {
     source?: string;
   }>;
   created_with_transcript?: boolean;
+  milestones?: {
+    hasMilestones?: boolean;
+    milestones?: MilestoneInput[];
+  };
 }
 
 interface CareerOption {
@@ -264,7 +269,13 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     }
     // CHOICE mode is resolved client-side to AUTO or MANUAL, so no separate branch here
 
-    const serializedInput = JSON.stringify(processedCoursesData, null, 2);
+    // Remove milestones from data sent to AI - they will be inserted programmatically after generation
+    const coursesDataForAI = {
+      ...processedCoursesData,
+      milestones: undefined,
+    };
+
+    const serializedInput = JSON.stringify(coursesDataForAI, null, 2);
 
     // Execute AI prompt via helper
     // Normalize prompt config (line referenced earlier for injection point)
@@ -326,6 +337,15 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
 
     const semesterPlan = aiResult.parsedJson;
     const aiText = aiResult.rawText;
+
+    // Insert milestones programmatically after AI generation
+    const originalMilestones = cd.milestones;
+    if (semesterPlan && typeof semesterPlan === 'object' && 'plan' in semesterPlan && Array.isArray(semesterPlan.plan)) {
+      (semesterPlan as { plan: unknown[] }).plan = insertMilestonesIntoPlan(
+        semesterPlan.plan as Array<{ term: string; courses: unknown[]; credits_planned: number }>,
+        originalMilestones?.milestones
+      );
+    }
 
     // Store the raw JSON string
     try {

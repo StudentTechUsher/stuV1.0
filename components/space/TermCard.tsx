@@ -16,13 +16,14 @@ interface TermCardProps {
   term: TermBlock;
   isEditMode?: boolean;
   modifiedTerms?: Set<number>;
+  onAddCourse?: (termIndex: number) => void;
 }
 
 function sumTermCredits(term: TermBlock): number {
   return term.courses.reduce((sum, course) => sum + course.credits, 0);
 }
 
-export function TermCard({ term, isEditMode = false, modifiedTerms }: TermCardProps) {
+export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse }: TermCardProps) {
   const {
     setNodeRef,
     isOver,
@@ -69,8 +70,33 @@ export function TermCard({ term, isEditMode = false, modifiedTerms }: TermCardPr
       </div>
 
       {/* Term footer */}
-      <div className="pt-1.5 border-t border-gray-200 text-right">
-        <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+      <div className="pt-1.5 border-t border-gray-200 flex items-center justify-between">
+        {/* Add Course Button - Left side */}
+        {isEditMode && onAddCourse && (
+          <button
+            type="button"
+            onClick={() => onAddCourse(term.termIndex)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[color-mix(in_srgb,var(--primary)_80%,var(--foreground)_20%)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] rounded-md hover:bg-[color-mix(in_srgb,var(--primary)_22%,transparent)] transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+            Add Course
+          </button>
+        )}
+        {/* Credits total - Right side */}
+        <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide ml-auto">
           {totalCredits} TOTAL
         </span>
       </div>

@@ -16,6 +16,7 @@ interface TermCardProps {
   movedCourses: Set<string>;
   onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
   onDeleteTerm?: (termIndex: number) => void;
+  onAddCourse?: (termIndex: number) => void;
 }
 
 const statBadgeBase =
@@ -35,6 +36,7 @@ export function TermCard({
   movedCourses,
   onMoveCourse,
   onDeleteTerm,
+  onAddCourse,
 }: Readonly<TermCardProps>) {
   const termCredits =
     term.credits_planned ||
@@ -186,6 +188,31 @@ export function TermCard({
               </button>
             )}
           </div>
+        )}
+
+        {/* Add Course Button */}
+        {isEditMode && onAddCourse && (
+          <button
+            type="button"
+            onClick={() => onAddCourse(termIndex)}
+            className="flex items-center justify-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] px-4 py-2.5 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_88%,var(--primary)_12%)] transition-all hover:bg-[color-mix(in_srgb,var(--primary)_22%,transparent)] hover:border-[color-mix(in_srgb,var(--primary)_45%,transparent)]"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+            Add Course
+          </button>
         )}
       </article>
     </DroppableTerm>

@@ -13,7 +13,7 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
-import { BookOpen, Plus, X, Repeat, Zap, Scale } from 'lucide-react';
+import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -126,6 +126,17 @@ export default function CourseSelectionForm({
   const [autoMatches, setAutoMatches] = useState<CourseMatch[]>([]);
   const [autoMatchedKeys, setAutoMatchedKeys] = useState<Set<string>>(new Set());
   const [completedRequirementKeys, setCompletedRequirementKeys] = useState<Set<string>>(new Set());
+
+  // Course preference dialog state
+  const [preferenceDialogOpen, setPreferenceDialogOpen] = useState(false);
+  const [preferenceTarget, setPreferenceTarget] = useState<{
+    requirementKey: string;
+    slot: number;
+    isGenEd: boolean;
+    courses: Array<{ code: string; title: string; credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null }>;
+  } | null>(null);
+  const [selectedPreference, setSelectedPreference] = useState<string | null>(null);
+  const [preferenceRecommendations, setPreferenceRecommendations] = useState<string[]>([]);
 
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
@@ -377,9 +388,10 @@ export default function CourseSelectionForm({
 
   }, [transcriptCourses, programsData, genEdData, hasTranscript]);
 
-  // Load colleges when component mounts
-  useEffect(() => {
-    async function fetchColleges() {
+  // Load colleges on demand when user opens the dropdown
+  const handleCollegeDropdownOpen = async () => {
+    // Only fetch if we haven't loaded colleges yet
+    if (colleges.length === 0 && !loadingColleges) {
       setLoadingColleges(true);
       setElectiveError(null);
       try {
@@ -396,9 +408,7 @@ export default function CourseSelectionForm({
         setLoadingColleges(false);
       }
     }
-
-    fetchColleges();
-  }, [universityId]);
+  };
 
   // Load departments when college is selected
   useEffect(() => {
@@ -825,6 +835,106 @@ export default function CourseSelectionForm({
 
   const handleRemoveElective = (id: string) => {
     setUserElectives(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Course preference dialog handlers
+  const handleOpenPreferenceDialog = (
+    requirementKey: string,
+    slot: number,
+    isGenEd: boolean,
+    courses: Array<{ code: string; title: string; credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null }>
+  ) => {
+    setPreferenceTarget({ requirementKey, slot, isGenEd, courses });
+    setPreferenceDialogOpen(true);
+    setSelectedPreference(null);
+    setPreferenceRecommendations([]);
+  };
+
+  const handleSelectPreference = async (preference: string) => {
+    if (!preferenceTarget) return;
+
+    setSelectedPreference(preference);
+
+    // Get course recommendations based on preference
+    const { courses } = preferenceTarget;
+    let recommendations: string[] = [];
+
+    // Filter/sort courses based on preference type
+    switch (preference) {
+      case 'lighter':
+        // Recommend courses with lower course numbers (typically intro courses)
+        recommendations = courses
+          .sort((a, b) => {
+            const aNum = parseInt(a.code.match(/\d+/)?.[0] || '999');
+            const bNum = parseInt(b.code.match(/\d+/)?.[0] || '999');
+            return aNum - bNum;
+          })
+          .slice(0, 3)
+          .map(c => c.code);
+        break;
+
+      case 'challenge':
+        // Recommend courses with higher course numbers (typically advanced courses)
+        recommendations = courses
+          .sort((a, b) => {
+            const aNum = parseInt(a.code.match(/\d+/)?.[0] || '0');
+            const bNum = parseInt(b.code.match(/\d+/)?.[0] || '0');
+            return bNum - aNum;
+          })
+          .slice(0, 3)
+          .map(c => c.code);
+        break;
+
+      case 'career':
+        // Use existing career-based recommendations if available
+        if (careerGoals && courses.length > 3) {
+          const courseData = processCourses(courses);
+          const recs = recommendCourses(courseData, { careerGoals, studentInterests, selectedMajorMinors });
+          recommendations = recs.slice(0, 3).map(r => r.courseCode);
+        } else {
+          // Fallback to middle-level courses
+          recommendations = courses.slice(0, 3).map(c => c.code);
+        }
+        break;
+
+      case 'interests':
+        // Use existing interest-based recommendations if available
+        if (studentInterests && courses.length > 3) {
+          const courseData = processCourses(courses);
+          const recs = recommendCourses(courseData, { careerGoals, studentInterests, selectedMajorMinors });
+          recommendations = recs.slice(0, 3).map(r => r.courseCode);
+        } else {
+          // Fallback to alphabetical
+          recommendations = courses
+            .sort((a, b) => a.code.localeCompare(b.code))
+            .slice(0, 3)
+            .map(c => c.code);
+        }
+        break;
+
+      default:
+        recommendations = courses.slice(0, 3).map(c => c.code);
+    }
+
+    setPreferenceRecommendations(recommendations);
+  };
+
+  const handleApplyPreferenceRecommendation = (courseCode: string) => {
+    if (!preferenceTarget) return;
+
+    const { requirementKey, slot, isGenEd } = preferenceTarget;
+
+    if (isGenEd) {
+      handleCourseSelection(requirementKey, slot, courseCode);
+    } else {
+      handleProgramCourseSelection(requirementKey, slot, courseCode);
+    }
+
+    // Close dialog and reset
+    setPreferenceDialogOpen(false);
+    setPreferenceTarget(null);
+    setSelectedPreference(null);
+    setPreferenceRecommendations([]);
   };
 
   // Substitution handlers
@@ -1269,8 +1379,32 @@ export default function CourseSelectionForm({
                                     onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
                                   >
                                 <MenuItem value=""><em>Select a course</em></MenuItem>
+                                {courses.length > 3 && (
+                                  <MenuItem
+                                    value=""
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenPreferenceDialog(req.subtitle, slot, true, courses);
+                                    }}
+                                    sx={{
+                                      backgroundColor: '#fef3c7',
+                                      borderBottom: '2px solid #fbbf24',
+                                      fontWeight: 'bold',
+                                      color: '#92400e',
+                                      '&:hover': {
+                                        backgroundColor: '#fde68a',
+                                      },
+                                    }}
+                                  >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Sparkles size={16} />
+                                      <span>Which one is right for me?</span>
+                                    </Box>
+                                  </MenuItem>
+                                )}
                                 {courses
                                   .filter(c => c.status !== 'retired' && c.credits != null && c.code && c.title)
+                                  .sort((a, b) => a.code.localeCompare(b.code))
                                   .filter(c => !otherSelectedCourses.includes(c.code))
                                   .map((c, courseIdx) => {
                                     const isCompleted = completedCourses.has(c.code);
@@ -1472,7 +1606,31 @@ export default function CourseSelectionForm({
                                       onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
                                     >
                                   <MenuItem value=""><em>Select a course</em></MenuItem>
+                                  {validCourses.length > 3 && (
+                                    <MenuItem
+                                      value=""
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenPreferenceDialog(requirementKey, slot, false, validCourses);
+                                      }}
+                                      sx={{
+                                        backgroundColor: '#fef3c7',
+                                        borderBottom: '2px solid #fbbf24',
+                                        fontWeight: 'bold',
+                                        color: '#92400e',
+                                        '&:hover': {
+                                          backgroundColor: '#fde68a',
+                                        },
+                                      }}
+                                    >
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Sparkles size={16} />
+                                        <span>Which one is right for me?</span>
+                                      </Box>
+                                    </MenuItem>
+                                  )}
                                   {validCourses
+                                    .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
                                     .filter(c => !otherSelectedCourses.includes(c.code || ''))
                                     .map((c) => {
                                     const isCompleted = c.code && completedCourses.has(c.code);
@@ -1558,6 +1716,7 @@ export default function CourseSelectionForm({
                   setSelectedDepartment('');
                   setSelectedElectiveCourse(null);
                 }}
+                onFocus={handleCollegeDropdownOpen}
                 disabled={loadingColleges}
                 size="small"
               >
@@ -1679,6 +1838,181 @@ export default function CourseSelectionForm({
             )}
           </div>
         </div>
+
+        {/* Course Preference Dialog */}
+        {preferenceDialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+                <h2 className="font-header text-xl font-bold text-[var(--foreground)]">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Sparkles size={24} />
+                    <span>Which course is right for you?</span>
+                  </Box>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreferenceDialogOpen(false);
+                    setPreferenceTarget(null);
+                    setSelectedPreference(null);
+                    setPreferenceRecommendations([]);
+                  }}
+                  className="rounded-lg p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="space-y-4 p-6">
+                {!selectedPreference ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Select what matters most to you, and we'll recommend courses that match your preference:
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Lighter Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPreference('lighter')}
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Zap size={20} className="text-blue-600" />
+                          <span className="font-semibold text-gray-900">Lighter workload</span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Courses that are typically less demanding and easier to manage
+                        </p>
+                      </button>
+
+                      {/* Challenge Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPreference('challenge')}
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Scale size={20} className="text-purple-600" />
+                          <span className="font-semibold text-gray-900">Challenge me</span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          More advanced courses that will push your skills
+                        </p>
+                      </button>
+
+                      {/* Career Goals Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPreference('career')}
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <BookOpen size={20} className="text-green-600" />
+                          <span className="font-semibold text-gray-900">Career alignment</span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Courses that align with your career goals
+                        </p>
+                      </button>
+
+                      {/* Interests Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPreference('interests')}
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles size={20} className="text-orange-600" />
+                          <span className="font-semibold text-gray-900">My interests</span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Courses that match your personal interests
+                        </p>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold text-gray-900 mb-2">
+                        Based on your preference, we recommend:
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Click on a course to select it
+                      </p>
+                    </div>
+
+                    {preferenceRecommendations.length > 0 ? (
+                      <div className="space-y-2">
+                        {preferenceRecommendations.map((courseCode, index) => {
+                          const course = preferenceTarget?.courses.find(c => c.code === courseCode);
+                          if (!course) return null;
+
+                          let credits: number = 3;
+                          if (course.credits && typeof course.credits === 'object') {
+                            if ('fixed' in course.credits) {
+                              credits = course.credits.fixed;
+                            } else if ('min' in course.credits && course.credits.min) {
+                              credits = course.credits.min;
+                            }
+                          } else if (typeof course.credits === 'number') {
+                            credits = course.credits;
+                          }
+
+                          return (
+                            <button
+                              key={courseCode}
+                              type="button"
+                              onClick={() => handleApplyPreferenceRecommendation(courseCode)}
+                              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 hover:border-[var(--primary)] hover:bg-gray-50 transition-all text-left"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary)] text-black font-bold">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-900">{course.code}</p>
+                                  <p className="text-xs text-gray-600">{course.title}</p>
+                                </div>
+                              </div>
+                              <Chip
+                                label={`${credits} cr`}
+                                size="small"
+                                sx={{
+                                  backgroundColor: '#e5e7eb',
+                                  color: '#374151',
+                                }}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No recommendations available for this preference.
+                      </p>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedPreference(null);
+                        setPreferenceRecommendations([]);
+                      }}
+                      className="w-full mt-4"
+                    >
+                      Back to preferences
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Substitution Dialog */}
         {substitutionDialogOpen && (

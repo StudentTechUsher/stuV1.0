@@ -8,9 +8,19 @@ export function usePlanParser(plan?: Record<string, unknown> | GraduationPlan | 
 
     const planRecord = plan as Record<string, unknown>;
 
+    // Helper to filter out milestones/events from plan array
+    const filterTermsOnly = (items: unknown[]): Term[] => {
+      return items.filter((item): item is Term => {
+        if (typeof item !== 'object' || item === null) return false;
+        const candidate = item as Record<string, unknown>;
+        // A term has a 'term' property but NOT 'type' and 'afterTerm' (which identify events)
+        return 'term' in candidate && !('type' in candidate && 'afterTerm' in candidate);
+      });
+    };
+
     // Check if plan itself is an array of terms (direct plan_details passed)
     if (Array.isArray(plan)) {
-      return plan;
+      return filterTermsOnly(plan);
     }
 
     // Check for the actual database structure: plan_details.plan
@@ -19,28 +29,28 @@ export function usePlanParser(plan?: Record<string, unknown> | GraduationPlan | 
         planRecord.plan_details !== null) {
       const planDetails = planRecord.plan_details as Record<string, unknown>;
       if (Array.isArray(planDetails.plan)) {
-        return planDetails.plan as Term[];
+        return filterTermsOnly(planDetails.plan);
       }
     }
     // Check if plan has a 'plan' property (nested structure) - AI RESPONSE FORMAT
     else if (Array.isArray(planRecord.plan)) {
-      return planRecord.plan as Term[];
+      return filterTermsOnly(planRecord.plan);
     }
 
     // Add more flexible parsing similar to GradPlanViewer
     // Check for semesters property
     if (Array.isArray(planRecord.semesters)) {
-      return planRecord.semesters as Term[];
+      return filterTermsOnly(planRecord.semesters);
     }
 
     // Check for terms property
     if (Array.isArray(planRecord.terms)) {
-      return planRecord.terms as Term[];
+      return filterTermsOnly(planRecord.terms);
     }
 
     // Check for plannedTerms property (AI response format variant)
     if (Array.isArray(planRecord.plannedTerms)) {
-      return planRecord.plannedTerms as Term[];
+      return filterTermsOnly(planRecord.plannedTerms);
     }
 
     return [];

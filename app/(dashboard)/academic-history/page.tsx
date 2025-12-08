@@ -11,13 +11,6 @@ import {
 } from '@/lib/services/userCoursesService';
 import { updateUserCoursesAction } from '@/lib/services/server-actions';
 import { GetActiveGradPlan } from '@/lib/services/gradPlanService';
-import { fetchProgramsBatch, GetGenEdsForUniversity } from '@/lib/services/programService';
-import type { ProgramRow } from '@/types/program';
-import {
-  matchCoursesToPrograms,
-  matchCoursesToProgram,
-  type ProgramWithMatches,
-} from '@/lib/services/courseMatchingService';
 
 interface GradPlan {
   id: string;
@@ -37,11 +30,6 @@ export default function AcademicHistoryPage() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [userCourses, setUserCourses] = useState<ParsedCourse[]>([]);
   const [activeGradPlan, setActiveGradPlan] = useState<GradPlan | null>(null);
-  const [programs, setPrograms] = useState<ProgramRow[]>([]);
-  const [genEdProgram, setGenEdProgram] = useState<ProgramRow | null>(null);
-  const [universityId, setUniversityId] = useState<number | null>(null);
-  const [programMatches, setProgramMatches] = useState<ProgramWithMatches[]>([]);
-  const [genEdMatches, setGenEdMatches] = useState<ProgramWithMatches | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
     open: false,
     message: '',
@@ -67,114 +55,6 @@ export default function AcademicHistoryPage() {
     'Preparing your transcript data...',
   ];
 
-  // Helper function to calculate total required credits or courses from program requirements
-  const calculateProgramTotals = (program: ProgramRow): { total: number; unit: 'credits' | 'courses' } => {
-    if (!program.requirements) return { total: 0, unit: 'credits' };
-
-    try {
-      const req = typeof program.requirements === 'string'
-        ? JSON.parse(program.requirements)
-        : program.requirements;
-
-      // For Gen Ed programs, requirements is an array of RichRequirement
-      if (Array.isArray(req)) {
-        let totalCredits = 0;
-        let totalCourses = 0;
-        let hasCredits = false;
-
-        req.forEach((item: {
-          requirement?: { rule?: { type?: string; min_count?: number; unit?: string } };
-          blocks?: Array<{ credits?: { fixed?: number } }>
-        }) => {
-          const rule = item.requirement?.rule;
-          if (rule?.type === 'min_count') {
-            const minCount = rule.min_count || 1;
-            const unit = rule.unit || 'courses';
-
-            if (unit === 'credits') {
-              hasCredits = true;
-              // Try to get credits from blocks
-              if (item.blocks && Array.isArray(item.blocks)) {
-                item.blocks.forEach((block: { credits?: { fixed?: number } }) => {
-                  if (block.credits?.fixed) {
-                    totalCredits += block.credits.fixed;
-                  }
-                });
-              }
-            } else {
-              totalCourses += minCount;
-            }
-          }
-        });
-
-        // If we found any credit-based requirements, use credits. Otherwise use courses
-        if (hasCredits && totalCredits > 0) {
-          return { total: totalCredits, unit: 'credits' };
-        }
-        return { total: totalCourses, unit: 'courses' };
-      }
-
-      // For regular programs, check metadata first
-      if (req && typeof req === 'object' && 'metadata' in req) {
-        const metadata = (req as { metadata?: { totalMinCredits?: number } }).metadata;
-        if (metadata?.totalMinCredits) {
-          return { total: metadata.totalMinCredits, unit: 'credits' };
-        }
-      }
-
-      // Check programRequirements array
-      if (req && typeof req === 'object' && 'programRequirements' in req) {
-        const programReqs = (req as { programRequirements?: Array<{
-          type?: string;
-          description?: string;
-          courses?: Array<{ credits?: number }>;
-          constraints?: { minTotalCredits?: number; n?: number };
-        }> }).programRequirements;
-
-        if (Array.isArray(programReqs)) {
-          let totalCredits = 0;
-          let totalCourses = 0;
-          let useCreditBased = false;
-
-          programReqs.forEach((requirement) => {
-            if (requirement.type === 'creditBucket' && requirement.constraints?.minTotalCredits) {
-              useCreditBased = true;
-              totalCredits += requirement.constraints.minTotalCredits;
-            } else if (requirement.type === 'allOf' && Array.isArray(requirement.courses)) {
-              totalCourses += requirement.courses.length;
-            } else if (requirement.type === 'chooseNOf' && requirement.constraints?.n) {
-              totalCourses += requirement.constraints.n;
-            } else if (requirement.description) {
-              // Fallback: parse description
-              const creditMatch = /Complete (\d+) credits?/i.exec(requirement.description);
-              if (creditMatch) {
-                useCreditBased = true;
-                totalCredits += parseInt(creditMatch[1], 10);
-              } else {
-                const courseMatch = /Complete (\d+)(?:\s+(?:of\s+\d+\s+)?(?:courses?|classes?))?/i.exec(requirement.description);
-                if (courseMatch) {
-                  totalCourses += parseInt(courseMatch[1], 10);
-                }
-              }
-            }
-          });
-
-          if (useCreditBased && totalCredits > 0) {
-            return { total: totalCredits, unit: 'credits' };
-          }
-          if (totalCourses > 0) {
-            return { total: totalCourses, unit: 'courses' };
-          }
-        }
-      }
-
-      return { total: 0, unit: 'credits' };
-    } catch (error) {
-      console.error('Error parsing requirements for totals:', error);
-      return { total: 0, unit: 'credits' };
-    }
-  };
-
   // Fetch userId and university from session
   useEffect(() => {
     (async () => {
@@ -182,18 +62,6 @@ export default function AcademicHistoryPage() {
       const id = sess.session?.user?.id || null;
       setUserId(id);
 
-      if (id) {
-        // Fetch user's university from profiles table
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('university_id')
-          .eq('id', id)
-          .single();
-
-        if (profile?.university_id) {
-          setUniversityId(profile.university_id);
-        }
-      }
     })();
   }, [supabase]);
 
@@ -272,78 +140,6 @@ export default function AcademicHistoryPage() {
       }
     })();
   }, [userId, hasUserCourses]);
-
-  // Fetch Gen Ed program when university is available (independent of grad plan)
-  useEffect(() => {
-    if (!universityId) {
-      setGenEdProgram(null);
-      return;
-    }
-
-    (async () => {
-      try {
-        const genEds = await GetGenEdsForUniversity(universityId);
-        if (genEds.length > 0) {
-          setGenEdProgram(genEds[0]);
-        } else {
-          setGenEdProgram(null);
-        }
-      } catch (error) {
-        console.error('Failed to fetch Gen Ed program:', error);
-        setGenEdProgram(null);
-      }
-    })();
-  }, [universityId]);
-
-  // Fetch programs when grad plan is available
-  useEffect(() => {
-    if (!activeGradPlan || !universityId) {
-      setPrograms([]);
-      return;
-    }
-
-    (async () => {
-      try {
-        // Extract program IDs from grad plan
-        const programIds = activeGradPlan.programs_in_plan || [];
-
-        if (programIds.length > 0) {
-          // Fetch program details
-          const programsData = await fetchProgramsBatch(
-            programIds.map(String),
-            universityId
-          );
-          setPrograms(programsData);
-        } else {
-          setPrograms([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch programs:', error);
-        setPrograms([]);
-      }
-    })();
-  }, [activeGradPlan, universityId]);
-
-  // Match courses to programs when both are available
-  useEffect(() => {
-    if (userCourses.length === 0 || (programs.length === 0 && !genEdProgram)) {
-      setProgramMatches([]);
-      setGenEdMatches(null);
-      return;
-    }
-
-    // Match courses to regular programs
-    if (programs.length > 0) {
-      const matches = matchCoursesToPrograms(userCourses, programs);
-      setProgramMatches(matches);
-    }
-
-    // Match courses to Gen Ed program with subject-only matching enabled
-    if (genEdProgram) {
-      const genEdMatch = matchCoursesToProgram(userCourses, genEdProgram, { allowSubjectMatch: true });
-      setGenEdMatches(genEdMatch);
-    }
-  }, [userCourses, programs, genEdProgram]);
 
   const exportJson = async () => {
     try {

@@ -97,7 +97,10 @@ export async function createNotifForPlanReady(userId: string, accessId: string) 
 		return await createNotification({
 			target_user_id: userId,
 			type: "PlanReady",
-			context_json: { accessId },
+			context_json: {
+				message: 'Your Grad Plan is Ready!',
+				accessId
+			},
 			url: `/grad-plan/${accessId}`,
 			status: "queued",
 			initiator_user_id: null,
@@ -131,7 +134,7 @@ export async function createNotifForGradPlanEdited(
 
     // Build context with change details
     const contextJson: Record<string, unknown> = {
-      message: 'Your most recent grad plan was just updated with edits'
+      message: 'Your Grad Plan was Edited'
     };
 
     if (changeData) {
@@ -158,14 +161,44 @@ export async function createNotifForGradPlanEdited(
 }
 
 /**
- * Notification when a graduation plan has been approved.
+ * Notification when a graduation plan has been approved by an advisor.
+ * Only sends notification if the plan was approved by an advisor/admin (not by the student themselves).
  * Fetches user email from profiles, sends email notification, and creates in-app notification.
  */
 export async function createNotifForGradPlanApproved(targetUserId: string, initiatorUserId: string | null) {
 	try {
 		if (!targetUserId) throw new Error('Missing target user id');
 
-		// Fetch user profile to get email and first name
+		// Don't send notification if student activated their own plan
+		if (!initiatorUserId || initiatorUserId === targetUserId) {
+			console.log('ℹ️ Skipping approval notification - student activated their own plan');
+			return null;
+		}
+
+		// Fetch initiator's role to verify they're an advisor/admin
+		const { data: initiatorProfile, error: initiatorError } = await supabase
+			.from('profiles')
+			.select('first_name, last_name, roles!inner(role_name)')
+			.eq('id', initiatorUserId)
+			.single();
+
+		if (initiatorError) {
+			console.error('❌ Error fetching initiator profile:', initiatorError);
+			return null;
+		}
+
+		// Check if initiator is an advisor, admin, or superadmin
+		const initiatorRole = (initiatorProfile.roles as unknown as { role_name: string })?.role_name;
+		const isAdvisorOrAdmin = ['advisor', 'admin', 'superadmin'].includes(initiatorRole);
+
+		if (!isAdvisorOrAdmin) {
+			console.log('ℹ️ Skipping approval notification - initiator is not an advisor/admin');
+			return null;
+		}
+
+		const advisorName = `${initiatorProfile.first_name} ${initiatorProfile.last_name}`;
+
+		// Fetch student profile to get email and first name
 		const { data: profile, error: profileError } = await supabase
 			.from('profiles')
 			.select('email, first_name')
@@ -190,20 +223,6 @@ export async function createNotifForGradPlanApproved(targetUserId: string, initi
 			console.error('❌ Error fetching grad plan for approval notification:', gradPlanError);
 		}
 
-		// Fetch advisor name if initiator exists
-		let advisorName: string | undefined;
-		if (initiatorUserId) {
-			const { data: advisorProfile, error: advisorError } = await supabase
-				.from('profiles')
-				.select('first_name, last_name')
-				.eq('id', initiatorUserId)
-				.single();
-
-			if (!advisorError && advisorProfile) {
-				advisorName = `${advisorProfile.first_name} ${advisorProfile.last_name}`;
-			}
-		}
-
 		// Send email if we have the necessary data
 		if (profile?.email && profile?.first_name && gradPlan?.access_id) {
 			await sendGradPlanApprovalEmail({
@@ -219,7 +238,7 @@ export async function createNotifForGradPlanApproved(targetUserId: string, initi
 			target_user_id: targetUserId,
 			initiator_user_id: initiatorUserId,
 			type: 'grad plan approved',
-			context_json: { message: 'Your recent grad plan was just approved! See it here' },
+			context_json: { message: 'Your grad plan was approved!' },
 			url: '/grad-plan',
 			status: 'queued',
 			is_read: false,
@@ -299,5 +318,159 @@ export async function getUnreadNotificationsCount(userId: string): Promise<numbe
 	} catch (err) {
 		console.error('❌ Unexpected error counting unread notifications:', err);
 		return 0;
+	}
+}
+
+/**
+ * Fetches all notifications for a given user (target_user_id).
+ * Orders by unread status first (unread first), then by newest first within each group.
+ * This is intended for server-side usage (e.g., Inbox page server component) so that
+ * data is fetched securely with RLS applied.
+ */
+export async function getAllNotificationsForUser(userId: string) {
+	try {
+		if (!userId) throw new Error('userId is required');
+		const { data, error } = await supabase
+			.from('notifications')
+			.select('*')
+			.eq('target_user_id', userId)
+			.order('is_read', { ascending: true })
+			.order('created_utc', { ascending: false });
+
+		if (error) {
+			console.error('❌ Error fetching all notifications:', error);
+			return [];
+		}
+		return data || [];
+	} catch (err) {
+		console.error('❌ Unexpected error fetching all notifications:', err);
+		return [];
+	}
+}
+
+/**
+ * AUTHORIZATION: USERS can only mark their own notifications as read
+ * Marks all unread notifications for a user as read
+ * @param userId - The user ID whose notifications should be marked as read
+ * @returns Success/error result with count of notifications marked
+ */
+export async function markAllNotificationsRead(userId: string): Promise<{
+	success: boolean;
+	error?: string;
+	count?: number;
+}> {
+	try {
+		if (!userId) throw new Error('userId is required');
+
+		const { data, error } = await supabase
+			.from('notifications')
+			.update({ is_read: true, read_utc: new Date().toISOString() })
+			.eq('target_user_id', userId)
+			.eq('is_read', false)
+			.select('id');
+
+		if (error) {
+			console.error('❌ Error marking all notifications as read:', error);
+			return { success: false, error: error.message };
+		}
+
+		return { success: true, count: data?.length || 0 };
+	} catch (err) {
+		console.error('❌ Unexpected error marking all notifications as read:', err);
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : 'Unknown error'
+		};
+	}
+}
+
+/**
+ * AUTHORIZATION: USERS can only delete their own notifications
+ * Deletes a single notification by ID
+ * @param notifId - The notification ID to delete
+ * @param userId - The user ID (for verification)
+ * @returns Success/error result
+ */
+export async function deleteNotification(
+	notifId: string,
+	userId: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		if (!notifId) throw new Error('notifId is required');
+		if (!userId) throw new Error('userId is required');
+
+		// Verify the notification belongs to this user before deleting
+		const { data: notif, error: fetchError } = await supabase
+			.from('notifications')
+			.select('target_user_id')
+			.eq('id', notifId)
+			.single();
+
+		if (fetchError) {
+			if (fetchError.code === 'PGRST116') {
+				return { success: false, error: 'Notification not found' };
+			}
+			console.error('❌ Error fetching notification:', fetchError);
+			return { success: false, error: 'Failed to verify notification' };
+		}
+
+		// Verify ownership
+		if (notif.target_user_id !== userId) {
+			return { success: false, error: 'Access denied: Notification belongs to another user' };
+		}
+
+		const { error: deleteError } = await supabase
+			.from('notifications')
+			.delete()
+			.eq('id', notifId);
+
+		if (deleteError) {
+			console.error('❌ Error deleting notification:', deleteError);
+			return { success: false, error: deleteError.message };
+		}
+
+		return { success: true };
+	} catch (err) {
+		console.error('❌ Unexpected error deleting notification:', err);
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : 'Unknown error'
+		};
+	}
+}
+
+/**
+ * AUTHORIZATION: USERS can only delete their own notifications
+ * Deletes all read notifications for a user
+ * @param userId - The user ID whose read notifications should be deleted
+ * @returns Success/error result with count of notifications deleted
+ */
+export async function deleteAllReadNotifications(userId: string): Promise<{
+	success: boolean;
+	error?: string;
+	count?: number;
+}> {
+	try {
+		if (!userId) throw new Error('userId is required');
+
+		const { data, error } = await supabase
+			.from('notifications')
+			.delete()
+			.eq('target_user_id', userId)
+			.eq('is_read', true)
+			.select('id');
+
+		if (error) {
+			console.error('❌ Error deleting read notifications:', error);
+			return { success: false, error: error.message };
+		}
+
+		return { success: true, count: data?.length || 0 };
+	} catch (err) {
+		console.error('❌ Unexpected error deleting read notifications:', err);
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : 'Unknown error'
+		};
 	}
 }

@@ -16,6 +16,7 @@ export type NotificationCardProps = {
   created_utc: string;
   type: string;
   context_json?: NotificationContext;
+  is_read: boolean;
 };
 
 /**
@@ -95,6 +96,7 @@ export function NotificationCard({
   created_utc,
   type,
   context_json,
+  is_read,
 }: NotificationCardProps) {
   const router = useRouter();
   const { icon, accentColor } = getNotificationStyle(type);
@@ -131,7 +133,11 @@ export function NotificationCard({
       type="button"
       onClick={handleClick}
       disabled={!url}
-      className="group relative w-full overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+      className={`group relative w-full overflow-hidden rounded-xl border p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 ${
+        !is_read
+          ? 'border-[color-mix(in_srgb,var(--primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--primary)_3%,white)]'
+          : 'border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white'
+      }`}
     >
       {/* Accent bar on the left */}
       <div
@@ -141,14 +147,24 @@ export function NotificationCard({
 
       <div className="flex items-start gap-4 pl-3">
         {/* Icon container */}
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors"
-          style={{
-            backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)`,
-            color: accentColor,
-          }}
-        >
-          {icon}
+        <div className="relative">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors"
+            style={{
+              backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)`,
+              color: accentColor,
+            }}
+          >
+            {icon}
+          </div>
+          {/* Unread indicator dot */}
+          {!is_read && (
+            <div
+              className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white"
+              style={{ backgroundColor: accentColor }}
+              aria-label="Unread"
+            />
+          )}
         </div>
 
         {/* Content */}

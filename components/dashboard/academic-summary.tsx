@@ -19,8 +19,11 @@ import {
   Select,
   MenuItem,
   IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
-import { X, Plus, Upload } from "lucide-react";
+import { X, Plus, Upload, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { fetchUserCourses } from "@/lib/services/userCoursesService";
@@ -49,6 +52,9 @@ export default function AcademicSummary() {
   const [selectedYear, setSelectedYear] = useState(2028);
   const [hasTranscript, setHasTranscript] = useState(true);
   const [hasActiveGradPlan, setHasActiveGradPlan] = useState(true);
+  const [expandedDetails, setExpandedDetails] = useState(false);
+  const [expandedPlanProgress, setExpandedPlanProgress] = useState(false);
+  const [expandedOptimization, setExpandedOptimization] = useState(false);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -198,7 +204,7 @@ export default function AcademicSummary() {
     <Card
       elevation={0}
       sx={{
-        borderRadius: '16px',
+        borderRadius: '12px',
         bgcolor: "var(--card)",
         border: "1px solid color-mix(in srgb, var(--muted-foreground) 10%, transparent)",
         boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
@@ -214,27 +220,27 @@ export default function AcademicSummary() {
       <Box sx={{
         background: "#0A0A0A",
         borderBottom: "2px solid #0A0A0A",
-        p: 3
+        p: 2.5
       }}>
-        <Stack direction="row" alignItems="center" spacing={3} sx={{ mb: 0 }}>
+        <Stack direction="row" alignItems="center" spacing={2.5} sx={{ mb: 0 }}>
           {/* Larger, more prominent avatar with white border for contrast */}
           <Avatar
             src={avatarUrl || undefined}
             sx={{
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               border: "3px solid white",
               boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
               bgcolor: avatarUrl ? "transparent" : "var(--primary)"
             }}
           >
-            {!avatarUrl && <span className="font-header-bold text-2xl text-black">{d.name.charAt(0).toUpperCase()}</span>}
+            {!avatarUrl && <span className="font-header-bold text-xl text-black">{d.name.charAt(0).toUpperCase()}</span>}
           </Avatar>
           <Stack sx={{ flex: 1 }} spacing={0.5}>
             {/* White text on black background for maximum contrast */}
             <Typography
               className="font-header-bold"
-              sx={{ fontSize: "1.5rem", fontWeight: 800, color: "white" }}
+              sx={{ fontSize: "1.375rem", fontWeight: 800, color: "white" }}
             >
               {d.name}
             </Typography>
@@ -267,17 +273,17 @@ export default function AcademicSummary() {
         </Stack>
       </Box>
 
-      <CardContent sx={{ p: 3, pb: 3 }}>
+      <CardContent sx={{ p: 2.5, pb: 2.5 }}>
         {/* Main progress section with bold circular progress */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 2.5 }}>
           {hasTranscript ? (
-            <Stack direction="row" alignItems="center" spacing={3}>
+            <Stack direction="row" alignItems="center" spacing={2.5}>
               {/* Large circular progress indicator with bright green and strong shadow */}
               <Box sx={{ position: "relative", display: "inline-flex" }}>
                 <Box
                   sx={{
-                    width: 120,
-                    height: 120,
+                    width: 100,
+                    height: 100,
                     borderRadius: "50%",
                     background: `conic-gradient(var(--primary) ${d.gradProgress * 360}deg, #e5e7eb 0deg)`,
                     display: "flex",
@@ -288,8 +294,8 @@ export default function AcademicSummary() {
                   }}
                 >
                   <Box sx={{
-                    width: 96,
-                    height: 96,
+                    width: 80,
+                    height: 80,
                     borderRadius: "50%",
                     bgcolor: "white",
                     display: "flex",
@@ -297,7 +303,7 @@ export default function AcademicSummary() {
                     alignItems: "center",
                     justifyContent: "center"
                   }}>
-                    <Typography className="font-header-bold" sx={{ fontSize: "2rem", fontWeight: 800, color: "#0A0A0A" }}>
+                    <Typography className="font-header-bold" sx={{ fontSize: "1.75rem", fontWeight: 800, color: "#0A0A0A" }}>
                       {Math.round(d.gradProgress * 100)}%
                     </Typography>
                     <Typography className="font-body" sx={{ fontSize: "0.625rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
@@ -306,7 +312,7 @@ export default function AcademicSummary() {
                   </Box>
                 </Box>
               </Box>
-              <Stack spacing={1} sx={{ flex: 1 }}>
+              <Stack spacing={0.75} sx={{ flex: 1 }}>
                 <Typography className="font-body text-xs uppercase tracking-wider" sx={{ color: "var(--muted-foreground)", fontWeight: 700 }}>
                   Graduation Progress
                 </Typography>
@@ -320,7 +326,7 @@ export default function AcademicSummary() {
               <ButtonBase
                 sx={{
                   width: "100%",
-                  p: 3,
+                  p: 2.5,
                   borderRadius: "12px",
                   border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
                   bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
@@ -334,15 +340,15 @@ export default function AcademicSummary() {
               >
                 <Stack direction="row" alignItems="center" spacing={2} sx={{ width: "100%" }}>
                   <Box sx={{
-                    width: 48,
-                    height: 48,
+                    width: 44,
+                    height: 44,
                     borderRadius: "12px",
                     bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center"
                   }}>
-                    <Upload size={24} color="var(--primary)" />
+                    <Upload size={22} color="var(--primary)" />
                   </Box>
                   <Stack spacing={0.5} sx={{ flex: 1, textAlign: "left" }}>
                     <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--foreground)" }}>
@@ -358,139 +364,217 @@ export default function AcademicSummary() {
           )}
         </Box>
 
-        {/* Plan Progress Bars - Modern, clean design */}
+        {/* Plan Details - Parent Accordion containing Plan Progress and Optimization */}
         {hasActiveGradPlan ? (
-          <>
-            <Box sx={{ mb: 3, p: 3, borderRadius: "12px", bgcolor: "color-mix(in srgb, var(--muted) 30%, transparent)", border: "1px solid var(--border)" }}>
-              <Typography className="font-body text-xs uppercase tracking-wider" sx={{ mb: 2.5, color: "var(--muted-foreground)", fontWeight: 600 }}>
-                Plan Progress
-              </Typography>
-
-              {/* Plan completion progress */}
-              <Box sx={{ mb: 3 }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
-                    Graduation Plan
-                  </Typography>
-                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
-                    {Math.round(d.planProgress * 100)}%
-                  </Typography>
-                </Stack>
-                <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
-                  <Box sx={{
-                    width: `${Math.round(d.planProgress * 100)}%`,
-                    height: "100%",
-                    borderRadius: "999px",
-                    background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
-                    transition: "width 0.7s ease-out"
-                  }} />
-                </Box>
-              </Box>
-
-              {/* Follow-through progress with info icon */}
-              <Box>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
-                    <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
-                      Plan Follow Through
-                    </Typography>
-                    <Box sx={{ position: "relative", display: "inline-block", "&:hover .info-popup": { opacity: 1 } }}>
-                      <Box sx={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: "50%",
-                        bgcolor: "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "help"
-                      }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"/>
-                          <path d="M12 16v-4"/>
-                          <path d="M12 8h.01"/>
-                        </svg>
-                      </Box>
-                      <Box className="info-popup" sx={{
-                        position: "absolute",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        bottom: "calc(100% + 8px)",
-                        width: 280,
-                        p: 2,
-                        bgcolor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                        fontSize: 13,
-                        color: "var(--foreground)",
-                        opacity: 0,
-                        transition: "opacity 0.2s",
-                        pointerEvents: "none",
-                        zIndex: 10
-                      }}>
-                        See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations.
-                      </Box>
-                    </Box>
-                  </Stack>
-                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
-                    {Math.round(d.followThrough * 100)}%
-                  </Typography>
-                </Stack>
-                <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
-                  <Box sx={{
-                    width: `${Math.round(d.followThrough * 100)}%`,
-                    height: "100%",
-                    borderRadius: "999px",
-                    background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
-                    transition: "width 0.7s ease-out"
-                  }} />
-                </Box>
-              </Box>
-            </Box>
-
-            {/* Optimization Badge - Interactive CTA */}
-            <ButtonBase
-              onClick={() => {/* hook up later */}}
+          <Accordion
+            expanded={expandedDetails}
+            onChange={(_event, isExpanded) => setExpandedDetails(isExpanded)}
+            elevation={0}
+            sx={{
+              borderRadius: "12px !important",
+              border: "1px solid var(--border)",
+              bgcolor: "color-mix(in srgb, var(--muted) 15%, transparent)",
+              "&:before": { display: "none" },
+              "&.Mui-expanded": {
+                bgcolor: "color-mix(in srgb, var(--muted) 25%, transparent)",
+              }
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ChevronDown size={20} color="var(--muted-foreground)" />}
               sx={{
-                width: "100%",
-                p: 2.5,
-                borderRadius: "12px",
-                border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
-                bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
-                transition: "all 0.2s ease-in-out",
-                "&:hover": {
-                  borderColor: "var(--primary)",
-                  bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
-                  transform: "translateY(-1px)"
+                px: 2.5,
+                py: 1.5,
+                minHeight: "unset !important",
+                "&.Mui-expanded": {
+                  minHeight: "unset !important",
+                },
+                "& .MuiAccordionSummary-content": {
+                  my: 1.5,
+                  "&.Mui-expanded": {
+                    my: 1.5,
+                  }
                 }
               }}
             >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
-                <Box>
-                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", textAlign: "left" }}>
-                    Optimization: {d.optimization}
+              <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)" }}>
+                Plan Details
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 3, pt: 1, pb: 3 }}>
+              {/* Plan Progress Accordion */}
+              <Accordion
+                expanded={expandedPlanProgress}
+                onChange={(_event, isExpanded) => setExpandedPlanProgress(isExpanded)}
+                elevation={0}
+                sx={{
+                  mb: 2,
+                  borderRadius: "12px !important",
+                  border: "1px solid var(--border)",
+                  bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
+                  "&:before": { display: "none" },
+                  "&.Mui-expanded": {
+                    bgcolor: "color-mix(in srgb, var(--muted) 30%, transparent)",
+                  }
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ChevronDown size={18} color="var(--muted-foreground)" />}
+                  sx={{
+                    px: 2.5,
+                    py: 1,
+                    minHeight: "unset !important",
+                    "&.Mui-expanded": {
+                      minHeight: "unset !important",
+                    },
+                    "& .MuiAccordionSummary-content": {
+                      my: 1,
+                      "&.Mui-expanded": {
+                        my: 1,
+                      }
+                    }
+                  }}
+                >
+                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)" }}>
+                    Plan Progress
                   </Typography>
-                  <Typography className="font-body" sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", textAlign: "left", mt: 0.5 }}>
-                    Click to view optimization suggestions
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 3, pt: 0, pb: 3 }}>
+                  {/* Plan completion progress */}
+                  <Box sx={{ mb: 3 }}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
+                        Graduation Plan
+                      </Typography>
+                      <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                        {Math.round(d.planProgress * 100)}%
+                      </Typography>
+                    </Stack>
+                    <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
+                      <Box sx={{
+                        width: `${Math.round(d.planProgress * 100)}%`,
+                        height: "100%",
+                        borderRadius: "999px",
+                        background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
+                        transition: "width 0.7s ease-out"
+                      }} />
+                    </Box>
+                  </Box>
+
+                  {/* Follow-through progress with info icon */}
+                  <Box>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                        <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", color: "var(--foreground)" }}>
+                          Plan Follow Through
+                        </Typography>
+                        <Box sx={{ position: "relative", display: "inline-block", "&:hover .info-popup": { opacity: 1 } }}>
+                          <Box sx={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            bgcolor: "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "help"
+                          }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <path d="M12 16v-4"/>
+                              <path d="M12 8h.01"/>
+                            </svg>
+                          </Box>
+                          <Box className="info-popup" sx={{
+                            position: "absolute",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            bottom: "calc(100% + 8px)",
+                            width: 280,
+                            p: 2,
+                            bgcolor: "var(--card)",
+                            border: "1px solid var(--border)",
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            opacity: 0,
+                            transition: "opacity 0.2s",
+                            pointerEvents: "none",
+                            zIndex: 10
+                          }}>
+                            See how closely your current and completed classes align with your graduation plan. This section highlights progress, gaps, and any deviations.
+                          </Box>
+                        </Box>
+                      </Stack>
+                      <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                        {Math.round(d.followThrough * 100)}%
+                      </Typography>
+                    </Stack>
+                    <Box sx={{ height: 8, borderRadius: "999px", bgcolor: "var(--card)", overflow: "hidden" }}>
+                      <Box sx={{
+                        width: `${Math.round(d.followThrough * 100)}%`,
+                        height: "100%",
+                        borderRadius: "999px",
+                        background: "linear-gradient(90deg, var(--primary) 0%, var(--hover-green) 100%)",
+                        transition: "width 0.7s ease-out"
+                      }} />
+                    </Box>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* Optimization Accordion */}
+              <Accordion
+                expanded={expandedOptimization}
+                onChange={(_event, isExpanded) => setExpandedOptimization(isExpanded)}
+                elevation={0}
+                sx={{
+                  borderRadius: "12px !important",
+                  border: "2px dashed color-mix(in srgb, var(--muted-foreground) 25%, transparent)",
+                  bgcolor: "color-mix(in srgb, var(--muted) 20%, transparent)",
+                  "&:before": { display: "none" },
+                  "&.Mui-expanded": {
+                    borderColor: "var(--primary)",
+                    bgcolor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                  }
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ChevronDown size={18} color="var(--muted-foreground)" />}
+                  sx={{
+                    px: 2.5,
+                    py: 1,
+                    minHeight: "unset !important",
+                    "&.Mui-expanded": {
+                      minHeight: "unset !important",
+                    },
+                    "& .MuiAccordionSummary-content": {
+                      my: 1,
+                      "&.Mui-expanded": {
+                        my: 1,
+                      }
+                    }
+                  }}
+                >
+                  <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)" }}>
+                    Optimization
                   </Typography>
-                </Box>
-                <Box sx={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "8px",
-                  bgcolor: "color-mix(in srgb, var(--primary) 15%, transparent)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                </Box>
-              </Stack>
-            </ButtonBase>
-          </>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 3, pt: 0, pb: 3 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography className="font-body-semi" sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", mb: 0.5 }}>
+                      Current Optimization: {d.optimization}
+                    </Typography>
+                    <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
+                      Optimization suggestions will appear here based on your graduation plan and progress.
+                    </Typography>
+                  </Box>
+                  {/* Future: Add actual optimization content here */}
+                </AccordionDetails>
+              </Accordion>
+            </AccordionDetails>
+          </Accordion>
         ) : (
           <Link href="/grad-plan" passHref style={{ textDecoration: 'none' }}>
             <ButtonBase
@@ -549,7 +633,7 @@ export default function AcademicSummary() {
         )}
 
         {/* Footer stats - Modern info cards */}
-        <Box sx={{ mt: 3, pt: 3, borderTop: "1px solid var(--border)" }}>
+        <Box sx={{ mt: 2.5, pt: 2.5, borderTop: "1px solid var(--border)" }}>
           <Stack spacing={1.5}>
             <Stack direction="row" alignItems="center" justifyContent="space-between">
               <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
@@ -558,8 +642,8 @@ export default function AcademicSummary() {
               <ButtonBase
                 onClick={() => setGradDialogOpen(true)}
                 sx={{
-                  px: 2,
-                  py: 1,
+                  px: 1.75,
+                  py: 0.75,
                   borderRadius: "8px",
                   bgcolor: "color-mix(in srgb, var(--primary) 10%, transparent)",
                   border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
@@ -585,14 +669,16 @@ export default function AcademicSummary() {
         onClose={() => setGradDialogOpen(false)}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '16px',
-            bgcolor: "var(--card)",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-            maxWidth: '500px',
-            width: '100%',
-            m: 2
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '16px',
+              bgcolor: "var(--card)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              maxWidth: '500px',
+              width: '100%',
+              m: 2
+            },
           },
         }}
       >

@@ -52,31 +52,44 @@ function LoginContent() {
   };
 
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-        <Link
-          href="/"
-          className="absolute top-6 left-6 text-black text-4xl font-brand"
-        >
-          stu.
-        </Link>
+    <main className="min-h-screen flex relative" style={{ backgroundColor: '#F5F5F6' }}>
+      <Link
+        href="/"
+        className="absolute top-6 left-6 text-black text-4xl font-brand hover:text-zinc-700 transition-colors z-50"
+      >
+        stu.
+      </Link>
 
-        <div className="flex justify-center mb-2">
+      {/* Left Side - Image */}
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-end pr-8" style={{ backgroundColor: '#F5F5F6' }}>
+        <div className="relative w-full h-full max-w-2xl max-h-[80vh]">
           <Image
-            src="/stu_icon_black.png"
-            alt="Stu logo"
-            width={56}
-            height={56}
-            className="h-14 w-14 object-contain"
+            src="/hero-graduation-runner.png"
+            alt="Graduate running"
+            fill
+            className="object-contain"
             priority
           />
         </div>
+      </div>
 
-        <h2
-          className="text-center text-xl text-black mb-8 font-header"
-        >
-          welcome to stu.
-        </h2>
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-start pl-8 py-8" style={{ backgroundColor: '#F5F5F6' }}>
+        <div className="w-full max-w-md">
+          <div className="flex justify-center mb-2">
+            <Image
+              src="/stu_icon_black.png"
+              alt="Stu logo"
+              width={56}
+              height={56}
+              className="h-14 w-14 object-contain"
+              priority
+            />
+          </div>
+
+          <h2 className="text-center text-xl text-black mb-8 font-header">
+            welcome to stu.
+          </h2>
 
         {/* Email Input for Magic Link */}
         <form onSubmit={handleMagicLink}>
@@ -95,12 +108,13 @@ function LoginContent() {
                 disabled:opacity-50 disabled:cursor-not-allowed`}
             />
             <label
-              className={`absolute left-4 transition-all duration-200 pointer-events-none bg-white px-1 font-body
+              className={`absolute left-4 transition-all duration-200 pointer-events-none px-1 font-body
                 ${
                   emailFocused || email
                     ? '-top-2 text-xs text-[var(--hover-green)]'
                     : 'top-1/2 -translate-y-1/2 text-base text-zinc-700'
                 }`}
+              style={{ backgroundColor: '#F5F5F6' }}
             >
               Email address
             </label>
@@ -130,7 +144,8 @@ function LoginContent() {
         <div className="relative mb-6">
           <hr className="border-gray-300" />
           <span
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-gray-500 text-sm font-body"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-3 text-gray-500 text-sm font-body"
+            style={{ backgroundColor: '#F5F5F6' }}
           >
             OR
           </span>
@@ -220,16 +235,17 @@ function LoginContent() {
           </button> */}
         </div>
 
-        {/* Hidden Supabase Auth for fallback / server config */}
-        <div className="hidden">
-          <Auth
-            supabaseClient={supabase}
-            appearance={{ theme: ThemeSupa }}
-            providers={['google', 'facebook']}
-            onlyThirdPartyProviders
-            redirectTo={redirectTo}
-            socialLayout="vertical"
-          />
+          {/* Hidden Supabase Auth for fallback / server config */}
+          <div className="hidden">
+            <Auth
+              supabaseClient={supabase}
+              appearance={{ theme: ThemeSupa }}
+              providers={['google', 'facebook']}
+              onlyThirdPartyProviders
+              redirectTo={redirectTo}
+              socialLayout="vertical"
+            />
+          </div>
         </div>
       </div>
     </main>

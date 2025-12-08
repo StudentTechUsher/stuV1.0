@@ -146,12 +146,13 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     est_grad_date?: string;
     advisor_notes: string | null;
     plan_name: string | null;
+    is_active: boolean;
 }> {
     try {
         // 1. Base grad plan (no pending_approval filter so advisors/students can edit)
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes, plan_name')
+            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes, plan_name, is_active')
             .eq('id', gradPlanId)
             .single();
 
@@ -223,7 +224,8 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             est_grad_sem: studentGradData?.est_grad_plan || null,
             est_grad_date: studentGradData?.est_grad_date || null,
             advisor_notes: gradPlanData.advisor_notes || null,
-            plan_name: gradPlanData.plan_name ?? null
+            plan_name: gradPlanData.plan_name ?? null,
+            is_active: gradPlanData.is_active ?? false
         };
     } catch (err) {
         // Pass through known structured errors; wrap unknowns
@@ -788,6 +790,99 @@ export async function deleteGradPlan(
         return { success: true };
     } catch (err) {
         console.error('❌ Unexpected error deleting grad plan:', err);
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Sets a graduation plan as active for a student
+ * Automatically deactivates any other active plans for the same student
+ *
+ * @param gradPlanId - The ID of the grad plan to set as active
+ * @param studentId - The student ID (for verification)
+ * @returns Success/error result with information about deactivated plans
+ */
+export async function setGradPlanActive(
+    gradPlanId: string,
+    studentId: number
+): Promise<{
+    success: boolean;
+    error?: string;
+    deactivatedPlanName?: string;
+}> {
+    try {
+        // First, verify the plan exists and belongs to this student
+        const { data: planData, error: planError } = await supabase
+            .from('grad_plan')
+            .select('id, student_id, plan_name')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (planError) {
+            if (planError.code === 'PGRST116') {
+                return { success: false, error: 'Graduation plan not found' };
+            }
+            console.error('❌ Error fetching grad plan:', planError);
+            return { success: false, error: 'Failed to fetch graduation plan' };
+        }
+
+        // Verify ownership
+        if (planData.student_id !== studentId) {
+            return { success: false, error: 'Access denied: Plan belongs to another student' };
+        }
+
+        // Check if there's currently an active plan
+        const { data: activePlan, error: activeError } = await supabase
+            .from('grad_plan')
+            .select('id, plan_name')
+            .eq('student_id', studentId)
+            .eq('is_active', true)
+            .maybeSingle();
+
+        if (activeError) {
+            console.error('❌ Error checking active plan:', activeError);
+            return { success: false, error: 'Failed to check for active plan' };
+        }
+
+        let deactivatedPlanName: string | undefined;
+
+        // If there's an active plan and it's not the same as the one we're activating
+        if (activePlan && activePlan.id !== gradPlanId) {
+            // Deactivate the current active plan
+            const { error: deactivateError } = await supabase
+                .from('grad_plan')
+                .update({ is_active: false })
+                .eq('id', activePlan.id);
+
+            if (deactivateError) {
+                console.error('❌ Error deactivating current plan:', deactivateError);
+                return { success: false, error: 'Failed to deactivate current active plan' };
+            }
+
+            deactivatedPlanName = activePlan.plan_name || 'Untitled Plan';
+            console.log(`✅ Deactivated plan: ${deactivatedPlanName} (${activePlan.id})`);
+        }
+
+        // Set the new plan as active
+        const { error: updateError } = await supabase
+            .from('grad_plan')
+            .update({ is_active: true })
+            .eq('id', gradPlanId);
+
+        if (updateError) {
+            console.error('❌ Error activating grad plan:', updateError);
+            return { success: false, error: 'Failed to activate graduation plan' };
+        }
+
+        console.log(`✅ Activated plan: ${planData.plan_name || 'Untitled Plan'} (${gradPlanId})`);
+
+        return {
+            success: true,
+            deactivatedPlanName
+        };
+    } catch (err) {
+        console.error('❌ Unexpected error setting active grad plan:', err);
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }

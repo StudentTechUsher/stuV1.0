@@ -46,7 +46,7 @@ export default async function GradPlan2Page() {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">No Graduation Plan Found</h2>
           <p className="text-muted-foreground mb-4">
-            You don't have any graduation plans yet. Create one to get started!
+            You don&apos;t have any graduation plans yet. Create one to get started!
           </p>
           {/* TODO: Add "Create New Plan" button here later */}
         </div>
@@ -56,7 +56,6 @@ export default async function GradPlan2Page() {
 
   return (
     <GradPlan2Client
-      user={user}
       studentProfile={userProfile}
       gradPlan={activePlan}
       allGradPlans={allGradPlans}

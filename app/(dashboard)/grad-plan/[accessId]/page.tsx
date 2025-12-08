@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Box, Typography, Button, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchGradPlanForEditing, updateStudentGradPlanAction, decodeAccessIdServerAction } from '@/lib/services/server-actions';
+import { fetchGradPlanForEditing, updateStudentGradPlanAction, decodeAccessIdServerAction, setGradPlanActiveAction } from '@/lib/services/server-actions';
 import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
@@ -28,6 +28,7 @@ interface GradPlanDetails {
   est_grad_date?: string;
   advisor_notes: string | null;
   plan_name: string | null;
+  is_active: boolean;
 }
 
 interface Term {
@@ -197,6 +198,9 @@ export default function EditGradPlanPage() {
   const [events, setEvents] = React.useState<Event[]>([]);
   const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
   const [showJsonDebug, setShowJsonDebug] = React.useState(false);
+  const [isActivePlan, setIsActivePlan] = React.useState(false);
+  const [showActivePlanConfirm, setShowActivePlanConfirm] = React.useState(false);
+  const [isSettingActive, setIsSettingActive] = React.useState(false);
 
   const isEditMode = true; // Always in edit mode for this page
   const isDev = process.env.NEXT_PUBLIC_ENV === 'development' || process.env.NODE_ENV === 'development';
@@ -320,6 +324,7 @@ export default function EditGradPlanPage() {
           }
         }
         setGradPlan(planData);
+        setIsActivePlan(planData.is_active);
 
         // Extract terms and events from the plan
         if (isRecord(planData.plan_details)) {
@@ -339,6 +344,7 @@ export default function EditGradPlanPage() {
             const { terms, events: extractedEvents } = extractTermsAndEvents(rawPlanArray);
             if (terms.length > 0) {
               setCurrentPlanData(terms);
+              console.log('currentPlanData:', JSON.stringify(terms, null, 2));
             }
             if (extractedEvents.length > 0) {
               setEvents(extractedEvents);
@@ -416,6 +422,61 @@ export default function EditGradPlanPage() {
       showSnackbar('An unexpected error occurred while saving.', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleActivePlanToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.checked;
+
+    if (newValue && !isActivePlan) {
+      // User wants to activate - show confirmation
+      setShowActivePlanConfirm(true);
+    } else if (!newValue && isActivePlan) {
+      // User wants to deactivate - do it directly
+      handleSetActivePlan(false);
+    }
+  };
+
+  const handleSetActivePlan = async (active: boolean) => {
+    if (!gradPlan) return;
+
+    setIsSettingActive(true);
+    try {
+      if (active) {
+        const result = await setGradPlanActiveAction(gradPlan.id);
+        if (result.success) {
+          setIsActivePlan(true);
+          if (result.deactivatedPlanName) {
+            showSnackbar(
+              `This plan is now active. "${result.deactivatedPlanName}" has been deactivated.`,
+              'success'
+            );
+          } else {
+            showSnackbar('This plan is now active!', 'success');
+          }
+        } else {
+          showSnackbar(`Failed to set plan as active: ${result.error}`, 'error');
+        }
+      } else {
+        // Deactivate by calling the same function (it handles the logic)
+        const { error: updateError } = await supabase
+          .from('grad_plan')
+          .update({ is_active: false })
+          .eq('id', gradPlan.id);
+
+        if (updateError) {
+          showSnackbar('Failed to deactivate plan', 'error');
+        } else {
+          setIsActivePlan(false);
+          showSnackbar('Plan deactivated', 'info');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating plan active status:', error);
+      showSnackbar('An unexpected error occurred', 'error');
+    } finally {
+      setIsSettingActive(false);
+      setShowActivePlanConfirm(false);
     }
   };
 
@@ -723,6 +784,26 @@ export default function EditGradPlanPage() {
                     },
                   }}
                 />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      color="primary"
+                      checked={isActivePlan}
+                      onChange={handleActivePlanToggle}
+                      disabled={isSubmitting || isSettingActive}
+                    />
+                  }
+                  label="Set as Active Plan"
+                  sx={{
+                    m: 0,
+                    '.MuiFormControlLabel-label': {
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.06em',
+                      color: 'color-mix(in srgb, var(--foreground) 78%, var(--primary) 22%)',
+                    },
+                  }}
+                />
               </Box>
               <Button
                 variant="outlined"
@@ -815,6 +896,7 @@ export default function EditGradPlanPage() {
                 programs: gradPlan.programs,
               };
               console.log('🔄 Rendering GraduationPlanner with events:', events);
+              console.log('📦 enrichedPlan being passed to GraduationPlanner:', JSON.stringify(enrichedPlan, null, 2));
               return (
                 <GraduationPlanner
                   plan={enrichedPlan}
@@ -960,6 +1042,51 @@ export default function EditGradPlanPage() {
           </DialogActions>
         </Dialog>
       )}
+
+      {/* Active Plan Confirmation Dialog */}
+      <Dialog
+        open={showActivePlanConfirm}
+        onClose={() => !isSettingActive && setShowActivePlanConfirm(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+            Set as Active Plan?
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Setting this plan as active will deactivate your current active plan.
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Your active plan is the one displayed on your dashboard and used for academic tracking.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowActivePlanConfirm(false)}
+            disabled={isSettingActive}
+            sx={{ textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleSetActivePlan(true)}
+            variant="contained"
+            disabled={isSettingActive}
+            sx={{
+              backgroundColor: '#0a1f1a',
+              textTransform: 'none',
+              '&:hover': {
+                backgroundColor: '#043322',
+              },
+            }}
+          >
+            {isSettingActive ? 'Setting Active...' : 'Set as Active'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       </Box>
     </TooltipProvider>
   );

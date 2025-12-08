@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-import { Send, X, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Send, CheckCircle2 } from 'lucide-react';
 import TextField from '@mui/material/TextField';
 import MarkdownMessage from '@/components/chatbot/MarkdownMessage';
 import { StuLoader } from '@/components/ui/StuLoader';

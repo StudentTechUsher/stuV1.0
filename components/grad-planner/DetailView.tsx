@@ -13,6 +13,7 @@ interface DetailViewProps {
   onDeleteTerm?: (termIndex: number) => void;
   onEditEvent: (event?: Event) => void;
   onDeleteEvent: (eventId: string) => void;
+  onAddCourse?: (termIndex: number) => void;
 }
 
 export function DetailView({
@@ -24,7 +25,8 @@ export function DetailView({
   onMoveCourse,
   onDeleteTerm,
   onEditEvent,
-  onDeleteEvent
+  onDeleteEvent,
+  onAddCourse
 }: Readonly<DetailViewProps>) {
   const renderEventsAfterTerm = (termNumber: number, termEvents: Event[]) => {
     if (termEvents.length === 0) {
@@ -67,73 +69,33 @@ export function DetailView({
   };
 
   return (
-    <div className="flex flex-col gap-10">
-      {currentPlanData.reduce<React.ReactNode[]>((acc, term, index) => {
+    <div className="flex flex-col gap-6">
+      {currentPlanData.map((term, index) => {
         const termNumber = index + 1;
         const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
 
-        // Render term card
-        const termCard = (
-          <div key={`term-wrapper-${index}`} className="min-h-full">
-            <TermCard
-              term={term}
-              termIndex={index}
-              isEditMode={isEditMode}
-              currentPlanData={currentPlanData}
-              modifiedTerms={modifiedTerms}
-              movedCourses={movedCourses}
-              onMoveCourse={onMoveCourse}
-              onDeleteTerm={onDeleteTerm}
-            />
-          </div>
-        );
-
-        // Group terms in pairs (2 columns)
-        if (index % 2 === 0) {
-          // Start of a new row
-          const nextTerm = currentPlanData[index + 1];
-          const nextTermNumber = index + 2;
-          const nextEventsAfterTerm = nextTerm ? events.filter(e => e.afterTerm === nextTermNumber) : [];
-
-          const nextTermCard = nextTerm ? (
-            <div key={`term-wrapper-${index + 1}`} className="min-h-full">
+        return (
+          <React.Fragment key={`term-section-${index}`}>
+            {/* Term Card - Full Width */}
+            <div className="w-full">
               <TermCard
-                term={nextTerm}
-                termIndex={index + 1}
+                term={term}
+                termIndex={index}
                 isEditMode={isEditMode}
                 currentPlanData={currentPlanData}
                 modifiedTerms={modifiedTerms}
                 movedCourses={movedCourses}
                 onMoveCourse={onMoveCourse}
                 onDeleteTerm={onDeleteTerm}
+                onAddCourse={onAddCourse}
               />
             </div>
-          ) : null;
 
-          // Add row with 2 terms
-          acc.push(
-            <div
-              key={`row-${index}`}
-              className="grid w-full grid-cols-1 items-stretch gap-6 xl:grid-cols-2"
-            >
-              {termCard}
-              {nextTermCard}
-            </div>
-          );
-
-          const firstTermEvents = renderEventsAfterTerm(termNumber, eventsAfterThisTerm);
-          const secondTermEvents =
-            nextTerm && nextEventsAfterTerm.length > 0
-              ? renderEventsAfterTerm(nextTermNumber, nextEventsAfterTerm)
-              : null;
-
-          if (firstTermEvents) acc.push(firstTermEvents);
-          if (secondTermEvents) acc.push(secondTermEvents);
-        }
-        // Skip odd indices as they're handled in the even index case
-
-        return acc;
-      }, [])}
+            {/* Events/Milestones after this term */}
+            {eventsAfterThisTerm.length > 0 && renderEventsAfterTerm(termNumber, eventsAfterThisTerm)}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }

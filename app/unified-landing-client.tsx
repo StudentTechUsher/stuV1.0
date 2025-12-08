@@ -5,7 +5,6 @@ import { ArrowRight, Menu, X, GraduationCap, Building2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { SubmitEmailForm } from '@/components/ui/submit-email-form'
 import { useUniversityTheme } from "@/contexts/university-theme-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -14,7 +13,7 @@ type Audience = 'students' | 'universities'
 
 export function UnifiedLandingClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [audience, setAudience] = useState<Audience>('universities')
+  const [audience, setAudience] = useState<Audience>('students')
   const { university } = useUniversityTheme()
   const router = useRouter()
 
@@ -61,10 +60,6 @@ export function UnifiedLandingClient() {
     return () => subscription.unsubscribe()
   }, [router])
 
-  const toggleAudience = () => {
-    setAudience(prev => prev === 'students' ? 'universities' : 'students')
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 glass-effect">
@@ -99,21 +94,21 @@ export function UnifiedLandingClient() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="#features" className="text-base font-medium hover:text-primary transition-colors">
+            <Link href="#features" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               Features
             </Link>
-            <Link href="#testimonials" className="text-base font-medium hover:text-primary transition-colors">
+            <Link href="#testimonials" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               Testimonials
             </Link>
             {audience === 'universities' && (
-              <Link href="#pricing" className="text-base font-medium hover:text-primary transition-colors">
+              <Link href="#pricing" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
                 Pricing
               </Link>
             )}
-            <Link href="#faq" className="text-base font-medium hover:text-primary transition-colors">
+            <Link href="#faq" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               FAQ
             </Link>
-            <Link href="/about-us" className="text-base font-medium hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-md px-2 py-1">
+            <Link href="/about-us" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
               About Us
             </Link>
           </nav>
@@ -126,15 +121,16 @@ export function UnifiedLandingClient() {
             </Link>
             {audience === 'universities' ? (
               <Link href="/demo">
-                <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base">
+                <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                   Request a demo
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             ) : (
               <Link href="/signup">
-                <Button className="bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+                <Button className="bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
                   Get Started
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             )}
@@ -149,17 +145,17 @@ export function UnifiedLandingClient() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-zinc-100">
-            <div className="container mx-auto px-6 py-6 flex flex-col gap-6">
+            <div className="container mx-auto px-6 py-6 flex flex-col gap-3">
               <Link
                 href="#features"
-                className="text-base font-medium hover:text-primary"
+                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
               </Link>
               <Link
                 href="#testimonials"
-                className="text-base font-medium hover:text-primary"
+                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Testimonials
@@ -167,7 +163,7 @@ export function UnifiedLandingClient() {
               {audience === 'universities' && (
                 <Link
                   href="#pricing"
-                  className="text-base font-medium hover:text-primary"
+                  className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Pricing
@@ -175,14 +171,14 @@ export function UnifiedLandingClient() {
               )}
               <Link
                 href="#faq"
-                className="text-base font-medium hover:text-primary"
+                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 FAQ
               </Link>
               <Link
                 href="/about-us"
-                className="text-base font-medium hover:text-primary"
+                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 About Us
@@ -195,15 +191,16 @@ export function UnifiedLandingClient() {
                 </Link>
                 {audience === 'universities' ? (
                   <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium w-full py-2.5 text-base">
+                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium w-full py-2.5 text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                 ) : (
                   <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium transition-all">
+                    <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                       Get Started
+                      <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                 )}
@@ -215,27 +212,15 @@ export function UnifiedLandingClient() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden animate-fade-in">
+        <section className="relative py-20 overflow-hidden animate-fade-in" style={{ backgroundColor: '#f5f5f7' }}>
           {/* Extended FAB below header - Slider style */}
           <div className="absolute top-0 left-0 right-0 flex justify-center py-4 z-10">
-            <div className="relative flex items-center gap-2 bg-zinc-100 rounded-full p-1 shadow-sm">
-              <button
-                onClick={() => setAudience('universities')}
-                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all ${
-                  audience === 'universities'
-                    ? 'text-zinc-900'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-                aria-label="View for universities"
-              >
-                <Building2 className="h-5 w-5" />
-                <span>For Universities</span>
-              </button>
+            <div className="relative flex items-center gap-2 bg-zinc-200 rounded-full p-1 shadow-lg border border-zinc-300">
               <button
                 onClick={() => setAudience('students')}
                 className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all ${
                   audience === 'students'
-                    ? 'text-zinc-900'
+                    ? 'text-white'
                     : 'text-zinc-600 hover:text-zinc-900'
                 }`}
                 aria-label="View for students"
@@ -243,29 +228,40 @@ export function UnifiedLandingClient() {
                 <GraduationCap className="h-5 w-5" />
                 <span>For Students</span>
               </button>
+              <button
+                onClick={() => setAudience('universities')}
+                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all ${
+                  audience === 'universities'
+                    ? 'text-white'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+                aria-label="View for universities"
+              >
+                <Building2 className="h-5 w-5" />
+                <span>For Universities</span>
+              </button>
               {/* Sliding background indicator */}
               <div
-                className="absolute top-1 bottom-1 bg-primary rounded-full shadow-md transition-all duration-300 ease-in-out"
+                className="absolute top-1 bottom-1 bg-zinc-800 rounded-full shadow-md transition-all duration-300 ease-in-out"
                 style={{
-                  left: audience === 'universities' ? '4px' : '50%',
+                  left: audience === 'students' ? '4px' : '50%',
                   width: 'calc(50% - 4px)',
                 }}
               />
             </div>
           </div>
-          <div className="absolute inset-0 primary-glow opacity-50"></div>
           <div className="container px-4 md:px-6 relative">
             <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
               <div className="flex flex-col justify-center space-y-5 max-w-full">
                 <div className="space-y-2 max-w-full">
                   {audience === 'universities' ? (
                     <>
-                      <h1 className="text-black text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
-                        <div className="sm:whitespace-nowrap">Revolutionize Academic Planning</div>
-                        <div className="sm:whitespace-nowrap">at Your University</div>
+                      <h1 className="text-zinc-900 text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
+                        <div className="sm:whitespace-nowrap">Boost Graduation Rates</div>
+                        <div className="sm:whitespace-nowrap">Through Intelligent Course Planning</div>
                       </h1>
-                      <p className="max-w-[600px] text-zinc-600 text-[clamp(1rem,1.5vw,2rem)] leading-snug font-body-medium">
-                        Empower your students and advisors with an intelligent course scheduling and graduation mapping platform that ensures smoother degree progression and higher graduation rates.
+                      <p className="max-w-[600px] text-zinc-700 text-[clamp(1rem,1.5vw,1.5rem)] leading-snug font-body-medium">
+                        Our AI-powered planning tools reduce advisor bottlenecks and improve student outcomes with a career-centric focus.
                       </p>
                     </>
                   ) : (
@@ -286,12 +282,8 @@ export function UnifiedLandingClient() {
                           <span>stu.</span>
                         </div>
                       </h1>
-                      <br />
-                      <p className="max-w-[600px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug font-body-medium">
-                        Never stress about course planning again.
-                      </p>
-                      <p className="max-w-[1400px] text-zinc-600 text-[clamp(1rem,2vw,1.25rem)] leading-snug font-body-medium">
-                        stu helps you create the class schedule and graduation roadmap that fits your degree requirements and life commitments.
+                      <p className="max-w-[700px] text-zinc-700 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
+                        Too many course choices and not enough transparency? Not sure what kind of career you'll have after graduation? Stu helps you answer these questions with graduation maps customized to your goals!
                       </p>
                     </>
                   )}
@@ -311,7 +303,7 @@ export function UnifiedLandingClient() {
                       </Button>
                     </>
                   ) : (
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-semibold px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                       <Link href="#cta" className="flex items-center">
                         Try{" "}
                         <Image
@@ -340,7 +332,7 @@ export function UnifiedLandingClient() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center">
+        <section id="features" className="py-20 bg-gradient-to-b from-mint-200 via-mint-100 to-mint-50 flex flex-col items-center justify-center text-center">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
               <div className="space-y-2">
@@ -391,7 +383,7 @@ export function UnifiedLandingClient() {
                   ].map((feature) => (
                     <div
                       key={feature.title}
-                      className="group flex flex-col items-center gap-4 rounded-lg border border-border bg-white p-8 text-center transition-all hover:shadow-lg hover:bg-white/80"
+                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 bg-white p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                         <Image
@@ -441,7 +433,7 @@ export function UnifiedLandingClient() {
                   ].map((feature) => (
                     <div
                       key={feature.title}
-                      className="group flex flex-col items-center gap-2 rounded-lg border p-6 text-center transition-all hover:shadow-lg hover:shadow-mint-300/10"
+                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 bg-white p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                         <Image
@@ -452,8 +444,8 @@ export function UnifiedLandingClient() {
                           className="object-contain"
                         />
                       </div>
-                      <h3 className="text-xl font-bold">{feature.title}</h3>
-                      <p className="text-zinc-600">{feature.description}</p>
+                      <h3 className="text-xl font-header text-zinc-900">{feature.title}</h3>
+                      <p className="text-zinc-700 font-body-medium leading-relaxed">{feature.description}</p>
                     </div>
                   ))
                 )}
@@ -465,10 +457,14 @@ export function UnifiedLandingClient() {
         {/* Testimonials Section */}
         <section
           id="testimonials"
-          className="py-20 bg-gradient-to-b from-mint-100 to-white flex flex-col items-center justify-center text-center"
+          className="py-20 flex flex-col items-center justify-center text-center"
+          style={{ backgroundColor: '#f5f5f7' }}
         >
-          <br /> <br />
-          <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center gap-4 text-center mb-12">
+              <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+              <p className="text-xl text-zinc-700 font-body-medium">Here's what students are saying</p>
+            </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
               { name: "Tyler S", state: "CA", text: '"The easiest way to schedule classes that would actually help with the major I\'m taking"' },
@@ -477,43 +473,58 @@ export function UnifiedLandingClient() {
             ].map((review) => (
               <div
                 key={`${review.name}-${review.state}`}
-                className="group flex flex-col items-center gap-4 rounded-lg border border-border bg-white p-8 text-center transition-all hover:shadow-lg hover:bg-white/80"
+                className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 bg-white p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
               >
-                <h3 className="text-xl font-header text-card-foreground">
+                <h3 className="text-xl font-header text-zinc-900">
                   {review.name}, {review.state}
                 </h3>
-                <p className="text-muted-foreground font-body-medium">{review.text}</p>
+                <p className="text-zinc-700 font-body-medium leading-relaxed">{review.text}</p>
               </div>
             ))}
           </div>
+          </div>
         </section>
 
-        {/* CTA Section */}
-        <section id="cta" className="relative py-20 overflow-hidden flex flex-col items-center justify-center text-center">
-          <div className="absolute inset-0 primary-glow opacity-40"></div>
-          <div className="container px-4 md:px-6 relative">
-            <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
-                  {audience === 'universities'
-                    ? 'Ready to Transform Academic Planning?'
-                    : 'Ready to Simplify Your Academic Journey?'}
-                </h2>
-                <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
-                  {audience === 'universities'
-                    ? "Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu's planning platform."
-                    : 'Join students across the country who are already using stu to plan their perfect semester.'}
-                </p>
-              </div>
-              <div className="w-full max-w-md px-4">
-                {audience === 'universities' ? (
+        {/* CTA Section - Only shown for universities */}
+        {audience === 'universities' && (
+          <section id="cta" className="relative py-24 overflow-hidden bg-gradient-to-br from-mint-300 via-mint-400 to-mint-600 flex flex-col items-center justify-center text-center">
+            <div className="container px-4 md:px-6 relative">
+              <div className="flex flex-col items-center justify-center gap-6 text-center md:gap-10">
+                <div className="space-y-4">
+                  <h2 className="text-3xl font-header text-zinc-900 tracking-tighter md:text-5xl/tight font-bold">
+                    Ready to Transform Academic Planning?
+                  </h2>
+                  <p className="mx-auto max-w-[700px] text-zinc-800 font-body-medium md:text-xl leading-relaxed">
+                    Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu's planning platform.
+                  </p>
+                </div>
+                <div className="w-full max-w-md px-4">
                   <Link href="/demo">
-                    <Button className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium py-2.5 sm:py-3 text-base sm:text-lg">
+                    <Button className="w-full bg-zinc-900 hover:bg-zinc-800 text-white border-none font-semibold py-3 sm:py-4 text-base sm:text-lg shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105">
                       Request a demo
-                      <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                      <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
-                ) : (
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+        {/* Student CTA Section - Commented out per user request
+        {audience === 'students' && (
+          <section id="cta" className="relative py-20 overflow-hidden flex flex-col items-center justify-center text-center">
+            <div className="absolute inset-0 primary-glow opacity-40"></div>
+            <div className="container px-4 md:px-6 relative">
+              <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
+                    Ready to Simplify Your Academic Journey?
+                  </h2>
+                  <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
+                    Join students across the country who are already using stu to plan their perfect semester.
+                  </p>
+                </div>
+                <div className="w-full max-w-md px-4">
                   <div className="space-y-4">
                     <SubmitEmailForm />
                     <p className="text-xs text-center text-zinc-500">
@@ -527,11 +538,12 @@ export function UnifiedLandingClient() {
                       </Link>
                     </p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
+        */}
       </main>
 
       <footer className="border-t py-6 md:py-8">

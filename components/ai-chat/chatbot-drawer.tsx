@@ -17,7 +17,6 @@ import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Fab from "@mui/material/Fab";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import CloseIcon from "@mui/icons-material/Close";
 import { getEnvRole } from "@/lib/mock-role";
 import { chatbotSendMessage } from "@/lib/services/server-actions";
@@ -28,7 +27,6 @@ type QuickAction = { label: string; prompt: string };
 type Props = {
   open: boolean;
   onClose: () => void;
-  onOpen?: () => void;
   /** Optional: pass the current user role so we can tailor quick actions */
   role?: Role;
   /** Optional: override or extend the quick actions */
@@ -59,7 +57,6 @@ const DEFAULT_PRESETS: Record<Role, QuickAction[]> = {
 export default function ChatbotDrawer({
   open,
   onClose,
-  onOpen,
   role,
   presetPrompts,
   onSend,
@@ -226,33 +223,7 @@ export default function ChatbotDrawer({
   }
 
   return (
-    <>
-      {/* Floating FAB - Only visible when drawer is closed */}
-      {!open && (
-        <IconButton
-          onClick={onOpen}
-          sx={{
-            position: "fixed",
-            right: 24,
-            bottom: 24,
-            zIndex: (theme) => theme.zIndex.drawer + 2,
-            backgroundColor: "success.main",
-            color: "white",
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            "&:hover": {
-              backgroundColor: "success.dark",
-            },
-            boxShadow: 3,
-            transition: "all 0.3s ease-in-out",
-          }}
-        >
-          <SmartToyIcon />
-        </IconButton>
-      )}
-
-      <Drawer
+    <Drawer
         ref={drawerRef}
         anchor="right"
         open={open}
@@ -447,6 +418,5 @@ export default function ChatbotDrawer({
         </Stack>
       </Box>
     </Drawer>
-    </>
   );
 }

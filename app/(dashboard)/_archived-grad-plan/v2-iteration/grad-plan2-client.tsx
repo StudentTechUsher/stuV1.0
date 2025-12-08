@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { User } from '@supabase/supabase-js';
 import { PlanOverview } from '@/components/grad-planner/PlanOverview';
-import { SpaceView, PlanSpaceView } from '@/components/space/SpaceView';
+import { SpaceView } from '@/components/space/SpaceView';
 import { usePlanParser } from '@/components/grad-planner/usePlanParser';
-import { Button } from '@/components/ui/button';
-import { Pencil } from 'lucide-react';
 import PlanHeader from '@/components/grad-planner/PlanHeader';
 
 interface GradPlanRecord {
@@ -19,7 +16,6 @@ interface GradPlanRecord {
 }
 
 interface GradPlan2ClientProps {
-  user: User;
   studentProfile: {
     id: string;
     university_id: number;
@@ -31,23 +27,18 @@ interface GradPlan2ClientProps {
 }
 
 export default function GradPlan2Client({
-  user,
   studentProfile: initialStudentProfile,
   gradPlan,
   allGradPlans,
   prompt,
 }: Readonly<GradPlan2ClientProps>) {
   const [isZoomOut, setIsZoomOut] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const isEditMode = false;
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(gradPlan);
   const [studentProfile, setStudentProfile] = useState(initialStudentProfile);
 
   // Parse the plan data - use selectedGradPlan if available
   const { planData, assumptions } = usePlanParser(selectedGradPlan || gradPlan);
-
-  // Check if plan is approved
-  const isApproved = (selectedGradPlan?.is_active as boolean) || false;
-  const isActive = (selectedGradPlan?.is_active as boolean) || false;
 
   // Handle profile updates
   const handleProfileUpdate = (updates: Record<string, string | null>) => {

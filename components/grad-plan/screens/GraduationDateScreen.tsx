@@ -75,11 +75,11 @@ export default function GraduationDateScreen({
     if (defaultDate) {
       const extracted = extractSemesterAndYear(defaultDate);
       if (extracted) {
-        return extracted;
+        return { semester: extracted.semester, year: extracted.year };
       }
     }
     return {
-      semester: defaultSemester || '',
+      semester: defaultSemester || 'Fall',
       year: currentYear,
     };
   }, [defaultDate, defaultSemester, currentYear]);
@@ -87,7 +87,7 @@ export default function GraduationDateScreen({
   const [semester, setSemester] = useState(initialData.semester);
   const [year, setYear] = useState(String(initialData.year));
 
-  const isValid = semester && year;
+  const isValid = semester && year && Number(year) > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +136,7 @@ export default function GraduationDateScreen({
           <label className="block text-sm font-medium text-gray-900 mb-3">
             Graduation Semester
           </label>
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
             {SEMESTERS.map((sem) => (
               <OptionTile
                 key={sem}
@@ -160,7 +160,6 @@ export default function GraduationDateScreen({
             onChange={(e) => setYear(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white"
             disabled={isLoading}
-            autoFocus
           >
             <option value="">Select a year</option>
             {yearOptions.map((y) => (
