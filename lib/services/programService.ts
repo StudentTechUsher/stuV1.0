@@ -230,6 +230,14 @@ export async function fetchPrograms(options?: {
     const { data, error } = await query;
 
     if (error) {
+      console.error('Database error in fetchPrograms:', {
+        error,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        options
+      });
       throw new ProgramFetchError('Failed to fetch programs', error);
     }
 
