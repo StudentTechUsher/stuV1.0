@@ -13,6 +13,7 @@ interface PlanOverviewProps {
   onAddEvent: () => void;
   programs?: Array<{ id: number; name: string }>;
   createdWithTranscript?: boolean;
+  estGradSem?: string;
 }
 
 export function PlanOverview({
@@ -24,7 +25,8 @@ export function PlanOverview({
   onToggleView,
   onAddEvent,
   programs,
-  createdWithTranscript
+  createdWithTranscript,
+  estGradSem
 }: PlanOverviewProps) {
   const totalCredits = currentPlanData.reduce((total, term) => {
     const termCredits = term.credits_planned ||

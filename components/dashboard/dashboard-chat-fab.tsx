@@ -43,7 +43,6 @@ export default function DashboardChatFab({
     <ChatbotDrawer
       open={chatOpen}
       onClose={() => setChatOpen(false)}
-      onOpen={() => setChatOpen(true)}
       role={role}
       presetPrompts={presetPrompts}
     />
