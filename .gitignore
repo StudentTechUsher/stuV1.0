@@ -53,5 +53,6 @@ next-env.d.ts
 
 # specific sql files
 database_description.sql
+rls_policies.sql
 *.sqlite
 *.sqlite3

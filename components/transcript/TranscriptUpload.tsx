@@ -328,6 +328,24 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
         <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-left">
           <p className="text-sm text-destructive font-semibold">Extraction failed</p>
           <p className="text-sm text-destructive/80 mt-1">{error}</p>
+          {uploadMode === 'pdf' && (
+            <div className="mt-3 pt-3 border-t border-destructive/20">
+              <p className="text-sm text-destructive/90 font-medium mb-2">💡 Try an alternative method:</p>
+              <button
+                onClick={() => {
+                  setUploadMode('text');
+                  setError(null);
+                  setStatus('idle');
+                }}
+                className="text-sm text-black hover:underline font-medium"
+              >
+                Switch to "Paste Text" option →
+              </button>
+              <p className="text-xs text-destructive/70 mt-1">
+                Copy text directly from your PDF and paste it instead of uploading the file.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

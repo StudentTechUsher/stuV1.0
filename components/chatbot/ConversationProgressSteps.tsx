@@ -20,6 +20,7 @@ const MAIN_STEPS: ConversationStep[] = [
   ConversationStep.COURSE_SELECTION,
   ConversationStep.MILESTONES,
   ConversationStep.ADDITIONAL_CONCERNS,
+  ConversationStep.GENERATING_PLAN,
 ];
 
 export default function ConversationProgressSteps({

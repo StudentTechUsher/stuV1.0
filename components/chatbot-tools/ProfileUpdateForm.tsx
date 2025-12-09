@@ -14,6 +14,7 @@ interface ProfileUpdateFormProps {
     admission_year?: number | null;
     is_transfer?: boolean | null;
   };
+  hasActivePlan?: boolean;
   onSubmit: (data: ProfileUpdateInput) => void;
   onSkip?: () => void;
   onCareerPathfinderClick?: (industries?: string) => void;
@@ -71,6 +72,7 @@ function extractSemesterAndYear(dateStr: string): { semester: string; year: numb
 
 export default function ProfileUpdateForm({
   currentValues,
+  hasActivePlan = false,
   onSubmit,
   onSkip,
   onCareerPathfinderClick,
@@ -242,8 +244,8 @@ export default function ProfileUpdateForm({
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="mt-5">
+        {/* Action Buttons */}
+        <div className="mt-5 space-y-2">
           <Button
             onClick={handleGraduationContinue}
             disabled={!isGraduationValid}
@@ -251,6 +253,16 @@ export default function ProfileUpdateForm({
           >
             Continue
           </Button>
+
+          {hasActivePlan && onSkip && (
+            <Button
+              onClick={onSkip}
+              variant="outline"
+              className="w-full"
+            >
+              Skip to Student Classification
+            </Button>
+          )}
         </div>
       </div>
     );

@@ -7,6 +7,7 @@ import ProgramSelectionForm from './ProgramSelectionForm';
 import CourseSelectionForm from './CourseSelectionForm';
 import MilestoneForm from './MilestoneForm';
 import AdditionalConcernsForm from './AdditionalConcernsForm';
+import GeneratePlanConfirmationForm from './GeneratePlanConfirmationForm';
 import CareerSuggestionsDisplay from './CareerSuggestionsDisplay';
 import ProgramSuggestionsDisplay from './ProgramSuggestionsDisplay';
 import { ProfileUpdateInput } from '@/lib/chatbot/tools/profileUpdateTool';
@@ -19,7 +20,7 @@ import { AdditionalConcernsInput } from '@/lib/chatbot/tools/additionalConcernsT
 import { CareerSuggestionsInput } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { ProgramSuggestionsInput } from '@/lib/chatbot/tools/programSuggestionsTool';
 
-export type ToolType = 'profile_update' | 'transcript_check' | 'student_type' | 'career_pathfinder' | 'program_pathfinder' | 'program_selection' | 'course_selection' | 'milestones' | 'additional_concerns' | 'career_suggestions' | 'program_suggestions';
+export type ToolType = 'profile_update' | 'transcript_check' | 'student_type' | 'career_pathfinder' | 'program_pathfinder' | 'program_selection' | 'course_selection' | 'milestones' | 'additional_concerns' | 'career_suggestions' | 'program_suggestions' | 'generate_plan_confirmation';
 
 interface ToolRendererProps {
   toolType: ToolType;
@@ -31,6 +32,7 @@ interface ToolRendererProps {
       admission_year?: number | null;
       is_transfer?: boolean | null;
     };
+    hasActivePlan?: boolean;
     hasCourses?: boolean;
     hasTranscript?: boolean;
     studentType?: 'undergraduate' | 'graduate';
@@ -64,6 +66,7 @@ export default function ToolRenderer({
       return (
         <ProfileUpdateForm
           currentValues={toolData.currentValues || {}}
+          hasActivePlan={toolData.hasActivePlan as boolean | undefined}
           onSubmit={(data: ProfileUpdateInput) => onToolComplete(data)}
           onSkip={onToolSkip}
           onCareerPathfinderClick={onCareerPathfinderClick}
@@ -129,6 +132,13 @@ export default function ToolRenderer({
       return (
         <AdditionalConcernsForm
           onSubmit={(data: AdditionalConcernsInput) => onToolComplete(data)}
+        />
+      );
+
+    case 'generate_plan_confirmation':
+      return (
+        <GeneratePlanConfirmationForm
+          onSubmit={(data: { confirmed: boolean }) => onToolComplete(data)}
         />
       );
 

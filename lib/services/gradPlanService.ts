@@ -79,9 +79,43 @@ export async function GetAllGradPlans(profile_id: string) {
 
 /**
  * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Checks if a user has an active graduation plan
+ * @param profile_id - the unique id of the user's profile
+ * @returns boolean - true if user has an active plan
+ */
+export async function checkUserHasActivePlan(profile_id: string): Promise<boolean> {
+  // First, get the student record to get the numeric student_id
+  const { data: studentData, error: studentError } = await supabase
+    .from('student')
+    .select('id')
+    .eq('profile_id', profile_id)
+    .single();
+
+  if (studentError || !studentData) {
+    return false;
+  }
+
+  // Check if there's an active grad plan
+  const { data, error } = await supabase
+    .from('grad_plan')
+    .select('id')
+    .eq('student_id', studentData.id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error) {
+    console.error('❌ Error checking for active grad plan:', error);
+    return false;
+  }
+
+  return !!data;
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
  * Fetches the active graduation plan for a user
- * @param profile_id 
- * @returns 
+ * @param profile_id
+ * @returns
  */
 export async function GetActiveGradPlan(profile_id: string) {
   

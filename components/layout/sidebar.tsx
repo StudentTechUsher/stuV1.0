@@ -249,16 +249,11 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
               {/* AI Assistant (only for students) */}
               {role === 'student' && onOpenChat && (
                 <li>
-                  <button
+                  <AIAssistantButton
                     onClick={onOpenChat}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg transition-all duration-150 min-h-[40px] ${
-                      isExpanded ? '' : 'justify-center'
-                    } text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-slate-100 dark:hover:text-slate-100 light:hover:text-slate-800 hover:bg-slate-800/40 dark:hover:bg-slate-800/40 light:hover:bg-slate-200/30 focus:outline-none focus:ring-2 focus:ring-[#12F987]/50 focus:ring-offset-2 dark:focus:ring-offset-[#020617] light:focus:ring-offset-white`}
-                    aria-label="AI Assistant"
-                  >
-                    <Bot size={ICON_SIZE} className="flex-shrink-0" />
-                    {isExpanded && <span className="text-sm font-medium">AI Assistant</span>}
-                  </button>
+                    isExpanded={isExpanded}
+                    isDark={isDark}
+                  />
                 </li>
               )}
 
@@ -416,6 +411,68 @@ function NavItem({ item, isActive, isExpanded, isDark }: NavItemProps) {
 
 interface ThemeModeToggleProps {
   isExpanded: boolean;
+}
+
+interface AIAssistantButtonProps {
+  onClick: () => void;
+  isExpanded: boolean;
+  isDark: boolean;
+}
+
+function AIAssistantButton({ onClick, isExpanded, isDark }: AIAssistantButtonProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isHovered && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setTooltipPos({
+        top: rect.top + rect.height / 2,
+        left: rect.right + 12,
+      });
+    }
+  }, [isHovered]);
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <button
+        ref={buttonRef}
+        onClick={onClick}
+        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg transition-all duration-150 min-h-[40px] ${
+          isExpanded ? '' : 'justify-center'
+        } text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-slate-100 dark:hover:text-slate-100 light:hover:text-slate-800 hover:bg-slate-800/40 dark:hover:bg-slate-800/40 light:hover:bg-slate-200/30 focus:outline-none focus:ring-2 focus:ring-[#12F987]/50 focus:ring-offset-2 dark:focus:ring-offset-[#020617] light:focus:ring-offset-white`}
+        aria-label="AI Assistant"
+      >
+        <Bot size={ICON_SIZE} className="flex-shrink-0" />
+        {isExpanded && <span className="text-sm font-medium">AI Assistant</span>}
+      </button>
+
+      {/* Tooltip (appears on hover in collapsed mode) */}
+      {isHovered && !isExpanded &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed bg-slate-900 dark:bg-slate-900 light:bg-white border border-slate-700 dark:border-slate-700 light:border-slate-200 text-slate-50 dark:text-slate-50 light:text-slate-900 text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none"
+            role="tooltip"
+            style={{
+              top: `${tooltipPos.top}px`,
+              left: `${tooltipPos.left}px`,
+              transform: 'translateY(-50%)',
+              zIndex: 9999,
+              boxShadow: isDark ? '0 10px 25px rgba(0, 0, 0, 0.5)' : '0 10px 25px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            AI Assistant
+          </div>,
+          document.body
+        )}
+    </div>
+  );
 }
 
 function ThemeModeToggle({ isExpanded }: ThemeModeToggleProps) {

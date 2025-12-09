@@ -1,5 +1,6 @@
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import { checkUserHasCourses } from '@/lib/chatbot/tools/transcriptCheckTool';
+import { checkUserHasActivePlan } from '@/lib/services/gradPlanService';
 import CreatePlanClient from './create-plan-client';
 
 // Force dynamic rendering for this page because it uses cookies
@@ -25,11 +26,15 @@ export default async function CreateGradPlanPage() {
   // Check if user has courses uploaded
   const hasCourses = await checkUserHasCourses(user.id);
 
+  // Check if user has an active grad plan
+  const hasActivePlan = await checkUserHasActivePlan(user.id);
+
   return (
     <CreatePlanClient
       user={user}
       studentProfile={userProfile}
       hasCourses={hasCourses}
+      hasActivePlan={hasActivePlan}
     />
   );
 }
