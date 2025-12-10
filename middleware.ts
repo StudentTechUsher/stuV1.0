@@ -40,6 +40,7 @@ function handleAuthRedirects(
     '/home',
     '/landing',
     '/how-it-works',
+    '/security',
   ]
 
   const isPublicPath = publicPaths.includes(pathname) ||
@@ -92,14 +93,44 @@ export async function middleware(request: NextRequest) {
   const { data: { session }, error } = await supabase.auth.getSession()
 
   if (error) {
-    console.error('Middleware auth error:', error.message)
-  }
+    // Auth session missing is expected for unauthenticated users
+    // Only log unexpected errors
+    if (error.message !== 'Auth session missing!') {
+      console.error('Middleware auth error:', error.message)
+    }
 
+    // Clear invalid/corrupted auth cookies to prevent stuck state
+    const cookiesToClear = [
+      'sb-auth-token',
+      'sb-refresh-token',
+    ]
+
+    cookiesToClear.forEach(cookieName => {
+      response.cookies.delete(cookieName)
+    })
+
+    // Also clear any Supabase cookies that match the pattern
+    const allCookies = request.cookies.getAll()
+    allCookies.forEach(cookie => {
+      if (cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token')) {
+        response.cookies.delete(cookie.name)
+      }
+    })
+  }
 
   // Handle auth-based redirects
   const authRedirect = handleAuthRedirects(request, session)
   if (authRedirect) {
-    //console.log('Redirecting to:', authRedirect.headers.get('location'))
+    // If we're redirecting due to no session, make sure to clear cookies in the redirect response too
+    if (!session) {
+      const cookiesToClear = request.cookies.getAll()
+        .filter(cookie => cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token'))
+
+      cookiesToClear.forEach(cookie => {
+        authRedirect.cookies.delete(cookie.name)
+      })
+    }
+
     return authRedirect
   }
 

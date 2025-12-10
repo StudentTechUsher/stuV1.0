@@ -93,17 +93,22 @@ export function UnifiedLandingClient() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-8">
             <Link href="#features" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               Features
             </Link>
-            <Link href="#testimonials" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
+            {/* <Link href="#testimonials" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               Testimonials
-            </Link>
+            </Link> */}
             {audience === 'universities' && (
-              <Link href="#pricing" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
-                Pricing
-              </Link>
+              <>
+                {/* <Link href="#pricing" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
+                  Pricing
+                </Link> */}
+                <Link href="/security" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
+                  Security & Compliance
+                </Link>
+              </>
             )}
             <Link href="#faq" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               FAQ
@@ -113,7 +118,7 @@ export function UnifiedLandingClient() {
             </Link>
           </nav>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-6">
             <Link href="/login">
               <Button variant="outline" className="border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium px-6 py-2.5 text-base transition-all">
                 Sign In
@@ -137,14 +142,14 @@ export function UnifiedLandingClient() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="lg:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-zinc-100">
+          <div className="lg:hidden border-t border-zinc-100">
             <div className="container mx-auto px-6 py-6 flex flex-col gap-3">
               <Link
                 href="#features"
@@ -153,21 +158,30 @@ export function UnifiedLandingClient() {
               >
                 Features
               </Link>
-              <Link
+              {/* <Link
                 href="#testimonials"
                 className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Testimonials
-              </Link>
+              </Link> */}
               {audience === 'universities' && (
-                <Link
-                  href="#pricing"
-                  className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Pricing
-                </Link>
+                <>
+                  {/* <Link
+                    href="#pricing"
+                    className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Pricing
+                  </Link> */}
+                  <Link
+                    href="/security"
+                    className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Security & Compliance
+                  </Link>
+                </>
               )}
               <Link
                 href="#faq"

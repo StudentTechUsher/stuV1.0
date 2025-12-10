@@ -375,7 +375,7 @@ export function getStepLabel(step: ConversationStep): string {
     [ConversationStep.ELECTIVES]: 'Elective Courses',
     [ConversationStep.STUDENT_INTERESTS]: 'Your Interests',
     [ConversationStep.MILESTONES]: 'Academic Milestones',
-    [ConversationStep.ADDITIONAL_CONCERNS]: 'Additional Information',
+    [ConversationStep.ADDITIONAL_CONCERNS]: 'Additional Concerns',
     [ConversationStep.GENERATING_PLAN]: 'Generate Plan',
     [ConversationStep.COMPLETE]: 'Complete',
   };

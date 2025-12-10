@@ -1770,53 +1770,52 @@ export default function CourseSelectionForm({
               </TextField>
             </div>
 
-            {/* Step 3: Course with Add Button */}
+            {/* Step 3: Course */}
             <div>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                  select
-                  fullWidth
-                  label="3. Select Course"
-                  value={selectedElectiveCourse?.offering_id.toString() || ''}
-                  onChange={(e) => {
-                    const course = availableCourses.find(c => c.offering_id.toString() === e.target.value);
-                    setSelectedElectiveCourse(course || null);
-                  }}
-                  disabled={!selectedDepartment || loadingCourses}
-                  size="small"
-                  sx={{ flex: 1 }}
-                >
-                  {loadingCourses ? (
-                    <MenuItem value="">
-                      <CircularProgress size={20} />
+              <TextField
+                select
+                fullWidth
+                label="3. Select Course"
+                value={selectedElectiveCourse?.offering_id.toString() || ''}
+                onChange={(e) => {
+                  const course = availableCourses.find(c => c.offering_id.toString() === e.target.value);
+                  setSelectedElectiveCourse(course || null);
+                }}
+                disabled={!selectedDepartment || loadingCourses}
+                size="small"
+              >
+                {loadingCourses ? (
+                  <MenuItem value="">
+                    <CircularProgress size={20} />
+                  </MenuItem>
+                ) : availableCourses.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    {selectedDepartment ? 'No courses available' : 'Select a department first'}
+                  </MenuItem>
+                ) : (
+                  availableCourses.map((course) => (
+                    <MenuItem key={course.offering_id} value={course.offering_id.toString()}>
+                      {course.course_code} - {course.title} ({course.credits_decimal || 0} cr)
                     </MenuItem>
-                  ) : availableCourses.length === 0 ? (
-                    <MenuItem value="" disabled>
-                      {selectedDepartment ? 'No courses available' : 'Select a department first'}
-                    </MenuItem>
-                  ) : (
-                    availableCourses.map((course) => (
-                      <MenuItem key={course.offering_id} value={course.offering_id.toString()}>
-                        {course.course_code} - {course.title} ({course.credits_decimal || 0} cr)
-                      </MenuItem>
-                    ))
-                  )}
-                </TextField>
+                  ))
+                )}
+              </TextField>
+            </div>
 
-                <Button
-                  onClick={handleAddElective}
-                  disabled={!selectedElectiveCourse}
-                  style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'black',
-                    minWidth: '44px',
-                    padding: '8px'
-                  }}
-                  className="hover:opacity-90 disabled:opacity-50 transition-opacity"
-                >
-                  <Plus size={20} />
-                </Button>
-              </Box>
+            {/* Add Class Button */}
+            <div>
+              <Button
+                onClick={handleAddElective}
+                disabled={!selectedElectiveCourse}
+                style={{
+                  backgroundColor: selectedElectiveCourse ? 'var(--primary)' : 'var(--muted)',
+                  color: selectedElectiveCourse ? 'black' : 'var(--muted-foreground)',
+                }}
+                className="w-full hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
+              >
+                <Plus size={20} />
+                <span>Add Class</span>
+              </Button>
             </div>
 
             {electiveError && (

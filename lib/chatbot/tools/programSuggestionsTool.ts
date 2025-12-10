@@ -8,7 +8,7 @@ import { z } from 'zod';
 // Individual program suggestion schema
 export const ProgramSuggestionSchema = z.object({
   program_name: z.string(),
-  program_type: z.enum(['major', 'minor', 'certificate']),
+  program_type: z.enum(['major', 'minor', 'emphasis']),
   match_score: z.number().min(0).max(100),
   reason: z.string(),
   career_alignment: z.string().optional(),
@@ -147,7 +147,7 @@ export const programSuggestionsToolDefinition = {
               },
               program_type: {
                 type: 'string',
-                enum: ['major', 'minor', 'certificate'],
+                enum: ['major', 'minor', 'emphasis'],
                 description: 'Type of program',
               },
               match_score: {
@@ -202,18 +202,22 @@ export async function fetchAvailableProgramsForRAG(
 ): Promise<Array<{ name: string; type: string; description?: string }>> {
   try {
     const programTypes = studentType === 'undergraduate'
-      ? ['major', 'minor', 'certificate']
+      ? ['major', 'minor', 'emphasis']
       : ['graduate'];
 
     const allPrograms: Array<{ name: string; type: string; description?: string }> = [];
 
     for (const type of programTypes) {
-      const response = await fetch(`/api/programs/by-type?universityId=${universityId}&programType=${type}`);
-      if (!response.ok) continue;
+      const response = await fetch(`/api/programs?type=${type}&universityId=${universityId}`);
+      if (!response.ok) {
+        console.error(`Failed to fetch programs for type ${type}:`, response.status, response.statusText);
+        continue;
+      }
 
       const data = await response.json();
-      if (data.programs && Array.isArray(data.programs)) {
-        data.programs.forEach((program: { name: string; target_total_credits?: number }) => {
+      // The API returns an array directly, not wrapped in a 'programs' property
+      if (Array.isArray(data)) {
+        data.forEach((program: { name: string; target_total_credits?: number }) => {
           allPrograms.push({
             name: program.name,
             type: type,

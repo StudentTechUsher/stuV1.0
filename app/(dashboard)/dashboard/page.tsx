@@ -49,7 +49,11 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (userErr) {
-    console.error('User error:', userErr)
+    // Auth session missing is expected when user is not logged in
+    // Only log unexpected errors
+    if (userErr.message !== 'Auth session missing!') {
+      console.error('User error:', userErr);
+    }
   }
 
   if (userErr || !user) {

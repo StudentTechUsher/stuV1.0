@@ -9,8 +9,14 @@ export default function PrivacyPolicyPage() {
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-          Last updated: September 19, 2025
+          Last updated: December 9, 2025
         </Typography>
+
+        <Box sx={{ mb: 4, p: 2, backgroundColor: '#fff3cd', borderRadius: 1, border: '1px solid #ffc107' }}>
+          <Typography variant="body2">
+            <strong>For U.S. Educational Institutions:</strong> This platform complies with the Family Educational Rights and Privacy Act (FERPA). We handle student education records in accordance with FERPA requirements and institutional policies.
+          </Typography>
+        </Box>
 
         <Box sx={{ '& > *': { mb: 3 } }}>
           <Box>
@@ -64,15 +70,21 @@ export default function PrivacyPolicyPage() {
             <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
               4. Categories of Personal Data Collected
             </Typography>
+            <Typography variant="body1" paragraph sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+              Important: All student data we collect is provided directly by you. We do not collect data from third parties without your knowledge.
+            </Typography>
             <Typography variant="body1" paragraph>
               Depending on your role, we may process the following data:
             </Typography>
-            
+
             <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>
               For Students:
             </Typography>
             <Typography variant="body1" paragraph>
-              Name, contact details, academic records, course enrollments, login credentials, communications with advisors.
+              Name, contact details, academic records (that you provide), course enrollments, graduation plans, login credentials, communications with advisors, career goals and preferences.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              You control what information you provide to the platform. You may upload your transcript, enter course information, and create graduation plans. We only know what you tell us.
             </Typography>
 
             <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>
@@ -138,25 +150,61 @@ export default function PrivacyPolicyPage() {
 
           <Box>
             <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-              7. Data Sharing and Transfers
+              7. Data Sharing and Access
+            </Typography>
+
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>
+              Who Can See Your Data:
             </Typography>
             <Typography variant="body1" paragraph>
-              Data may be shared with:
+              Your student data (including graduation plans) may be accessed by:
             </Typography>
             <Box component="ul" sx={{ pl: 3 }}>
               <Typography component="li" variant="body1" paragraph>
-                Authorized institutional staff;
+                <strong>You:</strong> Full access to all your data;
               </Typography>
               <Typography component="li" variant="body1" paragraph>
-                IT service providers under strict data protection agreements;
+                <strong>Authorized Academic Advisors:</strong> Only advisors approved by your institution for your specific academic program(s) have limited access to view and edit details in your graduation plans to provide guidance;
               </Typography>
               <Typography component="li" variant="body1" paragraph>
-                Regulators or authorities if required by law.
+                <strong>Your Institution&apos;s Administrators:</strong> Staff designated by your university to manage the platform;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                <strong>IT Service Providers:</strong> Technical personnel under strict data protection agreements (for system maintenance only, not for viewing student information);
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                <strong>Legal Authorities:</strong> Only if required by law or valid legal process.
               </Typography>
             </Box>
-            <Typography variant="body1" paragraph>
-              We do not transfer personal data outside the EEA unless adequate safeguards are in place in line with Chapter V of the GDPR.
+
+            <Typography variant="body2" sx={{ mt: 2, p: 2, backgroundColor: '#e3f2fd', borderRadius: 1 }}>
+              <strong>Access Control:</strong> Advisors can only access graduation plans for students in programs they are authorized to advise. They cannot see data for students outside their assigned programs.
             </Typography>
+
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 3, mb: 1 }}>
+              International Data Transfers:
+            </Typography>
+            <Typography variant="body1" paragraph>
+              We do not transfer personal data outside the EEA unless adequate safeguards are in place in line with Chapter V of the GDPR. For U.S.-based institutions, data is stored and processed within the United States.
+            </Typography>
+
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 3, mb: 1 }}>
+              What We Do NOT Do:
+            </Typography>
+            <Box component="ul" sx={{ pl: 3 }}>
+              <Typography component="li" variant="body1" paragraph>
+                We do NOT sell your data to third parties;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                We do NOT share your data with marketing companies;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                We do NOT use your academic records for purposes unrelated to educational planning;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                We do NOT allow unauthorized advisors to access your information.
+              </Typography>
+            </Box>
           </Box>
 
           <Box>
@@ -214,19 +262,104 @@ export default function PrivacyPolicyPage() {
 
           <Box>
             <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-              11. Automated Decision-Making
+              11. FERPA Compliance (U.S. Educational Institutions)
             </Typography>
             <Typography variant="body1" paragraph>
-              We do not engage in automated decision-making, including profiling, that produces legal effects concerning you.
+              For students at U.S. educational institutions, we comply with the Family Educational Rights and Privacy Act (FERPA), 20 U.S.C. § 1232g.
+            </Typography>
+
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>
+              Your Rights Under FERPA:
+            </Typography>
+            <Box component="ul" sx={{ pl: 3 }}>
+              <Typography component="li" variant="body1" paragraph>
+                Right to inspect and review your education records;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Right to request amendment of inaccurate records;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Right to consent to disclosures of personally identifiable information;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Right to file a complaint with the U.S. Department of Education.
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>
+              FERPA-Permitted Disclosures:
+            </Typography>
+            <Typography variant="body1" paragraph>
+              We disclose your information only as permitted under FERPA, including:
+            </Typography>
+            <Box component="ul" sx={{ pl: 3 }}>
+              <Typography component="li" variant="body1" paragraph>
+                <strong>School Officials with Legitimate Educational Interest:</strong> Authorized advisors and administrators at your institution who need access to fulfill their professional responsibilities;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                <strong>With Your Consent:</strong> When you provide written consent for specific disclosures;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                <strong>As Required by Law:</strong> In response to lawfully issued subpoenas or court orders.
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold', mt: 2, mb: 1 }}>
+              Institutional Role:
+            </Typography>
+            <Typography variant="body1" paragraph>
+              Your educational institution retains ownership and control of your education records. We act as a service provider on behalf of your institution. Your institution&apos;s FERPA policies and procedures apply to the data stored in this platform.
+            </Typography>
+
+            <Typography variant="body2" sx={{ mt: 2, p: 2, backgroundColor: '#f0f8ff', borderRadius: 1 }}>
+              <strong>Questions about FERPA?</strong> Contact your institution&apos;s Registrar or FERPA Compliance Officer. To file a FERPA complaint, contact: Family Policy Compliance Office, U.S. Department of Education, 400 Maryland Avenue, SW, Washington, DC 20202.
             </Typography>
           </Box>
 
           <Box>
             <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-              12. Changes to This Policy
+              12. Automated Decision-Making
             </Typography>
             <Typography variant="body1" paragraph>
-              We may update this Privacy Policy from time to time. The most recent version will always be posted on our website with the effective date.
+              We do not engage in automated decision-making, including profiling, that produces legal effects concerning you. AI features are advisory only and all decisions remain with you and your advisors.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+              13. Data Security
+            </Typography>
+            <Typography variant="body1" paragraph>
+              We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction. These measures include:
+            </Typography>
+            <Box component="ul" sx={{ pl: 3 }}>
+              <Typography component="li" variant="body1" paragraph>
+                Encryption of data in transit and at rest;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Role-based access controls limiting who can view your data;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Regular security audits and vulnerability assessments;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Employee training on FERPA and data privacy requirements;
+              </Typography>
+              <Typography component="li" variant="body1" paragraph>
+                Comprehensive audit logging of all data access.
+              </Typography>
+            </Box>
+            <Typography variant="body1" paragraph>
+              For detailed information about our security practices, please see our Security Documentation or contact our security team.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+              14. Changes to This Policy
+            </Typography>
+            <Typography variant="body1" paragraph>
+              We may update this Privacy Policy from time to time. The most recent version will always be posted on our website with the effective date. If we make material changes, we will notify you through the platform or via email.
             </Typography>
           </Box>
         </Box>
