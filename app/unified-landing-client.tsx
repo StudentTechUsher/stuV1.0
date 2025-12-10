@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Menu, X, GraduationCap, Building2 } from "lucide-react"
+import { ArrowRight, Menu, X, GraduationCap, Building2, HelpCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -14,6 +14,9 @@ type Audience = 'students' | 'universities'
 export function UnifiedLandingClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [audience, setAudience] = useState<Audience>('students')
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
   const { university } = useUniversityTheme()
   const router = useRouter()
 
@@ -27,9 +30,13 @@ export function UnifiedLandingClient() {
     htmlElement.dataset.forceLightLanding = 'true'
     bodyElement.dataset.forceLightLanding = 'true'
 
+    // Enable smooth scrolling for anchor links
+    htmlElement.style.scrollBehavior = 'smooth'
+
     return () => {
       delete htmlElement.dataset.forceLightLanding
       delete bodyElement.dataset.forceLightLanding
+      htmlElement.style.scrollBehavior = ''
       if (wasDark) {
         htmlElement.classList.add('dark')
       }
@@ -42,9 +49,20 @@ export function UnifiedLandingClient() {
 
     // Check initial session
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/dashboard')
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('Auth session error:', error)
+          setAuthError('Unable to verify your session. Please try signing in again.')
+          return
+        }
+        if (session) {
+          setIsRedirecting(true)
+          router.push('/dashboard')
+        }
+      } catch (error) {
+        console.error('Unexpected auth error:', error)
+        setAuthError('An unexpected error occurred. Please refresh the page and try again.')
       }
     }
 
@@ -52,7 +70,11 @@ export function UnifiedLandingClient() {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setAuthError(null)
+      }
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        setIsRedirecting(true)
         router.push('/dashboard')
       }
     })
@@ -62,6 +84,39 @@ export function UnifiedLandingClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Skip to main content link for keyboard navigation */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-zinc-900 focus:px-4 focus:py-2 focus:rounded-md focus:font-medium focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
+      {/* Auth Error Banner */}
+      {authError && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 relative z-50">
+          <div className="container mx-auto px-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800">{authError}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setAuthError(null)}
+              className="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-40 glass-effect">
         <div className="container mx-auto px-6 flex h-20 items-center justify-between">
           <div className="flex items-center">
@@ -97,14 +152,9 @@ export function UnifiedLandingClient() {
             <Link href="#features" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
               Features
             </Link>
-            {/* <Link href="#testimonials" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
-              Testimonials
-            </Link> */}
             {audience === 'universities' && (
               <>
-                {/* <Link href="#pricing" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
-                  Pricing
-                </Link> */}
+                {/* TODO: Add pricing page and uncomment link */}
                 <Link href="/security" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
                   Security & Compliance
                 </Link>
@@ -158,22 +208,9 @@ export function UnifiedLandingClient() {
               >
                 Features
               </Link>
-              {/* <Link
-                href="#testimonials"
-                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Testimonials
-              </Link> */}
               {audience === 'universities' && (
                 <>
-                  {/* <Link
-                    href="#pricing"
-                    className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Pricing
-                  </Link> */}
+                  {/* TODO: Add pricing page and uncomment link */}
                   <Link
                     href="/security"
                     className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
@@ -224,15 +261,15 @@ export function UnifiedLandingClient() {
         )}
       </header>
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden animate-fade-in" style={{ backgroundColor: '#f5f5f7' }}>
+        <section className="relative py-20 overflow-hidden animate-fade-in border-b-2 border-zinc-300" style={{ backgroundColor: '#d0d0d0' }}>
           {/* Extended FAB below header - Slider style */}
           <div className="absolute top-0 left-0 right-0 flex justify-center py-4 z-10">
             <div className="relative flex items-center gap-2 bg-zinc-200 rounded-full p-1 shadow-lg border border-zinc-300">
               <button
                 onClick={() => setAudience('students')}
-                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all ${
+                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all cursor-pointer ${
                   audience === 'students'
                     ? 'text-white'
                     : 'text-zinc-600 hover:text-zinc-900'
@@ -244,7 +281,7 @@ export function UnifiedLandingClient() {
               </button>
               <button
                 onClick={() => setAudience('universities')}
-                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all ${
+                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all cursor-pointer ${
                   audience === 'universities'
                     ? 'text-white'
                     : 'text-zinc-600 hover:text-zinc-900'
@@ -305,33 +342,38 @@ export function UnifiedLandingClient() {
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   {audience === 'universities' ? (
-                    <>
+                    <div className="flex flex-col items-start gap-2">
                       <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium text-sm sm:text-base px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
                         <Link href="/demo" className="flex items-center">
                           Request a demo
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                       </Button>
-                      <Button className="bg-transparent border-2 border-primary text-zinc-900 hover:bg-primary/10 font-medium text-sm sm:text-base px-4 sm:px-6 py-2.5 sm:py-3">
-                        Learn More
-                      </Button>
-                    </>
+                      <p className="text-xs sm:text-sm text-zinc-600 max-w-md">
+                        Schedule a personalized demo to see how stu can transform your institution's academic planning
+                      </p>
+                    </div>
                   ) : (
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-                      <Link href="#cta" className="flex items-center">
-                        Try{" "}
-                        <Image
-                          src="/stu_icon_black.png"
-                          alt="stu. logo"
-                          width={24}
-                          height={24}
-                          className="rounded-50 -mb-2 pb-3 m-1 ml-2 mr-2"
-                          priority
-                        />{" "}
-                        Today
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
+                    <div className="flex flex-col items-start gap-2">
+                      <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                        <Link href="/signup" className="flex items-center">
+                          Try{" "}
+                          <Image
+                            src="/stu_icon_black.png"
+                            alt="stu. logo"
+                            width={24}
+                            height={24}
+                            className="rounded-50 -mb-2 pb-3 m-1 ml-2 mr-2"
+                            priority
+                          />{" "}
+                          Today
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <p className="text-xs sm:text-sm text-zinc-600 max-w-md">
+                        Create your free account and start building your personalized graduation plan in minutes
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -346,15 +388,38 @@ export function UnifiedLandingClient() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 bg-gradient-to-b from-mint-200 via-mint-100 to-mint-50 flex flex-col items-center justify-center text-center">
+        <section id="features" className="py-20 bg-gradient-to-b from-mint-200 via-mint-100 to-mint-50 flex flex-col items-center justify-center text-center border-b-2 border-zinc-300">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
               <div className="space-y-2">
-                <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
-                  {audience === 'universities'
-                    ? 'Comprehensive Academic Planning Solutions'
-                    : 'Your Personal Academic Planner'}
-                </h2>
+                <div className="flex items-center justify-center gap-2">
+                  <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
+                    {audience === 'universities'
+                      ? 'Comprehensive Academic Planning Solutions'
+                      : 'Your Personal Academic Planner'}
+                  </h2>
+                  <div className="relative">
+                    <button
+                      onMouseEnter={() => setActiveTooltip('features')}
+                      onMouseLeave={() => setActiveTooltip(null)}
+                      onClick={() => setActiveTooltip(activeTooltip === 'features' ? null : 'features')}
+                      className="text-zinc-500 hover:text-primary transition-colors cursor-help"
+                      aria-label="More information about features"
+                    >
+                      <HelpCircle className="h-6 w-6" />
+                    </button>
+                    {activeTooltip === 'features' && (
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 text-white text-sm rounded-lg p-3 shadow-xl z-10">
+                        <p>
+                          {audience === 'universities'
+                            ? 'Our platform integrates seamlessly with your existing systems to provide real-time insights and automated planning tools.'
+                            : 'All features are included in your free account. No credit card required to get started.'}
+                        </p>
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
                   {audience === 'universities'
                     ? "Help your students navigate their academic journey while providing valuable insights for your registrar's office."
@@ -471,12 +536,33 @@ export function UnifiedLandingClient() {
         {/* Testimonials Section */}
         <section
           id="testimonials"
-          className="py-20 flex flex-col items-center justify-center text-center"
-          style={{ backgroundColor: '#f5f5f7' }}
+          className="py-20 flex flex-col items-center justify-center text-center border-b-2 border-zinc-300"
+          style={{ backgroundColor: '#d0d0d0' }}
         >
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center gap-4 text-center mb-12">
-              <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">Student Reviews</h2>
+                <div className="relative">
+                  <button
+                    onMouseEnter={() => setActiveTooltip('testimonials')}
+                    onMouseLeave={() => setActiveTooltip(null)}
+                    onClick={() => setActiveTooltip(activeTooltip === 'testimonials' ? null : 'testimonials')}
+                    className="text-zinc-500 hover:text-primary transition-colors cursor-help"
+                    aria-label="More information about reviews"
+                  >
+                    <HelpCircle className="h-6 w-6" />
+                  </button>
+                  {activeTooltip === 'testimonials' && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 text-white text-sm rounded-lg p-3 shadow-xl z-10">
+                      <p>
+                        Real feedback from students who have used stu to successfully plan their academic journey and graduate on time.
+                      </p>
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <p className="text-xl text-zinc-700 font-body-medium">Here's what students are saying</p>
             </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -501,7 +587,7 @@ export function UnifiedLandingClient() {
 
         {/* CTA Section - Only shown for universities */}
         {audience === 'universities' && (
-          <section id="cta" className="relative py-24 overflow-hidden bg-gradient-to-br from-mint-300 via-mint-400 to-mint-600 flex flex-col items-center justify-center text-center">
+          <section id="cta" className="relative py-24 overflow-hidden bg-gradient-to-br from-mint-300 via-mint-400 to-mint-600 flex flex-col items-center justify-center text-center border-b-2 border-zinc-300">
             <div className="container px-4 md:px-6 relative">
               <div className="flex flex-col items-center justify-center gap-6 text-center md:gap-10">
                 <div className="space-y-4">
@@ -524,40 +610,7 @@ export function UnifiedLandingClient() {
             </div>
           </section>
         )}
-        {/* Student CTA Section - Commented out per user request
-        {audience === 'students' && (
-          <section id="cta" className="relative py-20 overflow-hidden flex flex-col items-center justify-center text-center">
-            <div className="absolute inset-0 primary-glow opacity-40"></div>
-            <div className="container px-4 md:px-6 relative">
-              <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
-                    Ready to Simplify Your Academic Journey?
-                  </h2>
-                  <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
-                    Join students across the country who are already using stu to plan their perfect semester.
-                  </p>
-                </div>
-                <div className="w-full max-w-md px-4">
-                  <div className="space-y-4">
-                    <SubmitEmailForm />
-                    <p className="text-xs text-center text-zinc-500">
-                      By joining, you agree to our{" "}
-                      <Link href="#" className="underline underline-offset-2 hover:text-primary">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link href="#" className="underline underline-offset-2 hover:text-primary">
-                        Privacy Policy
-                      </Link>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-        */}
+        {/* TODO: Add student CTA section with email signup form */}
       </main>
 
       <footer className="border-t py-6 md:py-8">
@@ -589,25 +642,17 @@ export function UnifiedLandingClient() {
                     Features
                   </Link>
                 </li>
-                {audience === 'universities' && (
-                  <li>
-                    <Link href="#pricing" className="text-muted-foreground hover:text-primary">
-                      Pricing
-                    </Link>
-                  </li>
-                )}
+                {/* TODO: Add pricing page and uncomment link */}
                 <li>
                   <Link href="#testimonials" className="text-muted-foreground hover:text-primary">
                     Testimonials
                   </Link>
                 </li>
-                {audience === 'universities' && (
-                  <li>
-                    <Link href="#faq" className="text-muted-foreground hover:text-primary">
-                      FAQ
-                    </Link>
-                  </li>
-                )}
+                <li>
+                  <Link href="#faq" className="text-muted-foreground hover:text-primary">
+                    FAQ
+                  </Link>
+                </li>
               </ul>
             </div>
             <div className="space-y-4">
@@ -722,6 +767,16 @@ export function UnifiedLandingClient() {
           </div>
         </div>
       </footer>
+
+      {/* Loading overlay when redirecting */}
+      {isRedirecting && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 shadow-2xl flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="text-lg font-medium text-zinc-900">Redirecting to dashboard...</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
