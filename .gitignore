@@ -56,3 +56,10 @@ database_description.sql
 rls_policies.sql
 *.sqlite
 *.sqlite3
+
+# compliance and sensitive documents
+*Compliance*/
+*compliance*/
+Data Security Checklist*.pdf
+# Note: Compliance records should NEVER be in git repo
+# Store in secure external location (Google Drive, etc.)

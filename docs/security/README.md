@@ -2,6 +2,18 @@
 
 This directory contains comprehensive security documentation for university review and compliance auditing.
 
+## Quick Start
+
+**New to this documentation?** Start here:
+
+👉 **[Personnel Security Quick Start Guide](./PERSONNEL_SECURITY_QUICKSTART.md)** - Implement FERPA personnel requirements in 4 weeks
+
+This guide walks you through:
+- Setting up secure compliance folder storage
+- Implementing FERPA training for all employees
+- Creating tracking systems
+- Achieving audit readiness
+
 ## Document Index
 
 ### Core Security Documents
@@ -152,23 +164,38 @@ All documentation is available in:
 - **Markdown format:** In this directory
 - **PDF format:** Available through /security page on the website
 
+## Implementation Tools
+
+### Templates & Setup Guides
+
+To implement the policies documented here, use these practical resources:
+
+- **[Compliance Folder Setup Guide](./COMPLIANCE_FOLDER_SETUP.md)** - How to set up secure storage for personnel records
+- **[Templates Folder](./templates/)** - Ready-to-use templates for:
+  - Acceptable Use Policy
+  - Employee Confidentiality Agreement
+  - Training Tracker
+  - See [templates/README.md](./templates/README.md) for full list
+
+**⚠️ Important:** Actual signed agreements and employee records must be stored in a secure compliance folder OUTSIDE this repository. See the [Compliance Folder Setup Guide](./COMPLIANCE_FOLDER_SETUP.md) for details.
+
 ## PTAC Checklist Mapping
 
 Our documentation addresses all items in the PTAC Data Security Checklist:
 
-| PTAC Item | Our Documentation |
-|-----------|------------------|
-| Policy and governance | [DATA_GOVERNANCE.md](./DATA_GOVERNANCE.md) |
-| Personnel security | [PERSONNEL_SECURITY.md](./PERSONNEL_SECURITY.md) |
-| Physical security | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md) (hosting section) |
-| Authentication | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#authentication) |
-| Access control | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#authorization-and-access-control) |
-| Layered defense | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#network-security) |
-| Secure configurations | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#secure-development-practices) |
-| Firewalls and IDPS | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#network-security) |
-| Vulnerability scanning | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#vulnerability-management) |
-| Patch management | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#vulnerability-management) |
-| Mobile devices | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#mobile-device-security) |
-| Emailing confidential data | [DATA_GOVERNANCE.md](./DATA_GOVERNANCE.md) |
-| Incident handling | [INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) |
-| Audit and compliance | [AUDIT_COMPLIANCE.md](./AUDIT_COMPLIANCE.md) |
+| PTAC Item | Our Documentation | Implementation Tools |
+|-----------|------------------|---------------------|
+| Policy and governance | [DATA_GOVERNANCE.md](./DATA_GOVERNANCE.md) | - |
+| Personnel security | [PERSONNEL_SECURITY.md](./PERSONNEL_SECURITY.md) | [Templates](./templates/), [Setup Guide](./COMPLIANCE_FOLDER_SETUP.md) |
+| Physical security | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md) (hosting section) | - |
+| Authentication | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#authentication) | - |
+| Access control | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#authorization-and-access-control) | - |
+| Layered defense | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#network-security) | - |
+| Secure configurations | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#secure-development-practices) | - |
+| Firewalls and IDPS | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#network-security) | - |
+| Vulnerability scanning | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#vulnerability-management) | - |
+| Patch management | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#vulnerability-management) | - |
+| Mobile devices | [TECHNICAL_SECURITY.md](./TECHNICAL_SECURITY.md#mobile-device-security) | - |
+| Emailing confidential data | [DATA_GOVERNANCE.md](./DATA_GOVERNANCE.md) | - |
+| Incident handling | [INCIDENT_RESPONSE.md](./INCIDENT_RESPONSE.md) | - |
+| Audit and compliance | [AUDIT_COMPLIANCE.md](./AUDIT_COMPLIANCE.md) | - |

@@ -58,19 +58,29 @@ All personnel must acknowledge and comply with our Acceptable Use Policy.
 
 ### Initial Training
 
-All new employees complete security training within first week:
+All new employees complete security training within first week using official Department of Education resources:
 
-- **FERPA Overview:** 2-hour online course
+- **FERPA Training:** U.S. Department of Education online training modules at https://studentprivacy.ed.gov/content/online-training-modules
 - **Security Awareness:** Phishing, social engineering, password security
 - **System-Specific Training:** How to use systems securely
 - **Incident Reporting:** How to report security concerns
 
+**Training must be completed BEFORE access to any student data is granted.**
+
 ### Ongoing Training
 
-- **Annual Refresher:** Yearly FERPA and security training
+- **Annual Refresher:** Yearly FERPA training via ED.gov modules
 - **Role-Specific Training:** Additional training based on job role
-- **Ad-Hoc Training:** Training on new threats and procedures
+- **Ad-Hoc Training:** Training on new threats and procedures (may trigger additional FERPA refreshers)
 - **Phishing Simulations:** Quarterly simulated phishing tests
+
+### Training Documentation
+
+All training completion is tracked and documented:
+- Training completion certificates stored in secure compliance folder
+- Training tracker maintained with employee name, module, completion date
+- Certificates retained for duration of employment + 3 years
+- Available for audit review upon request
 
 ### Training Topics
 
@@ -124,20 +134,61 @@ Separate acknowledgment that employee has:
 
 ## Access Management
 
+### Database Access Tiers
+
+Stu operates on a strict access control model for university databases:
+
+**Tier 0 - No Access (Default)**
+- All employees by default have NO access to production student data
+- This is the default state for all personnel
+
+**Tier 1 - Monitoring Only**
+- Database health monitoring (no PII access)
+- Performance metrics
+- System status checks
+- Requires: FERPA training
+
+**Tier 2 - Anonymized Data Access**
+- Access to de-identified datasets only
+- For approved data analysis projects
+- Requires: FERPA training, project approval, NDA
+- Limited to data experts with legitimate analytical purpose
+
+**Tier 3 - AI Response Data**
+- Access to AI conversation/response tables only
+- For model improvement and safety monitoring
+- Requires: FERPA training, role approval, NDA
+- Limited to AI/ML engineers with legitimate purpose
+
+**Tier 4 - Write Access to University Database**
+- **RESTRICTED** to official Stu consulting representatives only
+- Full database access for setup, configuration, and support
+- Requires: FERPA training, background check, NDA, manager approval
+- All actions logged and auditable
+- Access reviewed quarterly
+
+**Database Isolation:**
+Each partner university receives a dedicated, isolated database instance. Stu employees cannot access data across university boundaries.
+
 ### Onboarding Process
 
-1. **Access Request:** Manager submits access request
-2. **Approval:** Security team reviews and approves
-3. **Provisioning:** IT creates accounts with appropriate permissions
-4. **Training:** Employee completes security training
-5. **Acknowledgment:** Employee signs acceptable use policy
+1. **Access Request:** Manager submits access request with tier justification
+2. **Background Check:** Completed for Tier 2+ access
+3. **FERPA Training:** Employee completes ED.gov training modules
+4. **Approval:** Security team reviews and approves based on role necessity
+5. **Confidentiality Agreement:** Employee signs NDA and FERPA acknowledgment
+6. **Provisioning:** IT creates accounts with appropriate tier permissions
+7. **Acknowledgment:** Employee signs acceptable use policy
+
+**Access is NEVER granted before all requirements are met.**
 
 ### During Employment
 
 - **Least Privilege:** Access limited to necessary data only
 - **Regular Reviews:** Quarterly access recertification
 - **Role Changes:** Access adjusted when role changes
-- **Temporary Access:** Time-limited access for special projects
+- **Temporary Access:** Time-limited access for special projects (requires approval)
+- **Access Logging:** All database access logged and monitored
 
 ### Offboarding Process
 
