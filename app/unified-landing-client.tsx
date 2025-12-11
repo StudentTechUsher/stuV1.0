@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Menu, X, GraduationCap, Building2, HelpCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect } from "react"
 import { useUniversityTheme } from "@/contexts/university-theme-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -21,7 +21,9 @@ export function UnifiedLandingClient() {
   const router = useRouter()
 
   // Force the landing page to always render in light mode, regardless of user preference.
-  useEffect(() => {
+  // useLayoutEffect runs synchronously before browser paint, ensuring this runs
+  // before DarkModeProvider's useEffect applies any theme changes.
+  useLayoutEffect(() => {
     const htmlElement = document.documentElement
     const bodyElement = document.body
     const wasDark = htmlElement.classList.contains('dark')

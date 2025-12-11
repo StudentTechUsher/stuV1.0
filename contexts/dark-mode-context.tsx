@@ -49,9 +49,15 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
   useEffect(() => {
     if (!mounted) return;
 
+    const htmlElement = document.documentElement;
+
+    // Don't apply dark mode if landing page has forced light mode
+    if (htmlElement.dataset.forceLightLanding === 'true') {
+      return;
+    }
+
     const isDark = mode === 'dark' || (mode === 'system' && systemDark);
 
-    const htmlElement = document.documentElement;
     if (isDark) {
       htmlElement.classList.add('dark');
     } else {
