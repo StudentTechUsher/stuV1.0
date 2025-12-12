@@ -878,3 +878,27 @@ export async function deleteAllReadNotificationsAction(userId: string) {
         };
     }
 }
+
+/**
+ * Server action to approve a pending student
+ * AUTHORIZATION: ADVISORS AND ADMINS ONLY
+ */
+export async function approveStudentAction(
+    studentId: string,
+    fname: string,
+    lname: string
+) {
+    try {
+        const { approveStudent } = await import('./profileService.server');
+        await approveStudent(studentId, fname, lname);
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error approving student:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to approve student',
+        };
+    }
+}

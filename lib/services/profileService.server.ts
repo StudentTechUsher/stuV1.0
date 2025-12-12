@@ -514,3 +514,96 @@ export async function completeOnboarding(
     throw new ProfileUpdateError('Unexpected error completing onboarding', error);
   }
 }
+
+/**
+ * AUTHORIZATION: ADVISORS AND ADMINS ONLY
+ * Fetches all pending students (onboarded = false) for approval
+ * @returns Array of pending student profiles
+ */
+export async function fetchPendingStudents() {
+  const supabase = await createSupabaseServerComponentClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id,
+      email,
+      fname,
+      lname,
+      created_at,
+      university_id,
+      university:university_id (
+        id,
+        name
+      )
+    `)
+    .eq('role_id', 3) // Students only
+    .eq('onboarded', false) // Not yet approved
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Failed to fetch pending students:', error);
+    throw new ProfileFetchError('Failed to fetch pending students', error);
+  }
+
+  return data || [];
+}
+
+/**
+ * AUTHORIZATION: ADVISORS AND ADMINS ONLY
+ * Approves a pending student by updating their name, setting onboarded=true, and creating student record
+ * @param studentId - The student's profile ID
+ * @param fname - First name
+ * @param lname - Last name
+ */
+export async function approveStudent(
+  studentId: string,
+  fname: string,
+  lname: string
+) {
+  const supabase = await createSupabaseServerComponentClient();
+
+  try {
+    // Step 1: Update profile with name and onboarded status
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        fname,
+        lname,
+        onboarded: true,
+      })
+      .eq('id', studentId)
+      .eq('role_id', 3); // Safety check: only update students
+
+    if (profileError) {
+      console.error('Failed to update student profile:', profileError);
+      throw new ProfileUpdateError('Failed to update student profile', profileError);
+    }
+
+    // Step 2: Create student record
+    const { error: studentError } = await supabase
+      .from('student')
+      .insert({
+        profile_id: studentId,
+        selected_programs: [],
+        year_in_school: 'Freshman', // Default value
+      });
+
+    if (studentError) {
+      // Check if student record already exists
+      if (studentError.code === '23505') {
+        console.warn('Student record already exists for profile:', studentId);
+      } else {
+        console.error('Failed to create student record:', studentError);
+        throw new ProfileUpdateError('Failed to create student record', studentError);
+      }
+    }
+
+    console.log('Student approved successfully:', studentId);
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error approving student', error);
+  }
+}
