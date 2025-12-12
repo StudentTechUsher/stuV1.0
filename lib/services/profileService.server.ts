@@ -520,7 +520,20 @@ export async function completeOnboarding(
  * Fetches all pending students (onboarded = false) for approval
  * @returns Array of pending student profiles
  */
-export async function fetchPendingStudents() {
+interface PendingStudent {
+  id: string;
+  email: string | null;
+  fname: string | null;
+  lname: string | null;
+  created_at: string;
+  university_id: number;
+  university: {
+    id: number;
+    name: string;
+  } | null;
+}
+
+export async function fetchPendingStudents(): Promise<PendingStudent[]> {
   const supabase = await createSupabaseServerComponentClient();
 
   const { data, error } = await supabase
@@ -532,10 +545,7 @@ export async function fetchPendingStudents() {
       lname,
       created_at,
       university_id,
-      university:university_id (
-        id,
-        name
-      )
+      university:university_id(id, name)
     `)
     .eq('role_id', 3) // Students only
     .eq('onboarded', false) // Not yet approved
@@ -546,7 +556,20 @@ export async function fetchPendingStudents() {
     throw new ProfileFetchError('Failed to fetch pending students', error);
   }
 
-  return data || [];
+  if (!data) return [];
+
+  // Transform the data to ensure correct types
+  return data.map((student) => ({
+    id: student.id,
+    email: student.email,
+    fname: student.fname,
+    lname: student.lname,
+    created_at: student.created_at,
+    university_id: student.university_id,
+    university: Array.isArray(student.university)
+      ? student.university[0] || null
+      : student.university,
+  })) as PendingStudent[];
 }
 
 /**
