@@ -5,6 +5,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { UniversityThemeProvider } from "@/contexts/university-theme-context";
 import { DarkModeProvider } from "@/contexts/dark-mode-context";
+import { PostHogProvider } from "@/contexts/posthog-provider";
+import { ReportIssueButton } from "@/components/report-issue/report-issue-button";
 
 const geistSans = localFont({
   src: [
@@ -120,11 +122,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <DarkModeProvider>
-          <UniversityThemeProvider>
-            {children}
-          </UniversityThemeProvider>
-        </DarkModeProvider>
+        <PostHogProvider>
+          <DarkModeProvider>
+            <UniversityThemeProvider>
+              {children}
+            </UniversityThemeProvider>
+          </DarkModeProvider>
+          <ReportIssueButton />
+        </PostHogProvider>
         <Analytics />
       </body>
     </html>
