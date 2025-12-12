@@ -683,6 +683,21 @@ export async function updateProfileAction(userId: string, updates: Record<string
 }
 
 /**
+ * Server action to check if student record exists
+ * AUTHORIZATION: AUTHENTICATED USERS
+ */
+export async function hasStudentRecordAction(userId: string) {
+    try {
+        const { hasStudentRecord } = await import('./profileService.server');
+        const exists = await hasStudentRecord(userId);
+        return { success: true, exists };
+    } catch (error) {
+        console.error('Error checking student record:', error);
+        return { success: false, exists: false, error: error instanceof Error ? error.message : 'Failed to check student record' };
+    }
+}
+
+/**
  * Server action for chatbot profile updates
  * AUTHORIZATION: STUDENTS AND ABOVE (own profile only)
  */

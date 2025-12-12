@@ -36,7 +36,7 @@ import { getAdditionalConcernsConfirmationMessage, type AdditionalConcernsInput 
 import { getMilestoneConfirmationMessage, type MilestoneInput } from '@/lib/chatbot/tools/milestoneTool';
 import { CAREER_PATHFINDER_INITIAL_MESSAGE, getCareerSelectionConfirmationMessage, type CareerSuggestionsInput, CAREER_PATHFINDER_SYSTEM_PROMPT, careerSuggestionsToolDefinition } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { type ProgramSuggestionsInput, programSuggestionsToolDefinition, buildProgramPathfinderSystemPrompt, fetchAvailableProgramsForRAG } from '@/lib/chatbot/tools/programSuggestionsTool';
-import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction } from '@/lib/services/server-actions';
+import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction, hasStudentRecordAction } from '@/lib/services/server-actions';
 
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -623,6 +623,12 @@ export default function CreatePlanClient({
           });
         }
 
+        const primaryProgramsCount = selectedPrograms.filter(p => p.programType !== 'general_education').length;
+        const programConfirmationMessage = getProgramSelectionConfirmationMessage(
+          programData.studentType,
+          primaryProgramsCount > 0 ? primaryProgramsCount : selectedPrograms.length
+        );
+
         // Update conversation state
         setConversationState(prev => {
           const updated = updateState(prev, {
@@ -647,9 +653,15 @@ export default function CreatePlanClient({
           .filter(p => p.programType === 'general_education')
           .map(p => p.programId);
 
-        // Clear messages and go directly to course selection tool
+        // Show confirmation and then move to course selection tool
         setTimeout(() => {
-          setMessages([
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: programConfirmationMessage,
+              timestamp: new Date(),
+            },
             {
               role: 'tool',
               content: '',
@@ -857,7 +869,22 @@ export default function CreatePlanClient({
           return;
         }
 
-        // User confirmed - clear chat and show loading animation
+        // Check if user has a student record before generating
+        const studentCheck = await hasStudentRecordAction(user.id);
+        if (!studentCheck.success || !studentCheck.exists) {
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'I encountered an issue: Your student account hasn\'t been fully set up yet. This usually means your registration is still pending approval from an advisor.\n\nPlease contact your academic advisor or admin@stuplanning.com for assistance.',
+              timestamp: new Date(),
+            },
+          ]);
+          setIsProcessing(false);
+          return;
+        }
+
+        // User confirmed and has student record - clear chat and show loading animation
         setMessages([
           {
             role: 'assistant',
@@ -1006,7 +1033,7 @@ export default function CreatePlanClient({
         }));
 
         // Add confirmation message with commitment level question
-        const confirmationMessage = `Perfect! I've recorded **${careerSelection.selectedCareer}** as your career goal.
+        const confirmationMessage = `${getCareerSelectionConfirmationMessage(careerSelection.selectedCareer)}
 
 One last question: On a scale of 1-10, how committed are you to this career path?
 
@@ -1677,7 +1704,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
     }
   };
 
-  const handleCancel = () => {
+  const _handleCancel = () => {
     router.push('/grad-plan');
   };
 
