@@ -844,6 +844,29 @@ export async function getCoursesByDepartmentAction(
 }
 
 /**
+ * Server action to get a single course by course code
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ */
+export async function getCourseByCodeAction(
+    universityId: number,
+    courseCode: string
+) {
+    'use server';
+    try {
+        const { getCourseByCode } = await import('./courseOfferingService');
+        const course = await getCourseByCode(universityId, courseCode);
+        return { success: true, course };
+    } catch (error) {
+        console.error('Error fetching course by code:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch course',
+            course: null,
+        };
+    }
+}
+
+/**
  * Server action to mark all notifications as read for the current user
  * AUTHORIZATION: USERS can only mark their own notifications
  */

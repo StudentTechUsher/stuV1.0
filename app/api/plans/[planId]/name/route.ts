@@ -14,7 +14,6 @@ import { validateRequest, ValidationError, formatValidationError } from '@/lib/v
 async function handleUpdatePlanName(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const planId = searchParams.get('planId') || (request.url.split('/').slice(-3, -1))[0];
 
     // Extract planId from the URL path more reliably
     const pathParts = request.nextUrl.pathname.split('/');

@@ -6,15 +6,16 @@ export interface Course {
 }
 
 export type EventType =
-  | 'Major/Minor Application'
+  | 'Apply for Graduation'
+  | 'Apply for Graduate School'
+  | 'Co-op'
   | 'Internship'
+  | 'Major/Minor Application'
+  | 'Religious Deferment (Mission)'
+  | 'Research Project'
   | 'Sabbatical'
   | 'Study Abroad'
-  | 'Research Project'
   | 'Teaching Assistant'
-  | 'Co-op'
-  | 'Apply for Graduate School'
-  | 'Apply for Graduation'
   | 'Other';
 
 export type MilestoneTiming =

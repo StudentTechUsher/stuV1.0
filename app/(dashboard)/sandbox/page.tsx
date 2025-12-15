@@ -3,7 +3,7 @@
 import { SandboxPlanner } from '@/components/sandbox-planner/SandboxPlanner';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import type { Course, StudentProfile } from '@/components/sandbox-planner/types';
+import type { Course, SemesterLane, StudentProfile } from '@/components/sandbox-planner/types';
 
 /**
  * Sandbox Mode Page
@@ -155,7 +155,7 @@ export default async function SandboxPage() {
   /**
    * Handle saving plan to backend
    */
-  async function handleSavePlan(semesters: any[]) {
+  async function handleSavePlan(semesters: SemesterLane[]) {
     'use server';
 
     try {

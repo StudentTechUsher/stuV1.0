@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
-import { sendIssueReportEmail } from '@/lib/services/emailService';
 
 export async function POST(request: NextRequest) {
   return handleReportIssue(request);
@@ -88,22 +87,6 @@ async function handleReportIssue(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // Get public URL for JSON report
-    const { data: jsonUrlData } = supabase.storage
-      .from('error_logs')
-      .getPublicUrl(jsonPath);
-
-    // Send email notification
-    await sendIssueReportEmail({
-      description,
-      stepsToReproduce: stepsToReproduce || undefined,
-      pageUrl,
-      sessionReplayUrl: sessionReplayUrl || undefined,
-      userEmail,
-      userRole,
-      reportUrl: jsonUrlData.publicUrl,
-    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

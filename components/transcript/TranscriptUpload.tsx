@@ -19,7 +19,8 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
   const [isAiParsing, setIsAiParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [parsingMessageIndex, setParsingMessageIndex] = useState(0);
-  const [uploadMode, setUploadMode] = useState<'pdf' | 'text'>('pdf');
+  // PDF upload is currently disabled - defaulting to text paste mode
+  const [uploadMode, setUploadMode] = useState<'pdf' | 'text'>('text');
   const [pastedText, setPastedText] = useState<string>('');
 
   const parsingMessages = [
@@ -200,8 +201,8 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
 
       {status === "idle" || status === "failed" ? (
         <>
-          {/* Mode Toggle */}
-          <div className="flex gap-2 mb-4 justify-center">
+          {/* Mode Toggle - PDF upload temporarily disabled */}
+          {/* <div className="flex gap-2 mb-4 justify-center">
             <button
               onClick={() => setUploadMode('pdf')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -222,8 +223,9 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
             >
               Paste Text
             </button>
-          </div>
+          </div> */}
 
+          {/* PDF upload mode - temporarily disabled
           {uploadMode === 'pdf' ? (
             <>
               <div
@@ -254,7 +256,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
                 className="hidden"
               />
             </>
-          ) : (
+          ) : ( */}
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground text-center">
                 Copy text from your transcript and paste it below
@@ -273,7 +275,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
                 Parse Transcript
               </button>
             </div>
-          )}
+          {/* )} */}
         </>
       ) : (
         <div className="py-8">
@@ -326,8 +328,9 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
 
       {error && (
         <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-left">
-          <p className="text-sm text-destructive font-semibold">Extraction failed</p>
+          <p className="text-sm text-destructive font-semibold">Parsing failed</p>
           <p className="text-sm text-destructive/80 mt-1">{error}</p>
+          {/* PDF upload mode suggestion - disabled since PDF mode is not available
           {uploadMode === 'pdf' && (
             <div className="mt-3 pt-3 border-t border-destructive/20">
               <p className="text-sm text-destructive/90 font-medium mb-2">💡 Try an alternative method:</p>
@@ -345,7 +348,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
                 Copy text directly from your PDF and paste it instead of uploading the file.
               </p>
             </div>
-          )}
+          )} */}
         </div>
       )}
 

@@ -540,6 +540,65 @@ export async function getCoursesByDepartmentCode(
  * @param departmentCode - Department code to filter by
  * @returns Array of unique course offerings
  */
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Get a single course by course code
+ * @param universityId - University ID to filter courses
+ * @param courseCode - Course code to search for (e.g., "CCE 101" or "CCE101")
+ * @returns Course offering with description and prerequisites, or null if not found
+ */
+export async function getCourseByCode(
+  universityId: number,
+  courseCode: string
+): Promise<CourseOffering | null> {
+  try {
+    // First, try exact match with the course code as provided
+    let result = await supabase
+      .from('course_offerings')
+      .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
+      .eq('university_id', universityId)
+      .eq('course_code', courseCode)
+      .not('course_code', 'is', null)
+      .not('title', 'is', null)
+      .limit(1)
+      .single();
+
+    // If exact match not found, try with normalized format
+    // Remove space before the first digit: "REL C 200" -> "REL C200", "CCE 101" -> "CCE101"
+    if (result.error && result.error.code === 'PGRST116') {
+      const normalizedCode = courseCode.replace(/\s+(?=\d)/, '');
+
+      // Only try normalized version if it's different from original
+      if (normalizedCode !== courseCode) {
+        result = await supabase
+          .from('course_offerings')
+          .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
+          .eq('university_id', universityId)
+          .eq('course_code', normalizedCode)
+          .not('course_code', 'is', null)
+          .not('title', 'is', null)
+          .limit(1)
+          .single();
+      }
+    }
+
+    if (result.error) {
+      // If no course found, return null instead of throwing
+      if (result.error.code === 'PGRST116') {
+        return null;
+      }
+      throw new CourseOfferingFetchError('Failed to fetch course', result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching course', error);
+  }
+}
+
 export async function getCoursesByDepartment(
   universityId: number,
   college: string,
