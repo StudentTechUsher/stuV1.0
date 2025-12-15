@@ -32,6 +32,16 @@ export interface GradPlanCreatedData {
   planAccessId: string;
 }
 
+export interface IssueReportData {
+  description: string;
+  stepsToReproduce?: string;
+  pageUrl: string;
+  sessionReplayUrl?: string;
+  userEmail?: string;
+  userRole?: string;
+  reportUrl?: string;
+}
+
 /**
  * AUTHORIZATION: PUBLIC (used during onboarding)
  * Sends a student submission email to admin
@@ -394,5 +404,196 @@ stuplanning.com
     if (error instanceof EmailSendError) {
       console.error('Email send error:', error.message);
     }
+  }
+}
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS
+ * Sends an issue report email to admin@stuplanning.com
+ * @param data - Issue report data
+ */
+export async function sendIssueReportEmail(data: IssueReportData) {
+  try {
+    const apiKey = process.env.RESEND_API_KEY ?? process.env.NEXT_PUBLIC_RESEND_API_KEY;
+
+    if (!apiKey) {
+      throw new EmailConfigError();
+    }
+
+    const resend = new Resend(apiKey);
+
+    // Validate required fields
+    if (!data.description || !data.pageUrl) {
+      throw new EmailSendError('Missing required fields: description and pageUrl are required');
+    }
+
+    // HTML email body
+    const htmlBody = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 700px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+              color: white;
+              padding: 25px;
+              border-radius: 10px 10px 0 0;
+              text-align: center;
+            }
+            .content {
+              background: #ffffff;
+              padding: 30px;
+              border: 1px solid #e0e0e0;
+              border-top: none;
+              border-radius: 0 0 10px 10px;
+            }
+            .section {
+              margin-bottom: 25px;
+            }
+            .section-title {
+              font-weight: 600;
+              color: #0a0a0a;
+              margin-bottom: 8px;
+              font-size: 14px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .section-content {
+              background: #f9fafb;
+              padding: 15px;
+              border-left: 3px solid #12f987;
+              border-radius: 4px;
+              white-space: pre-wrap;
+            }
+            .metadata {
+              display: grid;
+              grid-template-columns: 140px 1fr;
+              gap: 10px;
+              background: #f9fafb;
+              padding: 15px;
+              border-radius: 4px;
+              font-size: 14px;
+            }
+            .metadata-label {
+              font-weight: 600;
+              color: #6b7280;
+            }
+            .metadata-value {
+              color: #0a0a0a;
+              word-break: break-all;
+            }
+            .button {
+              display: inline-block;
+              background-color: #12f987;
+              color: #0a1f1a;
+              padding: 12px 24px;
+              text-decoration: none;
+              border-radius: 7px;
+              font-weight: 600;
+              margin-top: 10px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 30px;
+              color: #666;
+              font-size: 14px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 style="margin: 0;">🐛 Issue Report from User</h1>
+          </div>
+          <div class="content">
+            <div class="section">
+              <div class="section-title">Issue Description</div>
+              <div class="section-content">${data.description}</div>
+            </div>
+
+            ${data.stepsToReproduce ? `
+            <div class="section">
+              <div class="section-title">Steps to Reproduce</div>
+              <div class="section-content">${data.stepsToReproduce}</div>
+            </div>
+            ` : ''}
+
+            <div class="section">
+              <div class="section-title">Technical Details</div>
+              <div class="metadata">
+                <div class="metadata-label">Page URL:</div>
+                <div class="metadata-value">${data.pageUrl}</div>
+                ${data.userEmail ? `
+                <div class="metadata-label">User Email:</div>
+                <div class="metadata-value">${data.userEmail}</div>
+                ` : ''}
+                ${data.userRole ? `
+                <div class="metadata-label">User Role:</div>
+                <div class="metadata-value">${data.userRole}</div>
+                ` : ''}
+                <div class="metadata-label">Timestamp:</div>
+                <div class="metadata-value">${new Date().toISOString()}</div>
+              </div>
+            </div>
+
+            ${data.sessionReplayUrl || data.reportUrl ? `
+            <div class="section">
+              <div class="section-title">Debugging Resources</div>
+              ${data.reportUrl ? `<a href="${data.reportUrl}" class="button">View Full Report (JSON + Screenshot)</a>` : ''}
+              ${data.sessionReplayUrl ? `<a href="${data.sessionReplayUrl}" class="button" style="margin-left: 10px;">View Session Replay in PostHog</a>` : ''}
+            </div>
+            ` : ''}
+          </div>
+          <div class="footer">
+            <p>This issue report was sent automatically from Stu Planning</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Plain text fallback
+    const textBody = `
+🐛 ISSUE REPORT FROM USER
+
+Issue Description:
+${data.description}
+
+${data.stepsToReproduce ? `Steps to Reproduce:\n${data.stepsToReproduce}\n\n` : ''}
+
+Technical Details:
+- Page URL: ${data.pageUrl}
+${data.userEmail ? `- User Email: ${data.userEmail}\n` : ''}
+${data.userRole ? `- User Role: ${data.userRole}\n` : ''}
+- Timestamp: ${new Date().toISOString()}
+
+${data.reportUrl ? `Full Report (JSON + Screenshot): ${data.reportUrl}\n` : ''}
+${data.sessionReplayUrl ? `Session Replay: ${data.sessionReplayUrl}\n` : ''}
+
+---
+This issue report was sent automatically from Stu Planning
+    `;
+
+    // Send the email
+    const result = await resend.emails.send({
+      from: 'Stu Planning <issue-reports@stuplanning.com>',
+      to: 'admin@stuplanning.com',
+      subject: `🐛 Issue Report: ${data.description.substring(0, 50)}${data.description.length > 50 ? '...' : ''}`,
+      html: htmlBody,
+      text: textBody,
+    });
+
+    console.log(`✅ Issue report email sent to admin@stuplanning.com:`, result);
+  } catch (error) {
+    if (error instanceof EmailConfigError || error instanceof EmailSendError) {
+      throw error;
+    }
+    throw new EmailSendError('Unexpected error sending issue report email', error);
   }
 }

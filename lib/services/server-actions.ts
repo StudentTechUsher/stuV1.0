@@ -683,6 +683,21 @@ export async function updateProfileAction(userId: string, updates: Record<string
 }
 
 /**
+ * Server action to check if student record exists
+ * AUTHORIZATION: AUTHENTICATED USERS
+ */
+export async function hasStudentRecordAction(userId: string) {
+    try {
+        const { hasStudentRecord } = await import('./profileService.server');
+        const exists = await hasStudentRecord(userId);
+        return { success: true, exists };
+    } catch (error) {
+        console.error('Error checking student record:', error);
+        return { success: false, exists: false, error: error instanceof Error ? error.message : 'Failed to check student record' };
+    }
+}
+
+/**
  * Server action for chatbot profile updates
  * AUTHORIZATION: STUDENTS AND ABOVE (own profile only)
  */
@@ -824,6 +839,29 @@ export async function getCoursesByDepartmentAction(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to fetch courses',
+        };
+    }
+}
+
+/**
+ * Server action to get a single course by course code
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ */
+export async function getCourseByCodeAction(
+    universityId: number,
+    courseCode: string
+) {
+    'use server';
+    try {
+        const { getCourseByCode } = await import('./courseOfferingService');
+        const course = await getCourseByCode(universityId, courseCode);
+        return { success: true, course };
+    } catch (error) {
+        console.error('Error fetching course by code:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch course',
+            course: null,
         };
     }
 }

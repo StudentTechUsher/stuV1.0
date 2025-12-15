@@ -85,10 +85,10 @@ export default function ConversationProgressSteps({
                     onClick={() => handleStepClick(step)}
                     className={`
                       w-8 h-8 rounded-full flex items-center justify-center
-                      border-3 transition-all duration-300
+                      border-3 transition-all duration-300 relative
                       ${
                         isCompleted
-                          ? 'bg-[var(--primary)] border-[var(--primary)] text-black shadow-md cursor-pointer hover:scale-110 hover:shadow-lg'
+                          ? 'bg-[var(--primary)] border-[var(--primary)] text-black shadow-md cursor-pointer hover:scale-125 hover:shadow-xl hover:ring-2 hover:ring-[var(--primary)] hover:ring-offset-2'
                           : isCurrent
                           ? 'bg-white border-[var(--primary)] text-[var(--primary)] shadow-sm border-[2px]'
                           : 'bg-white border-gray-300 text-gray-400 border-[1.5px]'
@@ -107,9 +107,9 @@ export default function ConversationProgressSteps({
                   <p
                     onClick={() => handleStepClick(step)}
                     className={`
-                      absolute top-9 text-xs text-center w-24 leading-tight
+                      absolute top-9 text-xs text-center w-24 leading-tight transition-all duration-200
                       ${isCurrent ? 'font-semibold text-foreground' : 'text-muted-foreground'}
-                      ${isCompleted ? 'cursor-pointer hover:text-foreground' : ''}
+                      ${isCompleted ? 'cursor-pointer hover:text-foreground hover:font-semibold hover:scale-105' : ''}
                     `}
                     title={isCompleted ? `Click to return to ${getStepLabel(step)}` : undefined}
                   >

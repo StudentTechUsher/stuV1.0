@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, User, UserCheck, Mail } from 'lucide-react';
+import { Calendar, User, UserCheck } from 'lucide-react';
 import { approveStudentAction } from '@/lib/services/server-actions';
 
 interface PendingStudent {

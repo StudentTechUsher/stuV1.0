@@ -23,15 +23,16 @@ interface MilestoneFormProps {
 
 // Available milestone types
 const MILESTONE_TYPES: EventType[] = [
-  'Internship',
-  'Co-op',
-  'Study Abroad',
-  'Research Project',
-  'Apply for Graduate School',
   'Apply for Graduation',
+  'Apply for Graduate School',
+  'Co-op',
+  'Internship',
   'Major/Minor Application',
-  'Teaching Assistant',
+  'Religious Deferment (Mission)',
+  'Research Project',
   'Sabbatical',
+  'Study Abroad',
+  'Teaching Assistant',
   'Other',
 ];
 

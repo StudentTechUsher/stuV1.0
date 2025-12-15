@@ -336,7 +336,7 @@ export function UnifiedLandingClient() {
                         </div>
                       </h1>
                       <p className="max-w-[700px] text-zinc-700 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
-                        Too many course choices and not enough transparency? Not sure what kind of career you'll have after graduation? Stu helps you answer these questions with graduation maps customized to your goals!
+                        Too many course choices and not enough transparency? Not sure what kind of career you&apos;ll have after graduation? Stu helps you answer these questions with graduation maps customized to your goals!
                       </p>
                     </>
                   )}
@@ -352,7 +352,7 @@ export function UnifiedLandingClient() {
                         </Link>
                       </Button>
                       <p className="text-xs sm:text-sm text-zinc-600 max-w-md">
-                        Schedule a personalized demo to see how stu can transform your institution's academic planning
+                        Schedule a personalized demo to see how stu can transform your institution&apos;s academic planning
                       </p>
                     </div>
                   ) : (
@@ -565,7 +565,7 @@ export function UnifiedLandingClient() {
                   )}
                 </div>
               </div>
-              <p className="text-xl text-zinc-700 font-body-medium">Here's what students are saying</p>
+              <p className="text-xl text-zinc-700 font-body-medium">Here&apos;s what students are saying</p>
             </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
@@ -597,7 +597,7 @@ export function UnifiedLandingClient() {
                     Ready to Transform Academic Planning?
                   </h2>
                   <p className="mx-auto max-w-[700px] text-zinc-800 font-body-medium md:text-xl leading-relaxed">
-                    Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu's planning platform.
+                    Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu&apos;s planning platform.
                   </p>
                 </div>
                 <div className="w-full max-w-md px-4">

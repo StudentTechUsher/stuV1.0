@@ -66,15 +66,16 @@ export default function GradPlanClient({
 
     // Extract events from the plan array
     const EVENT_TYPES: EventType[] = [
-      'Major/Minor Application',
+      'Apply for Graduation',
+      'Apply for Graduate School',
+      'Co-op',
       'Internship',
+      'Major/Minor Application',
+      'Religious Deferment (Mission)',
+      'Research Project',
       'Sabbatical',
       'Study Abroad',
-      'Research Project',
       'Teaching Assistant',
-      'Co-op',
-      'Apply for Graduate School',
-      'Apply for Graduation',
       'Other',
     ];
 

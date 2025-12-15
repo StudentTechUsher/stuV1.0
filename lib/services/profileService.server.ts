@@ -630,3 +630,36 @@ export async function approveStudent(
     throw new ProfileUpdateError('Unexpected error approving student', error);
   }
 }
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS
+ * Checks if a student record exists for the given user
+ * @param userId - The user's profile ID
+ * @returns True if student record exists, false otherwise
+ */
+export async function hasStudentRecord(userId: string): Promise<boolean> {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { data, error } = await supabase
+      .from('student')
+      .select('profile_id')
+      .eq('profile_id', userId)
+      .single();
+
+    if (error) {
+      // PGRST116 means no rows returned - student record doesn't exist
+      if (error.code === 'PGRST116') {
+        return false;
+      }
+      // Other errors should be logged but we'll return false to be safe
+      console.error('Error checking student record:', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error('Unexpected error checking student record:', error);
+    return false;
+  }
+}

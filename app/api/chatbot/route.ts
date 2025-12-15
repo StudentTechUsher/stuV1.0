@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletionWithTools, type ChatCompletionWithToolsResponse } from '@/lib/services/openaiService';
-import { careerSuggestionsToolDefinition } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { getVerifiedUser } from '@/lib/supabase/auth';
 
 interface OpenAIChatMessage {

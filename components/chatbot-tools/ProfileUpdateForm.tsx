@@ -203,6 +203,9 @@ export default function ProfileUpdateForm({
       <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
         <div className="mb-4">
           <h3 className="text-lg font-semibold">When do you plan to graduate?</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            * This should be your best estimate or when you would like to be finished.
+          </p>
         </div>
 
         <div className="space-y-4">
