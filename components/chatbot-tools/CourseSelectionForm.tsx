@@ -13,7 +13,12 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
-import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles } from 'lucide-react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import IconButton from '@mui/material/IconButton';
+import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles, Info } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -38,6 +43,7 @@ import {
   getCollegesAction,
   getDepartmentCodesAction,
   getCoursesByDepartmentAction,
+  getCourseByCodeAction,
   fetchUserCoursesAction,
 } from '@/lib/services/server-actions';
 import { recommendCourses, type CourseRecommendationContext } from '@/lib/services/courseRecommendationService';
@@ -137,6 +143,15 @@ export default function CourseSelectionForm({
   } | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string | null>(null);
   const [preferenceRecommendations, setPreferenceRecommendations] = useState<string[]>([]);
+
+  // Course description dialog state
+  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+  const [selectedCourseForDescription, setSelectedCourseForDescription] = useState<{
+    code: string;
+    title: string;
+    description: string | null;
+    prerequisites: string | null;
+  } | null>(null);
 
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
@@ -1073,6 +1088,55 @@ export default function CourseSelectionForm({
     };
   };
 
+  const handleViewCourseDescription = async (courseCode: string, courses: Array<{ code: string; title: string; description?: string | null; prerequisites?: string | null }>) => {
+    const course = courses.find(c => c.code === courseCode);
+    if (!course) return;
+
+    // If course already has description/prerequisites, use it
+    if (course.description || course.prerequisites) {
+      setSelectedCourseForDescription({
+        code: course.code,
+        title: course.title,
+        description: course.description || null,
+        prerequisites: course.prerequisites || null,
+      });
+      setDescriptionDialogOpen(true);
+      return;
+    }
+
+    // Otherwise, fetch from database
+    try {
+      const result = await getCourseByCodeAction(universityId, courseCode);
+      if (result.success && result.course) {
+        setSelectedCourseForDescription({
+          code: result.course.course_code,
+          title: result.course.title,
+          description: result.course.description || null,
+          prerequisites: result.course.prerequisites || null,
+        });
+      } else {
+        // Fallback to course without description
+        setSelectedCourseForDescription({
+          code: course.code,
+          title: course.title,
+          description: null,
+          prerequisites: null,
+        });
+      }
+      setDescriptionDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching course details:', error);
+      // Fallback to course without description
+      setSelectedCourseForDescription({
+        code: course.code,
+        title: course.title,
+        description: null,
+        prerequisites: null,
+      });
+      setDescriptionDialogOpen(true);
+    }
+  };
+
   const handleSubmit = () => {
     // Build the course selection data
     const generalEducation: RequirementCourses[] = [];
@@ -1204,6 +1268,9 @@ export default function CourseSelectionForm({
         </h3>
         <p className="text-xs text-gray-600 mt-1">
           Choose courses to fulfill each requirement
+        </p>
+        <p className="text-xs text-muted-foreground mt-2 italic">
+          * Selecting a course indicates interest but does not commit you to taking it
         </p>
       </div>
 
@@ -1450,6 +1517,17 @@ export default function CourseSelectionForm({
                                                 }}
                                               />
                                             )}
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewCourseDescription(c.code, courses);
+                                              }}
+                                              sx={{ ml: 'auto', p: 0.5 }}
+                                              title="View course description"
+                                            >
+                                              <Info size={16} />
+                                            </IconButton>
                                           </Box>
                                           {otherFulfillments.length > 0 && (
                                             <Box sx={{ pl: 0.5 }}>
@@ -1685,6 +1763,17 @@ export default function CourseSelectionForm({
                                                 }}
                                               />
                                             )}
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewCourseDescription(c.code || '', validCourses);
+                                              }}
+                                              sx={{ ml: 'auto', p: 0.5 }}
+                                              title="View course description"
+                                            >
+                                              <Info size={16} />
+                                            </IconButton>
                                           </Box>
                                           {otherFulfillments.length > 0 && (
                                             <Box sx={{ pl: 0.5 }}>
@@ -2176,6 +2265,58 @@ export default function CourseSelectionForm({
             Continue
           </Button>
         </div>
+
+        {/* Course Description Dialog */}
+        <Dialog
+          open={descriptionDialogOpen}
+          onClose={() => setDescriptionDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="text-lg font-semibold">
+                {selectedCourseForDescription?.code} - {selectedCourseForDescription?.title}
+              </span>
+              <IconButton
+                onClick={() => setDescriptionDialogOpen(false)}
+                size="small"
+              >
+                <X size={20} />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {selectedCourseForDescription?.prerequisites && (
+              <Box sx={{ mb: 3 }}>
+                <p className="text-sm font-semibold text-foreground mb-1">Prerequisites:</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedCourseForDescription.prerequisites}
+                </p>
+              </Box>
+            )}
+            {selectedCourseForDescription?.description ? (
+              <Box>
+                <p className="text-sm font-semibold text-foreground mb-1">Description:</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedCourseForDescription.description}
+                </p>
+              </Box>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No description available for this course.
+              </p>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setDescriptionDialogOpen(false)}
+              variant="outline"
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
     </div>
   );

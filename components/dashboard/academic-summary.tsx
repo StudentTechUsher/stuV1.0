@@ -226,6 +226,13 @@ export default function AcademicSummary() {
           {/* Larger, more prominent avatar with white border for contrast */}
           <Avatar
             src={avatarUrl || undefined}
+            imgProps={{
+              referrerPolicy: "no-referrer",
+              onError: (e) => {
+                // Hide the broken image by setting display to none
+                (e.target as HTMLImageElement).style.display = 'none';
+              }
+            }}
             sx={{
               width: 56,
               height: 56,

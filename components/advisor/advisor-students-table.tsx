@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useState, useMemo } from 'react';
 import type { AdvisorStudentRow } from '@/lib/services/profileService';
 import { Search, ChevronDown, ChevronUp, User, GraduationCap } from 'lucide-react';
+import Image from 'next/image';
 
 interface AdvisorStudentsTableProps {
   rows: AdvisorStudentRow[];
@@ -188,10 +189,13 @@ export default function AdvisorStudentsTable({ rows }: Readonly<AdvisorStudentsT
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {row.avatar_url ? (
-                          <img
+                          <Image
                             src={row.avatar_url}
                             alt={`${row.fname} ${row.lname}`}
+                            width={40}
+                            height={40}
                             className="h-10 w-10 rounded-full border-2 border-[var(--border)] object-cover shadow-sm"
+                            unoptimized
                           />
                         ) : (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--border)] bg-[color-mix(in_srgb,var(--primary)_15%,white)]">

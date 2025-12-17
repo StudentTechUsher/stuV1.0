@@ -49,7 +49,7 @@ export default function PlansToApproveTable({ plans }: PlansToApproveTableProps)
     return formatDate(dateString);
   };
 
-  const _handleClick = (plan: PendingGradPlan) => {
+  const _handleClick = (_plan: PendingGradPlan) => {
     // Placeholder for potential future use
   };
 

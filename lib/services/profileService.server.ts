@@ -514,3 +514,152 @@ export async function completeOnboarding(
     throw new ProfileUpdateError('Unexpected error completing onboarding', error);
   }
 }
+
+/**
+ * AUTHORIZATION: ADVISORS AND ADMINS ONLY
+ * Fetches all pending students (onboarded = false) for approval
+ * @returns Array of pending student profiles
+ */
+interface PendingStudent {
+  id: string;
+  email: string | null;
+  fname: string | null;
+  lname: string | null;
+  created_at: string;
+  university_id: number;
+  university: {
+    id: number;
+    name: string;
+  } | null;
+}
+
+export async function fetchPendingStudents(): Promise<PendingStudent[]> {
+  const supabase = await createSupabaseServerComponentClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id,
+      email,
+      fname,
+      lname,
+      created_at,
+      university_id,
+      university:university_id(id, name)
+    `)
+    .eq('role_id', 3) // Students only
+    .eq('onboarded', false) // Not yet approved
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Failed to fetch pending students:', error);
+    throw new ProfileFetchError('Failed to fetch pending students', error);
+  }
+
+  if (!data) return [];
+
+  // Transform the data to ensure correct types
+  return data.map((student) => ({
+    id: student.id,
+    email: student.email,
+    fname: student.fname,
+    lname: student.lname,
+    created_at: student.created_at,
+    university_id: student.university_id,
+    university: Array.isArray(student.university)
+      ? student.university[0] || null
+      : student.university,
+  })) as PendingStudent[];
+}
+
+/**
+ * AUTHORIZATION: ADVISORS AND ADMINS ONLY
+ * Approves a pending student by updating their name, setting onboarded=true, and creating student record
+ * @param studentId - The student's profile ID
+ * @param fname - First name
+ * @param lname - Last name
+ */
+export async function approveStudent(
+  studentId: string,
+  fname: string,
+  lname: string
+) {
+  const supabase = await createSupabaseServerComponentClient();
+
+  try {
+    // Step 1: Update profile with name and onboarded status
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        fname,
+        lname,
+        onboarded: true,
+      })
+      .eq('id', studentId)
+      .eq('role_id', 3); // Safety check: only update students
+
+    if (profileError) {
+      console.error('Failed to update student profile:', profileError);
+      throw new ProfileUpdateError('Failed to update student profile', profileError);
+    }
+
+    // Step 2: Create student record
+    const { error: studentError } = await supabase
+      .from('student')
+      .insert({
+        profile_id: studentId,
+        selected_programs: [],
+        year_in_school: 'Freshman', // Default value
+      });
+
+    if (studentError) {
+      // Check if student record already exists
+      if (studentError.code === '23505') {
+        console.warn('Student record already exists for profile:', studentId);
+      } else {
+        console.error('Failed to create student record:', studentError);
+        throw new ProfileUpdateError('Failed to create student record', studentError);
+      }
+    }
+
+    console.log('Student approved successfully:', studentId);
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error approving student', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: AUTHENTICATED USERS
+ * Checks if a student record exists for the given user
+ * @param userId - The user's profile ID
+ * @returns True if student record exists, false otherwise
+ */
+export async function hasStudentRecord(userId: string): Promise<boolean> {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { data, error } = await supabase
+      .from('student')
+      .select('profile_id')
+      .eq('profile_id', userId)
+      .single();
+
+    if (error) {
+      // PGRST116 means no rows returned - student record doesn't exist
+      if (error.code === 'PGRST116') {
+        return false;
+      }
+      // Other errors should be logged but we'll return false to be safe
+      console.error('Error checking student record:', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error('Unexpected error checking student record:', error);
+    return false;
+  }
+}

@@ -7,6 +7,7 @@ import {
   organizePromptInputSchema,
   VALIDATION_OPTIONS
 } from '@/lib/validation/schemas';
+import { ValidationError as YupValidationError } from 'yup';
 
 /**
  * POST /api/grad-plan/generate
@@ -43,9 +44,13 @@ export async function POST(request: NextRequest) {
       console.error('❌ Validation error in grad-plan generate API:', errorMessage);
 
       // Log schema validation issues
-      if (validationError instanceof Error && validationError.name === 'ValidationError') {
-        console.error('❌ Validation error details:', (validationError as any).errors);
-        console.error('❌ Validation error inner:', (validationError as any).inner);
+      if (validationError instanceof YupValidationError) {
+        if (validationError.errors) {
+          console.error('❌ Validation error details:', validationError.errors);
+        }
+        if (validationError.inner) {
+          console.error('❌ Validation error inner:', validationError.inner);
+        }
       }
 
       console.error('❌ coursesData keys:', Object.keys(coursesData || {}));

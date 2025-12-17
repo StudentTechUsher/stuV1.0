@@ -10,7 +10,7 @@ import {
   setGoalGradeOnCourse,
   GPACalculationError,
 } from '@/lib/services/gpaService';
-import { UpdateGoalGradeSchema } from '@/lib/validation/zodSchemas';
+import { UpdateGoalGradeSchema, type UpdateGoalGradeInput } from '@/lib/validation/zodSchemas';
 import {
   validateRequest,
   ValidationError as ZodValidationError,
@@ -40,7 +40,7 @@ async function handleSetGoalGrade(
 
     // Parse and validate request body with Zod
     const body = await request.json();
-    const validatedData = validateRequest(UpdateGoalGradeSchema, body);
+    const validatedData: UpdateGoalGradeInput = validateRequest(UpdateGoalGradeSchema, body);
     const { goalGrade } = validatedData;
 
     // Await params and decode the course code
@@ -53,7 +53,7 @@ async function handleSetGoalGrade(
       user.id,
       planId,
       decodedCourseCode,
-      goalGrade as any
+      goalGrade
     );
 
     if (!result.success) {
