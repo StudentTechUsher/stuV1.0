@@ -4,6 +4,15 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, BookOpen, Award, Calendar, User, Hash } from 'lucide-react';
 
+interface TransferCreditInfo {
+  institution: string;
+  originalSubject: string;
+  originalNumber: string;
+  originalTitle: string;
+  originalCredits: number;
+  originalGrade: string;
+}
+
 interface ParsedCourse {
   courseCode: string;
   title: string;
@@ -12,6 +21,8 @@ interface ParsedCourse {
   term?: string | null;
   section?: string | null;
   professor?: string | null;
+  origin?: 'parsed' | 'manual' | 'transfer';
+  transfer?: TransferCreditInfo;
 }
 
 interface TranscriptReviewDisplayProps {
@@ -117,48 +128,69 @@ export default function TranscriptReviewDisplay({
 
               {/* Courses */}
               <div className="divide-y">
-                {termCourses.map((course, idx) => (
-                  <div key={`${course.courseCode}-${idx}`} className="p-4 hover:bg-muted/50 transition-colors">
-                    {/* Course Header */}
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono font-semibold text-sm">
-                            {course.courseCode}
-                          </span>
-                          {course.section && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Hash size={12} />
-                              {course.section}
+                {termCourses.map((course, idx) => {
+                  const isTransfer = course.origin === 'transfer' && course.transfer;
+                  return (
+                    <div key={`${course.courseCode}-${idx}`} className="p-4 hover:bg-muted/50 transition-colors">
+                      {/* Course Header */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono font-semibold text-sm">
+                              {course.courseCode}
                             </span>
+                            {isTransfer && (
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                                Transfer
+                              </span>
+                            )}
+                            {course.section && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Hash size={12} />
+                                {course.section}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700">{course.title}</p>
+
+                          {/* Transfer Credit Details */}
+                          {isTransfer && course.transfer && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="font-semibold text-blue-900">Original Course:</p>
+                              <p className="text-blue-800">
+                                {course.transfer.originalSubject} {course.transfer.originalNumber} - {course.transfer.originalTitle}
+                              </p>
+                              <p className="text-blue-700 mt-1">
+                                From {course.transfer.institution}
+                              </p>
+                            </div>
                           )}
                         </div>
-                        <p className="text-sm text-gray-700">{course.title}</p>
+
+                        {/* Grade Badge */}
+                        {course.grade && (
+                          <div className={`px-3 py-1 rounded-full text-sm ${getGradeColor(course.grade)} bg-white border`}>
+                            {course.grade}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Grade Badge */}
-                      {course.grade && (
-                        <div className={`px-3 py-1 rounded-full text-sm ${getGradeColor(course.grade)} bg-white border`}>
-                          {course.grade}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Course Details */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Award size={14} />
-                        <span>{course.credits.toFixed(1)} credits</span>
-                      </div>
-                      {course.professor && (
+                      {/* Course Details */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <User size={14} />
-                          <span>{course.professor}</span>
+                          <Award size={14} />
+                          <span>{course.credits.toFixed(1)} credits</span>
                         </div>
-                      )}
+                        {course.professor && (
+                          <div className="flex items-center gap-1">
+                            <User size={14} />
+                            <span>{course.professor}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

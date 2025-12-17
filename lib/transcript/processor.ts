@@ -420,17 +420,30 @@ export async function parseTranscriptFromBuffer(
 
         // Convert BYU courses to the format expected by user_courses table
         // The table stores courses as a JSON array in the 'courses' column
-        const coursesJson = dedupedCourses.map((course) => ({
-          id: randomUUID(),
-          subject: course.subject,
-          number: course.number,
-          title: course.title,
-          credits: course.credits,
-          grade: course.grade.trim() === '' ? null : course.grade,
-          term: course.term,
-          tags: [],
-          origin: 'parsed',
-        }));
+        const coursesJson = dedupedCourses.map((course) => {
+          const baseCourse = {
+            id: randomUUID(),
+            subject: course.subject,
+            number: course.number,
+            title: course.title,
+            credits: course.credits,
+            grade: course.grade.trim() === '' ? null : course.grade,
+            term: course.term,
+            tags: [],
+            origin: 'parsed' as const,
+          };
+
+          // Add transfer information if present
+          if (course.transfer) {
+            return {
+              ...baseCourse,
+              origin: 'transfer' as const,
+              transfer: course.transfer,
+            };
+          }
+
+          return baseCourse;
+        });
 
         // Check if user already has a courses record
         const { data: existingRecord } = await client

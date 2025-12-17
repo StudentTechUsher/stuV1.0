@@ -1,6 +1,15 @@
 // lib/transcript/byuParser.ts
 // Purpose: Strip the PII header from BYU transcripts (via anchor lines) and parse courses.
 
+export interface TransferInfo {
+  institution: string;
+  originalSubject: string;
+  originalNumber: string;
+  originalTitle: string;
+  originalCredits: number;
+  originalGrade: string;
+}
+
 export interface CourseRow {
   term: string;
   subject: string;
@@ -9,6 +18,7 @@ export interface CourseRow {
   credits: number;
   grade: string | null;
   confidence: number;
+  transfer?: TransferInfo;
 }
 
 export interface ParseMetadata {
@@ -45,11 +55,11 @@ const COURSE_NO_SECTION_REGEX = new RegExp(
   `^\\s*(?<subject>${SUBJECT_PATTERN})\\s+(?<number>\\d{3}[A-Z]?)\\s+(?<title>.+?)\\s+(?<credits>\\d+(?:\\.\\d{1,2})?)(?:\\s+(?<grade>${GRADE_PATTERN}))?\\s*$`
 );
 
-/** Transfer/AP row with YRTRM code. */
+/** Transfer/AP row with YRTRM code - captures ACCEPT and EQUIV columns if present */
 const TRANSFER_REGEX = new RegExp(
-  `^\\s*(?<yrtrm>\\d{5})\\s+(?<subject>${SUBJECT_PATTERN})\\s+(?<number>\\d{3}[A-Z]?)\\s+(?<title>.+?)\\s+(?<credits>\\d+(?:\\.\\d{1,2})?)\\s+(?<grade>${GRADE_PATTERN})`,
+  `^\\s*(?<yrtrm>\\d{5})\\s+(?<subject>${SUBJECT_PATTERN})\\s+(?<number>\\d{3}[A-Z]?)\\s+(?<title>.+?)\\s+(?<credits>\\d+(?:\\.\\d{1,2})?)\\s+(?<grade>${GRADE_PATTERN})(?:\\s+(?<accept>Yes|No))?(?:\\s+(?<equiv>${SUBJECT_PATTERN}\\s+\\d{3}[A-Z]?))?`,
   'i'
-); // :contentReference[oaicite:4]{index=4}
+);
 
 /** Continuation guard to avoid grabbing totals/headers as title continuations. */
 const CONTINUATION_GUARD_REGEX = /\d+\.\d{1,2}\s+[A-Z]{1,3}$/; // :contentReference[oaicite:5]{index=5}
@@ -164,6 +174,7 @@ export function parseTranscriptText(text: string): ParseResult {
   let unknownLines = 0;
   let currentTerm = 'Unknown';
   let inTransfer = false;
+  let currentInstitution = 'Transfer Institution';
 
   for (const line of prepped) {
     if (shouldSkip(line)) continue;
@@ -187,15 +198,75 @@ export function parseTranscriptText(text: string): ParseResult {
       inTransfer = false;
       continue;
     }
-    if (inTransfer && (line.includes('Attended from') || line.includes('Univ'))) {
-      continue;
+
+    // Track institution name for transfer credits
+    if (inTransfer) {
+      // Match patterns like "Central Washington Univ (WA) Attended from 2017 to 2018"
+      const institutionMatch = line.match(/^([A-Za-z\s]+(?:Univ|University|College)[^(]*(?:\([A-Z]{2}\))?)/);
+      if (institutionMatch) {
+        currentInstitution = institutionMatch[1].trim();
+        continue;
+      }
+      if (line.includes('Attended from')) {
+        continue;
+      }
     }
 
     if (inTransfer) {
       const m = TRANSFER_REGEX.exec(line);
       if (m?.groups) {
-        const term = yrtrmToTerm(m.groups.yrtrm);
-        courses.push(fromGroups(m.groups, term, 0.75));
+        const originalSubject = normalizeWhitespace(m.groups.subject).toUpperCase();
+        const originalNumber = m.groups.number.toUpperCase();
+        const originalTitle = toTitleCase(m.groups.title);
+        const originalCredits = Number(m.groups.credits);
+        const rawGrade = m.groups.grade.toUpperCase();
+        const originalGrade = VALID_GRADES.has(rawGrade) ? rawGrade : 'P';
+
+        // Check if there's an equivalency
+        if (m.groups.equiv && m.groups.accept === 'Yes') {
+          // Parse the equivalent course (e.g., "MATH 110")
+          const equivParts = m.groups.equiv.trim().split(/\s+/);
+          const equivSubject = equivParts.slice(0, -1).join(' ').toUpperCase();
+          const equivNumber = equivParts[equivParts.length - 1].toUpperCase();
+
+          // Create course with equivalency information
+          courses.push({
+            term: 'Transfer Credit',
+            subject: equivSubject,
+            number: equivNumber,
+            title: originalTitle, // Keep original title as it's more descriptive
+            credits: originalCredits,
+            grade: originalGrade,
+            confidence: 0.85,
+            transfer: {
+              institution: currentInstitution,
+              originalSubject,
+              originalNumber,
+              originalTitle,
+              originalCredits,
+              originalGrade,
+            },
+          });
+        } else {
+          // No equivalency or not accepted - store as regular transfer credit
+          courses.push({
+            term: 'Transfer Credit',
+            subject: originalSubject,
+            number: originalNumber,
+            title: originalTitle,
+            credits: originalCredits,
+            grade: originalGrade,
+            confidence: 0.75,
+            transfer: {
+              institution: currentInstitution,
+              originalSubject,
+              originalNumber,
+              originalTitle,
+              originalCredits,
+              originalGrade,
+            },
+          });
+        }
         continue;
       }
     }

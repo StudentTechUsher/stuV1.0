@@ -9,6 +9,15 @@ import { TranscriptCheckInput } from '@/lib/chatbot/tools/transcriptCheckTool';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchUserCoursesAction, fetchUserCoursesMetadataAction } from '@/lib/services/server-actions';
 
+interface TransferCreditInfo {
+  institution: string;
+  originalSubject: string;
+  originalNumber: string;
+  originalTitle: string;
+  originalCredits: number;
+  originalGrade: string;
+}
+
 interface ParsedCourse {
   courseCode: string;
   title: string;
@@ -17,6 +26,8 @@ interface ParsedCourse {
   term?: string | null;
   section?: string | null;
   professor?: string | null;
+  origin?: 'parsed' | 'manual' | 'transfer';
+  transfer?: TransferCreditInfo;
 }
 
 interface TranscriptCheckFormProps {
@@ -86,6 +97,8 @@ export default function TranscriptCheckForm({
             term: c.term,
             section: null, // Not stored in user_courses
             professor: null, // Not stored in user_courses
+            origin: c.origin,
+            transfer: c.transfer,
           }));
 
           setParsedCourses(courses);

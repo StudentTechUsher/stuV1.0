@@ -1040,6 +1040,16 @@ export default function CourseSelectionForm({
   };
 
   const getCourseDetails = (courseCode: string, coursesList: Array<{ code: string; title: string; credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null }>): CourseEntry => {
+    // Check if this is a placeholder course
+    if (courseCode.startsWith('PLACEHOLDER:')) {
+      const requirementName = courseCode.replace('PLACEHOLDER:', '').trim();
+      return {
+        code: courseCode,
+        title: `Placeholder for ${requirementName}`,
+        credits: 3,
+      };
+    }
+
     const course = coursesList.find(c => c.code === courseCode);
     if (!course) {
       return { code: courseCode, title: '', credits: 3 };
@@ -1379,6 +1389,15 @@ export default function CourseSelectionForm({
                                     onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
                                   >
                                 <MenuItem value=""><em>Select a course</em></MenuItem>
+                                <MenuItem
+                                  value={`PLACEHOLDER: ${req.subtitle}`}
+                                  sx={{
+                                    fontStyle: 'italic',
+                                    color: '#6b7280',
+                                  }}
+                                >
+                                  I just need a placeholder for now
+                                </MenuItem>
                                 {courses.length > 3 && (
                                   <MenuItem
                                     value=""
@@ -1606,6 +1625,15 @@ export default function CourseSelectionForm({
                                       onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
                                     >
                                   <MenuItem value=""><em>Select a course</em></MenuItem>
+                                  <MenuItem
+                                    value={`PLACEHOLDER: ${req.description}`}
+                                    sx={{
+                                      fontStyle: 'italic',
+                                      color: '#6b7280',
+                                    }}
+                                  >
+                                    I just need a placeholder for now
+                                  </MenuItem>
                                   {validCourses.length > 3 && (
                                     <MenuItem
                                       value=""

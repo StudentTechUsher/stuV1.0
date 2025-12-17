@@ -278,6 +278,8 @@ export default function AcademicHistoryPage() {
 
   // Render a course card based on view mode
   const renderCourseCard = (course: ParsedCourse, bgColor: string, borderColor: string, editable = true) => {
+    const isTransfer = course.origin === 'transfer' && course.transfer;
+
     if (viewMode === 'compact') {
       return (
         <div key={course.id} className="group relative">
@@ -293,6 +295,9 @@ export default function AcademicHistoryPage() {
           >
             <span className="font-body-semi text-xs font-semibold text-[var(--foreground)]">
               {course.subject} {course.number}
+              {isTransfer && (
+                <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">↔</span>
+              )}
             </span>
           </button>
 
@@ -311,6 +316,14 @@ export default function AcademicHistoryPage() {
                   </>
                 )}
               </div>
+              {isTransfer && course.transfer && (
+                <div className="mt-2 border-t border-[var(--border)] pt-2">
+                  <p className="font-body-semi text-xs font-semibold text-[var(--muted-foreground)]">Transfer Credit</p>
+                  <p className="font-body text-xs text-[var(--muted-foreground)]">
+                    {course.transfer.originalSubject} {course.transfer.originalNumber} from {course.transfer.institution}
+                  </p>
+                </div>
+              )}
               {editable && (
                 <p className="font-body text-xs italic text-[var(--muted-foreground)]">Click to edit</p>
               )}
@@ -341,12 +354,30 @@ export default function AcademicHistoryPage() {
             <Edit2 size={14} />
           </button>
         )}
-        <h4 className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
-          {course.subject} {course.number}
-        </h4>
+        <div className="flex items-start gap-2">
+          <h4 className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+            {course.subject} {course.number}
+          </h4>
+          {isTransfer && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+              Transfer
+            </span>
+          )}
+        </div>
         <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">
           {course.title}
         </p>
+        {isTransfer && course.transfer && (
+          <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-2">
+            <p className="font-body-semi text-xs font-semibold text-blue-900">Original Course</p>
+            <p className="font-body text-xs text-blue-800">
+              {course.transfer.originalSubject} {course.transfer.originalNumber} - {course.transfer.originalTitle}
+            </p>
+            <p className="font-body text-xs text-blue-700">
+              From {course.transfer.institution}
+            </p>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-1.5">
           <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
             {course.credits} credits

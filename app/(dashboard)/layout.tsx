@@ -10,12 +10,13 @@ import { createServerClient } from "@supabase/ssr";
 // Force dynamic rendering for this layout because it uses cookies
 export const dynamic = 'force-dynamic';
 
-type Role = "student" | "advisor" | "admin";
+type Role = "student" | "advisor" | "admin" | "super_admin";
 
 const ROLE_MAP: Record<string, Role> = {
   1: "admin",
   2: "advisor",
   3: "student",
+  4: "super_admin",
 };
 
 // A serializable icon key the client can turn into an actual icon element
@@ -90,10 +91,12 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
 
   // If user hasn't been onboarded yet AND they have selected a university,
   // they're waiting for admin approval (only for advisors/admins)
+  // Students should be allowed through to complete onboarding immediately
   // If they haven't selected a university yet, let them through to complete onboarding
   const hasSelectedUniversity = universityId !== null;
+  const requiresApproval = role === 'advisor' || role === 'admin';
 
-  if (!onboarded && hasSelectedUniversity && user) {
+  if (!onboarded && hasSelectedUniversity && requiresApproval && user) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 shadow-lg">
@@ -109,8 +112,8 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     );
   }
 
-  // If advisor, fetch pending approvals count (for badge)
-  const pendingCount = role === 'advisor' ? await getPendingGradPlansCount() : 0;
+  // If advisor or super_admin, fetch pending approvals count (for badge)
+  const pendingCount = (role === 'advisor' || role === 'super_admin') ? await getPendingGradPlansCount() : 0;
 
   // Unread inbox notifications badge for all authenticated roles
   const unreadInboxCount = userId ? await getUnreadNotificationsCount(userId) : 0;
@@ -166,6 +169,29 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/maintain-programs",   segment: "maintain-programs",     label: "Maintain Programs",      icon: "programs" },
         { href: "/manage-advisors",     segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
         { href: "/careers/manage",      segment: "careers",               label: "Manage Careers",         icon: "careers" },
+        { href: "/system",              segment: "system",                label: "System",                 icon: "system" },
+        { href: "/profile",             segment: "profile",               label: "Profile",                icon: "profile" },
+      ];
+
+    case "super_admin":
+      return [
+        { href: "/",                    segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/admin/forecast",      segment: "admin",                 label: "Forecasting",            icon: "forecast" },
+        { href: "/inbox",               segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
+        { href: "/users",               segment: "users",                 label: "Maintain Users",         icon: "users" },
+        { href: "/maintain-programs",   segment: "maintain-programs",     label: "Maintain Programs",      icon: "programs" },
+        { href: "/manage-advisors",     segment: "manage-advisors",       label: "Manage Advisors",        icon: "advisors" },
+        { href: "/advisees",            segment: "advisees",              label: "My Advisees",            icon: "advisees" },
+        { href: "/approve-grad-plans",  segment: "approve-grad-plans",    label: "Approve Plans",          icon: "map", badgeCount: pendingCount },
+        { href: "/appointments",        segment: "appointments",          label: "Appointments",           icon: "appointments" },
+        { href: "/reports",             segment: "reports",               label: "Reports",                icon: "reports" },
+        { href: "/careers/manage",      segment: "careers",               label: "Manage Careers",         icon: "careers" },
+        { href: "/grad-plan",           segment: "grad-plan",             label: "Graduation Planner",     icon: "planner" },
+        { href: "/sandbox",             segment: "sandbox",               label: "Plan Sandbox",           icon: "sandbox" },
+        { href: "/academic-history",    segment: "academic-history",      label: "Academic History",       icon: "history" },
+        { href: "/semester-scheduler",  segment: "semester-scheduler",    label: "Schedule Semester",      icon: "semester" },
+        { href: "/pathfinder",          segment: "pathfinder",            label: "Pathfinder",             icon: "map" },
+        { href: "/program-flow",        segment: "program-flow",          label: "Program Flow",           icon: "programFlow" },
         { href: "/system",              segment: "system",                label: "System",                 icon: "system" },
         { href: "/profile",             segment: "profile",               label: "Profile",                icon: "profile" },
       ];

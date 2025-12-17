@@ -20,6 +20,15 @@ import { logError, logInfo } from '@/lib/logger';
  * - Grade: Standard letter grades (A, A-, B+, etc.), P/F, I/W, or null/empty for concurrent
  * - Term: Must be present (e.g., "Fall Semester 2023")
  */
+export interface TransferCreditInfo {
+  institution: string;
+  originalSubject: string;
+  originalNumber: string;
+  originalTitle: string;
+  originalCredits: number;
+  originalGrade: string;
+}
+
 export const ByuCourseSchema = z.object({
   subject: z
     .string()
@@ -72,6 +81,15 @@ export const ByuCourseSchema = z.object({
     .trim()
     .min(1, 'Term is required')
     .describe('Academic term (e.g., Fall Semester 2023)'),
+
+  transfer: z.optional(z.object({
+    institution: z.string().describe('Transfer institution name'),
+    originalSubject: z.string().describe('Original course subject code'),
+    originalNumber: z.string().describe('Original course number'),
+    originalTitle: z.string().describe('Original course title'),
+    originalCredits: z.number().describe('Original course credits'),
+    originalGrade: z.string().describe('Original course grade'),
+  })).describe('Transfer credit information (only present for transfer credits)'),
 });
 
 /**

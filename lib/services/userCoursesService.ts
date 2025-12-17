@@ -30,17 +30,29 @@ export class ManualCourseSaveError extends Error {
   }
 }
 
+export interface TransferCreditInfo {
+  institution: string;          // Transfer institution name
+  originalSubject: string;      // Original course subject code
+  originalNumber: string;        // Original course number
+  originalTitle: string;         // Original course title
+  originalCredits: number;       // Original course credits
+  originalGrade: string;         // Original course grade
+}
+
 export interface ParsedCourse {
   id?: string;
   term: string;
-  subject: string;
-  number: string;
-  title: string;
+  subject: string;       // For transfer credits: the equivalent course subject
+  number: string;        // For transfer credits: the equivalent course number
+  title: string;         // For transfer credits: the equivalent course title
   credits: number | null;
   grade: string | null;
   tags?: string[];
   notes?: string | null;
-  origin?: 'parsed' | 'manual';
+  origin?: 'parsed' | 'manual' | 'transfer';
+
+  // Transfer credit information (only populated when origin === 'transfer')
+  transfer?: TransferCreditInfo;
 }
 
 export interface UserCourse {
@@ -59,7 +71,8 @@ export interface FormattedCourse {
   grade: string;
   tags: string[];
   notes?: string | null;
-  origin?: 'parsed' | 'manual';
+  origin?: 'parsed' | 'manual' | 'transfer';
+  transfer?: TransferCreditInfo;
 }
 
 function generateCourseId(fallbackIndex: number): string {
@@ -95,7 +108,7 @@ export function normalizeParsedCourses(courses?: ParsedCourse[] | null): ParsedC
     const normalized: ParsedCourse = { ...course };
 
     normalized.id = normalized.id ?? generateCourseId(index);
-    normalized.origin = normalized.origin === 'manual' ? 'manual' : 'parsed';
+    normalized.origin = normalized.origin === 'transfer' ? 'transfer' : normalized.origin === 'manual' ? 'manual' : 'parsed';
     normalized.term = typeof normalized.term === 'string' ? normalized.term : '';
     normalized.subject = typeof normalized.subject === 'string' ? normalized.subject : 'GEN';
     normalized.number = typeof normalized.number === 'string' ? normalized.number : normalized.id ?? String(index);
@@ -116,6 +129,25 @@ export function normalizeParsedCourses(courses?: ParsedCourse[] | null): ParsedC
 
     if (normalized.notes !== undefined && typeof normalized.notes !== 'string') {
       normalized.notes = null;
+    }
+
+    // Validate transfer field if present
+    if (normalized.transfer) {
+      // Ensure all required transfer fields are present and valid
+      if (
+        typeof normalized.transfer.institution === 'string' &&
+        typeof normalized.transfer.originalSubject === 'string' &&
+        typeof normalized.transfer.originalNumber === 'string' &&
+        typeof normalized.transfer.originalTitle === 'string' &&
+        typeof normalized.transfer.originalCredits === 'number' &&
+        typeof normalized.transfer.originalGrade === 'string'
+      ) {
+        // Transfer data is valid, keep it
+        normalized.origin = 'transfer';
+      } else {
+        // Invalid transfer data, remove it
+        delete normalized.transfer;
+      }
     }
 
     return normalized;
@@ -431,17 +463,26 @@ export async function saveManualCourses(
  * @returns Array of formatted courses ready for UI display
  */
 export function formatCoursesForDisplay(courses: ParsedCourse[]): FormattedCourse[] {
-  return courses.map((course, index) => ({
-    id: course.id ?? `${course.subject}-${course.number}-${course.term}-${index}`,
-    code: `${course.subject} ${course.number}`.trim(),
-    title: course.title,
-    credits: typeof course.credits === 'number' ? course.credits : 0,
-    term: course.term,
-    grade: course.grade || 'In Progress',
-    tags: course.tags && course.tags.length > 0 ? course.tags : inferCourseTags(course),
-    notes: course.notes ?? null,
-    origin: course.origin,
-  }));
+  return courses.map((course, index) => {
+    const formatted: FormattedCourse = {
+      id: course.id ?? `${course.subject}-${course.number}-${course.term}-${index}`,
+      code: `${course.subject} ${course.number}`.trim(),
+      title: course.title,
+      credits: typeof course.credits === 'number' ? course.credits : 0,
+      term: course.term,
+      grade: course.grade || 'In Progress',
+      tags: course.tags && course.tags.length > 0 ? course.tags : inferCourseTags(course),
+      notes: course.notes ?? null,
+      origin: course.origin,
+    };
+
+    // Include transfer information if present
+    if (course.transfer) {
+      formatted.transfer = course.transfer;
+    }
+
+    return formatted;
+  });
 }
 
 /**
