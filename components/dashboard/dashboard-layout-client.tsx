@@ -7,8 +7,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import ChatbotDrawer from '@/components/ai-chat/chatbot-drawer';
 import GradPlanRealtimeListener from '@/components/dashboard/grad-plan-realtime-listener';
 import type { NavItem } from '@/app/(dashboard)/layout';
-
-type Role = 'student' | 'advisor' | 'admin';
+import type { Role } from '@/lib/mock-role';
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode;
@@ -38,6 +37,11 @@ const ROLE_PRESETS: Record<Role, { label: string; prompt: string }[]> = {
     { label: "Health overview", prompt: "Summarize key system metrics and any anomalies in the last 24h." },
     { label: "User audit", prompt: "List newly created users this week and any with incomplete profiles." },
     { label: "Program report", prompt: "Generate a report of enrollments by program and term." },
+  ],
+  super_admin: [
+    { label: "System health", prompt: "Provide an overview of system health, user activity, and any critical alerts." },
+    { label: "Cross-university report", prompt: "Generate a report comparing metrics across all universities in the system." },
+    { label: "User management", prompt: "List recent user registrations and flag any accounts requiring attention." },
   ],
 };
 

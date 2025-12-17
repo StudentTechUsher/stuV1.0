@@ -18,10 +18,9 @@ import IconButton from "@mui/material/IconButton";
 import Fab from "@mui/material/Fab";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
-import { getEnvRole } from "@/lib/mock-role";
+import { getEnvRole, type Role } from "@/lib/mock-role";
 import { chatbotSendMessage } from "@/lib/services/server-actions";
 
-type Role = "student" | "advisor" | "admin";
 type QuickAction = { label: string; prompt: string };
 
 type Props = {
@@ -35,7 +34,7 @@ type Props = {
   onSend?: (text: string, meta?: { role?: Role }) => void | Promise<void>;
 };
 
-// sensible defaults if caller doesn’t pass presetPrompts
+// sensible defaults if caller doesn't pass presetPrompts
 const DEFAULT_PRESETS: Record<Role, QuickAction[]> = {
   student: [
     { label: "Plan my semester", prompt: "Help me plan my semester based on my degree requirements and current credits." },
@@ -43,7 +42,7 @@ const DEFAULT_PRESETS: Record<Role, QuickAction[]> = {
     { label: "Graduation check", prompt: "Am I on track to graduate on time? What classes am I missing?" },
   ],
   advisor: [
-    { label: "Daily advisee digest", prompt: "Summarize today’s advisee alerts and top follow-ups." },
+    { label: "Daily advisee digest", prompt: "Summarize today's advisee alerts and top follow-ups." },
     { label: "Prep for meeting", prompt: "Given this student ID, summarize their academic standing and risks: <STUDENT_ID>." },
     { label: "Outreach draft", prompt: "Draft an outreach email to students who missed last advising window." },
   ],
@@ -51,6 +50,11 @@ const DEFAULT_PRESETS: Record<Role, QuickAction[]> = {
     { label: "Health overview", prompt: "Summarize key system metrics and any anomalies in the last 24h." },
     { label: "User audit", prompt: "List newly created users this week and any with incomplete profiles." },
     { label: "Program report", prompt: "Generate a report of enrollments by program and term." },
+  ],
+  super_admin: [
+    { label: "System health", prompt: "Provide an overview of system health, user activity, and any critical alerts." },
+    { label: "Cross-university report", prompt: "Generate a report comparing metrics across all universities in the system." },
+    { label: "User management", prompt: "List recent user registrations and flag any accounts requiring attention." },
   ],
 };
 

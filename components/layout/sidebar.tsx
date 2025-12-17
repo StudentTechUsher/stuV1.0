@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 
 import type { NavItem as BaseNavItem } from '@/app/(dashboard)/layout';
+import type { Role } from '@/lib/mock-role';
 
 export type NavItem = BaseNavItem & {
   section: 'primary' | 'secondary' | 'bottom';
@@ -70,7 +71,7 @@ const iconMap: Record<string, LucideIcon> = {
 interface SidebarProps {
   items: NavItem[];
   onSignOut: () => void;
-  role?: 'student' | 'advisor' | 'admin';
+  role?: Role;
   onOpenChat?: () => void;
 }
 

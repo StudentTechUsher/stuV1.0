@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-client";
 import { getPendingGradPlansCount, getUnreadNotificationsCount } from '@/lib/services/notifService';
+import type { Role } from '@/lib/mock-role';
 
 // 👇 NEW: read Supabase session in a server component
 import { cookies } from "next/headers";
@@ -9,8 +10,6 @@ import { createServerClient } from "@supabase/ssr";
 
 // Force dynamic rendering for this layout because it uses cookies
 export const dynamic = 'force-dynamic';
-
-type Role = "student" | "advisor" | "admin" | "super_admin";
 
 const ROLE_MAP: Record<string, Role> = {
   1: "admin",

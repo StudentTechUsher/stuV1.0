@@ -1,4 +1,4 @@
-export const ROLE_VALUES = ["student", "advisor", "admin"] as const;
+export const ROLE_VALUES = ["student", "advisor", "admin", "super_admin"] as const;
 export type Role = (typeof ROLE_VALUES)[number];
 
 export function getEnvRole(): Role {
