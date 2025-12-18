@@ -150,7 +150,6 @@ export async function GetActiveGradPlan(profile_id: string) {
   if (error) {
     // PGRST116 means no rows returned - this is normal for users without grad plans
     if (error.code === 'PGRST116') {
-      console.log('ℹ️ No active graduation plan found for student_id:', studentData.id, '(normal for new users)');
       return null;
     }
     console.error('❌ Error fetching active grad plan:', error);
@@ -158,7 +157,6 @@ export async function GetActiveGradPlan(profile_id: string) {
     return null;
   }
   
-  console.log('✅ Active graduation plan found for student_id:', studentData.id);
   return data;
 }
 

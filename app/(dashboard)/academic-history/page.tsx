@@ -8,9 +8,17 @@ import TranscriptUpload from '@/components/transcript/TranscriptUpload';
 import {
   fetchUserCourses,
   type ParsedCourse,
+  type CourseFulfillment,
 } from '@/lib/services/userCoursesService';
-import { updateUserCoursesAction } from '@/lib/services/server-actions';
+import { updateUserCoursesAction, updateCourseFulfillmentsAction } from '@/lib/services/server-actions';
 import { GetActiveGradPlan } from '@/lib/services/gradPlanService';
+import { performGenEdMatching, extractRequirementOptions, type GenEdMatchResult, type RequirementOption } from '@/lib/services/courseMatchingService';
+import { GenEdSelector } from '@/components/academic-history/GenEdSelector';
+import { RequirementTag } from '@/components/academic-history/RequirementTag';
+import { RequirementOverrideDialog } from '@/components/academic-history/RequirementOverrideDialog';
+import { CircularProgress } from '@/components/academic-history/CircularProgress';
+import { GetGenEdsForUniversity, fetchProgramsBatch } from '@/lib/services/programService';
+import type { ProgramRow } from '@/types/program';
 
 interface GradPlan {
   id: string;
@@ -19,6 +27,42 @@ interface GradPlan {
   plan_details: unknown;
   is_active: boolean;
   created_at: string;
+}
+
+function selectGenEdByEnrollmentDate(programs: ProgramRow[], enrollmentYear?: number | null): ProgramRow | null {
+  if (!programs.length) {
+    return null;
+  }
+
+  if (!enrollmentYear) {
+    return programs
+      .slice()
+      .sort((a, b) => (b.applicable_start_year || 0) - (a.applicable_start_year || 0))[0] || null;
+  }
+
+  const matchingProgram = programs.find((program) => {
+    const start = program.applicable_start_year ?? undefined;
+    const end = program.applicable_end_year ?? undefined;
+
+    if (start && end) {
+      return enrollmentYear >= start && enrollmentYear <= end;
+    }
+    if (start && !end) {
+      return enrollmentYear >= start;
+    }
+    if (!start && end) {
+      return enrollmentYear <= end;
+    }
+    return false;
+  });
+
+  if (matchingProgram) {
+    return matchingProgram;
+  }
+
+  return programs
+    .slice()
+    .sort((a, b) => (b.applicable_start_year || 0) - (a.applicable_start_year || 0))[0] || null;
 }
 
 export default function AcademicHistoryPage() {
@@ -48,6 +92,19 @@ export default function AcademicHistoryPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [universityId, setUniversityId] = useState<number | null>(null);
+  const [enrollmentYear, setEnrollmentYear] = useState<number | null>(null);
+  const [isTransferStudent, setIsTransferStudent] = useState(false);
+  const [genEdOptions, setGenEdOptions] = useState<ProgramRow[]>([]);
+  const [genEdOptionsLoading, setGenEdOptionsLoading] = useState(false);
+  const [selectedGenEds, setSelectedGenEds] = useState<ProgramRow[]>([]);
+  const [requirementOptions, setRequirementOptions] = useState<RequirementOption[]>([]);
+  const [genEdHasNoDoubleCount, setGenEdHasNoDoubleCount] = useState(false);
+  const [, setMatchResults] = useState<GenEdMatchResult[]>([]);
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const [requirementDialogCourse, setRequirementDialogCourse] = useState<ParsedCourse | null>(null);
+  const [autoMatchLoading, setAutoMatchLoading] = useState(false);
+  const [gradPlanPrograms, setGradPlanPrograms] = useState<ProgramRow[]>([]);
 
   const loadingMessages = [
     'Loading your academic history...',
@@ -62,6 +119,33 @@ export default function AcademicHistoryPage() {
       const id = sess.session?.user?.id || null;
       setUserId(id);
 
+      if (!id) {
+        setUniversityId(null);
+        setEnrollmentYear(null);
+        setIsTransferStudent(false);
+        return;
+      }
+
+      try {
+        const [{ data: profile }, { data: student }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('university_id')
+            .eq('id', id)
+            .maybeSingle(),
+          supabase
+            .from('student')
+            .select('admission_year,is_transfer')
+            .eq('profile_id', id)
+            .maybeSingle(),
+        ]);
+
+        setUniversityId(profile?.university_id ?? null);
+        setEnrollmentYear(student?.admission_year ?? null);
+        setIsTransferStudent(Boolean(student?.is_transfer));
+      } catch (error) {
+        console.error('Failed to fetch profile metadata:', error);
+      }
     })();
   }, [supabase]);
 
@@ -94,6 +178,88 @@ export default function AcademicHistoryPage() {
       }
     })();
   }, [userId, supabase]);
+
+  useEffect(() => {
+    console.log('🎓 Gen Ed fetch effect triggered. University ID:', universityId, 'Enrollment Year:', enrollmentYear);
+
+    if (!universityId) {
+      console.log('⚠️ No university ID, clearing gen eds');
+      setGenEdOptions([]);
+      setSelectedGenEds([]);
+      return;
+    }
+
+    let isMounted = true;
+    setGenEdOptionsLoading(true);
+
+    (async () => {
+      try {
+        console.log('📡 Fetching gen eds for university:', universityId);
+        const programs = await GetGenEdsForUniversity(universityId);
+        console.log('📚 Fetched', programs.length, 'gen ed programs:', programs);
+
+        if (!isMounted) return;
+
+        setGenEdOptions(programs);
+        setSelectedGenEds((prev) => {
+          if (prev.length > 0) {
+            console.log('✅ Keeping existing selection:', prev.length, 'programs');
+            return prev;
+          }
+          const autoSelected = selectGenEdByEnrollmentDate(programs, enrollmentYear);
+          console.log('🎯 Auto-selected gen ed:', autoSelected ? autoSelected.name : 'none');
+          return autoSelected ? [autoSelected] : [];
+        });
+      } catch (error) {
+        console.error('❌ Failed to fetch general education programs:', error);
+      } finally {
+        if (isMounted) {
+          setGenEdOptionsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [universityId, enrollmentYear]);
+
+  // Extract requirement options from both gen eds and grad plan programs
+  useEffect(() => {
+    // Combine programs from both sources
+    const allPrograms: ProgramRow[] = [];
+
+    // Include grad plan programs if available
+    if (activeGradPlan && gradPlanPrograms.length > 0) {
+      allPrograms.push(...gradPlanPrograms);
+    }
+
+    // Also include selected gen eds (not else - include both!)
+    if (selectedGenEds.length > 0) {
+      allPrograms.push(...selectedGenEds);
+    }
+
+    if (allPrograms.length === 0) {
+      setRequirementOptions([]);
+      setGenEdHasNoDoubleCount(false);
+      return;
+    }
+
+    setRequirementOptions(extractRequirementOptions(allPrograms));
+
+    const hasRestriction = allPrograms.some((program) => {
+      const requirements = program.requirements as { noDoubleCount?: boolean; metadata?: { noDoubleCount?: boolean } } | null;
+      if (requirements && typeof requirements === 'object') {
+        return Boolean(
+          (requirements as { noDoubleCount?: boolean }).noDoubleCount ||
+            (requirements as { metadata?: { noDoubleCount?: boolean } }).metadata?.noDoubleCount,
+        );
+      }
+      return false;
+    });
+
+    setGenEdHasNoDoubleCount(hasRestriction);
+  }, [selectedGenEds, gradPlanPrograms, activeGradPlan]);
 
   // Check for PDF URL in sessionStorage on initial load only
   useEffect(() => {
@@ -140,6 +306,26 @@ export default function AcademicHistoryPage() {
       }
     })();
   }, [userId, hasUserCourses]);
+
+  // Fetch programs from active grad plan
+  useEffect(() => {
+    if (!activeGradPlan || !activeGradPlan.programs_in_plan || activeGradPlan.programs_in_plan.length === 0) {
+      setGradPlanPrograms([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const programIds = activeGradPlan.programs_in_plan.map(String);
+        const programs = await fetchProgramsBatch(programIds, universityId ?? undefined);
+        setGradPlanPrograms(programs);
+        console.log('✅ Fetched', programs.length, 'programs from active grad plan');
+      } catch (error) {
+        console.error('Failed to fetch programs from grad plan:', error);
+        setGradPlanPrograms([]);
+      }
+    })();
+  }, [activeGradPlan, universityId]);
 
   const exportJson = async () => {
     try {
@@ -276,23 +462,173 @@ export default function AcademicHistoryPage() {
     });
   };
 
+  // Automatically match courses when conditions change
+  useEffect(() => {
+    // Skip if no courses to match
+    if (!userId || userCourses.length === 0) {
+      return;
+    }
+
+    // Determine which programs to use for matching
+    const programsToMatch: ProgramRow[] = [];
+
+    // If user has an active grad plan, use those programs
+    if (activeGradPlan && gradPlanPrograms.length > 0) {
+      programsToMatch.push(...gradPlanPrograms);
+      console.log('🎓 Matching against grad plan programs:', gradPlanPrograms.map(p => p.name).join(', '));
+    } else if (selectedGenEds.length > 0) {
+      // Otherwise, use selected gen eds (if any)
+      programsToMatch.push(...selectedGenEds);
+      console.log('📚 Matching against selected gen eds:', selectedGenEds.map(p => p.name).join(', '));
+    }
+
+    // Skip if no programs to match against
+    if (programsToMatch.length === 0) {
+      return;
+    }
+
+    // Run matching
+    (async () => {
+      try {
+        setAutoMatchLoading(true);
+        console.log('🚀 Auto-matching', userCourses.length, 'courses against', programsToMatch.length, 'programs');
+        const results = performGenEdMatching(userCourses, programsToMatch);
+        console.log('📊 Match results:', results);
+        const updatedCourses = results.map((result) => result.course);
+
+        const saveResult = await updateUserCoursesAction(userId, updatedCourses);
+        if (!saveResult.success) {
+          console.error('Failed to save matched courses:', saveResult.error);
+          return;
+        }
+
+        setUserCourses(updatedCourses);
+        setMatchResults(results);
+        console.log('✅ Auto-match complete');
+      } catch (error) {
+        console.error('Failed to auto-match courses:', error);
+      } finally {
+        setAutoMatchLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, selectedGenEds, gradPlanPrograms, activeGradPlan]);
+
+  const handleRequirementDialogClose = () => {
+    setOverrideDialogOpen(false);
+    setRequirementDialogCourse(null);
+  };
+
+  const handleRequirementDialogOpen = (course: ParsedCourse) => {
+    setRequirementDialogCourse(course);
+    setOverrideDialogOpen(true);
+  };
+
+  const handleRequirementSave = async (courseId: string, fulfillments: CourseFulfillment[]) => {
+    if (!userId) {
+      setSnackbar({
+        open: true,
+        message: 'User not authenticated',
+        severity: 'error',
+      });
+      return;
+    }
+
+    const result = await updateCourseFulfillmentsAction(userId, courseId, fulfillments);
+    if (result.success && result.course) {
+      setUserCourses((prev) => prev.map((course) => (course.id === courseId ? result.course! : course)));
+      setSnackbar({
+        open: true,
+        message: 'Requirement assignment saved',
+        severity: 'success',
+      });
+      handleRequirementDialogClose();
+      return;
+    }
+
+    setSnackbar({
+      open: true,
+      message: result.error || 'Failed to update requirement assignment',
+      severity: 'error',
+    });
+  };
+
+  const matchedCourseCount = userCourses.filter((course) => (course.fulfillsRequirements?.length ?? 0) > 0).length;
+  const matchStatus = {
+    total: userCourses.length,
+    matched: matchedCourseCount,
+    unmatched: Math.max(userCourses.length - matchedCourseCount, 0),
+  };
+
+  // Calculate program progress
+  const calculateProgramProgress = (programId: string) => {
+    // Get all requirements for this program
+    const programRequirements = requirementOptions.filter(
+      (option) => option.programId === programId
+    );
+    const totalRequirements = programRequirements.length;
+
+    if (totalRequirements === 0) {
+      return { fulfilled: 0, total: 0, percentage: 0 };
+    }
+
+    // Get unique fulfilled requirement IDs for this program
+    const fulfilledRequirementIds = new Set<string>();
+    userCourses.forEach((course) => {
+      course.fulfillsRequirements?.forEach((fulfillment) => {
+        if (fulfillment.programId === programId) {
+          fulfilledRequirementIds.add(fulfillment.requirementId);
+        }
+      });
+    });
+
+    const fulfilled = fulfilledRequirementIds.size;
+    const percentage = (fulfilled / totalRequirements) * 100;
+
+    return { fulfilled, total: totalRequirements, percentage };
+  };
+
+  // Get programs to display progress for
+  const programsForProgress = activeGradPlan && gradPlanPrograms.length > 0
+    ? gradPlanPrograms
+    : selectedGenEds;
+
   // Render a course card based on view mode
   const renderCourseCard = (course: ParsedCourse, bgColor: string, borderColor: string, editable = true) => {
     const isTransfer = course.origin === 'transfer' && course.transfer;
 
     if (viewMode === 'compact') {
+      const hasFulfillments = (course.fulfillsRequirements?.length ?? 0) > 0;
+
       return (
-        <div key={course.id} className="group relative">
+        <div
+          key={course.id}
+          className="group relative"
+          onMouseEnter={(e) => {
+            const button = e.currentTarget.querySelector('button');
+            const tooltip = e.currentTarget.querySelector('.course-tooltip') as HTMLElement;
+            if (button && tooltip) {
+              const rect = button.getBoundingClientRect();
+              tooltip.style.left = `${rect.left + rect.width / 2}px`;
+              tooltip.style.top = `${rect.top - 8}px`;
+            }
+          }}
+        >
           <button
             type="button"
             onClick={editable ? () => handleEditCourse(course) : undefined}
             disabled={!editable}
-            className="rounded border px-2 py-1 shadow-sm transition-all duration-200 hover:shadow-md disabled:cursor-default"
+            className="relative rounded border px-2 py-1 shadow-sm transition-all duration-200 hover:shadow-md disabled:cursor-default"
             style={{
               backgroundColor: bgColor,
               borderColor: borderColor,
             }}
           >
+            {hasFulfillments && (
+              <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-green-500 text-[8px] font-bold text-white">
+                {course.fulfillsRequirements!.length}
+              </span>
+            )}
             <span className="font-body-semi text-xs font-semibold text-[var(--foreground)]">
               {course.subject} {course.number}
               {isTransfer && (
@@ -301,8 +637,8 @@ export default function AcademicHistoryPage() {
             </span>
           </button>
 
-          {/* Tooltip on hover - auto-width to fit content */}
-          <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden min-w-max -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-lg group-hover:block">
+          {/* Tooltip on hover - uses fixed positioning to be above everything */}
+          <div className="course-tooltip pointer-events-none fixed z-[9999] hidden min-w-max -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-xl group-hover:block">
             <div className="space-y-0.5">
               <p className="font-body-semi text-xs font-semibold text-[var(--foreground)]">{course.title}</p>
               <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
@@ -324,6 +660,22 @@ export default function AcademicHistoryPage() {
                   </p>
                 </div>
               )}
+              {course.fulfillsRequirements?.length ? (
+                <div className="mt-2 border-t border-[var(--border)] pt-2">
+                  <p className="font-body-semi text-xs font-semibold text-[var(--muted-foreground)]">Requirements</p>
+                  {course.fulfillsRequirements.map((fulfillment) => (
+                    <div
+                      key={`${course.id}-${fulfillment.requirementId}`}
+                      className="font-body text-[11px] text-[var(--muted-foreground)]"
+                    >
+                      • {fulfillment.requirementDescription}{' '}
+                      <span className="uppercase">
+                        [{fulfillment.matchType === 'auto' ? 'Auto' : 'Manual'}]
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {editable && (
                 <p className="font-body text-xs italic text-[var(--muted-foreground)]">Click to edit</p>
               )}
@@ -339,7 +691,7 @@ export default function AcademicHistoryPage() {
     return (
       <div
         key={course.id}
-        className="relative min-w-[250px] flex-1 rounded-lg border p-4 shadow-sm"
+        className="relative flex flex-col rounded-lg border p-4 shadow-sm transition-all hover:shadow-md"
         style={{
           backgroundColor: bgColor,
           borderColor: borderColor,
@@ -354,7 +706,7 @@ export default function AcademicHistoryPage() {
             <Edit2 size={14} />
           </button>
         )}
-        <div className="flex items-start gap-2">
+        <div className="mb-2 flex items-start gap-2 pr-8">
           <h4 className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
             {course.subject} {course.number}
           </h4>
@@ -364,11 +716,47 @@ export default function AcademicHistoryPage() {
             </span>
           )}
         </div>
-        <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">
+        <p className="font-body mb-3 text-xs text-[var(--muted-foreground)] line-clamp-2">
           {course.title}
         </p>
+
+        {/* Course Details */}
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
+            {course.credits} cr
+          </span>
+          {course.grade && (
+            <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
+              {course.grade}
+            </span>
+          )}
+        </div>
+
+        {/* Requirement Tags - More Prominent */}
+        {course.fulfillsRequirements?.length ? (
+          <div className="mb-2 flex flex-col gap-1.5 border-t border-[var(--border)] pt-2">
+            <p className="font-body-semi text-[10px] uppercase tracking-wide text-[var(--muted-foreground)]">
+              Fulfills
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {course.fulfillsRequirements.map((fulfillment) => (
+                <RequirementTag
+                  key={`${course.id}-${fulfillment.requirementId}`}
+                  fulfillment={fulfillment}
+                  onClick={
+                    selectedGenEds.length > 0 || (activeGradPlan && gradPlanPrograms.length > 0)
+                      ? () => handleRequirementDialogOpen(course)
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Transfer Info */}
         {isTransfer && course.transfer && (
-          <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-2">
+          <div className="mt-auto rounded-md border border-blue-200 bg-blue-50 p-2">
             <p className="font-body-semi text-xs font-semibold text-blue-900">Original Course</p>
             <p className="font-body text-xs text-blue-800">
               {course.transfer.originalSubject} {course.transfer.originalNumber} - {course.transfer.originalTitle}
@@ -378,21 +766,17 @@ export default function AcademicHistoryPage() {
             </p>
           </div>
         )}
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
-            {course.credits} credits
-          </span>
-          {course.grade && (
-            <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
-              {course.grade}
-            </span>
-          )}
-          {course.term && (
-            <span className="font-body rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs font-medium">
-              {course.term}
-            </span>
-          )}
-        </div>
+
+        {/* Change Requirements Button */}
+        {(selectedGenEds.length > 0 || (activeGradPlan && gradPlanPrograms.length > 0)) && (
+          <button
+            type="button"
+            onClick={() => handleRequirementDialogOpen(course)}
+            className="font-body mt-2 text-left text-xs font-semibold text-[var(--primary)] hover:text-[var(--hover-green)]"
+          >
+            {course.fulfillsRequirements?.length ? 'Change Requirements' : 'Assign Requirements'}
+          </button>
+        )}
       </div>
     );
   };
@@ -541,6 +925,53 @@ export default function AcademicHistoryPage() {
       </div>
 
       {/* Scrollable Content Area */}
+      {Boolean(universityId && userCourses.length) && (
+        <>
+          {activeGradPlan && gradPlanPrograms.length > 0 ? (
+            <div className="mb-6 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary)]/10">
+                  <span className="text-lg">🎓</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+                    Active Graduation Plan
+                  </p>
+                  <p className="font-body text-xs text-[var(--muted-foreground)]">
+                    Courses are automatically matched against: {gradPlanPrograms.map(p => p.name).join(', ')}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs text-[var(--muted-foreground)] sm:grid-cols-3">
+                <div>
+                  <p className="font-body-semi text-[var(--foreground)]">Total Courses</p>
+                  <p className="font-body text-sm">{matchStatus.total}</p>
+                </div>
+                <div>
+                  <p className="font-body-semi text-[var(--foreground)]">Matched</p>
+                  <p className="font-body text-sm text-green-600">{matchStatus.matched}</p>
+                </div>
+                <div>
+                  <p className="font-body-semi text-[var(--foreground)]">Unmatched</p>
+                  <p className="font-body text-sm text-red-600">{matchStatus.unmatched}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6 w-full">
+              <GenEdSelector
+                programs={genEdOptions}
+                selectedPrograms={selectedGenEds}
+                onSelectionChange={setSelectedGenEds}
+                matchStatus={matchStatus}
+                enrollmentYear={enrollmentYear}
+                isTransfer={isTransferStudent}
+                loading={genEdOptionsLoading}
+              />
+            </div>
+          )}
+        </>
+      )}
       <div className="flex flex-1 flex-col gap-6 overflow-auto">
         {/* Group courses by term/semester */}
         {(() => {
@@ -589,8 +1020,12 @@ export default function AcademicHistoryPage() {
           const totalCredits = userCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
           const totalCourses = userCourses.length;
 
-          // Determine grid columns based on total semesters
+          // Determine grid columns based on total semesters (only for compact view)
           const getGridCols = (count: number): string => {
+            if (viewMode === 'full') {
+              return 'flex flex-col'; // Full view: display as rows
+            }
+            // Compact view: display as grid columns
             if (count >= 7) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'; // 4 per row
             if (count >= 5) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'; // 3 per row
             if (count >= 3) return 'grid-cols-1 md:grid-cols-2'; // 2 per row
@@ -616,18 +1051,45 @@ export default function AcademicHistoryPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Program Progress Section */}
+                {programsForProgress.length > 0 && (
+                  <div className="border-t border-[var(--border)] px-6 py-4">
+                    <h4 className="font-body-semi mb-4 text-sm font-semibold text-[var(--foreground)]">
+                      Requirement Progress
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                      {programsForProgress.map((program) => {
+                        const progress = calculateProgramProgress(program.id);
+                        return (
+                          <div key={program.id} className="flex flex-col items-center">
+                            <CircularProgress
+                              percentage={progress.percentage}
+                              size={70}
+                              strokeWidth={6}
+                              label={program.name}
+                            />
+                            <p className="font-body mt-2 text-center text-xs text-[var(--muted-foreground)]">
+                              {progress.fulfilled} / {progress.total} requirements
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Term Containers Grid */}
-              <div className={`grid ${getGridCols(sortedTerms.length)} gap-6`}>
+              {/* Term Containers */}
+              <div className={viewMode === 'compact' ? `grid ${getGridCols(sortedTerms.length)} gap-6` : 'flex flex-col gap-6'}>
                 {sortedTerms.map((term) => {
                   const termCourses = coursesByTerm[term];
                   const termCredits = termCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
 
                   return (
-                    <div key={term} className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+                    <div key={term} className={`rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md ${viewMode === 'full' ? 'overflow-hidden' : 'overflow-visible'}`}>
                       {/* Header */}
-                      <div className="border-b px-4 py-2.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                      <div className="overflow-hidden rounded-t-xl border-b px-4 py-2.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
                         <div className="flex flex-col gap-0.5">
                           <h3 className="font-header text-sm font-bold text-white">
                             {term}
@@ -643,9 +1105,9 @@ export default function AcademicHistoryPage() {
                         </div>
                       </div>
 
-                      {/* Courses Grid */}
-                      <div className="p-3">
-                        <div className={`flex flex-wrap gap-${viewMode === 'compact' ? '1.5' : '2'}`}>
+                      {/* Courses Grid/Flex */}
+                      <div className="p-3 overflow-visible">
+                        <div className={viewMode === 'compact' ? 'flex flex-wrap gap-1.5' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'}>
                           {termCourses.map((course) =>
                             renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
                           )}
@@ -659,6 +1121,17 @@ export default function AcademicHistoryPage() {
           );
         })()}
       </div>
+
+      {requirementDialogCourse && (
+        <RequirementOverrideDialog
+          open={overrideDialogOpen}
+          course={requirementDialogCourse}
+          availableRequirements={requirementOptions}
+          genEdHasNoDoubleCount={genEdHasNoDoubleCount}
+          onClose={handleRequirementDialogClose}
+          onSave={handleRequirementSave}
+        />
+      )}
 
       {/* Upload Dialog */}
       {uploadDialogOpen && (

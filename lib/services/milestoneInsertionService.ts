@@ -277,9 +277,5 @@ export function insertMilestonesIntoPlan(
   // Merge terms and milestones into final plan array
   const finalPlan = mergePlanWithMilestones(plan, preparedMilestones);
 
-  console.log(
-    `✅ Inserted ${preparedMilestones.length} milestones into ${termCount}-term plan`
-  );
-
   return finalPlan;
 }

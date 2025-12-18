@@ -14,7 +14,6 @@ const result1 = distributionForTarget(60, 210, [
   { credits: 4 },
 ], 3.5);
 
-console.log('Test 1 (60 credits @3.5 GPA, need 40 more @3.5):', result1);
 
 // Test 2: With locked goals
 const result2 = distributionForTarget(
@@ -26,5 +25,3 @@ const result2 = distributionForTarget(
   ],
   3.5
 );
-
-console.log('\nTest 2 (with locked 20 A):', result2);

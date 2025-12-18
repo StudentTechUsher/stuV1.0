@@ -301,9 +301,25 @@ export function getSubRequirements(req: ProgramRequirement): ProgramRequirement[
 
 /**
  * Helper function to get courses from any requirement type
+ * Supports both direct 'courses' array and 'blocks' structure
  */
 export function getCourses(req: ProgramRequirement): Course[] | undefined {
-  if ('courses' in req) return req.courses;
+  // Direct courses array
+  if ('courses' in req && req.courses) {
+    return req.courses;
+  }
+
+  // Courses nested in blocks (Gen Ed structure)
+  if ('blocks' in req && Array.isArray((req as any).blocks)) {
+    const allCourses: Course[] = [];
+    for (const block of (req as any).blocks) {
+      if (block.courses && Array.isArray(block.courses)) {
+        allCourses.push(...block.courses);
+      }
+    }
+    return allCourses.length > 0 ? allCourses : undefined;
+  }
+
   return undefined;
 }
 

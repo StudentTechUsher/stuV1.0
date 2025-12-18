@@ -47,8 +47,10 @@ import {
     formatCoursesForDisplay,
     saveManualCourses as _saveManualCourses,
     updateUserCourseTags as _updateUserCourseTags,
+    updateCourseFulfillments as _updateCourseFulfillments,
     upsertUserCourses as _upsertUserCourses,
     type ParsedCourse,
+    type CourseFulfillment,
 } from './userCoursesService';
 import {
     markAllNotificationsRead as _markAllNotificationsRead,
@@ -635,6 +637,32 @@ export async function updateUserCourseTagsAction(
             });
         }
         return { success: false, error: 'Failed to update course tags' };
+    }
+}
+
+export async function updateCourseFulfillmentsAction(
+    userId: string,
+    courseId: string,
+    fulfillments: CourseFulfillment[]
+) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const result = await _updateCourseFulfillments(supabase, userId, courseId, fulfillments);
+        return { success: true, course: result.course };
+    } catch (error) {
+        console.error('Error updating course fulfillments:', error);
+        const message = error instanceof Error ? error.message : 'Failed to update requirement assignments';
+        return { success: false, error: message };
     }
 }
 
