@@ -95,9 +95,9 @@ export default function AcademicProgressCard() {
   return (
     // Modern card with clean hierarchy and better spacing
     <div className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-      {/* Bold black header matching semester-results-table */}
-      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+      {/* Bold header matching semester-results-table */}
+      <div className="border-b-2 px-6 py-4 bg-foreground" style={{ borderColor: "var(--foreground)" }}>
+        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-background">
           Academic Progress
         </h3>
       </div>

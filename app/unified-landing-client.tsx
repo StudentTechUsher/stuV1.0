@@ -132,7 +132,7 @@ export function UnifiedLandingClient() {
                     height={32}
                     className="rounded object-contain"
                   />
-                  <span className="text-xl font-bold text-gray-400">×</span>
+                  <span className="text-xl font-bold text-zinc-400 dark:text-zinc-600">×</span>
                 </div>
               )}
               <div className="flex items-center">
@@ -309,17 +309,17 @@ export function UnifiedLandingClient() {
                 <div className="space-y-2 max-w-full">
                   {audience === 'universities' ? (
                     <>
-                      <h1 className="text-zinc-900 text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
+                      <h1 className="text-zinc-900 dark:text-zinc-100 text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
                         <div className="sm:whitespace-nowrap">Boost Graduation Rates</div>
                         <div className="sm:whitespace-nowrap">Through Intelligent Course Planning</div>
                       </h1>
-                      <p className="max-w-[600px] text-zinc-700 text-[clamp(1rem,1.5vw,1.5rem)] leading-snug font-body-medium">
+                      <p className="max-w-[600px] text-zinc-700 dark:text-zinc-300 text-[clamp(1rem,1.5vw,1.5rem)] leading-snug font-body-medium">
                         Our AI-powered planning tools reduce advisor bottlenecks and improve student outcomes with a career-centric focus.
                       </p>
                     </>
                   ) : (
                     <>
-                      <h1 className="text-black text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
+                      <h1 className="text-zinc-900 dark:text-zinc-100 text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
                         <div className="sm:whitespace-nowrap">Your Degree, Your Schedule</div>
                         <div className="flex items-center gap-2 whitespace-nowrap">
                           Seamless with
@@ -335,7 +335,7 @@ export function UnifiedLandingClient() {
                           <span>stu.</span>
                         </div>
                       </h1>
-                      <p className="max-w-[700px] text-zinc-700 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
+                      <p className="max-w-[700px] text-zinc-700 dark:text-zinc-300 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
                         Too many course choices and not enough transparency? Not sure what kind of career you&apos;ll have after graduation? Stu helps you answer these questions with graduation maps customized to your goals!
                       </p>
                     </>
@@ -351,7 +351,7 @@ export function UnifiedLandingClient() {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                       </Button>
-                      <p className="text-xs sm:text-sm text-zinc-600 max-w-md">
+                      <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-md">
                         Schedule a personalized demo to see how stu can transform your institution&apos;s academic planning
                       </p>
                     </div>
@@ -372,7 +372,7 @@ export function UnifiedLandingClient() {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                       </Button>
-                      <p className="text-xs sm:text-sm text-zinc-600 max-w-md">
+                      <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-md">
                         Create your free account and start building your personalized graduation plan in minutes
                       </p>
                     </div>
@@ -411,13 +411,13 @@ export function UnifiedLandingClient() {
                       <HelpCircle className="h-6 w-6" />
                     </button>
                     {activeTooltip === 'features' && (
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 text-white text-sm rounded-lg p-3 shadow-xl z-10">
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-sm rounded-lg p-3 shadow-xl z-10">
                         <p>
                           {audience === 'universities'
                             ? 'Our platform integrates seamlessly with your existing systems to provide real-time insights and automated planning tools.'
                             : 'All features are included in your free account. No credit card required to get started.'}
                         </p>
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900"></div>
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900 dark:border-b-zinc-100"></div>
                       </div>
                     )}
                   </div>
@@ -464,7 +464,7 @@ export function UnifiedLandingClient() {
                   ].map((feature) => (
                     <div
                       key={feature.title}
-                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 bg-white p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
+                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                         <Image
@@ -514,7 +514,7 @@ export function UnifiedLandingClient() {
                   ].map((feature) => (
                     <div
                       key={feature.title}
-                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 bg-white p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
+                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                         <Image
@@ -525,8 +525,8 @@ export function UnifiedLandingClient() {
                           className="object-contain"
                         />
                       </div>
-                      <h3 className="text-xl font-header text-zinc-900">{feature.title}</h3>
-                      <p className="text-zinc-700 font-body-medium leading-relaxed">{feature.description}</p>
+                      <h3 className="text-xl font-header text-zinc-900 dark:text-zinc-100">{feature.title}</h3>
+                      <p className="text-zinc-700 dark:text-zinc-300 font-body-medium leading-relaxed">{feature.description}</p>
                     </div>
                   ))
                 )}
@@ -556,16 +556,16 @@ export function UnifiedLandingClient() {
                     <HelpCircle className="h-6 w-6" />
                   </button>
                   {activeTooltip === 'testimonials' && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 text-white text-sm rounded-lg p-3 shadow-xl z-10">
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-sm rounded-lg p-3 shadow-xl z-10">
                       <p>
                         Real feedback from students who have used stu to successfully plan their academic journey and graduate on time.
                       </p>
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900"></div>
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900 dark:border-b-zinc-100"></div>
                     </div>
                   )}
                 </div>
               </div>
-              <p className="text-xl text-zinc-700 font-body-medium">Here&apos;s what students are saying</p>
+              <p className="text-xl text-zinc-700 dark:text-zinc-300 font-body-medium">Here&apos;s what students are saying</p>
             </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
@@ -575,12 +575,12 @@ export function UnifiedLandingClient() {
             ].map((review) => (
               <div
                 key={`${review.name}-${review.state}`}
-                className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 bg-white p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
+                className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
               >
-                <h3 className="text-xl font-header text-zinc-900">
+                <h3 className="text-xl font-header text-zinc-900 dark:text-zinc-100">
                   {review.name}, {review.state}
                 </h3>
-                <p className="text-zinc-700 font-body-medium leading-relaxed">{review.text}</p>
+                <p className="text-zinc-700 dark:text-zinc-300 font-body-medium leading-relaxed">{review.text}</p>
               </div>
             ))}
           </div>
@@ -593,16 +593,16 @@ export function UnifiedLandingClient() {
             <div className="container px-4 md:px-6 relative">
               <div className="flex flex-col items-center justify-center gap-6 text-center md:gap-10">
                 <div className="space-y-4">
-                  <h2 className="text-3xl font-header text-zinc-900 tracking-tighter md:text-5xl/tight font-bold">
+                  <h2 className="text-3xl font-header text-zinc-900 dark:text-zinc-100 tracking-tighter md:text-5xl/tight font-bold">
                     Ready to Transform Academic Planning?
                   </h2>
-                  <p className="mx-auto max-w-[700px] text-zinc-800 font-body-medium md:text-xl leading-relaxed">
+                  <p className="mx-auto max-w-[700px] text-zinc-800 dark:text-zinc-200 font-body-medium md:text-xl leading-relaxed">
                     Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu&apos;s planning platform.
                   </p>
                 </div>
                 <div className="w-full max-w-md px-4">
                   <Link href="/demo">
-                    <Button className="w-full bg-zinc-900 hover:bg-zinc-800 text-white border-none font-semibold py-3 sm:py-4 text-base sm:text-lg shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105">
+                    <Button className="w-full bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 border-none font-semibold py-3 sm:py-4 text-base sm:text-lg shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
@@ -772,10 +772,10 @@ export function UnifiedLandingClient() {
 
       {/* Loading overlay when redirecting */}
       {isRedirecting && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 shadow-2xl flex flex-col items-center gap-4">
+        <div className="fixed inset-0 bg-black/60 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-8 shadow-2xl flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-lg font-medium text-zinc-900">Redirecting to dashboard...</p>
+            <p className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Redirecting to dashboard...</p>
           </div>
         </div>
       )}

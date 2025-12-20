@@ -52,16 +52,16 @@ function LoginContent() {
   };
 
   return (
-    <main className="min-h-screen flex relative" style={{ backgroundColor: '#F5F5F6' }}>
+    <main className="min-h-screen flex relative bg-muted">
       <Link
         href="/"
-        className="absolute top-6 left-6 text-black text-4xl font-brand hover:text-zinc-700 transition-colors z-50"
+        className="absolute top-6 left-6 text-foreground text-4xl font-brand hover:text-muted-foreground transition-colors z-50"
       >
         stu.
       </Link>
 
       {/* Left Side - Image */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-end pr-8" style={{ backgroundColor: '#F5F5F6' }}>
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-end pr-8 bg-muted">
         <div className="relative w-full h-full max-w-2xl max-h-[80vh]">
           <Image
             src="/hero-graduation-runner.png"
@@ -74,7 +74,7 @@ function LoginContent() {
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-start pl-8 py-8" style={{ backgroundColor: '#F5F5F6' }}>
+      <div className="w-full lg:w-1/2 flex items-center justify-start pl-8 py-8 bg-muted">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-2">
             <Image
@@ -87,7 +87,7 @@ function LoginContent() {
             />
           </div>
 
-          <h2 className="text-center text-xl text-black mb-8 font-header">
+          <h2 className="text-center text-xl text-foreground mb-8 font-header">
             welcome to stu.
           </h2>
 
@@ -102,19 +102,18 @@ function LoginContent() {
               onBlur={() => setEmailFocused(false)}
               required
               disabled={loading}
-              className={`w-full px-4 pt-6 pb-2 text-black bg-transparent border-2 rounded-md
+              className={`w-full px-4 pt-6 pb-2 text-foreground bg-transparent border-2 rounded-md
                 ${emailFocused || email ? 'border-[var(--hover-green)]' : 'border-[var(--primary)]'}
                 focus:outline-none focus:border-[var(--hover-green)] transition-all font-body
                 disabled:opacity-50 disabled:cursor-not-allowed`}
             />
             <label
-              className={`absolute left-4 transition-all duration-200 pointer-events-none px-1 font-body
+              className={`absolute left-4 transition-all duration-200 pointer-events-none px-1 font-body bg-muted
                 ${
                   emailFocused || email
                     ? '-top-2 text-xs text-[var(--hover-green)]'
-                    : 'top-1/2 -translate-y-1/2 text-base text-zinc-700'
+                    : 'top-1/2 -translate-y-1/2 text-base text-muted-foreground'
                 }`}
-              style={{ backgroundColor: '#F5F5F6' }}
             >
               Email address
             </label>
@@ -135,17 +134,16 @@ function LoginContent() {
           <button
             type="submit"
             disabled={loading || !email}
-            className="w-full bg-[var(--primary)] hover:bg-[var(--hover-green)] text-zinc-700 hover:text-white py-3 px-4 rounded-lg font-medium transition-colors mb-4 font-body-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[var(--primary)] hover:bg-[var(--hover-green)] text-primary-foreground py-3 px-4 rounded-lg font-medium transition-colors mb-4 font-body-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Sending...' : 'Continue'}
           </button>
         </form>
 
         <div className="relative mb-6">
-          <hr className="border-gray-300" />
+          <hr className="border-border" />
           <span
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-3 text-gray-500 text-sm font-body"
-            style={{ backgroundColor: '#F5F5F6' }}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-3 text-muted-foreground text-sm font-body bg-muted"
           >
             OR
           </span>
@@ -175,7 +173,7 @@ function LoginContent() {
                 options: { redirectTo },
               })
             }
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-border rounded-lg hover:bg-accent transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path
@@ -195,7 +193,7 @@ function LoginContent() {
                 fill="#EA4335"
               />
             </svg>
-            <span className="text-black font-body-medium">
+            <span className="text-foreground font-body-medium">
               Sign in with Google
             </span>
           </button>

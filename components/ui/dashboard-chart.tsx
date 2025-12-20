@@ -179,17 +179,17 @@ export function DashboardChart({
 
   return (
     <Card className={`group overflow-hidden !p-0 transition-all duration-200 hover:shadow-md ${className || ''}`}>
-      {/* Black header bar - full width spanning entire card top with rounded top corners */}
-      <div className="rounded-t-2xl border-b-2 bg-[#0A0A0A] px-6 py-4" style={{ borderColor: "#0A0A0A" }}>
+      {/* Header bar - full width spanning entire card top with rounded top corners */}
+      <div className="rounded-t-2xl border-b-2 bg-foreground px-6 py-4" style={{ borderColor: "var(--foreground)" }}>
         <div className="flex items-center justify-between">
-          <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+          <h3 className="font-header text-sm font-bold uppercase tracking-wider text-background">
             {title}
           </h3>
           {description && (
             <div className="relative">
               <button
                 type="button"
-                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/70 transition-all duration-200 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-background/10 text-background/70 transition-all duration-200 hover:bg-background/20 hover:text-background focus:outline-none focus:ring-2 focus:ring-background/30"
                 aria-label="Show chart description"
                 title={description}
               >
@@ -208,7 +208,7 @@ export function DashboardChart({
                 </svg>
               </button>
               {/* Tooltip on hover */}
-              <div className="pointer-events-none absolute right-0 top-8 z-10 w-72 rounded-lg border border-[var(--border)] bg-[var(--popover)] p-3 text-xs leading-relaxed text-[var(--popover-foreground)] opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+              <div className="pointer-events-none absolute right-0 top-8 z-10 w-72 rounded-lg border border-border bg-popover p-3 text-xs leading-relaxed text-popover-foreground opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
                 {description}
               </div>
             </div>

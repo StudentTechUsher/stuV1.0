@@ -53,7 +53,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                   height={32}
                   className="rounded object-contain"
                 />
-                <span className="text-xl font-bold text-gray-400">×</span>
+                <span className="text-xl font-bold text-muted-foreground">×</span>
               </div>
             )}
             <div className="flex items-center">
@@ -91,13 +91,13 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
             <Link href="/login">
               <Button
                 variant="outline"
-                className="border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium px-6 py-2.5 text-base transition-all"
+                className="font-medium px-6 py-2.5 text-base"
               >
                 Sign In
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+              <Button className="bg-primary hover:bg-[var(--hover-green)] text-primary-foreground font-medium px-6 py-2.5 text-base transition-all">
                 Get Started
               </Button>
             </Link>
@@ -108,7 +108,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
               For Students
             </Link>
             <Link href="/demo">
-              <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base">
+              <Button className="bg-primary hover:bg-[var(--hover-green)] text-primary-foreground border-none font-medium px-6 py-2.5 text-base">
                 Request a demo
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -124,7 +124,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-zinc-100">
+        <div className="md:hidden border-t border-border">
           <div className="container mx-auto px-6 py-6 flex flex-col gap-6">
             {navLinks.map((link) => (
               <Link
@@ -136,7 +136,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                 {link.label}
               </Link>
             ))}
-            <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
+            <div className="flex flex-col gap-4 pt-4 border-t border-border">
               {variant === "students" ? (
                 <>
                   <Link
@@ -150,13 +150,13 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                     <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                       <Button
                         variant="outline"
-                        className="w-full border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium"
+                        className="w-full font-medium"
                       >
                         Sign In
                       </Button>
                     </Link>
                     <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                      <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium transition-all">
+                      <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-primary-foreground border-none font-medium transition-all">
                         Sign Up
                       </Button>
                     </Link>
@@ -172,7 +172,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                     For Students →
                   </Link>
                   <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium w-full py-2.5 text-base">
+                    <Button className="bg-primary hover:bg-[var(--hover-green)] text-primary-foreground border-none font-medium w-full py-2.5 text-base">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>

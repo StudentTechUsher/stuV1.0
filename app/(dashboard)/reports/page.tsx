@@ -22,7 +22,7 @@ export default function ReportsPage() {
       {/* Modern Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-header-bold text-3xl sm:text-4xl font-bold text-[#0A0A0A]">
+          <h1 className="font-header-bold text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-100">
             Reports
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)] mt-2">
@@ -39,7 +39,7 @@ export default function ReportsPage() {
           onClick={() => setActiveTab('overview')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 font-body-semi text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 ${
             activeTab === 'overview'
-              ? 'bg-white text-[var(--foreground)] shadow-sm'
+              ? 'bg-zinc-50 dark:bg-zinc-800 text-[var(--foreground)] shadow-sm'
               : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
           }`}
           aria-current={activeTab === 'overview' ? 'page' : undefined}
@@ -51,7 +51,7 @@ export default function ReportsPage() {
           onClick={() => setActiveTab('demand')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 font-body-semi text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 ${
             activeTab === 'demand'
-              ? 'bg-white text-[var(--foreground)] shadow-sm'
+              ? 'bg-zinc-50 dark:bg-zinc-800 text-[var(--foreground)] shadow-sm'
               : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
           }`}
           aria-current={activeTab === 'demand' ? 'page' : undefined}
@@ -63,7 +63,7 @@ export default function ReportsPage() {
           onClick={() => setActiveTab('withdrawals')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 font-body-semi text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 ${
             activeTab === 'withdrawals'
-              ? 'bg-white text-[var(--foreground)] shadow-sm'
+              ? 'bg-zinc-50 dark:bg-zinc-800 text-[var(--foreground)] shadow-sm'
               : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
           }`}
           aria-current={activeTab === 'withdrawals' ? 'page' : undefined}

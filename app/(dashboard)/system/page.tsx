@@ -98,7 +98,7 @@ export default function SystemPage() {
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)] shadow-sm">
-            <Settings size={20} className="text-black" />
+            <Settings size={20} className="text-primary-foreground" />
           </div>
           <h1 className="font-header-bold text-3xl font-extrabold text-[var(--foreground)]">
             System Settings
@@ -133,9 +133,9 @@ export default function SystemPage() {
 
       {/* Main Settings Card */}
       <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-        {/* Bold black header matching other dashboard components */}
-        <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-          <h2 className="font-header text-lg font-bold text-white">
+        {/* Bold header matching other dashboard components */}
+        <div className="border-b-2 bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-6 py-4">
+          <h2 className="font-header text-lg font-bold text-zinc-100 dark:text-zinc-900">
             Plan Creation Mode
           </h2>
         </div>
@@ -185,7 +185,7 @@ export default function SystemPage() {
                 <div className="flex items-start gap-2">
                   {mode === selectionMode && (
                     <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[var(--primary)]">
-                      <Check size={12} className="text-black" />
+                      <Check size={12} className="text-primary-foreground" />
                     </div>
                   )}
                   <div className={mode === selectionMode ? '' : 'ml-7'}>
@@ -206,11 +206,11 @@ export default function SystemPage() {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {saving ? (
               <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                 Saving...
               </>
             ) : (
