@@ -17,6 +17,7 @@ interface TermCardProps {
   onMoveCourse: (fromTermIndex: number, courseIndex: number, toTermNumber: number) => void;
   onDeleteTerm?: (termIndex: number) => void;
   onAddCourse?: (termIndex: number) => void;
+  onSubstituteCourse?: (termIndex: number, courseIndex: number) => void;
 }
 
 const statBadgeBase =
@@ -37,6 +38,7 @@ export function TermCard({
   onMoveCourse,
   onDeleteTerm,
   onAddCourse,
+  onSubstituteCourse,
 }: Readonly<TermCardProps>) {
   const termCredits =
     term.credits_planned ||
@@ -152,6 +154,7 @@ export function TermCard({
                     isEditMode={isEditMode}
                     currentPlanData={currentPlanData}
                     onMoveCourse={onMoveCourse}
+                    onSubstituteCourse={onSubstituteCourse}
                     movedCourses={movedCourses}
                   />
                 );

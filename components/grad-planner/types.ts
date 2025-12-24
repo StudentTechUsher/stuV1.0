@@ -3,6 +3,7 @@ export interface Course {
   title: string;
   credits: number;
   fulfills?: string[];
+  isCompleted?: boolean;
 }
 
 export type EventType =

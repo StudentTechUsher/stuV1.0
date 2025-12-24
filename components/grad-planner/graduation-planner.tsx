@@ -94,6 +94,8 @@ export default function GraduationPlanner({
   // Add Course Modal state
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
   const [selectedTermForCourse, setSelectedTermForCourse] = useState<number | null>(null);
+  // Substitute Course state
+  const [substitutingCourse, setSubstitutingCourse] = useState<{ termIndex: number; courseIndex: number } | null>(null);
 
   // Set up DnD sensors
   const sensors = useSensors(
@@ -361,9 +363,50 @@ export default function GraduationPlanner({
 
   // Function to add a course to a term
   const handleAddCourse = (course: { code: string; title: string; credits: number }) => {
-    if (!isEditMode || selectedTermForCourse === null) return;
+    if (!isEditMode) return;
 
-    // Calculate new data first
+    // If substituting, replace the course
+    if (substitutingCourse !== null) {
+      const { termIndex, courseIndex } = substitutingCourse;
+
+      const newData = editablePlanData.map((term, idx) => {
+        if (idx === termIndex) {
+          const newCourse: Course = {
+            code: course.code,
+            title: course.title,
+            credits: course.credits,
+            fulfills: [],
+          };
+          const updatedCourses = term.courses ? [...term.courses] : [];
+          updatedCourses[courseIndex] = newCourse;
+          const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+          return {
+            ...term,
+            courses: updatedCourses,
+            credits_planned: updatedCredits
+          };
+        }
+        return term;
+      });
+
+      // Update state
+      setEditablePlanData(newData);
+      setModifiedTerms(prev => new Set(prev).add(termIndex));
+
+      // Notify parent after state update
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      // Close modal
+      setShowAddCourseModal(false);
+      setSubstitutingCourse(null);
+      return;
+    }
+
+    // If adding (not substituting), add to selected term
+    if (selectedTermForCourse === null) return;
+
     const newData = editablePlanData.map((term, idx) => {
       if (idx === selectedTermForCourse) {
         const newCourse: Course = {
@@ -395,6 +438,12 @@ export default function GraduationPlanner({
     // Close modal
     setShowAddCourseModal(false);
     setSelectedTermForCourse(null);
+  };
+
+  // Function to open the substitute course modal
+  const handleSubstituteCourse = (termIndex: number, courseIndex: number) => {
+    setSubstitutingCourse({ termIndex, courseIndex });
+    setShowAddCourseModal(true);
   };
 
   // Transform current plan data to SpaceView format - MUST be before early return
@@ -495,6 +544,7 @@ export default function GraduationPlanner({
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
               onAddCourse={handleOpenAddCourseModal}
+              onSubstituteCourse={handleSubstituteCourse}
             />
           ) : (
             <DetailView
@@ -508,6 +558,7 @@ export default function GraduationPlanner({
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
               onAddCourse={handleOpenAddCourseModal}
+              onSubstituteCourse={handleSubstituteCourse}
             />
           )}
         </Box>
@@ -542,6 +593,7 @@ export default function GraduationPlanner({
         onClose={() => {
           setShowAddCourseModal(false);
           setSelectedTermForCourse(null);
+          setSubstitutingCourse(null);
         }}
         onAddCourse={handleAddCourse}
         universityId={effectiveUniversityId}

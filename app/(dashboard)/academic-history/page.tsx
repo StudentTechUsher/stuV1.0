@@ -79,7 +79,7 @@ export default function AcademicHistoryPage() {
     message: '',
     severity: 'info',
   });
-  const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact');
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
   const [editingCourse, setEditingCourse] = useState<ParsedCourse | null>(null);
   const [editForm, setEditForm] = useState({
     subject: '',
@@ -560,6 +560,11 @@ export default function AcademicHistoryPage() {
     unmatched: Math.max(userCourses.length - matchedCourseCount, 0),
   };
 
+  // Get programs to display progress for
+  const programsForProgress = activeGradPlan && gradPlanPrograms.length > 0
+    ? gradPlanPrograms
+    : selectedGenEds;
+
   // Calculate program progress
   const calculateProgramProgress = (programId: string) => {
     // Get all requirements for this program
@@ -569,29 +574,116 @@ export default function AcademicHistoryPage() {
     const totalRequirements = programRequirements.length;
 
     if (totalRequirements === 0) {
-      return { fulfilled: 0, total: 0, percentage: 0 };
+      return { fulfilled: 0, total: 0, percentage: 0, completedCredits: 0, requiredCredits: 0 };
     }
 
-    // Get unique fulfilled requirement IDs for this program
-    const fulfilledRequirementIds = new Set<string>();
-    userCourses.forEach((course) => {
-      course.fulfillsRequirements?.forEach((fulfillment) => {
-        if (fulfillment.programId === programId) {
-          fulfilledRequirementIds.add(fulfillment.requirementId);
-        }
+    // Get the program to access its full requirements structure
+    const program = programsForProgress.find(p => p.id === programId);
+    if (!program) {
+      return { fulfilled: 0, total: 0, percentage: 0, completedCredits: 0, requiredCredits: 0 };
+    }
+
+    // Parse the requirements structure
+    interface RequirementStructure {
+      programRequirements?: Array<{
+        requirementId: number | string;
+        type: string;
+        constraints?: {
+          n?: number;
+          minTotalCredits?: number;
+        };
+      }>;
+    }
+
+    let requirementsStructure: RequirementStructure | null = null;
+
+    try {
+      if (typeof program.requirements === 'string') {
+        requirementsStructure = JSON.parse(program.requirements) as RequirementStructure;
+      } else if (program.requirements && typeof program.requirements === 'object') {
+        requirementsStructure = program.requirements as RequirementStructure;
+      }
+    } catch (error) {
+      console.error('Failed to parse program requirements:', error);
+    }
+
+    if (!requirementsStructure?.programRequirements) {
+      // Fallback to simple counting if we can't parse requirements
+      const fulfilledRequirementIds = new Set<string>();
+      userCourses.forEach((course) => {
+        course.fulfillsRequirements?.forEach((fulfillment) => {
+          if (fulfillment.programId === programId) {
+            fulfilledRequirementIds.add(fulfillment.requirementId);
+          }
+        });
       });
+
+      const fulfilled = fulfilledRequirementIds.size;
+      const percentage = (fulfilled / totalRequirements) * 100;
+
+      return { fulfilled, total: totalRequirements, percentage, completedCredits: 0, requiredCredits: 0 };
+    }
+
+    // Calculate progress for each requirement based on its type
+    let totalProgress = 0;
+    let totalWeight = 0;
+
+    requirementsStructure.programRequirements.forEach((requirement) => {
+      const reqId = String(requirement.requirementId);
+      const reqType = requirement.type;
+
+      // Get courses that fulfill this requirement
+      const fulfillingCourses = userCourses.filter((course) =>
+        course.fulfillsRequirements?.some(
+          (fulfillment) =>
+            fulfillment.programId === programId &&
+            fulfillment.requirementId.startsWith(reqId)
+        )
+      );
+
+      let requirementProgress = 0;
+      let requirementWeight = 1;
+
+      if (reqType === 'chooseNOf' && requirement.constraints?.n) {
+        // Progress = courses fulfilled / N required
+        const n = requirement.constraints.n;
+        requirementProgress = Math.min(fulfillingCourses.length / n, 1);
+        requirementWeight = n; // Weight by number of courses required
+      } else if (reqType === 'creditBucket' && requirement.constraints?.minTotalCredits) {
+        // Progress = credits earned / credits required
+        const creditsEarned = fulfillingCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
+        const creditsRequired = requirement.constraints.minTotalCredits;
+        requirementProgress = Math.min(creditsEarned / creditsRequired, 1);
+        requirementWeight = creditsRequired; // Weight by credit hours required
+      } else if (reqType === 'allOf') {
+        // Progress = 1 if any courses fulfill it, 0 otherwise
+        // (We don't know total course count without deeper parsing)
+        requirementProgress = fulfillingCourses.length > 0 ? 1 : 0;
+        requirementWeight = 1;
+      } else {
+        // Default: binary fulfilled/not fulfilled
+        requirementProgress = fulfillingCourses.length > 0 ? 1 : 0;
+        requirementWeight = 1;
+      }
+
+      totalProgress += requirementProgress * requirementWeight;
+      totalWeight += requirementWeight;
     });
 
-    const fulfilled = fulfilledRequirementIds.size;
-    const percentage = (fulfilled / totalRequirements) * 100;
+    const percentage = totalWeight > 0 ? (totalProgress / totalWeight) * 100 : 0;
 
-    return { fulfilled, total: totalRequirements, percentage };
+    // Calculate total completed/required for display
+    const completedCount = Math.round((totalProgress / totalWeight) * totalRequirements);
+    const totalCount = totalRequirements;
+
+    return {
+      fulfilled: completedCount,
+      total: totalCount,
+      percentage,
+      completedCredits: 0,
+      requiredCredits: 0
+    };
   };
-
-  // Get programs to display progress for
-  const programsForProgress = activeGradPlan && gradPlanPrograms.length > 0
-    ? gradPlanPrograms
-    : selectedGenEds;
 
   // Render a course card based on view mode
   const renderCourseCard = (course: ParsedCourse, bgColor: string, borderColor: string, editable = true) => {

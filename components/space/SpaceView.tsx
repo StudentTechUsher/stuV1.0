@@ -20,9 +20,10 @@ interface SpaceViewProps {
   onDeleteEvent?: (eventId: string) => void;
   onToggleView?: () => void;
   onAddCourse?: (termIndex: number) => void;
+  onSubstituteCourse?: (termIndex: number, courseIndex: number) => void;
 }
 
-export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent, onToggleView, onAddCourse }: Readonly<SpaceViewProps>) {
+export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent, onDeleteEvent, onToggleView, onAddCourse, onSubstituteCourse }: Readonly<SpaceViewProps>) {
   const termRows = React.useMemo(() => {
     const rows: React.ReactNode[] = [];
 
@@ -39,6 +40,7 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
               isEditMode={isEditMode}
               modifiedTerms={modifiedTerms}
               onAddCourse={onAddCourse}
+              onSubstituteCourse={onSubstituteCourse}
             />
           </div>
 
@@ -71,7 +73,7 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
     });
 
     return rows;
-  }, [plan.terms, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent, onAddCourse]);
+  }, [plan.terms, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent, onAddCourse, onSubstituteCourse]);
 
   return (
     <div className="space-y-3">

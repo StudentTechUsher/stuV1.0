@@ -14,6 +14,7 @@ interface DetailViewProps {
   onEditEvent: (event?: Event) => void;
   onDeleteEvent: (eventId: string) => void;
   onAddCourse?: (termIndex: number) => void;
+  onSubstituteCourse?: (termIndex: number, courseIndex: number) => void;
 }
 
 export function DetailView({
@@ -26,7 +27,8 @@ export function DetailView({
   onDeleteTerm,
   onEditEvent,
   onDeleteEvent,
-  onAddCourse
+  onAddCourse,
+  onSubstituteCourse
 }: Readonly<DetailViewProps>) {
   const renderEventsAfterTerm = (termNumber: number, termEvents: Event[]) => {
     if (termEvents.length === 0) {
@@ -88,6 +90,7 @@ export function DetailView({
                 onMoveCourse={onMoveCourse}
                 onDeleteTerm={onDeleteTerm}
                 onAddCourse={onAddCourse}
+                onSubstituteCourse={onSubstituteCourse}
               />
             </div>
 

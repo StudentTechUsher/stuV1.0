@@ -148,7 +148,12 @@ function extractRequirementCourses(
   if (requirement.type === 'sequence') {
     requirement.sequence.forEach((seq) => {
       seq.courses.forEach((course) => {
-        results.push({ course, requirementId: `${currentPath}.${seq.sequenceId}` });
+        results.push({
+          course,
+          requirementId: `${currentPath}.${seq.sequenceId}`,
+          requirementDescription,
+          requirementType: requirement.type,
+        });
       });
     });
   }
@@ -164,21 +169,88 @@ function extractRequirementCourses(
   return results;
 }
 
+/**
+ * Converts a gen ed requirement object to ProgramRequirement format
+ */
+function convertGenEdToProgramRequirement(genEdReq: Record<string, unknown>, index: number): ProgramRequirement {
+  // Extract the requirement info
+  const subtitle = genEdReq.subtitle as string || `Requirement ${index + 1}`;
+  const requirementObj = genEdReq.requirement as Record<string, unknown> | undefined;
+  const requirementIndex = requirementObj?.index as number | undefined || index + 1;
+  const blocks = genEdReq.blocks as unknown[] | undefined;
+
+  // Create a ProgramRequirement that has the blocks structure
+  // The getCourses() function will handle extracting courses from these blocks
+  return {
+    requirementId: requirementIndex,
+    description: subtitle,
+    type: 'allOf', // Gen eds are typically "complete all" requirements
+    blocks: blocks, // Keep the blocks structure - getCourses() will parse it
+  } as ProgramRequirement;
+}
+
+/**
+ * Detects if requirements is in gen ed array format
+ */
+function isGenEdFormat(requirements: unknown): boolean {
+  if (!Array.isArray(requirements) || requirements.length === 0) {
+    return false;
+  }
+
+  // Check if first element has gen ed structure (subtitle, requirement, blocks)
+  const first = requirements[0];
+  if (typeof first !== 'object' || first === null) {
+    return false;
+  }
+
+  const firstObj = first as Record<string, unknown>;
+  return 'subtitle' in firstObj && 'requirement' in firstObj && 'blocks' in firstObj;
+}
+
 function parseProgramRequirementsStructure(program: ProgramRow): ProgramRequirementsStructure | null {
   if (!program.requirements) {
     return null;
   }
 
   try {
+    let parsed: unknown;
+
+    // Parse string requirements
     if (typeof program.requirements === 'string') {
-      return JSON.parse(program.requirements) as ProgramRequirementsStructure;
+      parsed = JSON.parse(program.requirements);
+    } else {
+      parsed = program.requirements;
     }
-    if (typeof program.requirements === 'object' && program.requirements !== null) {
-      const candidate = program.requirements as ProgramRequirementsStructure;
+
+    // Check if it's already in the correct format (major requirements)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const candidate = parsed as ProgramRequirementsStructure;
       if (Array.isArray(candidate.programRequirements)) {
+        console.log(`✅ Found major requirements structure with ${candidate.programRequirements.length} requirements`);
         return candidate;
       }
     }
+
+    // Check if it's gen ed format (direct array)
+    if (isGenEdFormat(parsed)) {
+      const genEdArray = parsed as Record<string, unknown>[];
+      console.log(`🔄 Converting ${genEdArray.length} gen ed requirements to standard format`);
+
+      // Convert gen ed format to standard ProgramRequirementsStructure
+      const programRequirements = genEdArray.map((genEdReq, index) =>
+        convertGenEdToProgramRequirement(genEdReq, index)
+      );
+
+      return {
+        programRequirements,
+        metadata: {
+          version: '1.0',
+          lastModified: new Date().toISOString(),
+        },
+      };
+    }
+
+    console.warn('⚠️ Unknown requirements format:', parsed);
   } catch (error) {
     console.error('Failed to parse program requirements:', error);
   }

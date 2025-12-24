@@ -2,395 +2,479 @@
   "plan": [
     {
       "term": "1",
-      "notes": "Get comfortable with Excel and study habits.",
+      "notes": "Start with foundations, religion cornerstones, and intro to pre-major skills.",
       "courses": [
         {
           "code": "UNIV 101",
           "title": "BYU Foundations for Student Success",
           "credits": 2,
-          "fulfills": ["Foundations for Student Success"]
+          "fulfills": [
+            "BYU Foundations for Student Success"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "WRTG 150",
-          "title": "Writing & Rhetoric",
+          "code": "PHIL 150",
+          "title": "Reasoning & Writing",
           "credits": 3,
-          "fulfills": ["First-Year Writing"]
+          "fulfills": [
+            "Skills - First-Year Writing"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "A HTG 100",
-          "title": "American Heritage",
+          "code": "ECON 110",
+          "title": "Econ Principles & Problems",
           "credits": 3,
-          "fulfills": ["American Heritage"]
+          "fulfills": [
+            "The Individual and Society - American Heritage",
+            "[Accounting BS] requirement-2"
+          ],
+          "isCompleted": false
         },
         {
           "code": "IS 110",
           "title": "Spreadsheets & Bus Analysis",
           "credits": 1,
-          "fulfills": ["Pre-Business"]
+          "fulfills": [
+            "[Accounting BS] requirement-2"
+          ],
+          "isCompleted": false
         },
         {
           "code": "IS 201",
           "title": "Intro to Information Systems",
           "credits": 3,
-          "fulfills": ["Pre-Business Prereq"]
+          "fulfills": [
+            "[Accounting BS] requirement-1"
+          ],
+          "isCompleted": false
         },
         {
           "code": "REL C 200",
           "title": "The Eternal Family",
           "credits": 2,
-          "fulfills": ["Religion cornerstone"]
+          "fulfills": [
+            "The Eternal Family"
+          ],
+          "isCompleted": false
         },
         {
           "code": "REL A 275",
-          "title": "Teachings & Doctrine of the Book of Mormon",
+          "title": "Tchgs & Doctrine of B of M",
           "credits": 2,
-          "fulfills": ["Religion cornerstone/BoM option"]
+          "fulfills": [
+            "BYU Religion Hours"
+          ],
+          "isCompleted": false
         }
       ],
       "credits_planned": 16
     },
     {
       "term": "2",
-      "notes": "Target B+ or better in ACC 200.",
+      "notes": "Complete introductory accounting and advanced writing; continue religion sequence.",
       "courses": [
         {
           "code": "ACC 200",
           "title": "Principles of Accounting",
           "credits": 3,
-          "fulfills": ["Pre-Business Prereq"]
-        },
-        {
-          "code": "ECON 110",
-          "title": "Economic Principles & Problems",
-          "credits": 3,
-          "fulfills": ["Pre-Business"]
+          "fulfills": [
+            "[Accounting BS] requirement-1"
+          ],
+          "isCompleted": false
         },
         {
           "code": "MKTG 201",
           "title": "Marketing Management",
           "credits": 3,
-          "fulfills": ["Pre-Business"]
+          "fulfills": [
+            "[Accounting BS] requirement-2"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "ANTHR 101",
-          "title": "Social/Cultural Anthropology",
+          "code": "PHIL 300",
+          "title": "Philosophical Writing",
           "credits": 3,
-          "fulfills": ["Global & Cultural Awareness (GCA)"]
+          "fulfills": [
+            "Adv Written & Oral Communication"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "IHUM 201",
+          "title": "Western Humanities 1",
+          "credits": 3,
+          "fulfills": [
+            "Arts, Letters and Sciences - Civilization 1"
+          ],
+          "isCompleted": false
         },
         {
           "code": "REL A 121",
           "title": "The Book of Mormon",
           "credits": 2,
-          "fulfills": ["Religion cornerstone/BoM"]
+          "fulfills": [
+            "Teachings & Doctrine of the Book of Mormon"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "PHIL 205",
-          "title": "Ethics and Values",
-          "credits": 3,
-          "fulfills": ["Humanities (GE)"]
+          "code": "REL A 211",
+          "title": "The New Testament",
+          "credits": 2,
+          "fulfills": [
+            "Christ and the Everlasting Gospel"
+          ],
+          "isCompleted": false
         }
       ],
-      "credits_planned": 17
+      "credits_planned": 16
     },
     {
       "term": "3",
-      "notes": "Advance writing/communication and round out religion; keep a balanced load.",
+      "notes": "Take core math/scientific reasoning, second accounting course, and management communication.",
       "courses": [
         {
-          "code": "M COM 320",
-          "title": "Commun in Organiztnl Settings",
+          "code": "MATH 112",
+          "title": "Calculus 1",
+          "credits": 4,
+          "fulfills": [
+            "Skills - Languages of Learning"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "MATH 110",
+          "title": "College Algebra",
           "credits": 3,
-          "fulfills": ["Pre-Business"]
+          "fulfills": [
+            "Skills - Quantitative Reasoning"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 310",
-          "title": "Intermediate Financial Accounting",
+          "title": "Principles of Accounting 2",
           "credits": 3,
-          "fulfills": ["Pre-Business Prereq"]
+          "fulfills": [
+            "[Accounting BS] requirement-1"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "REL A 250",
-          "title": "Christ & the Everlstng Gospel",
-          "credits": 2,
-          "fulfills": ["Religion cornerstone"]
+          "code": "M COM 320",
+          "title": "Management Communication",
+          "credits": 3,
+          "fulfills": [
+            "[Accounting BS] requirement-2"
+          ],
+          "isCompleted": false
         },
         {
           "code": "REL C 225",
           "title": "Foundations of the Restoration",
           "credits": 2,
-          "fulfills": ["Religion cornerstone"]
-        },
-        {
-          "code": "PSYCH 111",
-          "title": "Introduction to Psychology",
-          "credits": 3,
-          "fulfills": ["Social Science (GE)"]
-        },
-        {
-          "code": "MATH 112",
-          "title": "Calculus 1",
-          "credits": 4,
-          "fulfills": ["Quantitative Reasoning (GE)"]
+          "fulfills": [
+            "Foundations of the Restoration"
+          ],
+          "isCompleted": false
         }
       ],
-      "credits_planned": 17
+      "credits_planned": 15
     },
     {
       "term": "4",
-      "notes": "Finish lower-division religion; add electives judiciously before Junior Core.",
+      "notes": "Finish civilization/arts and core sciences; continue religion hours.",
       "courses": [
         {
-          "code": "REL C 333",
-          "title": "The Living Prophets",
-          "credits": 2,
-          "fulfills": ["Religion elective"]
-        },
-        {
-          "code": "REL A 122",
-          "title": "The Book of Mormon (Part 2)",
-          "credits": 2,
-          "fulfills": ["Religion elective"]
-        },
-        {
-          "code": "ENGL 295",
-          "title": "Literature and Film",
+          "code": "IHUM 202",
+          "title": "Western Humanities 2",
           "credits": 3,
-          "fulfills": ["Humanities (GE)"]
+          "fulfills": [
+            "Arts, Letters and Sciences - Civilization 2",
+            "Arts, Letters and Sciences - Letters"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "ART 101",
+          "title": "Introduction to Drawing",
+          "credits": 3,
+          "fulfills": [
+            "Arts, Letters and Sciences - Arts"
+          ],
+          "isCompleted": false
         },
         {
           "code": "BIO 100",
           "title": "Principles of Biology",
           "credits": 3,
-          "fulfills": ["Life Science (GE)"]
+          "fulfills": [
+            "Arts, Letters and Sciences - Biological Science"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "STAT 121",
-          "title": "Principles of Statistics",
+          "code": "CHEM 101",
+          "title": "Intro to Chemistry",
           "credits": 3,
-          "fulfills": ["Quantitative Reasoning (GE)"]
+          "fulfills": [
+            "Arts, Letters and Sciences - Physical Science"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "REL A 212",
+          "title": "The New Testament",
+          "credits": 2,
+          "fulfills": [
+            "BYU Religion Hours"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "REL A 122",
+          "title": "The Book of Mormon",
+          "credits": 2,
+          "fulfills": [
+            "BYU Religion Hours"
+          ],
+          "isCompleted": false
         }
       ],
-      "credits_planned": 13
+      "credits_planned": 16
     },
     {
       "term": "5",
-      "notes": "Junior Core begins.",
+      "notes": "Begin Junior/Core accounting sequence while finishing business prerequisites.",
       "courses": [
+        {
+          "code": "ACC 241",
+          "title": "Business Law",
+          "credits": 3,
+          "fulfills": [
+            "[Accounting BS] requirement-2"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "FIN 201",
+          "title": "Principles of Finance",
+          "credits": 3,
+          "fulfills": [
+            "[Accounting BS] requirement-2"
+          ],
+          "isCompleted": false
+        },
         {
           "code": "ACC 401",
           "title": "Bus & Acc Info Systems",
           "credits": 3,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 403",
           "title": "Interm Financial Accounting 1",
           "credits": 3,
-          "fulfills": ["Junior Core"]
-        },
-        {
-          "code": "ACC 405",
-          "title": "Fundamentals of Taxation",
-          "credits": 3,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 408",
           "title": "Critical Thinking",
           "credits": 1.5,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 410",
           "title": "Acct. Prof. Development I",
           "credits": 1.5,
-          "fulfills": ["Junior Core"]
-        },
-        {
-          "code": "ART 101",
-          "title": "Introduction to Visual Arts",
-          "credits": 3,
-          "fulfills": ["Fine Arts (GE)"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         }
       ],
       "credits_planned": 15
     },
     {
       "term": "6",
-      "notes": "Complete Junior Core sequence.",
+      "notes": "Continue and complete half of the Junior Core sequence.",
       "courses": [
         {
           "code": "ACC 402",
           "title": "Cost & Managerial Accounting",
           "credits": 3,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 404",
           "title": "Financial Accounting 2",
           "credits": 3,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 406",
           "title": "Financial Statement Auditing",
           "credits": 3,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 407",
           "title": "Data Analytics in Accounting",
           "credits": 3,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 409",
           "title": "Integrated Topics",
           "credits": 1.5,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
           "code": "ACC 411",
           "title": "Acct. Prof. Development II",
           "credits": 1.5,
-          "fulfills": ["Junior Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         }
       ],
       "credits_planned": 15
     },
     {
+      "id": "milestone-internship-1764963092707-0",
+      "type": "Internship",
+      "title": "Internship",
+      "afterTerm": 6
+    },
+    {
       "term": "7",
-      "notes": "Round out remaining Business Core; keep some elective credit this term.",
+      "notes": "Finish business core courses and a global/cultural awareness requirement.",
       "courses": [
         {
           "code": "FIN 402",
           "title": "Managerial Finance",
           "credits": 3,
-          "fulfills": ["Business Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-4"
+          ],
+          "isCompleted": false
         },
         {
           "code": "HRM 391",
           "title": "Organizational Effectiveness",
           "credits": 3,
-          "fulfills": ["Business Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-4"
+          ],
+          "isCompleted": false
         },
         {
           "code": "STRAT 392",
           "title": "Strategy and Economics",
           "credits": 3,
-          "fulfills": ["Business Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-4"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "GEOG 120",
-          "title": "World Regional Geography",
-          "credits": 3,
-          "fulfills": ["Global & Cultural Awareness (GCA)"]
+          "code": "POLI 300",
+          "title": "Statistical Analysis",
+          "credits": 4,
+          "fulfills": [
+            "The Individual and Society - Global and Cultural Awareness"
+          ],
+          "isCompleted": false
+        },
+        {
+          "code": "MUSIC111",
+          "title": "Basic Vocal Skills",
+          "credits": 2,
+          "fulfills": [],
+          "isCompleted": false
         }
       ],
-      "credits_planned": 12
+      "credits_planned": 15
+    },
+    {
+      "id": "milestone-apply-for-graduation-1764963092707-1",
+      "type": "Apply for Graduation",
+      "title": "Apply for Graduation",
+      "afterTerm": 7
     },
     {
       "term": "8",
-      "notes": "Complete exit survey; verify all GE/Religion totals.",
+      "notes": "Complete remaining business core and fill final credits with electives to reach degree total.",
       "courses": [
         {
           "code": "MSB 571",
           "title": "Ethics for Accounting",
           "credits": 3,
-          "fulfills": ["Business Core"]
+          "fulfills": [
+            "[Accounting BS] requirement-4"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "HIST 202",
-          "title": "American History Since 1877",
+          "code": "ACC 407",
+          "title": "Data Analytics in Accounting",
           "credits": 3,
-          "fulfills": ["Humanities (GE)"]
+          "fulfills": [
+            "[Accounting BS] requirement-3"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "MUSIC 101",
-          "title": "Introduction to Music",
-          "credits": 3,
-          "fulfills": ["Fine Arts (GE)"]
+          "code": "ELECTIVE",
+          "title": "General Elective",
+          "credits": 4,
+          "fulfills": [
+            "Elective"
+          ],
+          "isCompleted": false
         },
         {
-          "code": "COMM 316",
-          "title": "Business and Professional Communication",
-          "credits": 3,
-          "fulfills": ["Advanced Communication"]
+          "code": "ELECTIVE",
+          "title": "General Elective",
+          "credits": 4,
+          "fulfills": [
+            "Elective"
+          ],
+          "isCompleted": false
         }
       ],
-      "credits_planned": 12
+      "credits_planned": 14
     }
   ],
-  "program": "BS Accounting",
-  "assumptions": [
-    "Junior Core begins in Fall only.",
-    "Minimum B in ACC 200 and ACC 310 before applying to the Accounting program.",
-    "M COM 320 satisfies Advanced Writing / Communication.",
-    "Religion 'cornerstones' distributed across years; total Religion hours planned ≈ 14.",
-    "Real catalog courses are selected to fill remaining credits, complete general education requirements, keep each term within 12–18 credits, and avoid back-loading."
-  ],
-  "checkpoints": [
-    {
-      "term": "4",
-      "action": "Apply to Accounting Junior Core",
-      "conditions": [
-        "ACC 200 (B+) and ACC 310 (B+) completed",
-        "Pre-business substantially complete",
-        "Plan Junior Core for Semester 5"
-      ]
-    },
-    {
-      "term": "8",
-      "notes": "Per Requirement 5.",
-      "action": "Complete exit survey"
-    }
-  ],
-  "duration_years": 4,
-  "requirement_buckets_covered": {
-    "junior_core": [
-      "ACC 401",
-      "ACC 402",
-      "ACC 403",
-      "ACC 404",
-      "ACC 405",
-      "ACC 406",
-      "ACC 407",
-      "ACC 408",
-      "ACC 409",
-      "ACC 410",
-      "ACC 411"
-    ],
-    "pre_business": [
-      "ECON 110",
-      "IS 110",
-      "IS 201",
-      "M COM 320",
-      "MKTG 201"
-    ],
-    "pre_business_prereqs": [
-      "ACC 200",
-      "ACC 310",
-      "IS 201"
-    ],
-    "business_core": [
-      "FIN 402",
-      "HRM 391",
-      "MSB 571",
-      "STRAT 392"
-    ],
-    "religion_plan": [
-      "REL C 200",
-      "REL A 275",
-      "REL A 121",
-      "REL A 250",
-      "REL C 225",
-      "REL C 333",
-      "REL A 122"
-    ],
-    "gen_ed_examples": [
-      "UNIV 101",
-      "A HTG 100",
-      "ANTHR 101"
-    ]
-  }
+  "est_grad_sem": "Winter",
+  "est_grad_date": "2028-04-30",
+  "requestAdvisorReview": false
 }

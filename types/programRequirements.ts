@@ -25,6 +25,81 @@ export interface Course {
 }
 
 // ============================================================================
+// GEN ED SPECIFIC TYPES
+// ============================================================================
+
+/**
+ * Gen Ed credit format
+ * Gen eds use a different credit structure than majors
+ */
+export interface GenEdCredits {
+  fixed?: number;
+  variable?: boolean;
+  min?: number;
+  max?: number;
+}
+
+/**
+ * Gen Ed course block
+ * Represents a single course in the gen ed structure
+ */
+export interface GenEdCourseBlock {
+  type: 'course';
+  code: string;
+  title: string;
+  credits: GenEdCredits;
+  status?: 'active' | 'retired';
+  prerequisite?: string;
+  constraints?: Array<{
+    kind: string;
+    area?: string;
+    value?: number;
+    start_term?: string;
+    end_term?: string;
+    start?: string;
+  }>;
+  notes?: string[];
+}
+
+/**
+ * Gen Ed option block
+ * Represents a set of options where students choose one
+ */
+export interface GenEdOptionBlock {
+  type: 'option';
+  label: string;
+  title?: string;
+  rule?: {
+    type: string;
+    min_count?: number;
+    of_count?: number;
+    unit?: string;
+  };
+  notes?: string[];
+  blocks: GenEdBlock[];
+}
+
+/**
+ * Gen Ed requirement block
+ * Represents a nested requirement within a gen ed
+ */
+export interface GenEdRequirementBlock {
+  type: 'requirement';
+  label: string;
+  rule?: {
+    type: string;
+    min_count?: number;
+    unit?: string;
+  };
+  blocks: GenEdBlock[];
+}
+
+/**
+ * Union type of all gen ed block types
+ */
+export type GenEdBlock = GenEdCourseBlock | GenEdOptionBlock | GenEdRequirementBlock;
+
+// ============================================================================
 // REQUIREMENT TYPES
 // ============================================================================
 
@@ -300,6 +375,102 @@ export function getSubRequirements(req: ProgramRequirement): ProgramRequirement[
 }
 
 /**
+ * Convert gen ed credit format to number
+ * Gen eds use: {fixed: 2} or {variable: true, min: 1.5, max: 1.5}
+ * We need: number
+ */
+function convertCreditsFormat(credits: unknown): number {
+  if (typeof credits === 'number') {
+    return credits;
+  }
+
+  if (credits && typeof credits === 'object') {
+    const creditsObj = credits as Record<string, unknown>;
+
+    // Fixed credits: {fixed: 2}
+    if (creditsObj.fixed !== undefined && typeof creditsObj.fixed === 'number') {
+      return creditsObj.fixed;
+    }
+
+    // Variable credits: use min if available, otherwise max
+    if (creditsObj.variable) {
+      if (creditsObj.min !== undefined && typeof creditsObj.min === 'number') {
+        return creditsObj.min;
+      }
+      if (creditsObj.max !== undefined && typeof creditsObj.max === 'number') {
+        return creditsObj.max;
+      }
+    }
+  }
+
+  // Fallback
+  return 0;
+}
+
+/**
+ * Get min credits for variable credit courses
+ */
+function getMinCredits(credits: unknown): number | undefined {
+  if (credits && typeof credits === 'object') {
+    const creditsObj = credits as Record<string, unknown>;
+    if (creditsObj.variable && creditsObj.min !== undefined && typeof creditsObj.min === 'number') {
+      return creditsObj.min;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Get max credits for variable credit courses
+ */
+function getMaxCredits(credits: unknown): number | undefined {
+  if (credits && typeof credits === 'object') {
+    const creditsObj = credits as Record<string, unknown>;
+    if (creditsObj.variable && creditsObj.max !== undefined && typeof creditsObj.max === 'number') {
+      return creditsObj.max;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Recursively extract courses from nested blocks array (gen ed structure)
+ */
+function extractCoursesFromBlocks(blocks: unknown[]): Course[] {
+  const courses: Course[] = [];
+
+  for (const block of blocks) {
+    if (!block || typeof block !== 'object') continue;
+
+    const blockObj = block as Record<string, unknown>;
+
+    // Course block
+    if (blockObj.type === 'course' && blockObj.code && typeof blockObj.code === 'string') {
+      courses.push({
+        code: blockObj.code,
+        title: (blockObj.title as string) || '',
+        credits: convertCreditsFormat(blockObj.credits),
+        prerequisite: blockObj.prerequisite as string | undefined,
+        minCredits: getMinCredits(blockObj.credits),
+        maxCredits: getMaxCredits(blockObj.credits),
+      });
+    }
+
+    // Option block with nested blocks
+    if (blockObj.type === 'option' && Array.isArray(blockObj.blocks)) {
+      courses.push(...extractCoursesFromBlocks(blockObj.blocks));
+    }
+
+    // Requirement block with nested blocks
+    if (blockObj.type === 'requirement' && Array.isArray(blockObj.blocks)) {
+      courses.push(...extractCoursesFromBlocks(blockObj.blocks));
+    }
+  }
+
+  return courses;
+}
+
+/**
  * Helper function to get courses from any requirement type
  * Supports both direct 'courses' array and 'blocks' structure
  */
@@ -310,13 +481,45 @@ export function getCourses(req: ProgramRequirement): Course[] | undefined {
   }
 
   // Courses nested in blocks (Gen Ed structure)
-  if ('blocks' in req && Array.isArray((req as any).blocks)) {
+  if ('blocks' in req && Array.isArray((req as Record<string, unknown>).blocks)) {
     const allCourses: Course[] = [];
-    for (const block of (req as any).blocks) {
-      if (block.courses && Array.isArray(block.courses)) {
-        allCourses.push(...block.courses);
+    const blocks = (req as Record<string, unknown>).blocks as unknown[];
+
+    for (const block of blocks) {
+      if (!block || typeof block !== 'object') continue;
+
+      const blockObj = block as Record<string, unknown>;
+
+      // Handle direct course blocks (type: "course")
+      if (blockObj.type === 'course' && blockObj.code && typeof blockObj.code === 'string') {
+        allCourses.push({
+          code: blockObj.code,
+          title: (blockObj.title as string) || '',
+          credits: convertCreditsFormat(blockObj.credits),
+          prerequisite: blockObj.prerequisite as string | undefined,
+          minCredits: getMinCredits(blockObj.credits),
+          maxCredits: getMaxCredits(blockObj.credits),
+        });
+      }
+
+      // Handle option blocks (type: "option") - recursively extract courses
+      if (blockObj.type === 'option' && Array.isArray(blockObj.blocks)) {
+        const nestedCourses = extractCoursesFromBlocks(blockObj.blocks);
+        allCourses.push(...nestedCourses);
+      }
+
+      // Handle requirement blocks (type: "requirement") - recursively extract courses
+      if (blockObj.type === 'requirement' && Array.isArray(blockObj.blocks)) {
+        const nestedCourses = extractCoursesFromBlocks(blockObj.blocks);
+        allCourses.push(...nestedCourses);
+      }
+
+      // Handle old format (block.courses array) for backward compatibility
+      if (blockObj.courses && Array.isArray(blockObj.courses)) {
+        allCourses.push(...(blockObj.courses as Course[]));
       }
     }
+
     return allCourses.length > 0 ? allCourses : undefined;
   }
 

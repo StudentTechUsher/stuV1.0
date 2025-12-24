@@ -17,13 +17,14 @@ interface TermCardProps {
   isEditMode?: boolean;
   modifiedTerms?: Set<number>;
   onAddCourse?: (termIndex: number) => void;
+  onSubstituteCourse?: (termIndex: number, courseIndex: number) => void;
 }
 
 function sumTermCredits(term: TermBlock): number {
   return term.courses.reduce((sum, course) => sum + course.credits, 0);
 }
 
-export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse }: TermCardProps) {
+export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse, onSubstituteCourse }: TermCardProps) {
   const {
     setNodeRef,
     isOver,
@@ -62,7 +63,7 @@ export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse 
       <div className="space-y-1 mb-1.5 flex-1">
         {term.courses.length > 0 ? (
           term.courses.map((course) => (
-            <CoursePill key={course.id} course={course} isEditMode={isEditMode} />
+            <CoursePill key={course.id} course={course} isEditMode={isEditMode} onSubstituteCourse={onSubstituteCourse} />
           ))
         ) : (
           <p className="text-xs text-gray-400 text-center py-2">No courses</p>
