@@ -62,7 +62,7 @@ export default function AdvisorNotesBox({ advisorNotes, advisorChanges }: Adviso
         borderRadius: '7px',
         border: '1px solid',
         borderColor: 'color-mix(in srgb, rgba(10,31,26,0.14) 32%, var(--border) 68%)',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--card)',
         boxShadow: '0 32px 90px -60px rgba(10,31,26,0.35)',
         overflow: 'hidden',
       }}
@@ -77,11 +77,11 @@ export default function AdvisorNotesBox({ advisorNotes, advisorChanges }: Adviso
           gap: 1.5,
           p: 3,
           textTransform: 'none',
-          color: '#0a1f1a',
+          color: 'var(--foreground)',
           backgroundColor: 'transparent',
           borderRadius: 0,
           '&:hover': {
-            backgroundColor: 'color-mix(in srgb, var(--primary) 6%, white 94%)',
+            backgroundColor: 'color-mix(in srgb, var(--primary) 6%, var(--card) 94%)',
           },
         }}
       >
@@ -94,7 +94,7 @@ export default function AdvisorNotesBox({ advisorNotes, advisorChanges }: Adviso
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: '7px',
-              backgroundColor: 'color-mix(in srgb, var(--primary) 18%, white 82%)',
+              backgroundColor: 'color-mix(in srgb, var(--primary) 18%, var(--card) 82%)',
               color: 'color-mix(in srgb, var(--foreground) 78%, var(--primary) 22%)',
             }}
           >
@@ -140,7 +140,7 @@ export default function AdvisorNotesBox({ advisorNotes, advisorChanges }: Adviso
               sx={{
                 borderRadius: '7px',
                 border: '1px solid color-mix(in srgb, var(--primary) 26%, transparent)',
-                backgroundColor: 'color-mix(in srgb, var(--primary) 8%, white)',
+                backgroundColor: 'color-mix(in srgb, var(--primary) 8%, var(--card))',
                 px: 2.5,
                 py: 2,
               }}

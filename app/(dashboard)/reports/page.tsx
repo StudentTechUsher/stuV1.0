@@ -85,7 +85,7 @@ export default function ReportsPage() {
             {activeTab === 'overview' ? (
               <>
                 <BarChart3 size={48} className="mx-auto text-[var(--muted-foreground)]" />
-                <h3 className="font-header-bold text-lg text-[var(--foreground)]">
+                <h3 className="font-header-bold text-lg text-zinc-900 dark:text-zinc-100">
                   Overview Report
                 </h3>
                 <p className="font-body text-sm text-[var(--muted-foreground)] leading-relaxed">
@@ -95,7 +95,7 @@ export default function ReportsPage() {
             ) : (
               <>
                 <TrendingUp size={48} className="mx-auto text-[var(--muted-foreground)]" />
-                <h3 className="font-header-bold text-lg text-[var(--foreground)]">
+                <h3 className="font-header-bold text-lg text-zinc-900 dark:text-zinc-100">
                   Demand Report
                 </h3>
                 <p className="font-body text-sm text-[var(--muted-foreground)] leading-relaxed">

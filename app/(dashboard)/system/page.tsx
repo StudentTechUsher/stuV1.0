@@ -100,7 +100,7 @@ export default function SystemPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)] shadow-sm">
             <Settings size={20} className="text-primary-foreground" />
           </div>
-          <h1 className="font-header-bold text-3xl font-extrabold text-[var(--foreground)]">
+          <h1 className="font-header-bold text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
             System Settings
           </h1>
         </div>
@@ -147,7 +147,7 @@ export default function SystemPage() {
 
           {/* Selection Mode Dropdown */}
           <div>
-            <label className="font-body-semi mb-2 block text-sm font-medium text-[var(--foreground)]">
+            <label className="font-body-semi mb-2 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
               Selection Mode
             </label>
             <div className="relative">
@@ -189,7 +189,7 @@ export default function SystemPage() {
                     </div>
                   )}
                   <div className={mode === selectionMode ? '' : 'ml-7'}>
-                    <h3 className="font-header-bold text-sm font-bold text-[var(--foreground)]">
+                    <h3 className="font-header-bold text-sm font-bold text-zinc-900 dark:text-zinc-100">
                       {mode}
                     </h3>
                     <p className="font-body mt-1 text-sm text-[var(--muted-foreground)]">

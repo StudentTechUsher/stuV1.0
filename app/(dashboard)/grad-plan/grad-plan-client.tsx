@@ -193,7 +193,7 @@ export default function GradPlanClient({
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-header-bold text-[var(--foreground)]">Detailed View</h2>
+              <h2 className="text-2xl font-header-bold text-zinc-900 dark:text-zinc-100">Detailed View</h2>
               <button
                 type="button"
                 onClick={() => setIsZoomOut(!isZoomOut)}
@@ -225,7 +225,7 @@ export default function GradPlanClient({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="font-header-bold text-[var(--foreground)]">{course.code}</div>
+                              <div className="font-header-bold text-zinc-900 dark:text-zinc-100">{course.code}</div>
                               <div className="text-xs text-[var(--muted-foreground)] truncate">{course.title}</div>
                             </div>
                             <span className="text-xs font-body-semi text-[var(--foreground)] whitespace-nowrap">

@@ -40,7 +40,7 @@ export default async function InboxPage() {
 			<div className="p-4 sm:p-6">
 				<div className="mx-auto max-w-4xl">
 					<div className="mb-6">
-						<h1 className="font-header text-2xl font-bold text-[var(--foreground)]">Inbox</h1>
+						<h1 className="font-header text-2xl font-bold text-zinc-900 dark:text-zinc-100">Inbox</h1>
 						<p className="font-body mt-2 text-sm text-[var(--muted-foreground)]">
 							Your notifications and updates
 						</p>

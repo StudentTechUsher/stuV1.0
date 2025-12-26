@@ -96,8 +96,8 @@ export default function AcademicProgressCard() {
     // Modern card with clean hierarchy and better spacing
     <div className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
       {/* Bold header matching semester-results-table */}
-      <div className="border-b-2 px-6 py-4 bg-foreground" style={{ borderColor: "var(--foreground)" }}>
-        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-background">
+      <div className="border-b-2 px-6 py-4 bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100">
+        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-zinc-100 dark:text-zinc-900">
           Academic Progress
         </h3>
       </div>
@@ -121,12 +121,12 @@ export default function AcademicProgressCard() {
           </div>
 
           {/* Credits Card - clean and minimal */}
-          <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+          <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white dark:bg-zinc-900 p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
             <div className="text-center">
-              <div className="font-header-bold text-3xl font-extrabold text-[var(--foreground)]">
+              <div className="font-header-bold text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
                 44
               </div>
-              <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                 Credits Left
               </div>
             </div>

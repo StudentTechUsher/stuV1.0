@@ -211,7 +211,7 @@ export default function ProfileUpdateForm({
         <div className="space-y-4">
           {/* Semester Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Graduation Semester
             </label>
             <div className="space-y-2">
@@ -228,14 +228,14 @@ export default function ProfileUpdateForm({
 
           {/* Year Selection */}
           <div>
-            <label htmlFor="grad-year" className="block text-sm font-medium text-gray-900 mb-2">
+            <label htmlFor="grad-year" className="block text-sm font-medium text-foreground mb-2">
               Graduation Year
             </label>
             <select
               id="grad-year"
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+              className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 text-sm"
             >
               <option value="">Select a year</option>
               {yearOptions.map((y) => (
@@ -252,7 +252,7 @@ export default function ProfileUpdateForm({
           <Button
             onClick={handleGraduationContinue}
             disabled={!isGraduationValid}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322]"
+            className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
           >
             Continue
           </Button>
@@ -261,7 +261,7 @@ export default function ProfileUpdateForm({
             <Button
               onClick={onSkip}
               variant="outline"
-              className="w-full"
+              className="w-full border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Skip to Student Classification
             </Button>
@@ -285,14 +285,14 @@ export default function ProfileUpdateForm({
         <div className="space-y-4">
           {/* Admission Year Selection */}
           <div>
-            <label htmlFor="admission-year" className="block text-sm font-medium text-gray-900 mb-2">
+            <label htmlFor="admission-year" className="block text-sm font-medium text-foreground mb-2">
               Admission Year
             </label>
             <select
               id="admission-year"
               value={admissionYear}
               onChange={(e) => setAdmissionYear(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+              className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 text-sm"
             >
               <option value="">Select a year</option>
               {admissionYearOptions.map((y) => (
@@ -305,7 +305,7 @@ export default function ProfileUpdateForm({
 
           {/* Transfer Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Student Type
             </label>
             <div className="space-y-2">
@@ -330,14 +330,14 @@ export default function ProfileUpdateForm({
           <Button
             variant="outline"
             onClick={() => setStep('graduation')}
-            className="px-6"
+            className="px-6 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             ← Back
           </Button>
           <Button
             onClick={handleAdmissionContinue}
             disabled={!isAdmissionValid}
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+            className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
           >
             Continue
           </Button>
@@ -373,7 +373,7 @@ export default function ProfileUpdateForm({
             <Button
               onClick={() => handleIndustryChoice('keep')}
               variant="outline"
-              className="w-full h-auto py-4 flex flex-col items-start gap-1"
+              className="w-full h-auto py-4 flex flex-col items-start gap-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               <span className="font-semibold text-base">Keep my current career goal</span>
               <span className="text-xs text-muted-foreground font-normal">
@@ -385,7 +385,7 @@ export default function ProfileUpdateForm({
           <Button
             onClick={() => handleIndustryChoice('select')}
             variant="outline"
-            className="w-full h-auto py-4 flex flex-col items-start gap-1"
+            className="w-full h-auto py-4 flex flex-col items-start gap-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <span className="font-semibold text-base">Select an industry first</span>
             <span className="text-xs text-muted-foreground font-normal">
@@ -396,7 +396,7 @@ export default function ProfileUpdateForm({
           <Button
             onClick={() => handleIndustryChoice('know')}
             variant="outline"
-            className="w-full h-auto py-4 flex flex-col items-start gap-1"
+            className="w-full h-auto py-4 flex flex-col items-start gap-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <span className="font-semibold text-base">
               {hasExistingCareerGoal ? 'Update my career goal' : 'I know what I want to do!'}
@@ -411,7 +411,7 @@ export default function ProfileUpdateForm({
           <Button
             variant="ghost"
             onClick={() => setStep('admission')}
-            className="w-full"
+            className="w-full text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             ← Back
           </Button>
@@ -446,7 +446,7 @@ export default function ProfileUpdateForm({
 
           {/* Custom Industry Input */}
           <div>
-            <label htmlFor="custom-industry" className="block text-sm font-medium text-gray-900 mb-2">
+            <label htmlFor="custom-industry" className="block text-sm font-medium text-foreground mb-2">
               Or enter your own industry
             </label>
             <input
@@ -455,13 +455,13 @@ export default function ProfileUpdateForm({
               value={customIndustry}
               onChange={(e) => setCustomIndustry(e.target.value)}
               placeholder="e.g., Environmental Science, Social Work..."
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+              className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 text-sm"
             />
           </div>
 
           {/* Disclaimer */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-900">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-xs text-blue-900 dark:text-blue-100">
               💡 <strong>You&apos;re not committing to this yet!</strong> Use the career explorer in Pathfinder if you want to change, or you can make a new graduation plan!
             </p>
           </div>
@@ -472,14 +472,14 @@ export default function ProfileUpdateForm({
           <Button
             variant="outline"
             onClick={() => setStep('industry-choice')}
-            className="px-6"
+            className="px-6 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             ← Back
           </Button>
           <Button
             onClick={handleIndustryContinue}
             disabled={!isIndustryValid}
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+            className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
           >
             Continue with Career Explorer
           </Button>
@@ -511,7 +511,7 @@ export default function ProfileUpdateForm({
               )
             }
             variant="outline"
-            className="gap-2"
+            className="gap-2 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <Compass size={18} />
             Need help finding your career path?
@@ -527,7 +527,7 @@ export default function ProfileUpdateForm({
             onChange={(e) => setCareerGoals(e.target.value)}
             placeholder="e.g., Software Engineer, Data Scientist, Marketing Manager..."
             rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white resize-none"
+            className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 resize-none"
           />
           <p className="text-xs text-muted-foreground mt-2">
             Describe your target career or professional goals
@@ -535,8 +535,8 @@ export default function ProfileUpdateForm({
         </div>
 
         {/* Disclaimer */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-900">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-xs text-blue-900 dark:text-blue-100">
             💡 <strong>You&apos;re not committing to this yet!</strong> Use the career explorer in Pathfinder if you want to change, or you can make a new graduation plan!
           </p>
         </div>
@@ -547,14 +547,14 @@ export default function ProfileUpdateForm({
         <Button
           variant="outline"
           onClick={() => setStep('industry-choice')}
-          className="px-6"
+          className="px-6 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
           ← Back
         </Button>
         <Button
           onClick={handleFinalSubmit}
           disabled={!isCareerValid}
-          className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+          className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
         >
           Continue
         </Button>

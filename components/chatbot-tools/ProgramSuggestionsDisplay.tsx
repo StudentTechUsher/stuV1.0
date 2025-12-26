@@ -62,7 +62,7 @@ export default function ProgramSuggestionsDisplay({
       case 'certificate':
         return 'bg-green-100 text-green-700 border-green-300';
       default:
-        return 'bg-gray-100 text-gray-700 border-gray-300';
+        return 'bg-gray-100 text-gray-700 border-zinc-300 dark:border-zinc-600';
     }
   };
 
@@ -174,7 +174,7 @@ export default function ProgramSuggestionsDisplay({
               <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-md border-2 ${
                 isSelected
                   ? 'bg-green-50 border-green-500 text-green-700'
-                  : 'bg-gray-50 border-gray-300 text-gray-600'
+                  : 'bg-gray-50 border-zinc-300 dark:border-zinc-600 text-gray-600'
               }`}>
                 {isSelected ? (
                   <>

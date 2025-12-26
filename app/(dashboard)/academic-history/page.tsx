@@ -293,7 +293,7 @@ export default function AcademicHistoryPage() {
               borderColor: borderColor,
             }}
           >
-            <span className="font-body-semi text-xs font-semibold text-[var(--foreground)]">
+            <span className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               {course.subject} {course.number}
               {isTransfer && (
                 <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">↔</span>
@@ -304,7 +304,7 @@ export default function AcademicHistoryPage() {
           {/* Tooltip on hover - auto-width to fit content */}
           <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden min-w-max -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-lg group-hover:block">
             <div className="space-y-0.5">
-              <p className="font-body-semi text-xs font-semibold text-[var(--foreground)]">{course.title}</p>
+              <p className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-100">{course.title}</p>
               <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                 <span className="font-body">{course.credits} credits</span>
                 <span>•</span>
@@ -355,7 +355,7 @@ export default function AcademicHistoryPage() {
           </button>
         )}
         <div className="flex items-start gap-2">
-          <h4 className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+          <h4 className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             {course.subject} {course.number}
           </h4>
           {isTransfer && (
@@ -416,7 +416,7 @@ export default function AcademicHistoryPage() {
       <div className="flex h-full max-w-full flex-col p-4 sm:p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-[var(--foreground)]">
+          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
             Academic History
           </h1>
           <div className="font-body space-y-2 text-sm text-[var(--muted-foreground)]">
@@ -460,7 +460,7 @@ export default function AcademicHistoryPage() {
       {/* Header Section */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-[var(--foreground)]">
+          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
             Academic History
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)]">
@@ -689,7 +689,7 @@ export default function AcademicHistoryPage() {
           <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-              <h2 className="font-header text-xl font-bold text-[var(--foreground)]">Edit Course</h2>
+              <h2 className="font-header text-xl font-bold text-zinc-900 dark:text-zinc-100">Edit Course</h2>
               <button
                 type="button"
                 onClick={() => setEditingCourse(null)}
@@ -703,7 +703,7 @@ export default function AcademicHistoryPage() {
             <div className="space-y-4 p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Subject
                   </label>
                   <input
@@ -716,7 +716,7 @@ export default function AcademicHistoryPage() {
                   <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">e.g., CS, MATH, REL A</p>
                 </div>
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Number
                   </label>
                   <input
@@ -731,7 +731,7 @@ export default function AcademicHistoryPage() {
               </div>
 
               <div>
-                <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                   Title
                 </label>
                 <input
@@ -745,7 +745,7 @@ export default function AcademicHistoryPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Credits
                   </label>
                   <input
@@ -758,7 +758,7 @@ export default function AcademicHistoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Grade
                   </label>
                   <input
@@ -772,7 +772,7 @@ export default function AcademicHistoryPage() {
               </div>
 
               <div>
-                <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                   Term
                 </label>
                 <input
@@ -815,7 +815,7 @@ export default function AcademicHistoryPage() {
             <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
               <div className="flex items-center gap-3">
                 <FileText size={24} className="text-[var(--primary)]" />
-                <h2 className="font-header text-xl font-bold text-[var(--foreground)]">Original Transcript</h2>
+                <h2 className="font-header text-xl font-bold text-zinc-900 dark:text-zinc-100">Original Transcript</h2>
               </div>
               <div className="flex items-center gap-2">
                 <a

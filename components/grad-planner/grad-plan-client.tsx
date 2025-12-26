@@ -457,10 +457,10 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                   onClick={handleCreatePlan}
                   className="font-body-semi"
                   sx={{
-                    backgroundColor: '#0a1f1a',
-                    color: '#ffffff',
+                    backgroundColor: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
                     px: 2.5,
-                    '&:hover': { backgroundColor: '#043322' }
+                    '&:hover': { backgroundColor: 'var(--hover-green)' }
                   }}
                 >
                   <PlusIcon style={{ marginRight: 8 }} />
@@ -499,7 +499,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                     className="font-body"
                     sx={{
                       color: '#0a1f1a',
-                      '&.Mui-focused': { color: '#043322' }
+                      '&.Mui-focused': { color: 'var(--primary)' }
                     }}
                   >
                     Select Graduation Plan

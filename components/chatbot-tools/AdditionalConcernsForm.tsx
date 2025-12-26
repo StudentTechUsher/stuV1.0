@@ -59,7 +59,7 @@ export default function AdditionalConcernsForm({
         <div className="space-y-3">
           <Button
             onClick={() => setHasAdditionalConcerns(true)}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322] gap-2 justify-start"
+            className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2 justify-start"
           >
             <MessageSquarePlus size={18} />
             Yes, I have preferences to share
@@ -68,7 +68,7 @@ export default function AdditionalConcernsForm({
           <Button
             onClick={handleSkip}
             variant="outline"
-            className="w-full gap-2 justify-start"
+            className="w-full gap-2 justify-start border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <X size={18} />
             No, continue with default settings
@@ -146,7 +146,7 @@ export default function AdditionalConcernsForm({
         <div className="flex gap-3 pt-2">
           <Button
             type="submit"
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+            className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
           >
             <ArrowRight size={18} />
             Continue with Preferences
@@ -156,7 +156,7 @@ export default function AdditionalConcernsForm({
             type="button"
             variant="outline"
             onClick={() => setHasAdditionalConcerns(null)}
-            className="px-4"
+            className="px-4 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             Back
           </Button>

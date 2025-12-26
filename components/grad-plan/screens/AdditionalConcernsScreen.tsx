@@ -40,7 +40,7 @@ export default function AdditionalConcernsScreen({
             variant="outline"
             onClick={onBack}
             disabled={isLoading}
-            className="px-6 py-2 text-base font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 text-base font-medium bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700"
           >
             ← Back
           </Button>
@@ -49,14 +49,14 @@ export default function AdditionalConcernsScreen({
               variant="outline"
               onClick={onSkip}
               disabled={isLoading}
-              className="px-6 py-2 text-base font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 text-base font-medium bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700"
             >
               Skip
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={!isValid || isLoading}
-              className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 text-base font-medium bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Continuing...' : 'Continue →'}
             </Button>

@@ -179,7 +179,7 @@ export default function TranscriptCheckForm({
             variant="ghost"
             size="sm"
             onClick={handleCancelUpload}
-            className="gap-2"
+            className="gap-2 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <X size={16} />
             Cancel
@@ -248,7 +248,7 @@ export default function TranscriptCheckForm({
             <div className="flex gap-3">
               <Button
                 onClick={handleUpdateClick}
-                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+                className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
               >
                 <Upload size={18} />
                 Update Transcript
@@ -256,7 +256,7 @@ export default function TranscriptCheckForm({
               <Button
                 variant="outline"
                 onClick={handleSkip}
-                className="flex-1"
+                className="flex-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Continue with Current
               </Button>
@@ -269,7 +269,7 @@ export default function TranscriptCheckForm({
                 wantsToUpload: false,
                 wantsToUpdate: false,
               })}
-              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
             >
               Continue without transcript
             </button>
@@ -302,7 +302,7 @@ export default function TranscriptCheckForm({
             <div className="flex gap-3">
               <Button
                 onClick={handleUploadClick}
-                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+                className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
               >
                 <Upload size={18} />
                 Upload Transcript
@@ -312,7 +312,7 @@ export default function TranscriptCheckForm({
             <button
               type="button"
               onClick={handleSkip}
-              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
             >
               Continue without transcript
             </button>

@@ -124,10 +124,10 @@ export function PlanScenarioTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-      {/* Bold black header matching design system */}
-      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' }}>
+      {/* Header */}
+      <div className="border-b-2 px-6 py-4 bg-zinc-900 dark:bg-zinc-100" style={{ borderColor: 'var(--primary)' }}>
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-header text-sm font-bold uppercase tracking-wider text-white">
+          <h2 className="flex items-center gap-2 font-header text-sm font-bold uppercase tracking-wider text-zinc-100 dark:text-zinc-900">
             Remaining Courses & Goal Grades
           </h2>
 
@@ -135,21 +135,21 @@ export function PlanScenarioTable({
           <div className="flex gap-2">
             <button
               onClick={() => handleSetAllGrades('A' as GradeKey)}
-              className="font-body-semi rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20"
+              className="font-body-semi rounded-lg border border-zinc-100/20 dark:border-zinc-900/20 bg-zinc-100/10 dark:bg-zinc-900/10 px-3 py-1.5 text-xs font-semibold text-zinc-100 dark:text-zinc-900 transition-all hover:bg-zinc-100/20 dark:hover:bg-zinc-900/20"
               title="Set all courses to A"
             >
               Set All A
             </button>
             <button
               onClick={() => handleSetAllGrades('A-' as GradeKey)}
-              className="font-body-semi rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20"
+              className="font-body-semi rounded-lg border border-zinc-100/20 dark:border-zinc-900/20 bg-zinc-100/10 dark:bg-zinc-900/10 px-3 py-1.5 text-xs font-semibold text-zinc-100 dark:text-zinc-900 transition-all hover:bg-zinc-100/20 dark:hover:bg-zinc-900/20"
               title="Set all courses to A-"
             >
               Set All A-
             </button>
             <button
               onClick={() => handleSetAllGrades(null)}
-              className="font-body-semi rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20"
+              className="font-body-semi rounded-lg border border-zinc-100/20 dark:border-zinc-900/20 bg-zinc-100/10 dark:bg-zinc-900/10 px-3 py-1.5 text-xs font-semibold text-zinc-100 dark:text-zinc-900 transition-all hover:bg-zinc-100/20 dark:hover:bg-zinc-900/20"
               title="Clear all goal grades"
             >
               Clear All

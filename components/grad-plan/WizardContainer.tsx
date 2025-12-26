@@ -28,9 +28,9 @@ export default function WizardContainer({
   footerContent,
 }: WizardContainerProps) {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Minimal header with thin progress bar */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-100">
+      <div className="sticky top-0 z-50 bg-background border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-3xl mx-auto px-6 py-3">
           {/* Top action bar - close button only */}
           <div className="flex justify-end mb-3">
@@ -38,7 +38,7 @@ export default function WizardContainer({
               variant="ghost"
               size="sm"
               onClick={onCancel}
-              className="gap-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 -mr-2"
+              className="gap-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 -mr-2"
             >
               <X size={18} />
             </Button>
@@ -54,11 +54,11 @@ export default function WizardContainer({
         <div className="w-full max-w-2xl">
           {/* Question/title area - centered, clean typography */}
           <div className="mb-8 text-center">
-            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 leading-tight tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 dark:text-zinc-100 leading-tight tracking-tight">
               {title}
             </h1>
             {subtitle && (
-              <p className="text-sm md:text-base text-gray-600 mt-3 max-w-lg mx-auto leading-relaxed">
+              <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400 mt-3 max-w-lg mx-auto leading-relaxed">
                 {subtitle}
               </p>
             )}

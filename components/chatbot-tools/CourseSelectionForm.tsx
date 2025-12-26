@@ -1277,14 +1277,14 @@ export default function CourseSelectionForm({
       {/* Gen Ed Distribution Preference - Only for undergraduates */}
       {!isGraduateStudent && (
         <div className="mb-4 flex justify-center">
-          <div className="inline-flex items-center bg-white border border-gray-200 rounded-full shadow-sm p-1">
+          <div className="inline-flex items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-full shadow-sm p-1">
             <button
               type="button"
               onClick={() => setGenEdDistribution('early')}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 genEdDistribution === 'early'
-                  ? 'bg-[#0a1f1a] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
               }`}
             >
               <Zap size={16} />
@@ -1295,8 +1295,8 @@ export default function CourseSelectionForm({
               onClick={() => setGenEdDistribution('balanced')}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 genEdDistribution === 'balanced'
-                  ? 'bg-[#0a1f1a] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
               }`}
             >
               <Scale size={16} />
@@ -1924,11 +1924,11 @@ export default function CourseSelectionForm({
               <Button
                 onClick={handleAddElective}
                 disabled={!selectedElectiveCourse}
-                style={{
-                  backgroundColor: selectedElectiveCourse ? 'var(--primary)' : 'var(--muted)',
-                  color: selectedElectiveCourse ? 'black' : 'var(--muted-foreground)',
-                }}
-                className="w-full hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
+                className={`w-full hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2 ${
+                  selectedElectiveCourse
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900'
+                    : 'bg-muted text-muted-foreground'
+                }`}
               >
                 <Plus size={20} />
                 <span>Add Class</span>
@@ -1994,13 +1994,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('lighter')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Zap size={20} className="text-blue-600" />
-                          <span className="font-semibold text-gray-900">Lighter workload</span>
+                          <Zap size={20} className="text-blue-600 dark:text-blue-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">Lighter workload</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           Courses that are typically less demanding and easier to manage
                         </p>
                       </button>
@@ -2009,13 +2009,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('challenge')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Scale size={20} className="text-purple-600" />
-                          <span className="font-semibold text-gray-900">Challenge me</span>
+                          <Scale size={20} className="text-purple-600 dark:text-purple-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">Challenge me</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           More advanced courses that will push your skills
                         </p>
                       </button>
@@ -2024,13 +2024,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('career')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <BookOpen size={20} className="text-green-600" />
-                          <span className="font-semibold text-gray-900">Career alignment</span>
+                          <BookOpen size={20} className="text-green-600 dark:text-green-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">Career alignment</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           Courses that align with your career goals
                         </p>
                       </button>
@@ -2039,13 +2039,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('interests')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-orange-400 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Sparkles size={20} className="text-orange-600" />
-                          <span className="font-semibold text-gray-900">My interests</span>
+                          <Sparkles size={20} className="text-orange-600 dark:text-orange-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">My interests</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           Courses that match your personal interests
                         </p>
                       </button>
@@ -2054,7 +2054,7 @@ export default function CourseSelectionForm({
                 ) : (
                   <>
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-gray-900 mb-2">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-2">
                         Based on your preference, we recommend:
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -2084,15 +2084,15 @@ export default function CourseSelectionForm({
                               key={courseCode}
                               type="button"
                               onClick={() => handleApplyPreferenceRecommendation(courseCode)}
-                              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 hover:border-[var(--primary)] hover:bg-gray-50 transition-all text-left"
+                              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-[var(--primary)] hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all text-left"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary)] text-black font-bold">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary)] text-zinc-900 dark:text-zinc-900 font-bold">
                                   {index + 1}
                                 </div>
                                 <div>
-                                  <p className="font-semibold text-gray-900">{course.code}</p>
-                                  <p className="text-xs text-gray-600">{course.title}</p>
+                                  <p className="font-semibold text-gray-900 dark:text-zinc-100">{course.code}</p>
+                                  <p className="text-xs text-gray-600 dark:text-zinc-400">{course.title}</p>
                                 </div>
                               </div>
                               <Chip
@@ -2119,7 +2119,7 @@ export default function CourseSelectionForm({
                         setSelectedPreference(null);
                         setPreferenceRecommendations([]);
                       }}
-                      className="w-full mt-4"
+                      className="w-full mt-4 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
                       Back to preferences
                     </Button>
@@ -2232,18 +2232,18 @@ export default function CourseSelectionForm({
                 <Button
                   variant="outline"
                   onClick={() => setSubstitutionDialogOpen(false)}
-                  className="text-sm"
+                  className="text-sm border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleApplySubstitution}
                   disabled={!substitutionCourse}
-                  style={{
-                    backgroundColor: substitutionCourse ? 'var(--primary)' : 'var(--muted)',
-                    color: substitutionCourse ? 'black' : 'var(--muted-foreground)'
-                  }}
-                  className="text-sm font-medium"
+                  className={`text-sm font-medium ${
+                    substitutionCourse
+                      ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
                 >
                   Apply Substitution
                 </Button>
@@ -2256,11 +2256,7 @@ export default function CourseSelectionForm({
         <div className="pt-3 flex gap-2 justify-end">
           <Button
             onClick={handleSubmit}
-            style={{
-              backgroundColor: 'var(--primary)',
-              color: 'black'
-            }}
-            className="px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
+            className="px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900"
           >
             Continue
           </Button>
@@ -2312,6 +2308,7 @@ export default function CourseSelectionForm({
             <Button
               onClick={() => setDescriptionDialogOpen(false)}
               variant="outline"
+              className="border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Close
             </Button>

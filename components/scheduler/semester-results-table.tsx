@@ -114,29 +114,24 @@ export default function SemesterResultsTable({
         {announceMessage}
       </div>
 
-      {/* Header Bar - Black background with white text */}
+      {/* Header Bar */}
       <div
-        className="rounded-t-xl px-6 py-5 border-b-2"
+        className="rounded-t-xl px-6 py-5 border-b-2 bg-zinc-900 dark:bg-zinc-100"
         style={{
-          backgroundColor: '#0A0A0A',
-          borderColor: '#0A0A0A',
+          borderColor: 'var(--primary)',
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Left: Title */}
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-zinc-100 dark:text-zinc-900">
             {termLabel}
           </h2>
 
-          {/* Right: Stats - White text on black background */}
-          <div className="flex flex-wrap items-center gap-6 text-sm text-white">
+          {/* Right: Stats */}
+          <div className="flex flex-wrap items-center gap-6 text-sm text-zinc-100 dark:text-zinc-900">
             <button
-              className="flex items-center gap-1.5 hover:opacity-70 transition-opacity font-medium px-3 py-1.5 rounded-md"
+              className="flex items-center gap-1.5 hover:opacity-70 transition-opacity font-medium px-3 py-1.5 rounded-md bg-white/10 dark:bg-black/10"
               onClick={() => {/* TODO: Show credit details */}}
-              style={{
-                color: 'white',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              }}
             >
               <span className="font-bold text-base">{totalCredits}</span>
               <span>credits</span>
@@ -221,7 +216,7 @@ export default function SemesterResultsTable({
               return (
                 <tr
                   key={row.courseCode + idx}
-                  className="border-b transition-all bg-white hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)]"
+                  className="border-b transition-all bg-white dark:bg-zinc-900 hover:bg-[color-mix(in_srgb,var(--primary)_8%,var(--card))]"
                   style={{
                     borderColor: 'var(--border)',
                     opacity: isWithdrawn ? 0.5 : 1,

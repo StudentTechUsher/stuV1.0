@@ -275,7 +275,7 @@ export default function ProgramSelectionForm({
               type="button"
               onClick={onProgramPathfinderClick}
               variant="outline"
-              className="gap-2"
+              className="gap-2 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               <Compass size={18} />
               Need help choosing your program?
@@ -286,7 +286,7 @@ export default function ProgramSelectionForm({
               type="button"
               onClick={handleLoadPriorGradPlan}
               variant="outline"
-              className="gap-2"
+              className="gap-2 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               <FileCheck size={18} />
               Use my prior grad plan as a template
@@ -300,7 +300,7 @@ export default function ProgramSelectionForm({
           <>
             {/* Majors */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Major(s) <span className="text-red-500">*</span>
               </label>
               <Autocomplete
@@ -323,7 +323,7 @@ export default function ProgramSelectionForm({
                               e.stopPropagation();
                               handleViewCourseFlow(option, e);
                             }}
-                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
                           >
                             View Program
                           </button>
@@ -349,13 +349,13 @@ export default function ProgramSelectionForm({
                           {...chipProps}
                           label={option.name}
                           size="small"
-                          className="bg-[var(--primary)] text-white"
+                          className="bg-[var(--primary)] text-primary-foreground"
                         />
                       {option.course_flow && (
                         <button
                           type="button"
                           onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
                           title="View Program"
                         >
                           View
@@ -370,7 +370,7 @@ export default function ProgramSelectionForm({
 
             {/* Minors */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Minor(s) <span className="text-muted-foreground text-xs">(Optional)</span>
               </label>
               <Autocomplete
@@ -393,7 +393,7 @@ export default function ProgramSelectionForm({
                               e.stopPropagation();
                               handleViewCourseFlow(option, e);
                             }}
-                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
                           >
                             View Program
                           </button>
@@ -424,7 +424,7 @@ export default function ProgramSelectionForm({
                           <button
                             type="button"
                             onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
                             title="View Program"
                           >
                             View
@@ -440,7 +440,7 @@ export default function ProgramSelectionForm({
             {/* Gen Eds - Always show, with auto-selection of highest priority option */}
             {genEds.length > 0 && (
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   General Education <span className="text-muted-foreground text-xs">(Optional)</span>
                 </label>
                 <Autocomplete
@@ -462,7 +462,7 @@ export default function ProgramSelectionForm({
                                 e.stopPropagation();
                                 handleViewCourseFlow(option, e);
                               }}
-                              className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                              className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
                             >
                               View Program
                             </button>
@@ -487,7 +487,7 @@ export default function ProgramSelectionForm({
                     <button
                       type="button"
                       onClick={(e: React.MouseEvent) => handleViewCourseFlow(selectedGenEd, e)}
-                      className="px-3 py-1.5 text-sm font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                      className="px-3 py-1.5 text-sm font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
                     >
                       View Program Details
                     </button>
@@ -499,7 +499,7 @@ export default function ProgramSelectionForm({
         ) : (
           // Graduate Programs
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Graduate Program(s) <span className="text-red-500">*</span>
             </label>
             <Autocomplete
@@ -522,7 +522,7 @@ export default function ProgramSelectionForm({
                             e.stopPropagation();
                             handleViewCourseFlow(option, e);
                           }}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors flex-shrink-0"
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
                         >
                           View Program
                         </button>
@@ -548,13 +548,13 @@ export default function ProgramSelectionForm({
                         {...chipProps}
                         label={option.name}
                         size="small"
-                        className="bg-[var(--primary)] text-white"
+                        className="bg-[var(--primary)] text-primary-foreground"
                       />
                       {option.course_flow && (
                         <button
                           type="button"
                           onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-white border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded transition-colors"
+                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
                           title="View Program"
                         >
                           View
@@ -573,7 +573,7 @@ export default function ProgramSelectionForm({
           <Button
             onClick={handleSubmit}
             disabled={!isValid}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+            className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
           >
             <Plus size={18} />
             Continue with Selected Programs

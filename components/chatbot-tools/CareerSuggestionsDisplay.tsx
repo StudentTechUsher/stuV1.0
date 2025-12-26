@@ -53,7 +53,7 @@ export default function CareerSuggestionsDisplay({
                 p-4 rounded-lg border-2 transition-all
                 ${isSelected
                   ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                  : 'border-gray-200 hover:border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900'
                 }
               `}
             >
@@ -63,7 +63,7 @@ export default function CareerSuggestionsDisplay({
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-semibold text-base">{career.title}</h4>
                     {index === 0 && (
-                      <span className="px-2 py-0.5 text-xs font-medium bg-[var(--primary)] text-white rounded-full">
+                      <span className="px-2 py-0.5 text-xs font-medium bg-[var(--primary)] text-primary-foreground rounded-full">
                         Top Match
                       </span>
                     )}
@@ -125,8 +125,8 @@ export default function CareerSuggestionsDisplay({
                 className={`
                   w-full gap-2
                   ${isSelected
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-[#0a1f1a] hover:bg-[#043322]'
+                    ? 'bg-zinc-400 dark:bg-zinc-600 cursor-not-allowed text-zinc-100'
+                    : 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200'
                   }
                 `}
               >

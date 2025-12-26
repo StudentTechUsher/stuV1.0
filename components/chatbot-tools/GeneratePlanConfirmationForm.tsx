@@ -27,7 +27,7 @@ export default function GeneratePlanConfirmationForm({
       <div className="space-y-3">
         <Button
           onClick={() => onSubmit({ confirmed: true })}
-          className="w-full bg-primary hover:bg-primary/90 text-black gap-2 justify-start shadow-lg"
+          className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2 justify-start shadow-lg"
         >
           <ArrowRight size={18} />
           Yes, generate my plan!
@@ -36,7 +36,7 @@ export default function GeneratePlanConfirmationForm({
         <Button
           onClick={() => onSubmit({ confirmed: false })}
           variant="outline"
-          className="w-full gap-2 justify-start"
+          className="w-full gap-2 justify-start border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
           <Edit size={18} />
           Let me review my information first

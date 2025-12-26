@@ -365,13 +365,13 @@ export function AddCourseModal({
           variant="contained"
           startIcon={<Plus size={16} />}
           sx={{
-            backgroundColor: '#0a1f1a',
+            backgroundColor: 'var(--primary)',
             color: '#ffffff',
             textTransform: 'none',
             fontWeight: 600,
             borderRadius: '7px',
             '&:hover': {
-              backgroundColor: '#043322',
+              backgroundColor: 'var(--hover-green)',
             },
             '&:disabled': {
               backgroundColor: 'var(--muted)',

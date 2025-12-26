@@ -449,11 +449,11 @@ export default function ProfileInfoDialog({
           variant="contained"
           disabled={!isFormValid || isSaving}
           sx={{
-            backgroundColor: '#0a1f1a',
+            backgroundColor: 'var(--primary)',
             color: '#ffffff',
             px: 3,
             '&:hover': {
-              backgroundColor: '#043322',
+              backgroundColor: 'var(--hover-green)',
             },
             '&:disabled': {
               backgroundColor: 'rgba(10,31,26,0.3)',
