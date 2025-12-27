@@ -9,6 +9,8 @@ import {
   ProgramCourseSelection,
 } from '@/lib/chatbot/tools/courseSelectionTool';
 import type { ProgramRow } from '@/types/program';
+import CourseSearch from '@/components/grad-plan/CourseSearch';
+import type { CourseOffering } from '@/lib/services/courseOfferingService';
 
 interface CourseSelectionScreenProps {
   studentType: 'undergraduate' | 'graduate';
@@ -52,6 +54,14 @@ export default function CourseSelectionScreen({
   const [selectedCourses, setSelectedCourses] = useState<Record<string, string[]>>({});
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Quick selected courses from search
+  const [quickSelectedCourses, setQuickSelectedCourses] = useState<Array<{
+    id: string;
+    code: string;
+    title: string;
+    credits: number;
+  }>>([]);
 
   const selectedPrograms = useMemo(
     () => new Set(selectedProgramIds.map(id => String(id))),
@@ -168,12 +178,33 @@ export default function CourseSelectionScreen({
       .filter(group => group.courses.length > 0);
   }, [groupedCourses, searchTerm]);
 
+  // Handler for quick course selection from search
+  const handleQuickCourseSelect = (course: CourseOffering) => {
+    const courseData = {
+      id: String(course.offering_id),
+      code: course.course_code,
+      title: course.title,
+      credits: course.credits_decimal || 3.0,
+    };
+
+    // Check if already selected
+    if (quickSelectedCourses.some(c => c.code === courseData.code)) {
+      return; // Already selected
+    }
+
+    setQuickSelectedCourses(prev => [...prev, courseData]);
+  };
+
+  const handleRemoveQuickCourse = (id: string) => {
+    setQuickSelectedCourses(prev => prev.filter(c => c.id !== id));
+  };
+
   // Count stats
   const totalRequiredCourses = groupedCourses
     .filter(g => g.isRequired)
     .reduce((sum, g) => sum + g.courses.length, 0);
 
-  const selectedCount = Object.values(selectedCourses).flat().length;
+  const selectedCount = Object.values(selectedCourses).flat().length + quickSelectedCourses.length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +221,7 @@ export default function CourseSelectionScreen({
       selectedCourses,
       programs,
       studentType,
+      quickSelectedCourses, // Include courses selected via search
     } as unknown as CourseSelectionInput);
   };
 
@@ -209,16 +241,68 @@ export default function CourseSelectionScreen({
       subtitle="Choose from courses required for your degree."
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search courses by code or name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+        {/* Quick Course Search - Top */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Quick Course Search</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Search for any course by code (e.g., TMA 101, CS 235) or name (e.g., Intro to Film)
+            </p>
+          </div>
+          <CourseSearch
+            universityId={universityId}
+            onSelect={handleQuickCourseSelect}
+            placeholder="Search by course code or name..."
+            size="medium"
+            fullWidth
           />
+
+          {/* Quick Selected Courses */}
+          {quickSelectedCourses.length > 0 && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-green-900 mb-2">
+                Selected from Search ({quickSelectedCourses.length})
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {quickSelectedCourses.map(course => (
+                  <div
+                    key={course.id}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-green-300 rounded-md text-sm"
+                  >
+                    <span className="font-medium text-gray-900">{course.code}</span>
+                    <span className="text-gray-600">—</span>
+                    <span className="text-gray-700">{course.title}</span>
+                    <span className="text-gray-500">({course.credits} cr)</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQuickCourse(course.id)}
+                      className="ml-1 text-red-600 hover:text-red-800"
+                      aria-label="Remove course"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Filter existing courses */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            Or Browse by Program Requirements
+          </h3>
+          <div className="relative">
+            <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Filter courses below by code or name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
         </div>
 
         {/* Progress Summary */}
@@ -341,6 +425,23 @@ export default function CourseSelectionScreen({
               );
             })
           )}
+        </div>
+
+        {/* Quick Course Search - Bottom */}
+        <div className="space-y-3 pt-4 border-t border-gray-200">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Quick Course Search</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Didn't find what you need above? Search all courses here.
+            </p>
+          </div>
+          <CourseSearch
+            universityId={universityId}
+            onSelect={handleQuickCourseSelect}
+            placeholder="Search by course code or name..."
+            size="medium"
+            fullWidth
+          />
         </div>
 
         {/* Buttons */}

@@ -25,6 +25,7 @@ import { StuLoader } from '@/components/ui/StuLoader';
 import { Sparkles } from 'lucide-react';
 import { searchCourseOfferings, type CourseOffering } from '@/lib/services/courseOfferingService';
 import { recommendCourses, type CourseRecommendation } from '@/lib/services/courseRecommendationService';
+import CourseSearch from '@/components/grad-plan/CourseSearch';
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { fetchUserCoursesAction } from '@/lib/services/server-actions';
@@ -216,30 +217,10 @@ useEffect(() => {
 // --- User-added elective courses & GenEd strategy ---
 interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
 const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
-const [availableCourses, setAvailableCourses] = useState<CourseOffering[]>([]);
-const [coursesLoading, setCoursesLoading] = useState(false);
 const [electiveError, setElectiveError] = useState<string | null>(null);
 
 // GenEd sequencing strategy: use passed-in value
 const genEdStrategy = initialGenEdStrategy;
-
-// Fetch available courses when dialog opens
-useEffect(() => {
-  if (open) {
-    setCoursesLoading(true);
-    searchCourseOfferings(universityId)
-      .then(courses => {
-        setAvailableCourses(courses);
-      })
-      .catch(error => {
-        console.error('Error fetching courses:', error);
-        setElectiveError('Failed to load courses. Please try again.');
-      })
-      .finally(() => {
-        setCoursesLoading(false);
-      });
-  }
-}, [open, universityId]);
 
 const handleAddElective = (selectedCourse: CourseOffering | null) => {
   if (!selectedCourse) return;
@@ -1314,50 +1295,12 @@ const handleRemoveElective = (id: string) => {
                 ))}
               </Box>
             )}
-            <Autocomplete
-              options={availableCourses}
-              getOptionLabel={(option) => `${option.course_code} - ${option.title} (${option.credits_decimal || 3.0} cr)`}
-              loading={coursesLoading}
-              value={null}
-              onChange={(_event, value) => handleAddElective(value)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Search for a course to add..."
-                  size="small"
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {coursesLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '7px',
-                    },
-                  }}
-                />
-              )}
-              renderOption={(props, option) => {
-                const { key, ...restProps } = props as { key: string; [key: string]: unknown };
-                return (
-                  <Box component="li" key={key} {...restProps}>
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {option.course_code} - {option.title}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {option.credits_decimal || 3.0} credits
-                        {option.department_code && ` • ${option.department_code}`}
-                      </Typography>
-                    </Box>
-                  </Box>
-                );
-              }}
-              sx={{ mb: 2 }}
+            <CourseSearch
+              universityId={universityId}
+              onSelect={handleAddElective}
+              placeholder="Search for a course by code or name..."
+              size="small"
+              fullWidth
             />
             {electiveError && (
               <Alert severity="warning" onClose={() => setElectiveError(null)} sx={{ mb: 2 }}>
