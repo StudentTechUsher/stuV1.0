@@ -54,8 +54,8 @@ function handleAuthRedirects(
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Auth pages and landing page - redirect to dashboard if logged in
-  const authPages = ['/', '/login', '/signup']
+  // Auth pages - redirect to dashboard if logged in (excluding landing page)
+  const authPages = ['/login', '/signup']
   const isAuthPage = authPages.includes(pathname)
 
   if (isAuthPage && session) {

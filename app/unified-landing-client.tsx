@@ -1,88 +1,47 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Menu, X, GraduationCap, Building2, HelpCircle } from "lucide-react"
+import { ArrowRight, Menu, X, GraduationCap, Building2, HelpCircle, Moon, Sun } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect, useLayoutEffect } from "react"
 import { useUniversityTheme } from "@/contexts/university-theme-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useDarkMode } from "@/contexts/dark-mode-context"
 
 type Audience = 'students' | 'universities'
 
 export function UnifiedLandingClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [audience, setAudience] = useState<Audience>('students')
-  const [isRedirecting, setIsRedirecting] = useState(false)
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const { university } = useUniversityTheme()
-  const router = useRouter()
+  const { isDark, setMode } = useDarkMode()
 
-  // Force the landing page to always render in light mode, regardless of user preference.
-  // useLayoutEffect runs synchronously before browser paint, ensuring this runs
-  // before DarkModeProvider's useEffect applies any theme changes.
+  // Enable smooth scrolling for anchor links
   useLayoutEffect(() => {
     const htmlElement = document.documentElement
-    const bodyElement = document.body
-    const wasDark = htmlElement.classList.contains('dark')
-
-    htmlElement.classList.remove('dark')
-    htmlElement.dataset.forceLightLanding = 'true'
-    bodyElement.dataset.forceLightLanding = 'true'
-
-    // Enable smooth scrolling for anchor links
     htmlElement.style.scrollBehavior = 'smooth'
 
     return () => {
-      delete htmlElement.dataset.forceLightLanding
-      delete bodyElement.dataset.forceLightLanding
       htmlElement.style.scrollBehavior = ''
-      if (wasDark) {
-        htmlElement.classList.add('dark')
-      }
     }
   }, [])
 
-  // Listen for auth state changes and redirect authenticated users to dashboard
+  // Listen for auth state changes (no auto-redirect to dashboard)
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
 
-    // Check initial session
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) {
-          console.error('Auth session error:', error)
-          setAuthError('Unable to verify your session. Please try signing in again.')
-          return
-        }
-        if (session) {
-          setIsRedirecting(true)
-          router.push('/dashboard')
-        }
-      } catch (error) {
-        console.error('Unexpected auth error:', error)
-        setAuthError('An unexpected error occurred. Please refresh the page and try again.')
-      }
-    }
-
-    checkSession()
-
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, _session) => {
       if (event === 'SIGNED_OUT') {
         setAuthError(null)
-      }
-      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        setIsRedirecting(true)
-        router.push('/dashboard')
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [router])
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -119,7 +78,7 @@ export function UnifiedLandingClient() {
         </div>
       )}
 
-      <header className="sticky top-0 z-40 glass-effect">
+      <header className="sticky top-0 z-40 glass-effect border-b border-zinc-200 dark:border-zinc-800">
         <div className="container mx-auto px-6 flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-3">
@@ -144,35 +103,43 @@ export function UnifiedLandingClient() {
                   className="rounded-50 -mb-2"
                   priority
                 />
-                <span className="text-4xl font-bold tracking-tight">stu.</span>
+                <span className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">stu.</span>
               </div>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
-            <Link href="#features" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
+            <Link href="#features" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
               Features
             </Link>
             {audience === 'universities' && (
               <>
                 {/* TODO: Add pricing page and uncomment link */}
-                <Link href="/security" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
+                <Link href="/security" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
                   Security & Compliance
                 </Link>
               </>
             )}
-            <Link href="#faq" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2">
+            <Link href="#faq" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
               FAQ
             </Link>
-            <Link href="/about-us" className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
+            <Link href="/about-us" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
               About Us
             </Link>
           </nav>
 
           <div className="hidden lg:flex items-center gap-6">
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setMode(isDark ? 'light' : 'dark')}
+              className="p-2 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <Link href="/login">
-              <Button variant="outline" className="border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium px-6 py-2.5 text-base transition-all">
+              <Button variant="outline" className="border-zinc-700 dark:border-zinc-300 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-700 dark:hover:bg-zinc-300 hover:text-white dark:hover:text-zinc-900 font-medium px-6 py-2.5 text-base transition-all">
                 Sign In
               </Button>
             </Link>
@@ -194,18 +161,22 @@ export function UnifiedLandingClient() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button className="lg:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button
+            className="lg:hidden p-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-zinc-100">
+          <div className="lg:hidden border-t border-zinc-100 dark:border-zinc-800">
             <div className="container mx-auto px-6 py-6 flex flex-col gap-3">
               <Link
                 href="#features"
-                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
+                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
@@ -215,7 +186,7 @@ export function UnifiedLandingClient() {
                   {/* TODO: Add pricing page and uncomment link */}
                   <Link
                     href="/security"
-                    className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
+                    className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Security & Compliance
@@ -224,21 +195,40 @@ export function UnifiedLandingClient() {
               )}
               <Link
                 href="#faq"
-                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
+                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 FAQ
               </Link>
               <Link
                 href="/about-us"
-                className="text-base font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-all rounded-md px-3 py-2"
+                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 About Us
               </Link>
-              <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
+
+              {/* Dark mode toggle */}
+              <button
+                onClick={() => setMode(isDark ? 'light' : 'dark')}
+                className="flex items-center gap-2 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
+              >
+                {isDark ? (
+                  <>
+                    <Sun className="h-4 w-4" />
+                    <span>Light Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4" />
+                    <span>Dark Mode</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium">
+                  <Button variant="outline" className="w-full border-zinc-700 dark:border-zinc-300 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-700 dark:hover:bg-zinc-300 hover:text-white dark:hover:text-zinc-900 font-medium">
                     Sign In
                   </Button>
                 </Link>
@@ -335,7 +325,7 @@ export function UnifiedLandingClient() {
                           <span>stu.</span>
                         </div>
                       </h1>
-                      <p className="max-w-[700px] text-zinc-700 dark:text-zinc-300 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
+                      <p className="max-w-[700px] text-zinc-700 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
                         Too many course choices and not enough transparency? Not sure what kind of career you&apos;ll have after graduation? Stu helps you answer these questions with graduation maps customized to your goals!
                       </p>
                     </>
@@ -615,7 +605,7 @@ export function UnifiedLandingClient() {
         {/* TODO: Add student CTA section with email signup form */}
       </main>
 
-      <footer className="border-t py-6 md:py-8">
+      <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 md:py-8">
         <div className="container px-4 md:px-6">
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-4">
@@ -769,16 +759,6 @@ export function UnifiedLandingClient() {
           </div>
         </div>
       </footer>
-
-      {/* Loading overlay when redirecting */}
-      {isRedirecting && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-8 shadow-2xl flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Redirecting to dashboard...</p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
