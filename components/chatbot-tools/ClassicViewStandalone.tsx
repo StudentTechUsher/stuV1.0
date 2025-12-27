@@ -277,18 +277,21 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
   const requirementEntries = Object.entries(groupedByRequirement);
 
   // Color scheme based on program type
-  const typeColors: Record<string, { bg: string; text: string }> = {
+  const typeColors: Record<string, { bg: string; text: string; titleText: string }> = {
     major: {
       bg: 'bg-[#2196f3]',
       text: 'text-[#2196f3]',
+      titleText: 'text-white',
     },
     minor: {
       bg: 'bg-[#5E35B1]',
       text: 'text-[#5E35B1]',
+      titleText: 'text-white',
     },
     general_ed: {
       bg: 'bg-[#FF9800]',
       text: 'text-[#FF9800]',
+      titleText: 'text-white',
     },
   };
 

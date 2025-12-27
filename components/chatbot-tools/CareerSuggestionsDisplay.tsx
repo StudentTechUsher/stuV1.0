@@ -120,15 +120,10 @@ export default function CareerSuggestionsDisplay({
 
               {/* Select Button */}
               <Button
+                variant="primary"
                 onClick={() => handleSelect(career)}
                 disabled={isSelected}
-                className={`
-                  w-full gap-2
-                  ${isSelected
-                    ? 'bg-zinc-400 dark:bg-zinc-600 cursor-not-allowed text-zinc-100'
-                    : 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200'
-                  }
-                `}
+                className="w-full gap-2"
               >
                 {isSelected ? (
                   <>

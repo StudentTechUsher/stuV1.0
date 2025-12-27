@@ -272,10 +272,10 @@ export default function ProgramSelectionForm({
         <div className="flex justify-center gap-3 mb-6">
           {onProgramPathfinderClick && (
             <Button
+              variant="secondary"
               type="button"
               onClick={onProgramPathfinderClick}
-              variant="outline"
-              className="gap-2 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="gap-2"
             >
               <Compass size={18} />
               Need help choosing your program?
@@ -283,10 +283,10 @@ export default function ProgramSelectionForm({
           )}
           {hasActiveGradPlan && (
             <Button
+              variant="secondary"
               type="button"
               onClick={handleLoadPriorGradPlan}
-              variant="outline"
-              className="gap-2 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="gap-2"
             >
               <FileCheck size={18} />
               Use my prior grad plan as a template
@@ -571,9 +571,10 @@ export default function ProgramSelectionForm({
         {/* Submit Button */}
         <div className="pt-4">
           <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={!isValid}
-            className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
+            className="w-full gap-2"
           >
             <Plus size={18} />
             Continue with Selected Programs

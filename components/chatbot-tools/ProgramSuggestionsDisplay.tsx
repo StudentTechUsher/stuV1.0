@@ -197,13 +197,10 @@ export default function ProgramSuggestionsDisplay({
             <span className="font-semibold">{selectedPrograms.size} program{selectedPrograms.size !== 1 ? 's' : ''} selected.</span> Click below to continue with your selection.
           </p>
           <Button
+            variant="primary"
             onClick={handleSubmit}
             disabled={isSubmitted}
-            className={`w-full gap-2 ${
-              isSubmitted
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-[#0a1f1a] hover:bg-[#043322]'
-            }`}
+            className="w-full gap-2"
           >
             {isSubmitted ? (
               <>

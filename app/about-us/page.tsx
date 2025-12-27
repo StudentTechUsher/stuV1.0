@@ -109,7 +109,7 @@ export default function AboutUsPage() {
               <Link href="/demo">
                 <Button
                   size="lg"
-                  className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[var(--hover-green)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                  variant="primary"
                 >
                   Request a Demo
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -118,8 +118,7 @@ export default function AboutUsPage() {
               <Link href="#design-partners">
                 <Button
                   size="lg"
-                  variant="outline"
-                  className="border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                  variant="secondary"
                 >
                   Become a Design Partner
                 </Button>
@@ -381,7 +380,7 @@ export default function AboutUsPage() {
               <Link href="/demo">
                 <Button
                   size="lg"
-                  className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[var(--hover-green)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                  variant="primary"
                 >
                   Request a Demo
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -390,8 +389,7 @@ export default function AboutUsPage() {
               <Link href="/contact">
                 <Button
                   size="lg"
-                  variant="outline"
-                  className="border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                  variant="secondary"
                 >
                   Contact Us
                 </Button>

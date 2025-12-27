@@ -250,18 +250,19 @@ export default function ProfileUpdateForm({
         {/* Action Buttons */}
         <div className="mt-5 space-y-2">
           <Button
+            variant="primary"
             onClick={handleGraduationContinue}
             disabled={!isGraduationValid}
-            className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+            className="w-full"
           >
             Continue
           </Button>
 
           {hasActivePlan && onSkip && (
             <Button
+              variant="secondary"
               onClick={onSkip}
-              variant="outline"
-              className="w-full border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="w-full"
             >
               Skip to Student Classification
             </Button>
@@ -328,16 +329,17 @@ export default function ProfileUpdateForm({
         {/* Action Buttons */}
         <div className="flex gap-3 mt-5">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setStep('graduation')}
-            className="px-6 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="px-6"
           >
             ← Back
           </Button>
           <Button
+            variant="primary"
             onClick={handleAdmissionContinue}
             disabled={!isAdmissionValid}
-            className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+            className="flex-1"
           >
             Continue
           </Button>
@@ -371,9 +373,9 @@ export default function ProfileUpdateForm({
         <div className="space-y-3">
           {hasExistingCareerGoal && (
             <Button
+              variant="secondary"
               onClick={() => handleIndustryChoice('keep')}
-              variant="outline"
-              className="w-full h-auto py-4 flex flex-col items-start gap-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="w-full h-auto py-4 flex flex-col items-start gap-1"
             >
               <span className="font-semibold text-base">Keep my current career goal</span>
               <span className="text-xs text-muted-foreground font-normal">
@@ -383,9 +385,9 @@ export default function ProfileUpdateForm({
           )}
 
           <Button
+            variant="secondary"
             onClick={() => handleIndustryChoice('select')}
-            variant="outline"
-            className="w-full h-auto py-4 flex flex-col items-start gap-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="w-full h-auto py-4 flex flex-col items-start gap-1"
           >
             <span className="font-semibold text-base">Select an industry first</span>
             <span className="text-xs text-muted-foreground font-normal">
@@ -394,9 +396,9 @@ export default function ProfileUpdateForm({
           </Button>
 
           <Button
+            variant="secondary"
             onClick={() => handleIndustryChoice('know')}
-            variant="outline"
-            className="w-full h-auto py-4 flex flex-col items-start gap-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="w-full h-auto py-4 flex flex-col items-start gap-1"
           >
             <span className="font-semibold text-base">
               {hasExistingCareerGoal ? 'Update my career goal' : 'I know what I want to do!'}
@@ -409,9 +411,9 @@ export default function ProfileUpdateForm({
 
         <div className="mt-5">
           <Button
-            variant="ghost"
+            variant="secondary"
             onClick={() => setStep('admission')}
-            className="w-full text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="w-full"
           >
             ← Back
           </Button>
@@ -470,16 +472,17 @@ export default function ProfileUpdateForm({
         {/* Action Buttons */}
         <div className="flex gap-3 mt-5">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setStep('industry-choice')}
-            className="px-6 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="px-6"
           >
             ← Back
           </Button>
           <Button
+            variant="primary"
             onClick={handleIndustryContinue}
             disabled={!isIndustryValid}
-            className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+            className="flex-1"
           >
             Continue with Career Explorer
           </Button>
@@ -502,6 +505,7 @@ export default function ProfileUpdateForm({
       {onCareerPathfinderClick && (
         <div className="flex justify-center mb-6">
           <Button
+            variant="secondary"
             type="button"
             onClick={() =>
               onCareerPathfinderClick?.(
@@ -510,8 +514,7 @@ export default function ProfileUpdateForm({
                   : customIndustry || undefined
               )
             }
-            variant="outline"
-            className="gap-2 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="gap-2"
           >
             <Compass size={18} />
             Need help finding your career path?
@@ -545,16 +548,17 @@ export default function ProfileUpdateForm({
       {/* Action Buttons */}
       <div className="flex gap-3 mt-6">
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={() => setStep('industry-choice')}
-          className="px-6 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="px-6"
         >
           ← Back
         </Button>
         <Button
+          variant="primary"
           onClick={handleFinalSubmit}
           disabled={!isCareerValid}
-          className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+          className="flex-1"
         >
           Continue
         </Button>

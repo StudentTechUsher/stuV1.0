@@ -1313,7 +1313,7 @@ export default function CourseSelectionForm({
           href="/pathfinder"
           target="_blank"
           rel="noopener noreferrer"
-          variant="outline"
+          variant="secondary"
           className="gap-2"
         >
           <Compass size={18} />
@@ -1922,13 +1922,10 @@ export default function CourseSelectionForm({
             {/* Add Class Button */}
             <div>
               <Button
+                variant="primary"
                 onClick={handleAddElective}
                 disabled={!selectedElectiveCourse}
-                className={`w-full hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2 ${
-                  selectedElectiveCourse
-                    ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900'
-                    : 'bg-muted text-muted-foreground'
-                }`}
+                className="w-full flex items-center justify-center gap-2"
               >
                 <Plus size={20} />
                 <span>Add Class</span>
@@ -2114,12 +2111,12 @@ export default function CourseSelectionForm({
                     )}
 
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => {
                         setSelectedPreference(null);
                         setPreferenceRecommendations([]);
                       }}
-                      className="w-full mt-4 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      className="w-full mt-4"
                     >
                       Back to preferences
                     </Button>
@@ -2230,20 +2227,17 @@ export default function CourseSelectionForm({
               {/* Footer */}
               <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] px-6 py-4">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setSubstitutionDialogOpen(false)}
-                  className="text-sm border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  className="text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
+                  variant="primary"
                   onClick={handleApplySubstitution}
                   disabled={!substitutionCourse}
-                  className={`text-sm font-medium ${
-                    substitutionCourse
-                      ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
+                  className="text-sm font-medium"
                 >
                   Apply Substitution
                 </Button>
@@ -2255,8 +2249,9 @@ export default function CourseSelectionForm({
         {/* Submit Button */}
         <div className="pt-3 flex gap-2 justify-end">
           <Button
+            variant="primary"
             onClick={handleSubmit}
-            className="px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900"
+            className="px-4 py-2 text-sm font-medium"
           >
             Continue
           </Button>
@@ -2306,9 +2301,8 @@ export default function CourseSelectionForm({
           </DialogContent>
           <DialogActions>
             <Button
+              variant="secondary"
               onClick={() => setDescriptionDialogOpen(false)}
-              variant="outline"
-              className="border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Close
             </Button>

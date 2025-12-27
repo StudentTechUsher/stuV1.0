@@ -1826,7 +1826,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                             {message.quickReplies!.map((reply, replyIndex) => (
                               <Button
                                 key={replyIndex}
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={() => {
                                   setInputMessage(reply);
@@ -1835,7 +1835,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                                     handleSendMessage(reply);
                                   }, 100);
                                 }}
-                                className="bg-white hover:bg-gray-50 text-sm py-2 px-3 h-auto"
+                                className="text-sm py-2 px-3 h-auto"
                               >
                                 {reply}
                               </Button>
@@ -1882,7 +1882,8 @@ One last question: On a scale of 1-10, how committed are you to this career path
                     <Button
                       onClick={() => handleSendMessage()}
                       disabled={!inputMessage.trim() || isProcessing}
-                      className="h-12 px-4 bg-[#0a1f1a] hover:bg-[#043322]"
+                      variant="primary"
+                      className="h-12 px-4"
                     >
                       <Send size={20} />
                     </Button>

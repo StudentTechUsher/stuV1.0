@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
           logInfo('Updated student GPA after text transcript parse', {
             userId: user.id,
             action: 'update_gpa_text_mode',
-            gpa,
           });
         } catch (error) {
           // Log error but don't fail the request
@@ -205,7 +204,6 @@ export async function POST(request: NextRequest) {
       logInfo('Updated student GPA after PDF transcript parse', {
         userId: user.id,
         action: 'update_gpa_pdf_mode',
-        gpa,
       });
     } catch (error) {
       // Log error but don't fail the request

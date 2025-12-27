@@ -176,10 +176,10 @@ export default function TranscriptCheckForm({
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Upload Transcript</h3>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onClick={handleCancelUpload}
-            className="gap-2 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="gap-2"
           >
             <X size={16} />
             Cancel
@@ -247,16 +247,17 @@ export default function TranscriptCheckForm({
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
               <Button
+                variant="primary"
                 onClick={handleUpdateClick}
-                className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
+                className="flex-1 gap-2"
               >
                 <Upload size={18} />
                 Update Transcript
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={handleSkip}
-                className="flex-1 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="flex-1"
               >
                 Continue with Current
               </Button>
@@ -301,8 +302,9 @@ export default function TranscriptCheckForm({
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
               <Button
+                variant="primary"
                 onClick={handleUploadClick}
-                className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 gap-2"
+                className="flex-1 gap-2"
               >
                 <Upload size={18} />
                 Upload Transcript

@@ -99,15 +99,12 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
               For Universities
             </Link>
             <Link href="/login">
-              <Button
-                variant="outline"
-                className="border-zinc-700 dark:border-zinc-300 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-700 dark:hover:bg-zinc-300 hover:text-white dark:hover:text-zinc-900 font-medium px-6 py-2.5 text-base transition-all"
-              >
+              <Button variant="secondary" size="lg">
                 Sign In
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-primary hover:bg-[var(--hover-green)] text-primary-foreground font-medium px-6 py-2.5 text-base transition-all">
+              <Button variant="primary" size="lg">
                 Get Started
               </Button>
             </Link>
@@ -126,7 +123,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
               For Students
             </Link>
             <Link href="/demo">
-              <Button className="bg-primary hover:bg-[var(--hover-green)] text-primary-foreground border-none font-medium px-6 py-2.5 text-base">
+              <Button variant="primary" size="lg">
                 Request a demo
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -189,15 +186,12 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                   </Link>
                   <div className="flex flex-col gap-3 mt-4">
                     <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                      <Button
-                        variant="outline"
-                        className="w-full border-zinc-700 dark:border-zinc-300 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-700 dark:hover:bg-zinc-300 hover:text-white dark:hover:text-zinc-900 font-medium"
-                      >
+                      <Button variant="secondary" className="w-full">
                         Sign In
                       </Button>
                     </Link>
                     <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                      <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-primary-foreground border-none font-medium transition-all">
+                      <Button variant="primary" className="w-full">
                         Sign Up
                       </Button>
                     </Link>
@@ -213,7 +207,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                     For Students →
                   </Link>
                   <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="bg-primary hover:bg-[var(--hover-green)] text-primary-foreground border-none font-medium w-full py-2.5 text-base">
+                    <Button variant="primary" className="w-full">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>

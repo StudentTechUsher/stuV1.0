@@ -293,7 +293,7 @@ export default function AcademicHistoryPage() {
               borderColor: borderColor,
             }}
           >
-            <span className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <span className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-900">
               {course.subject} {course.number}
               {isTransfer && (
                 <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">↔</span>
@@ -304,7 +304,7 @@ export default function AcademicHistoryPage() {
           {/* Tooltip on hover - auto-width to fit content */}
           <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden min-w-max -translate-x-1/2 whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-lg group-hover:block">
             <div className="space-y-0.5">
-              <p className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-100">{course.title}</p>
+              <p className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-900">{course.title}</p>
               <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                 <span className="font-body">{course.credits} credits</span>
                 <span>•</span>
@@ -355,7 +355,7 @@ export default function AcademicHistoryPage() {
           </button>
         )}
         <div className="flex items-start gap-2">
-          <h4 className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <h4 className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-900">
             {course.subject} {course.number}
           </h4>
           {isTransfer && (

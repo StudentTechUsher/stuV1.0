@@ -62,7 +62,7 @@ export async function updateStudentGpa(
       // Check if student record doesn't exist
       if (error.code === 'PGRST116') {
         logError('Student record not found when updating GPA', error, {
-          profileId,
+          userId: profileId,
           action: 'update_student_gpa',
         });
         throw new StudentNotFoundError(`Student record not found for profile ${profileId}`);
@@ -71,9 +71,8 @@ export async function updateStudentGpa(
     }
 
     logInfo('Successfully updated student GPA', {
-      profileId,
+      userId: profileId,
       action: 'update_student_gpa',
-      gpa: roundedGpa,
     });
 
     return {
@@ -85,7 +84,7 @@ export async function updateStudentGpa(
       throw error;
     }
     logError('Unexpected error updating student GPA', error, {
-      profileId,
+      userId: profileId,
       action: 'update_student_gpa',
     });
     throw new StudentUpdateError('Unexpected error updating student GPA', error);
@@ -120,7 +119,7 @@ export async function fetchStudentGpa(
       throw error;
     }
     logError('Unexpected error fetching student GPA', error, {
-      profileId,
+      userId: profileId,
       action: 'fetch_student_gpa',
     });
     throw new StudentFetchError('Unexpected error fetching student GPA', error);

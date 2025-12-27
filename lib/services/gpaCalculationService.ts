@@ -43,7 +43,7 @@ export function calculateGpaFromCourses(courses: ParsedCourse[]): number | null 
     if (completedCourses.length === 0) {
       logInfo('No gradeable courses found for GPA calculation', {
         action: 'calculate_gpa_from_courses',
-        totalCourses: courses.length,
+        count: courses.length,
       });
       return null;
     }
@@ -59,9 +59,7 @@ export function calculateGpaFromCourses(courses: ParsedCourse[]): number | null 
 
     logInfo('Successfully calculated GPA from courses', {
       action: 'calculate_gpa_from_courses',
-      gradeableCourses: completedCourses.length,
-      totalCourses: courses.length,
-      gpa: currentGpa,
+      count: completedCourses.length,
     });
 
     return currentGpa;

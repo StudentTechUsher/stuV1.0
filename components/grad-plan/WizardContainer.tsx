@@ -35,10 +35,10 @@ export default function WizardContainer({
           {/* Top action bar - close button only */}
           <div className="flex justify-end mb-3">
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={onCancel}
-              className="gap-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 -mr-2"
+              className="gap-1.5 -mr-2"
             >
               <X size={18} />
             </Button>

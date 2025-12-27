@@ -139,20 +139,20 @@ export function UnifiedLandingClient() {
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <Link href="/login">
-              <Button variant="outline" className="border-zinc-700 dark:border-zinc-300 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-700 dark:hover:bg-zinc-300 hover:text-white dark:hover:text-zinc-900 font-medium px-6 py-2.5 text-base transition-all">
+              <Button variant="secondary" size="lg">
                 Sign In
               </Button>
             </Link>
             {audience === 'universities' ? (
               <Link href="/demo">
-                <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                <Button variant="primary" size="lg">
                   Request a demo
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             ) : (
               <Link href="/signup">
-                <Button className="bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
+                <Button variant="primary" size="lg">
                   Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -228,20 +228,20 @@ export function UnifiedLandingClient() {
 
               <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full border-zinc-700 dark:border-zinc-300 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-700 dark:hover:bg-zinc-300 hover:text-white dark:hover:text-zinc-900 font-medium">
+                  <Button variant="secondary" className="w-full">
                     Sign In
                   </Button>
                 </Link>
                 {audience === 'universities' ? (
                   <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium w-full py-2.5 text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                    <Button variant="primary" className="w-full">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                 ) : (
                   <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                    <Button variant="primary" className="w-full">
                       Get Started
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
@@ -335,7 +335,7 @@ export function UnifiedLandingClient() {
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   {audience === 'universities' ? (
                     <div className="flex flex-col items-start gap-2">
-                      <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium text-sm sm:text-base px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                      <Button variant="primary" size="lg" asChild>
                         <Link href="/demo" className="flex items-center">
                           Request a demo
                           <ArrowRight className="ml-2 h-4 w-4" />
@@ -347,7 +347,7 @@ export function UnifiedLandingClient() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-start gap-2">
-                      <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-4 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                      <Button variant="primary" size="lg" asChild>
                         <Link href="/signup" className="flex items-center">
                           Try{" "}
                           <Image
@@ -592,7 +592,7 @@ export function UnifiedLandingClient() {
                 </div>
                 <div className="w-full max-w-md px-4">
                   <Link href="/demo">
-                    <Button className="w-full bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 border-none font-semibold py-3 sm:py-4 text-base sm:text-lg shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105">
+                    <Button variant="primary" size="lg" className="w-full">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
