@@ -292,18 +292,75 @@ export interface AuthoringState {
 /**
  * Helper function to get sub-requirements from any requirement type,
  * handling both naming conventions (subRequirements vs subrequirements)
+ * and gen-ed blocks format
  */
 export function getSubRequirements(req: ProgramRequirement): ProgramRequirement[] | undefined {
   if ('subRequirements' in req) return req.subRequirements;
   if ('subrequirements' in req) return req.subrequirements;
+
+  // Gen-ed format: blocks array may contain nested requirement blocks
+  if ('blocks' in req) {
+    const blocks = (req as { blocks?: unknown[] }).blocks;
+    if (Array.isArray(blocks)) {
+      const reqBlocks = blocks.filter(
+        (block): block is ProgramRequirement =>
+          typeof block === 'object' && block !== null &&
+          'requirement' in block
+      );
+      return reqBlocks.length > 0 ? reqBlocks : undefined;
+    }
+  }
+
   return undefined;
 }
 
 /**
  * Helper function to get courses from any requirement type
+ * Handles both standard 'courses' format and gen-ed 'blocks' format
+ * Recursively extracts courses from nested option blocks
  */
 export function getCourses(req: ProgramRequirement): Course[] | undefined {
+  // Standard format: courses array
   if ('courses' in req) return req.courses;
+
+  // Gen-ed format: blocks array with course objects (possibly nested in options)
+  if ('blocks' in req) {
+    const blocks = (req as { blocks?: unknown[] }).blocks;
+    if (Array.isArray(blocks)) {
+      const courses: Course[] = [];
+
+      // Recursive function to extract courses from blocks
+      function extractFromBlocks(blockArray: unknown[]): void {
+        for (const block of blockArray) {
+          if (typeof block !== 'object' || block === null) continue;
+
+          const typedBlock = block as { type?: string; code?: string; title?: string; credits?: unknown; blocks?: unknown[] };
+
+          // Direct course block
+          if (typedBlock.type === 'course' && typedBlock.code) {
+            const credits = typeof typedBlock.credits === 'object' && typedBlock.credits !== null && 'fixed' in typedBlock.credits
+              ? (typedBlock.credits as { fixed: number }).fixed
+              : 3;
+
+            courses.push({
+              code: typedBlock.code,
+              title: typedBlock.title || '',
+              credits
+            });
+          }
+
+          // Option block containing nested courses - recurse
+          if (typedBlock.type === 'option' && Array.isArray(typedBlock.blocks)) {
+            extractFromBlocks(typedBlock.blocks);
+          }
+        }
+      }
+
+      extractFromBlocks(blocks);
+      return courses.length > 0 ? courses : undefined;
+    }
+  }
+
   return undefined;
 }
 

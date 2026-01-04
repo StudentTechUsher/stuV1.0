@@ -135,7 +135,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
   switch (role) {
     case "student":
       return [
-        { href: "/",                    segment: null,                 label: "Overview",             icon: "dashboard" },
+        { href: "/dashboard",                    segment: null,                 label: "Overview",             icon: "dashboard" },
         { href: "/inbox",               segment: "inbox",              label: "Inbox",                icon: "inbox", badgeCount: inboxBadge },
         { href: "/grad-plan",           segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/sandbox",             segment: "sandbox",            label: "Plan Sandbox",         icon: "sandbox" },
@@ -147,7 +147,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
 
     case "advisor":
       return [
-        { href: "/",                    segment: null,                 label: "Overview",       icon: "dashboard" },
+        { href: "/dashboard",                    segment: null,                 label: "Overview",       icon: "dashboard" },
         { href: "/inbox",               segment: "inbox",              label: "Inbox",          icon: "inbox", badgeCount: inboxBadge },
         { href: "/approve-grad-plans",  segment: "approve-grad-plans", label: "Approve Plans",  icon: "map", badgeCount: pendingCount },
         { href: "/approve-students",    segment: "approve-students",   label: "Approve Students", icon: "users" },
@@ -162,7 +162,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
 
     case "admin":
       return [
-        { href: "/",                    segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/dashboard",                    segment: null,                    label: "Overview",               icon: "dashboard" },
         { href: "/admin/forecast",      segment: "admin",                 label: "Forecasting",            icon: "forecast" },
         { href: "/inbox",               segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
         { href: "/approve-students",    segment: "approve-students",      label: "Approve Students",       icon: "users" },
@@ -176,7 +176,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
 
     case "super_admin":
       return [
-        { href: "/",                    segment: null,                    label: "Overview",               icon: "dashboard" },
+        { href: "/dashboard",                    segment: null,                    label: "Overview",               icon: "dashboard" },
         { href: "/admin/forecast",      segment: "admin",                 label: "Forecasting",            icon: "forecast" },
         { href: "/inbox",               segment: "inbox",                 label: "Inbox",                  icon: "inbox", badgeCount: inboxBadge },
         { href: "/users",               segment: "users",                 label: "Maintain Users",         icon: "users" },

@@ -279,3 +279,32 @@
     font-weight: 400;
   }
 }
+
+/* Print styles for Compare Majors PDF export */
+@media print {
+  /* Hide navigation, headers, footers */
+  nav, header, footer, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Expand all sections for print */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Remove backgrounds and shadows for cleaner print */
+  body {
+    background: white !important;
+  }
+
+  /* Ensure cards print side-by-side */
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+
+  /* Prevent page breaks inside cards */
+  .print\:break-inside-avoid {
+    break-inside: avoid;
+  }
+}
