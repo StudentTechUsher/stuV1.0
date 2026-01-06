@@ -31,11 +31,11 @@ export function YearCard({
         <div className={`w-4 h-4 rounded-full ${
           status === "complete" ? "bg-green-500" :
           status === "current" ? "bg-green-500" :
-          "bg-zinc-300"
+          "bg-muted"
         }`} />
         <div>
           <div className="font-medium">{label}</div>
-          <div className="text-sm text-zinc-500">{sublabel}</div>
+          <div className="text-sm text-muted-foreground">{sublabel}</div>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

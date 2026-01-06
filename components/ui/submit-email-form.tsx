@@ -104,7 +104,7 @@ export function SubmitEmailForm() {
 
         {/* University Dropdown */}
         <div>
-          <select {...register("university")} className="w-full border border-gray-300 p-2 rounded-md">
+          <select {...register("university")} className="w-full border border-input p-2 rounded-md bg-background text-foreground">
             <option value="">Select Your University</option>
             <option value="BYU">Brigham Young University - Provo</option>
             <option value="UVU">Utah Valley University</option>
@@ -115,7 +115,7 @@ export function SubmitEmailForm() {
 
         {/* Major Dropdown */}
         <div>
-          <select {...register("major")} className="w-full border border-gray-300 p-2 rounded-md">
+          <select {...register("major")} className="w-full border border-input p-2 rounded-md bg-background text-foreground">
             <option value="">Select a Major</option>
             {majors.map((major) => (
               <option key={major.id} value={major.id}>
@@ -129,7 +129,7 @@ export function SubmitEmailForm() {
             onClick={() => setShowSecondMajor(!showSecondMajor)}
             className="font-body"
             sx={{
-              color: "black",
+              color: "var(--foreground)",
               padding: 0,
             }}
           >
@@ -140,7 +140,7 @@ export function SubmitEmailForm() {
         {/* Second Major dropdown */}
         {showSecondMajor && (
           <div>
-            <select {...register("secondMajor")} className="w-full border border-gray-300 p-2 rounded-md">
+            <select {...register("secondMajor")} className="w-full border border-input p-2 rounded-md bg-background text-foreground">
               <option value="">Select a Second Major</option>
               {majors.map((major) => (
                 <option key={major.id} value={major.id}>
@@ -153,7 +153,7 @@ export function SubmitEmailForm() {
 
         {/* Ask how many minors the user wants */}
         <div>
-          <select {...register("numberOfMinors", { valueAsNumber: true })} className="w-full border border-gray-300 p-2 rounded-md">
+          <select {...register("numberOfMinors", { valueAsNumber: true })} className="w-full border border-input p-2 rounded-md bg-background text-foreground">
             <option value="">Select Number of Minors</option>
             <option value="0">0</option>
             <option value="1">1</option>
@@ -165,7 +165,7 @@ export function SubmitEmailForm() {
         {/* Dynamically generated minor dropdowns */}
         {Array.from({ length: numberOfMinors }, (_, index) => (
           <div key={index}>
-            <select {...register(`minors.${index}`)} className="w-full border border-gray-300 p-2 rounded-md">
+            <select {...register(`minors.${index}`)} className="w-full border border-input p-2 rounded-md bg-background text-foreground">
               <option value="">Select a Minor</option>
               {minors.map((minor) => (
                 <option key={minor.id} value={minor.id}>

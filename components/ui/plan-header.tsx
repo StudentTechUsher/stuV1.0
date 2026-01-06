@@ -65,10 +65,10 @@ export function PlanHeader({
       <Input
         type="text"
         placeholder="Plan Name"
-        className="w-[200px] bg-white"
+        className="w-[200px] bg-card"
       />
       <Select value={selectedMajor} onValueChange={onMajorChange}>
-        <SelectTrigger className="w-[200px] bg-white cursor-pointer">
+        <SelectTrigger className="w-[200px] bg-card cursor-pointer">
           <SelectValue placeholder="Proposed Major" />
         </SelectTrigger>
         <SelectContent>
@@ -81,7 +81,7 @@ export function PlanHeader({
       </Select>
 
       <Select value={graduationTerm} onValueChange={handleGraduationTermChange}>
-        <SelectTrigger className="w-[200px] bg-white cursor-pointer">
+        <SelectTrigger className="w-[200px] bg-card cursor-pointer">
           <SelectValue placeholder="Proposed Graduation" />
         </SelectTrigger>
         <SelectContent>
@@ -93,13 +93,13 @@ export function PlanHeader({
         </SelectContent>
       </Select>
 
-      <span className="text-sm text-zinc-500">or</span>
+      <span className="text-sm text-muted-foreground">or</span>
 
-      <Select 
-        value={useCreditLimit ? creditLimit.toString() : ""} 
+      <Select
+        value={useCreditLimit ? creditLimit.toString() : ""}
         onValueChange={handleCreditLimitChange}
       >
-        <SelectTrigger className="w-[200px] bg-white cursor-pointer">
+        <SelectTrigger className="w-[200px] bg-card cursor-pointer">
           <SelectValue placeholder="Semester Credit Limit" />
         </SelectTrigger>
         <SelectContent>

@@ -381,9 +381,9 @@ export default function ElectiveCoursesDialog({
                 sx={{
                   minWidth: 'auto',
                   px: 2,
-                  backgroundColor: '#0a1f1a',
+                  backgroundColor: 'var(--primary)',
                   '&:hover': {
-                    backgroundColor: '#043322',
+                    backgroundColor: 'var(--hover-green)',
                   },
                   '&:disabled': {
                     backgroundColor: 'rgba(10,31,26,0.3)',
@@ -460,11 +460,11 @@ export default function ElectiveCoursesDialog({
           onClick={handleNext}
           variant="contained"
           sx={{
-            backgroundColor: '#0a1f1a',
+            backgroundColor: 'var(--primary)',
             color: '#ffffff',
             px: 3,
             '&:hover': {
-              backgroundColor: '#043322',
+              backgroundColor: 'var(--hover-green)',
             },
           }}
         >

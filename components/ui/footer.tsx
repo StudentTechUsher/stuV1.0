@@ -8,7 +8,7 @@ export default function Footer() {
       className="
         mt-12                 /* space above to separate from content */
         glass-effect          /* same translucent look as navbar */
-        border-t border-zinc-200
+        border-t border-border
       "
     >
       <div className="page-wrap py-5">
@@ -25,7 +25,7 @@ export default function Footer() {
               />
               <span className="text-lg font-bold tracking-tight">stu.</span>
             </Link>
-            <span className="text-sm text-zinc-600">
+            <span className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} stu. All rights reserved.
             </span>
           </div>

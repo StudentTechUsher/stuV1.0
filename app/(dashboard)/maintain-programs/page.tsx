@@ -83,7 +83,7 @@ export default function MaintainProgramsPage() {
       {/* Modern Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
-          <h1 className="font-header text-3xl font-bold text-[var(--foreground)]">
+          <h1 className="font-header text-3xl font-bold text-zinc-900 dark:text-zinc-100">
             Maintain Programs
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)]">
@@ -127,7 +127,7 @@ export default function MaintainProgramsPage() {
               </div>
               <div>
                 <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Total Programs</p>
-                <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">{rows.length}</p>
+                <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">{rows.length}</p>
               </div>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function MaintainProgramsPage() {
               </div>
               <div>
                 <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Majors</p>
-                <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">
+                <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">
                   {rows.filter(r => r.program_type.toUpperCase() === 'MAJOR').length}
                 </p>
               </div>
@@ -161,7 +161,7 @@ export default function MaintainProgramsPage() {
               </div>
               <div>
                 <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Minors</p>
-                <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">
+                <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">
                   {rows.filter(r => r.program_type.toUpperCase() === 'MINOR').length}
                 </p>
               </div>
@@ -180,7 +180,7 @@ export default function MaintainProgramsPage() {
               </div>
               <div>
                 <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Graduate</p>
-                <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">
+                <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">
                   {rows.filter(r => r.program_type === 'graduate_no_gen_ed' || r.program_type === 'graduate_with_gen_ed').length}
                 </p>
               </div>

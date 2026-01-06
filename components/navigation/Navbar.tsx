@@ -1,11 +1,12 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Menu, X } from "lucide-react"
+import { ArrowRight, Menu, X, Moon, Sun } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 import { useUniversityTheme } from "@/contexts/university-theme-context"
+import { useDarkMode } from "@/contexts/dark-mode-context"
 
 interface NavbarProps {
   variant?: "universities" | "students" | "about"
@@ -14,6 +15,7 @@ interface NavbarProps {
 export function Navbar({ variant = "universities" }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { university } = useUniversityTheme()
+  const { isDark, setMode } = useDarkMode()
 
   const navLinks =
     variant === "students"
@@ -40,7 +42,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
         ]
 
   return (
-    <header className="sticky top-0 z-40 glass-effect">
+    <header className="sticky top-0 z-40 glass-effect border-b border-zinc-200 dark:border-zinc-800">
       <div className="container mx-auto px-6 flex h-20 items-center justify-between">
         <div className="flex items-center">
           <Link href="/" className="flex items-center gap-3">
@@ -53,7 +55,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                   height={32}
                   className="rounded object-contain"
                 />
-                <span className="text-xl font-bold text-gray-400">×</span>
+                <span className="text-xl font-bold text-muted-foreground">×</span>
               </div>
             )}
             <div className="flex items-center">
@@ -65,7 +67,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                 className="rounded-50 -mb-2"
                 priority
               />
-              <span className="text-4xl font-bold tracking-tight">stu.</span>
+              <span className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">stu.</span>
             </div>
           </Link>
         </div>
@@ -76,7 +78,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-base font-medium hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-md px-2 py-1"
+              className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               {link.label}
             </Link>
@@ -85,30 +87,43 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
 
         {variant === "students" ? (
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-base font-medium hover:text-primary transition-colors">
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setMode(isDark ? 'light' : 'dark')}
+              className="p-2 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <Link href="/" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
               For Universities
             </Link>
             <Link href="/login">
-              <Button
-                variant="outline"
-                className="border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium px-6 py-2.5 text-base transition-all"
-              >
+              <Button variant="secondary" size="lg">
                 Sign In
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium px-6 py-2.5 text-base transition-all">
+              <Button variant="primary" size="lg">
                 Get Started
               </Button>
             </Link>
           </div>
         ) : (
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-base font-medium hover:text-primary transition-colors">
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setMode(isDark ? 'light' : 'dark')}
+              className="p-2 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <Link href="/" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
               For Students
             </Link>
             <Link href="/demo">
-              <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium px-6 py-2.5 text-base">
+              <Button variant="primary" size="lg">
                 Request a demo
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -117,46 +132,66 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
         )}
 
         {/* Mobile Menu Button */}
-        <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+        <button
+          className="md:hidden p-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-zinc-100">
-          <div className="container mx-auto px-6 py-6 flex flex-col gap-6">
+        <div className="md:hidden border-t border-zinc-100 dark:border-zinc-800">
+          <div className="container mx-auto px-6 py-6 flex flex-col gap-3">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-base font-medium hover:text-primary"
+                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setMode(isDark ? 'light' : 'dark')}
+              className="flex items-center gap-2 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
+            >
+              {isDark ? (
+                <>
+                  <Sun className="h-4 w-4" />
+                  <span>Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="h-4 w-4" />
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
+
+            <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               {variant === "students" ? (
                 <>
                   <Link
                     href="/"
-                    className="text-base font-medium hover:text-primary"
+                    className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     For Universities
                   </Link>
                   <div className="flex flex-col gap-3 mt-4">
                     <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                      <Button
-                        variant="outline"
-                        className="w-full border-zinc-700 text-zinc-700 hover:bg-zinc-700 hover:text-white font-medium"
-                      >
+                      <Button variant="secondary" className="w-full">
                         Sign In
                       </Button>
                     </Link>
                     <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                      <Button className="w-full bg-primary hover:bg-[var(--hover-green)] text-zinc-900 hover:text-white border-none font-medium transition-all">
+                      <Button variant="primary" className="w-full">
                         Sign Up
                       </Button>
                     </Link>
@@ -166,13 +201,13 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                 <>
                   <Link
                     href="/"
-                    className="text-base font-medium hover:text-primary"
+                    className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     For Students →
                   </Link>
                   <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium w-full py-2.5 text-base">
+                    <Button variant="primary" className="w-full">
                       Request a demo
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>

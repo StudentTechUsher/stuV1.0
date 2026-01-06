@@ -207,13 +207,10 @@ export default function TranscriptReviewDisplay({
       {/* Confirm Button */}
       <div className="mt-6">
         <Button
+          variant="primary"
           onClick={handleConfirm}
           disabled={isConfirmed}
-          className={`w-full gap-2 ${
-            isConfirmed
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-[#0a1f1a] hover:bg-[#043322]'
-          }`}
+          className="w-full gap-2"
         >
           {isConfirmed ? (
             <>

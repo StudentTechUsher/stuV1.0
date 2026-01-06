@@ -392,14 +392,13 @@ function NavItem({ item, isActive, isExpanded, isDark }: NavItemProps) {
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed bg-slate-900 dark:bg-slate-900 light:bg-white border border-slate-700 dark:border-slate-700 light:border-slate-200 text-slate-50 dark:text-slate-50 light:text-slate-900 text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none"
+            className="fixed bg-popover text-popover-foreground border border-border text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none shadow-md"
             role="tooltip"
             style={{
               top: `${tooltipPos.top}px`,
               left: `${tooltipPos.left}px`,
               transform: 'translateY(-50%)',
               zIndex: 9999,
-              boxShadow: isDark ? '0 10px 25px rgba(0, 0, 0, 0.5)' : '0 10px 25px rgba(0, 0, 0, 0.1)',
             }}
           >
             {item.label}
@@ -458,14 +457,13 @@ function AIAssistantButton({ onClick, isExpanded, isDark }: AIAssistantButtonPro
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed bg-slate-900 dark:bg-slate-900 light:bg-white border border-slate-700 dark:border-slate-700 light:border-slate-200 text-slate-50 dark:text-slate-50 light:text-slate-900 text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none"
+            className="fixed bg-popover text-popover-foreground border border-border text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none shadow-md"
             role="tooltip"
             style={{
               top: `${tooltipPos.top}px`,
               left: `${tooltipPos.left}px`,
               transform: 'translateY(-50%)',
               zIndex: 9999,
-              boxShadow: isDark ? '0 10px 25px rgba(0, 0, 0, 0.5)' : '0 10px 25px rgba(0, 0, 0, 0.1)',
             }}
           >
             AI Assistant

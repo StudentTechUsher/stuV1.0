@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { parseTranscriptFromBuffer } from '@/lib/transcript/processor';
-import { logError } from '@/lib/logger';
+import { logError, logInfo } from '@/lib/logger';
+import { calculateGpaFromCourses } from '@/lib/services/gpaCalculationService';
+import { updateStudentGpa } from '@/lib/services/studentService';
+import { fetchUserCoursesArray } from '@/lib/services/userCoursesService';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -70,6 +73,23 @@ export async function POST(request: NextRequest) {
           await supabase
             .from('user_courses')
             .insert({ user_id: user.id, courses: coursesJson });
+        }
+
+        // Calculate and save GPA after successful course save
+        try {
+          const gpa = calculateGpaFromCourses(dedupedCourses);
+          await updateStudentGpa(supabase, user.id, gpa);
+          logInfo('Updated student GPA after text transcript parse', {
+            userId: user.id,
+            action: 'update_gpa_text_mode',
+          });
+        } catch (error) {
+          // Log error but don't fail the request
+          // GPA update is not critical to transcript upload success
+          logError('Failed to update student GPA (text mode)', error, {
+            userId: user.id,
+            action: 'update_gpa_text_mode',
+          });
         }
 
         const termsDetected = Array.from(new Set(dedupedCourses.map(c => c.term)));
@@ -174,6 +194,23 @@ export async function POST(request: NextRequest) {
         { success: false, report },
         { status: 422 }
       );
+    }
+
+    // Calculate and save GPA after successful PDF parsing
+    try {
+      const savedCourses = await fetchUserCoursesArray(supabase, user.id);
+      const gpa = calculateGpaFromCourses(savedCourses);
+      await updateStudentGpa(supabase, user.id, gpa);
+      logInfo('Updated student GPA after PDF transcript parse', {
+        userId: user.id,
+        action: 'update_gpa_pdf_mode',
+      });
+    } catch (error) {
+      // Log error but don't fail the request
+      logError('Failed to update student GPA (PDF mode)', error, {
+        userId: user.id,
+        action: 'update_gpa_pdf_mode',
+      });
     }
 
     return NextResponse.json({ success: true, report });

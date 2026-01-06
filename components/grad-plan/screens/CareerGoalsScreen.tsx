@@ -80,26 +80,27 @@ export default function CareerGoalsScreen({
         footerButtons={
           <div className="flex gap-3 justify-between">
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={onBack}
               disabled={isLoading}
-              className="px-6 py-2 text-base font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 text-base font-medium"
             >
               ← Back
             </Button>
             <div className="flex gap-3">
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={onSkip}
                 disabled={isLoading}
-                className="px-6 py-2 text-base font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-6 py-2 text-base font-medium"
               >
                 Skip
               </Button>
               <Button
+                variant="primary"
                 onClick={handleIndustrySubmit}
                 disabled={!isIndustryStepValid || isLoading}
-                className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-base font-medium"
               >
                 {isLoading ? 'Continuing...' : 'Continue →'}
               </Button>
@@ -156,17 +157,18 @@ export default function CareerGoalsScreen({
       footerButtons={
         <div className="flex gap-3 justify-between">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setStep('industry-selection')}
             disabled={isLoading}
-            className="px-6 py-2 text-base font-medium border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 text-base font-medium"
           >
             ← Back
           </Button>
           <Button
+            variant="primary"
             onClick={handleCommitmentSubmit}
             disabled={!isCommitmentValid || isLoading}
-            className="px-6 py-2 text-base font-medium bg-primary text-white hover:hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-base font-medium"
           >
             {isLoading ? 'Continuing...' : 'Continue →'}
           </Button>
@@ -183,7 +185,7 @@ export default function CareerGoalsScreen({
               disabled={isLoading}
               className={`flex-1 py-3 px-2 rounded-lg font-semibold transition-colors ${
                 commitment === num
-                  ? 'bg-primary text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
               } disabled:opacity-50`}
             >

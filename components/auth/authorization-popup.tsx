@@ -95,15 +95,16 @@ export default function AuthorizationPopup({
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               onClick={handleProceed}
-              className="bg-primary hover:bg-primary/90 text-black font-bold text-xl px-12 py-4 rounded-lg w-full sm:w-auto order-2 sm:order-1"
+              variant="primary"
+              className="font-bold text-xl px-12 py-4 rounded-lg w-full sm:w-auto order-2 sm:order-1"
             >
               Agree
             </Button>
 
             <Button
               onClick={handleGoBack}
-              variant="outline"
-              className="border-2 border-gray-300 text-black font-bold text-xl px-12 py-4 rounded-lg hover:bg-gray-50 w-full sm:w-auto order-1 sm:order-2"
+              variant="secondary"
+              className="font-bold text-xl px-12 py-4 rounded-lg w-full sm:w-auto order-1 sm:order-2"
             >
               Go Back
             </Button>

@@ -42,6 +42,7 @@ export default function StudentTypeForm({
               ? 'border-[var(--primary)] bg-[var(--primary)]/5 shadow-md'
               : 'border-border bg-background'
             }
+            text-zinc-900 dark:text-zinc-100
           `}
           disabled={selectedType !== null}
         >
@@ -49,7 +50,7 @@ export default function StudentTypeForm({
             <div className={`
               w-16 h-16 rounded-full flex items-center justify-center
               ${selectedType === 'undergraduate'
-                ? 'bg-[var(--primary)] text-white'
+                ? 'bg-[var(--primary)] text-primary-foreground'
                 : 'bg-muted text-muted-foreground'
               }
             `}>
@@ -74,6 +75,7 @@ export default function StudentTypeForm({
               ? 'border-[var(--primary)] bg-[var(--primary)]/5 shadow-md'
               : 'border-border bg-background'
             }
+            text-zinc-900 dark:text-zinc-100
           `}
           disabled={selectedType !== null}
         >
@@ -81,7 +83,7 @@ export default function StudentTypeForm({
             <div className={`
               w-16 h-16 rounded-full flex items-center justify-center
               ${selectedType === 'graduate'
-                ? 'bg-[var(--primary)] text-white'
+                ? 'bg-[var(--primary)] text-primary-foreground'
                 : 'bg-muted text-muted-foreground'
               }
             `}>

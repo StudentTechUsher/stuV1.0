@@ -76,9 +76,9 @@ export function ProjectedGpaCard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-      {/* Bold black header matching design system */}
-      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' }}>
-        <h2 className="flex items-center gap-2 font-header text-sm font-bold uppercase tracking-wider text-white">
+      {/* Header */}
+      <div className="border-b-2 px-6 py-4 bg-zinc-900 dark:bg-zinc-100" style={{ borderColor: 'var(--primary)' }}>
+        <h2 className="flex items-center gap-2 font-header text-sm font-bold uppercase tracking-wider text-zinc-100 dark:text-zinc-900">
           <TrendingUp size={18} />
           Projected Graduation GPA
         </h2>

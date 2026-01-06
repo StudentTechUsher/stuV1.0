@@ -98,7 +98,7 @@ export default function DemoPageClient() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-primary hover:bg-primary-hover text-zinc-900 border-none font-medium py-2.5">
+              <Button type="submit" variant="primary" className="w-full py-2.5">
                 Request a demo
               </Button>
 
@@ -108,7 +108,7 @@ export default function DemoPageClient() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button className="hover:bg-primary-hover text-zinc-900 border-primary font-medium px-6 py-2.5 flex items-center gap-2">
+                <Button variant="primary" className="px-6 py-2.5 flex items-center gap-2">
                   Try
                   <Image
                     src="/stu_icon_black.png"

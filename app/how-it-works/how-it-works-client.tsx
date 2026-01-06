@@ -53,7 +53,7 @@ export default function HowItWorksClient() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-zinc-100">
+          <div className="md:hidden border-t border-zinc-100 dark:border-zinc-800">
             <div className="container mx-auto px-6 py-6 flex flex-col gap-6">
               <Link
                 href="/#features"
@@ -76,7 +76,7 @@ export default function HowItWorksClient() {
               >
                 Student Stories
               </Link>
-              <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100">
+              <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <Link
                   href="/"
                   className="text-base font-medium hover:text-primary"
@@ -103,7 +103,7 @@ export default function HowItWorksClient() {
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
                   How stu Works
                 </h2>
-                <p className="mx-auto max-w-[700px] text-zinc-600 md:text-xl">
+                <p className="mx-auto max-w-[700px] text-zinc-600 dark:text-zinc-400 md:text-xl">
                   Get started in minutes and plan your perfect semester.
                 </p>
               </div>
@@ -129,11 +129,11 @@ export default function HowItWorksClient() {
                   },
                 ].map((step, i) => (
                   <div key={i} className="flex flex-col items-center gap-4 p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white font-bold text-lg">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg">
                       {step.step}
                     </div>
                     <h3 className="text-xl font-bold">{step.title}</h3>
-                    <p className="text-zinc-600">{step.description}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400">{step.description}</p>
                     <Image
                       src={step.image}
                       alt={`${step.title} illustration`}
@@ -147,8 +147,8 @@ export default function HowItWorksClient() {
             </div>
             <div>
             <Link href="https://www.figma.com/proto/z9xbhwsGp5AvRkDgP6fWPR/stu?node-id=683-4371&t=D5BlhoZEEIGoKcvA-1">
-              <button className="container px-4 md:px-6 text-black hover:text-primary"> Explore stu’s Wireframe </button> 
-            </Link>  
+              <button className="container px-4 md:px-6 text-zinc-900 dark:text-zinc-100 hover:text-primary"> Explore stu's Wireframe </button>
+            </Link>
           </div>
           </div>
         </section>

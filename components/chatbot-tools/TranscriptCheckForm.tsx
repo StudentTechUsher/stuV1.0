@@ -176,7 +176,7 @@ export default function TranscriptCheckForm({
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Upload Transcript</h3>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onClick={handleCancelUpload}
             className="gap-2"
@@ -247,14 +247,15 @@ export default function TranscriptCheckForm({
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
               <Button
+                variant="primary"
                 onClick={handleUpdateClick}
-                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+                className="flex-1 gap-2"
               >
                 <Upload size={18} />
                 Update Transcript
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={handleSkip}
                 className="flex-1"
               >
@@ -269,7 +270,7 @@ export default function TranscriptCheckForm({
                 wantsToUpload: false,
                 wantsToUpdate: false,
               })}
-              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
             >
               Continue without transcript
             </button>
@@ -301,8 +302,9 @@ export default function TranscriptCheckForm({
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
               <Button
+                variant="primary"
                 onClick={handleUploadClick}
-                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+                className="flex-1 gap-2"
               >
                 <Upload size={18} />
                 Upload Transcript
@@ -312,7 +314,7 @@ export default function TranscriptCheckForm({
             <button
               type="button"
               onClick={handleSkip}
-              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
             >
               Continue without transcript
             </button>

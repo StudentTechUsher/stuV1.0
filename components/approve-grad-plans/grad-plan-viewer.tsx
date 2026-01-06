@@ -310,7 +310,7 @@ export default function GradPlanViewer({ planDetails, studentName, programs, onS
               
               {/* Term Notes */}
               {term.notes && (
-                <Box sx={{ mb: 2, p: 2, backgroundColor: '#fff3cd', borderRadius: 1, border: '1px solid #ffeaa7' }}>
+                <Box sx={{ mb: 2, p: 2, backgroundColor: 'color-mix(in srgb, #ffc107 8%, var(--card))', borderRadius: 1, border: '1px solid color-mix(in srgb, #ffc107 30%, var(--border))' }}>
                   <Typography variant="body2" color="text.secondary">
                     📝 {term.notes}
                   </Typography>

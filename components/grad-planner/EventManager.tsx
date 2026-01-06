@@ -115,7 +115,7 @@ export function EventManager({
           borderRadius: '7px',
           border: '1px solid',
           borderColor: 'color-mix(in srgb, rgba(10,31,26,0.14) 32%, var(--border) 68%)',
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--card)',
           boxShadow: '0 38px 100px -76px rgba(10,31,26,0.45)',
           p: 3,
           display: 'flex',
@@ -129,7 +129,7 @@ export function EventManager({
             sx={{
               fontFamily: '"Red Hat Display", sans-serif',
               fontWeight: 700,
-              color: '#0a1f1a',
+              color: 'var(--foreground)',
               letterSpacing: '0.04em',
             }}
           >
@@ -142,8 +142,8 @@ export function EventManager({
               startIcon={<AddIcon />}
               onClick={onAddEvent}
               sx={{
-                backgroundColor: '#0a1f1a',
-                color: '#ffffff',
+                backgroundColor: 'var(--primary)',
+                color: 'var(--primary-foreground)',
                 fontWeight: 600,
                 fontFamily: '"Inter", sans-serif',
                 fontSize: '0.75rem',
@@ -151,7 +151,7 @@ export function EventManager({
                 borderRadius: '7px',
                 textTransform: 'none',
                 '&:hover': {
-                  backgroundColor: '#043322',
+                  backgroundColor: 'var(--hover-green)',
                 },
               }}
             >
@@ -216,7 +216,7 @@ export function EventManager({
                             p: 1.5,
                             borderRadius: '7px',
                             border: '1px solid color-mix(in srgb, rgba(10,31,26,0.12) 40%, transparent)',
-                            backgroundColor: `color-mix(in srgb, ${eventColor} 12%, white 88%)`,
+                            backgroundColor: `color-mix(in srgb, ${eventColor} 12%, var(--card) 88%)`,
                           }}
                         >
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -228,8 +228,8 @@ export function EventManager({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 borderRadius: '50%',
-                                backgroundColor: `color-mix(in srgb, ${eventColor} 20%, white 80%)`,
-                                color: `color-mix(in srgb, ${eventColor} 70%, black 30%)`,
+                                backgroundColor: `color-mix(in srgb, ${eventColor} 20%, var(--card) 80%)`,
+                                color: `color-mix(in srgb, ${eventColor} 70%, var(--foreground) 30%)`,
                               }}
                             >
                               <IconComponent fontSize="small" />
@@ -240,7 +240,7 @@ export function EventManager({
                                 sx={{
                                   fontFamily: '"Inter", sans-serif',
                                   fontWeight: 600,
-                                  color: '#0a1f1a',
+                                  color: 'var(--foreground)',
                                   lineHeight: 1.4,
                                 }}
                               >
@@ -264,8 +264,8 @@ export function EventManager({
                                 size="small"
                                 onClick={() => onEditEvent(event)}
                                 sx={{
-                                  color: '#0a1f1a',
-                                  '&:hover': { backgroundColor: 'rgba(10,31,26,0.08)' },
+                                  color: 'var(--foreground)',
+                                  '&:hover': { backgroundColor: 'color-mix(in srgb, var(--foreground) 8%, transparent)' },
                                 }}
                               >
                                 <EditIcon fontSize="small" />

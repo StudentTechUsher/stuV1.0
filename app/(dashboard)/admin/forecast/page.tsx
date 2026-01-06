@@ -19,14 +19,14 @@ function DetailRow({ row }: { row: ForecastRow }) {
 
       {/* Time of Day Preferences */}
       <div className="space-y-3">
-        <p className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+        <p className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-100">
           Time of Day Preferences
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {/* Morning */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-[var(--foreground)]">Morning: {time_of_day.morning}</span>
+              <span className="text-zinc-900 dark:text-zinc-100">Morning: {time_of_day.morning}</span>
               <span className="font-bold text-[#FDCC4A]">
                 {total > 0 ? Math.round((time_of_day.morning / total) * 100) : 0}%
               </span>
@@ -42,7 +42,7 @@ function DetailRow({ row }: { row: ForecastRow }) {
           {/* Afternoon */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-[var(--foreground)]">Afternoon: {time_of_day.afternoon}</span>
+              <span className="text-zinc-900 dark:text-zinc-100">Afternoon: {time_of_day.afternoon}</span>
               <span className="font-bold text-[#2196f3]">
                 {total > 0 ? Math.round((time_of_day.afternoon / total) * 100) : 0}%
               </span>
@@ -58,7 +58,7 @@ function DetailRow({ row }: { row: ForecastRow }) {
           {/* Evening */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-[var(--foreground)]">Evening: {time_of_day.evening}</span>
+              <span className="text-zinc-900 dark:text-zinc-100">Evening: {time_of_day.evening}</span>
               <span className="font-bold text-[#ef4444]">
                 {total > 0 ? Math.round((time_of_day.evening / total) * 100) : 0}%
               </span>
@@ -75,7 +75,7 @@ function DetailRow({ row }: { row: ForecastRow }) {
 
       {/* Modality Preferences */}
       <div className="space-y-2">
-        <p className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+        <p className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-100">
           Modality Preferences
         </p>
         <div className="flex flex-wrap gap-2">
@@ -103,7 +103,7 @@ function DetailRow({ row }: { row: ForecastRow }) {
       {/* Top Professor Requests */}
       {professors && professors.length > 0 && (
         <div className="space-y-2">
-          <p className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+          <p className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             Top Professor Requests
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -153,7 +153,7 @@ function CourseRow({ row, showDetail }: { row: ForecastRow; showDetail: boolean 
 
         {/* Course Info */}
         <div className="min-w-0">
-          <p className="font-body-semi text-sm font-bold text-[var(--foreground)]">
+          <p className="font-body-semi text-sm font-bold text-zinc-900 dark:text-zinc-100">
             {row.subject} {row.number}
           </p>
           <p className="font-body mt-0.5 truncate text-xs text-[var(--muted-foreground)]">
@@ -170,7 +170,7 @@ function CourseRow({ row, showDetail }: { row: ForecastRow; showDetail: boolean 
 
         {/* Credits */}
         <div className="flex w-16 justify-center">
-          <span className="font-body-semi text-sm font-medium text-[var(--foreground)]">
+          <span className="font-body-semi text-sm font-medium text-zinc-900 dark:text-zinc-100">
             {row.credits}
           </span>
         </div>
@@ -234,7 +234,7 @@ export default function ForecastPage() {
     <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="font-header text-3xl font-bold text-[var(--foreground)]">
+        <h1 className="font-header text-3xl font-bold text-zinc-900 dark:text-zinc-100">
           Course Demand Forecasting
         </h1>
         <p className="font-body text-sm text-[var(--muted-foreground)]">
@@ -356,7 +356,7 @@ export default function ForecastPage() {
       {/* Term Info */}
       {data && (
         <p className="font-body text-sm text-[var(--muted-foreground)]">
-          Forecasting for: <span className="font-semibold text-[var(--foreground)]">{data.term_codes.map(formatTermCode).join(', ')}</span>
+          Forecasting for: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{data.term_codes.map(formatTermCode).join(', ')}</span>
         </p>
       )}
 
@@ -382,7 +382,7 @@ export default function ForecastPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <h3 className="font-header-bold mb-2 text-lg font-bold text-[var(--foreground)]">No Results Found</h3>
+          <h3 className="font-header-bold mb-2 text-lg font-bold text-zinc-900 dark:text-zinc-100">No Results Found</h3>
           <p className="font-body text-sm text-[var(--muted-foreground)]">No courses match your current filters. Try adjusting your search criteria.</p>
         </div>
       ) : data ? (

@@ -18,7 +18,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
-import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles, Info } from 'lucide-react';
+import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles, Info, Search } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -39,6 +39,7 @@ import {
   type ProgramRequirement,
 } from '@/components/grad-planner/helpers/grad-plan-helpers';
 import type { CourseOffering } from '@/lib/services/courseOfferingService';
+import CourseSearch from '@/components/grad-plan/CourseSearch';
 import {
   getCollegesAction,
   getDepartmentCodesAction,
@@ -100,17 +101,6 @@ export default function CourseSelectionForm({
 
   // Gen Ed distribution preference
   const [genEdDistribution, setGenEdDistribution] = useState<'early' | 'balanced'>('balanced');
-
-  // Three-step dropdown state for electives
-  const [colleges, setColleges] = useState<string[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [availableCourses, setAvailableCourses] = useState<CourseOffering[]>([]);
-  const [selectedCollege, setSelectedCollege] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedElectiveCourse, setSelectedElectiveCourse] = useState<CourseOffering | null>(null);
-  const [loadingColleges, setLoadingColleges] = useState(false);
-  const [loadingDepartments, setLoadingDepartments] = useState(false);
-  const [loadingCourses, setLoadingCourses] = useState(false);
 
   // Substitution state
   const [substitutionDialogOpen, setSubstitutionDialogOpen] = useState(false);
@@ -402,89 +392,6 @@ export default function CourseSelectionForm({
     setCompletedCourses(matchedCourseCodes);
 
   }, [transcriptCourses, programsData, genEdData, hasTranscript]);
-
-  // Load colleges on demand when user opens the dropdown
-  const handleCollegeDropdownOpen = async () => {
-    // Only fetch if we haven't loaded colleges yet
-    if (colleges.length === 0 && !loadingColleges) {
-      setLoadingColleges(true);
-      setElectiveError(null);
-      try {
-        const result = await getCollegesAction(universityId);
-        if (result.success && result.colleges) {
-          setColleges(result.colleges);
-        } else {
-          setElectiveError(result.error || 'Failed to load colleges');
-        }
-      } catch (error) {
-        console.error('Error fetching colleges:', error);
-        setElectiveError('Failed to load colleges. Please try again.');
-      } finally {
-        setLoadingColleges(false);
-      }
-    }
-  };
-
-  // Load departments when college is selected
-  useEffect(() => {
-    if (!selectedCollege) {
-      setDepartments([]);
-      setSelectedDepartment('');
-      return;
-    }
-
-    async function fetchDepartments() {
-      setLoadingDepartments(true);
-      setElectiveError(null);
-      try {
-        const result = await getDepartmentCodesAction(universityId, selectedCollege);
-        if (result.success && result.departments) {
-          setDepartments(result.departments);
-        } else {
-          setElectiveError(result.error || 'Failed to load departments');
-        }
-      } catch (error) {
-        console.error('Error fetching departments:', error);
-        setElectiveError('Failed to load departments. Please try again.');
-      } finally {
-        setLoadingDepartments(false);
-      }
-    }
-
-    fetchDepartments();
-  }, [selectedCollege, universityId]);
-
-  // Load courses when department is selected
-  useEffect(() => {
-    if (!selectedDepartment || !selectedCollege) {
-      setAvailableCourses([]);
-      return;
-    }
-
-    async function fetchCourses() {
-      setLoadingCourses(true);
-      setElectiveError(null);
-      try {
-        const result = await getCoursesByDepartmentAction(
-          universityId,
-          selectedCollege,
-          selectedDepartment
-        );
-        if (result.success && result.courses) {
-          setAvailableCourses(result.courses);
-        } else {
-          setElectiveError(result.error || 'Failed to load courses');
-        }
-      } catch (error) {
-        console.error('Error fetching courses:', error);
-        setElectiveError('Failed to load courses. Please try again.');
-      } finally {
-        setLoadingCourses(false);
-      }
-    }
-
-    fetchCourses();
-  }, [selectedDepartment, selectedCollege, universityId]);
 
   // Parse requirements
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
@@ -825,12 +732,12 @@ export default function CourseSelectionForm({
     });
   };
 
-  const handleAddElective = () => {
-    if (!selectedElectiveCourse) return;
+  const handleAddElective = (selectedCourse: CourseOffering) => {
+    if (!selectedCourse) return;
 
-    const code = selectedElectiveCourse.course_code.trim().toUpperCase();
-    const title = selectedElectiveCourse.title.trim();
-    const credits = selectedElectiveCourse.credits_decimal || 3.0;
+    const code = selectedCourse.course_code.trim().toUpperCase();
+    const title = selectedCourse.title.trim();
+    const credits = selectedCourse.credits_decimal || 3.0;
 
     if (userElectives.some(e => e.code === code)) {
       setElectiveError('This course has already been added.');
@@ -838,13 +745,12 @@ export default function CourseSelectionForm({
     }
 
     const newCourse = {
-      id: `${selectedElectiveCourse.offering_id}`,
+      id: `${selectedCourse.offering_id}`,
       code,
       title,
       credits
     };
     setUserElectives(prev => [...prev, newCourse]);
-    setSelectedElectiveCourse(null);
     setElectiveError(null);
   };
 
@@ -1274,17 +1180,60 @@ export default function CourseSelectionForm({
         </p>
       </div>
 
+      {/* Quick Course Search - Top */}
+      <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800 rounded-lg">
+        <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Search size={16} />
+          Quick Course Search
+        </h4>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+          Search for any course by code (e.g., TMA 101, CS 235) or name (e.g., Intro to Film) and add it to your plan
+        </p>
+        <CourseSearch
+          universityId={universityId}
+          onSelect={handleAddElective}
+          placeholder="Search by course code or name..."
+          size="small"
+          fullWidth
+        />
+        {userElectives.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {userElectives.map((elective) => (
+              <Chip
+                key={elective.id}
+                label={`${elective.code} — ${elective.title} (${elective.credits} cr)`}
+                onDelete={() => handleRemoveElective(elective.id)}
+                deleteIcon={<X size={14} />}
+                size="small"
+                sx={{
+                  backgroundColor: 'var(--primary)',
+                  color: '#ffffff',
+                  '& .MuiChip-deleteIcon': {
+                    color: '#ffffff',
+                  },
+                }}
+              />
+            ))}
+          </div>
+        )}
+        {electiveError && (
+          <Alert severity="warning" sx={{ mt: 2, fontSize: '0.75rem' }}>
+            {electiveError}
+          </Alert>
+        )}
+      </div>
+
       {/* Gen Ed Distribution Preference - Only for undergraduates */}
       {!isGraduateStudent && (
         <div className="mb-4 flex justify-center">
-          <div className="inline-flex items-center bg-white border border-gray-200 rounded-full shadow-sm p-1">
+          <div className="inline-flex items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-full shadow-sm p-1">
             <button
               type="button"
               onClick={() => setGenEdDistribution('early')}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 genEdDistribution === 'early'
-                  ? 'bg-[#0a1f1a] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
               }`}
             >
               <Zap size={16} />
@@ -1295,8 +1244,8 @@ export default function CourseSelectionForm({
               onClick={() => setGenEdDistribution('balanced')}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 genEdDistribution === 'balanced'
-                  ? 'bg-[#0a1f1a] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
               }`}
             >
               <Scale size={16} />
@@ -1313,7 +1262,7 @@ export default function CourseSelectionForm({
           href="/pathfinder"
           target="_blank"
           rel="noopener noreferrer"
-          variant="outline"
+          variant="secondary"
           className="gap-2"
         >
           <Compass size={18} />
@@ -1813,146 +1762,47 @@ export default function CourseSelectionForm({
           );
         })}
 
-        {/* Elective Courses */}
-        <div>
-          <h4 className="text-sm font-semibold mb-2 text-gray-900">Additional Electives (Optional)</h4>
-          <p className="text-xs text-gray-600 mb-4">
-            Add extra courses you want to take
+        {/* Additional Electives - Second Search Box at Bottom */}
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Search size={16} />
+            Additional Electives
+          </h4>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+            Didn't find what you need above? Search for any additional courses here.
           </p>
-
-          <div className="space-y-6">
-            {/* Step 1: College */}
-            <div>
-              <TextField
-                select
-                fullWidth
-                label="1. Select College"
-                value={selectedCollege}
-                onChange={(e) => {
-                  setSelectedCollege(e.target.value);
-                  setSelectedDepartment('');
-                  setSelectedElectiveCourse(null);
-                }}
-                onFocus={handleCollegeDropdownOpen}
-                disabled={loadingColleges}
-                size="small"
-              >
-                {loadingColleges ? (
-                  <MenuItem value="">
-                    <CircularProgress size={20} />
-                  </MenuItem>
-                ) : colleges.length === 0 ? (
-                  <MenuItem value="" disabled>
-                    No colleges available
-                  </MenuItem>
-                ) : (
-                  colleges.map((college) => (
-                    <MenuItem key={college} value={college}>
-                      {college}
-                    </MenuItem>
-                  ))
-                )}
-              </TextField>
-            </div>
-
-            {/* Step 2: Department */}
-            <div>
-              <TextField
-                select
-                fullWidth
-                label="2. Select Department"
-                value={selectedDepartment}
-                onChange={(e) => {
-                  setSelectedDepartment(e.target.value);
-                  setSelectedElectiveCourse(null);
-                }}
-                disabled={!selectedCollege || loadingDepartments}
-                size="small"
-              >
-                {loadingDepartments ? (
-                  <MenuItem value="">
-                    <CircularProgress size={20} />
-                  </MenuItem>
-                ) : departments.length === 0 ? (
-                  <MenuItem value="" disabled>
-                    {selectedCollege ? 'No departments available' : 'Select a college first'}
-                  </MenuItem>
-                ) : (
-                  departments.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
-                    </MenuItem>
-                  ))
-                )}
-              </TextField>
-            </div>
-
-            {/* Step 3: Course */}
-            <div>
-              <TextField
-                select
-                fullWidth
-                label="3. Select Course"
-                value={selectedElectiveCourse?.offering_id.toString() || ''}
-                onChange={(e) => {
-                  const course = availableCourses.find(c => c.offering_id.toString() === e.target.value);
-                  setSelectedElectiveCourse(course || null);
-                }}
-                disabled={!selectedDepartment || loadingCourses}
-                size="small"
-              >
-                {loadingCourses ? (
-                  <MenuItem value="">
-                    <CircularProgress size={20} />
-                  </MenuItem>
-                ) : availableCourses.length === 0 ? (
-                  <MenuItem value="" disabled>
-                    {selectedDepartment ? 'No courses available' : 'Select a department first'}
-                  </MenuItem>
-                ) : (
-                  availableCourses.map((course) => (
-                    <MenuItem key={course.offering_id} value={course.offering_id.toString()}>
-                      {course.course_code} - {course.title} ({course.credits_decimal || 0} cr)
-                    </MenuItem>
-                  ))
-                )}
-              </TextField>
-            </div>
-
-            {/* Add Class Button */}
-            <div>
-              <Button
-                onClick={handleAddElective}
-                disabled={!selectedElectiveCourse}
-                style={{
-                  backgroundColor: selectedElectiveCourse ? 'var(--primary)' : 'var(--muted)',
-                  color: selectedElectiveCourse ? 'black' : 'var(--muted-foreground)',
-                }}
-                className="w-full hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
-              >
-                <Plus size={20} />
-                <span>Add Class</span>
-              </Button>
-            </div>
-
-            {electiveError && (
-              <p className="text-xs text-red-500">{electiveError}</p>
-            )}
-
-            {userElectives.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+          <CourseSearch
+            universityId={universityId}
+            onSelect={handleAddElective}
+            placeholder="Search by course code or name..."
+            size="small"
+            fullWidth
+          />
+          {userElectives.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Your additional courses ({userElectives.length}):
+              </p>
+              <div className="flex flex-wrap gap-2">
                 {userElectives.map((elective) => (
                   <Chip
                     key={elective.id}
-                    label={`${elective.code} (${elective.credits} cr)`}
+                    label={`${elective.code} — ${elective.title} (${elective.credits} cr)`}
                     onDelete={() => handleRemoveElective(elective.id)}
                     deleteIcon={<X size={14} />}
                     size="small"
+                    sx={{
+                      backgroundColor: 'var(--primary)',
+                      color: '#ffffff',
+                      '& .MuiChip-deleteIcon': {
+                        color: '#ffffff',
+                      },
+                    }}
                   />
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Course Preference Dialog */}
@@ -1994,13 +1844,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('lighter')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Zap size={20} className="text-blue-600" />
-                          <span className="font-semibold text-gray-900">Lighter workload</span>
+                          <Zap size={20} className="text-blue-600 dark:text-blue-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">Lighter workload</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           Courses that are typically less demanding and easier to manage
                         </p>
                       </button>
@@ -2009,13 +1859,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('challenge')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Scale size={20} className="text-purple-600" />
-                          <span className="font-semibold text-gray-900">Challenge me</span>
+                          <Scale size={20} className="text-purple-600 dark:text-purple-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">Challenge me</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           More advanced courses that will push your skills
                         </p>
                       </button>
@@ -2024,13 +1874,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('career')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <BookOpen size={20} className="text-green-600" />
-                          <span className="font-semibold text-gray-900">Career alignment</span>
+                          <BookOpen size={20} className="text-green-600 dark:text-green-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">Career alignment</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           Courses that align with your career goals
                         </p>
                       </button>
@@ -2039,13 +1889,13 @@ export default function CourseSelectionForm({
                       <button
                         type="button"
                         onClick={() => handleSelectPreference('interests')}
-                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all text-left"
+                        className="flex flex-col items-start p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-orange-400 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950 transition-all text-left"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Sparkles size={20} className="text-orange-600" />
-                          <span className="font-semibold text-gray-900">My interests</span>
+                          <Sparkles size={20} className="text-orange-600 dark:text-orange-400" />
+                          <span className="font-semibold text-gray-900 dark:text-zinc-100">My interests</span>
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 dark:text-zinc-400">
                           Courses that match your personal interests
                         </p>
                       </button>
@@ -2054,7 +1904,7 @@ export default function CourseSelectionForm({
                 ) : (
                   <>
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-gray-900 mb-2">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-2">
                         Based on your preference, we recommend:
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -2084,15 +1934,15 @@ export default function CourseSelectionForm({
                               key={courseCode}
                               type="button"
                               onClick={() => handleApplyPreferenceRecommendation(courseCode)}
-                              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 hover:border-[var(--primary)] hover:bg-gray-50 transition-all text-left"
+                              className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 dark:border-zinc-700 hover:border-[var(--primary)] hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all text-left"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary)] text-black font-bold">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary)] text-zinc-900 dark:text-zinc-900 font-bold">
                                   {index + 1}
                                 </div>
                                 <div>
-                                  <p className="font-semibold text-gray-900">{course.code}</p>
-                                  <p className="text-xs text-gray-600">{course.title}</p>
+                                  <p className="font-semibold text-gray-900 dark:text-zinc-100">{course.code}</p>
+                                  <p className="text-xs text-gray-600 dark:text-zinc-400">{course.title}</p>
                                 </div>
                               </div>
                               <Chip
@@ -2114,7 +1964,7 @@ export default function CourseSelectionForm({
                     )}
 
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => {
                         setSelectedPreference(null);
                         setPreferenceRecommendations([]);
@@ -2230,19 +2080,16 @@ export default function CourseSelectionForm({
               {/* Footer */}
               <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] px-6 py-4">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setSubstitutionDialogOpen(false)}
                   className="text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
+                  variant="primary"
                   onClick={handleApplySubstitution}
                   disabled={!substitutionCourse}
-                  style={{
-                    backgroundColor: substitutionCourse ? 'var(--primary)' : 'var(--muted)',
-                    color: substitutionCourse ? 'black' : 'var(--muted-foreground)'
-                  }}
                   className="text-sm font-medium"
                 >
                   Apply Substitution
@@ -2255,12 +2102,9 @@ export default function CourseSelectionForm({
         {/* Submit Button */}
         <div className="pt-3 flex gap-2 justify-end">
           <Button
+            variant="primary"
             onClick={handleSubmit}
-            style={{
-              backgroundColor: 'var(--primary)',
-              color: 'black'
-            }}
-            className="px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
+            className="px-4 py-2 text-sm font-medium"
           >
             Continue
           </Button>
@@ -2310,8 +2154,8 @@ export default function CourseSelectionForm({
           </DialogContent>
           <DialogActions>
             <Button
+              variant="secondary"
               onClick={() => setDescriptionDialogOpen(false)}
-              variant="outline"
             >
               Close
             </Button>

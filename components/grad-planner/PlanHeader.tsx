@@ -392,10 +392,10 @@ export default function PlanHeader({
                   onClick={handleCreatePlan}
                   className="font-body-semi"
                   sx={{
-                    backgroundColor: '#0a1f1a',
-                    color: '#ffffff',
+                    backgroundColor: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
                     px: 2.5,
-                    '&:hover': { backgroundColor: '#043322' },
+                    '&:hover': { backgroundColor: 'var(--hover-green)' },
                   }}
                 >
                   <PlusIcon style={{ marginRight: 8 }} />

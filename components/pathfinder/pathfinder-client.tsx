@@ -2,19 +2,23 @@
 import * as React from 'react';
 import { CourseHistoryList, PivotOptionsPanel, useDefaultPivotOptions, MajorPivotForm, MajorPivotFormValues } from '@/components/pathfinder';
 import { fetchMajorPivotSuggestions, fetchMajorsForCareerSelection, fetchAdjacentCareerSuggestions, fetchNearCompletionMinorAudit, fetchMinorsCatalog, enrichCareerData, enrichMajorData } from '@/app/(dashboard)/pathfinder/actions';
+import { fetchMajorsForComparison, fetchMajorComparison } from '@/app/(dashboard)/pathfinder/comparison-actions';
 import { saveTargetedCareerClient } from '@/lib/services/profileService';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/ui/toast';
 import AdjacentCareerForm, { AdjacentCareerFormValues } from '@/components/pathfinder/adjacent-career-form';
 import MajorOverlapDialog from '@/components/pathfinder/program-overlap-dialog';
 import { fetchMinorByName } from '@/app/(dashboard)/pathfinder/major-actions';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import CareerInfoModal from '@/components/pathfinder/CareerInfoModal';
 import type { Career } from '@/types/career';
 import MajorInfoModal from '@/components/pathfinder/MajorInfoModal';
 import type { MajorInfo } from '@/types/major';
 import type { FormattedCourse } from '@/lib/services/userCoursesService';
 import { StuLoader } from '@/components/ui/StuLoader';
+import { MajorComparisonSelector } from '@/components/pathfinder/major-comparison-selector';
+import { MajorComparisonView } from '@/components/pathfinder/major-comparison-view';
+import type { MajorComparisonResult } from '@/lib/services/majorComparisonService';
 
 type GlobalWithUniversity = typeof globalThis & { __UNIVERSITY_ID__?: unknown };
 
@@ -64,7 +68,16 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
   const [minorAuditMinors, setMinorAuditMinors] = React.useState<Array<{ id: string; name: string; reason: string }> | null>(null);
   const [minorAuditMessage, setMinorAuditMessage] = React.useState<string | null>(null);
   const [minorCatalog, setMinorCatalog] = React.useState<Array<{ id: number | string; name: string; requirements: unknown }> | null>(null);
+
+  // Compare Majors state
+  const [majorsCatalog, setMajorsCatalog] = React.useState<Array<{ id: string; name: string }> | null>(null);
+  const [comparisonData, setComparisonData] = React.useState<MajorComparisonResult[] | null>(null);
+  const [loadingComparison, setLoadingComparison] = React.useState(false);
+  const [comparisonError, setComparisonError] = React.useState<string | null>(null);
+  const [sidebarVisible, setSidebarVisible] = React.useState(true);
+
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast, toasts, dismiss } = useToast();
   const [activeCareerModal, setActiveCareerModal] = React.useState<Career | null>(null);
   const [loadingCareer, setLoadingCareer] = React.useState(false);
@@ -116,6 +129,20 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
 
     return () => clearInterval(interval);
   }, [loadingMajor, majorLoadingMessages.length]);
+
+  // Auto-load comparison from shared URL
+  React.useEffect(() => {
+    const compareParam = searchParams.get('compare');
+    if (compareParam && !comparisonData && !loadingComparison) {
+      const majorIds = compareParam.split(',').map(id => id.trim()).filter(Boolean);
+      if (majorIds.length >= 2 && majorIds.length <= 4) {
+        // Auto-load comparison
+        void handleCompareMajorsClick().then(() => {
+          void handleCompareSubmit(majorIds);
+        });
+      }
+    }
+  }, [searchParams, comparisonData, loadingComparison]);
 
   async function fetchOrCreateCareer(careerTitle: string, slug: string, rationale?: string): Promise<Career | null> {
     try {
@@ -496,6 +523,43 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     }
   }
 
+  // Compare Majors handlers
+  async function handleCompareMajorsClick() {
+    setActivePanel('compare-majors');
+    setComparisonError(null);
+
+    // Fetch majors catalog
+    const universityId = getGlobalUniversityId() ?? 1;
+    const result = await fetchMajorsForComparison(universityId);
+
+    if (result.success && result.majors) {
+      setMajorsCatalog(result.majors);
+    } else {
+      setComparisonError(result.error || 'Failed to load majors');
+    }
+  }
+
+  async function handleCompareSubmit(majorIds: string[]) {
+    setLoadingComparison(true);
+    setComparisonError(null);
+
+    try {
+      const universityId = getGlobalUniversityId() ?? 1;
+      const result = await fetchMajorComparison({ majorIds, universityId });
+
+      if (result.success && result.comparisons) {
+        setComparisonData(result.comparisons);
+        setSidebarVisible(false); // Hide sidebar when comparison loads
+      } else {
+        setComparisonError(result.error || 'Failed to compare majors');
+      }
+    } catch (error) {
+      setComparisonError(error instanceof Error ? error.message : 'Unknown error occurred');
+    } finally {
+      setLoadingComparison(false);
+    }
+  }
+
   // Show empty state if no courses
   if (courses.length === 0) {
     return (
@@ -542,16 +606,38 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
           Explore alternative academic and career alignments based on your completed coursework. Choose an exploration mode on the right to begin.
         </p>
       </div>
-      <div className="flex flex-1 gap-6 flex-col xl:flex-row">
-        {/* Left: Course history */}
-        <div className="xl:w-2/5 w-full h-[420px] xl:h-auto">
-          <CourseHistoryList
-            courses={courses}
-            onSelectCourse={(c) => { setSelectedCourse(c.id); setLastAction(`Selected course ${c.code}`); }}
-          />
-        </div>
+      <div className="flex flex-1 gap-6 flex-col xl:flex-row relative">
+        {/* Toggle sidebar button - only show when comparison data exists */}
+        {activePanel === 'compare-majors' && comparisonData && (
+          <button
+            onClick={() => setSidebarVisible(!sidebarVisible)}
+            className="absolute top-2 left-2 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full p-2 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            title={sidebarVisible ? 'Hide completed courses' : 'Show completed courses'}
+            type="button"
+          >
+            <svg
+              className={`w-5 h-5 text-gray-700 dark:text-gray-200 transition-transform ${sidebarVisible ? '' : 'rotate-180'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        {/* Left: Course history - conditionally shown */}
+        {sidebarVisible && (
+          <div className="xl:w-2/5 w-full h-[420px] xl:h-auto">
+            <CourseHistoryList
+              courses={courses}
+              onSelectCourse={(c) => { setSelectedCourse(c.id); setLastAction(`Selected course ${c.code}`); }}
+            />
+          </div>
+        )}
+
         {/* Right: Pivot options */}
-        <div className="flex-1 flex flex-col gap-4">
+        <div className={`flex flex-col gap-4 transition-all ${sidebarVisible ? 'flex-1' : 'w-full'}`}>
           {!activePanel && (
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               <PivotOptionsPanel
@@ -561,6 +647,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                   if (opt.id === 'major-pivot') setActivePanel('major-pivot');
                   if (opt.id === 'minor-pivot') setActivePanel('adjacent-career');
                   if (opt.id === 'minor-audit') { setActivePanel('minor-audit'); void loadMinorAudit(); }
+                  if (opt.id === 'compare-majors') { void handleCompareMajorsClick(); }
                 }}
               />
             </div>
@@ -777,6 +864,51 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                   </div>
                 </div>
               )}
+            </div>
+          )}
+          {activePanel === 'compare-majors' && (
+            <div className="rounded-lg border border-emerald-200 bg-white/70 backdrop-blur p-5 shadow-sm">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-emerald-800">Compare Majors</h2>
+                  <p className="text-xs text-gray-600 mt-1 max-w-prose">
+                    Select 2-4 majors to see a side-by-side comparison of your progress.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setActivePanel(null);
+                    setComparisonData(null);
+                    setComparisonError(null);
+                    setMajorsCatalog(null);
+                    setSidebarVisible(true); // Reset sidebar visibility when closing
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 transition"
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+
+              {!comparisonData && (
+                <MajorComparisonSelector
+                  majors={majorsCatalog || []}
+                  onCompare={handleCompareSubmit}
+                  onCancel={() => setActivePanel(null)}
+                  loading={loadingComparison}
+                />
+              )}
+
+              <MajorComparisonView
+                comparisons={comparisonData || []}
+                loading={loadingComparison}
+                error={comparisonError}
+                onRetry={() => {
+                  setComparisonData(null);
+                  setComparisonError(null);
+                  setSidebarVisible(true);
+                }}
+              />
             </div>
           )}
           {activePanel === 'adjacent-career' && (

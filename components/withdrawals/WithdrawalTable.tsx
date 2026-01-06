@@ -43,7 +43,7 @@ export default function WithdrawalTable({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-white p-12 text-center">
+      <div className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-card p-12 text-center">
         <div className="mx-auto max-w-md space-y-3">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--muted)]">
             <svg className="h-6 w-6 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -66,7 +66,7 @@ export default function WithdrawalTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-[#0A0A0A] text-white">
+            <tr className="bg-foreground text-background">
               <th className="px-6 py-4 text-left font-body-semi text-xs uppercase tracking-wider">Student</th>
               <th className="px-6 py-4 text-left font-body-semi text-xs uppercase tracking-wider">Major</th>
               <th className="px-6 py-4 text-left font-body-semi text-xs uppercase tracking-wider">Course</th>
@@ -79,11 +79,11 @@ export default function WithdrawalTable({
               <th className="px-6 py-4 text-left font-body-semi text-xs uppercase tracking-wider">Days After</th>
             </tr>
           </thead>
-          <tbody className="bg-white">
+          <tbody className="bg-card">
             {rows.map((row, idx) => (
               <tr
                 key={idx}
-                className="cursor-pointer border-b border-[var(--border)] transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] hover:shadow-sm"
+                className="cursor-pointer border-b border-[var(--border)] transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--primary)_5%,var(--card))] hover:shadow-sm"
                 onMouseEnter={(e) => handleRowMouseEnter(e, idx)}
                 onMouseLeave={handleRowMouseLeave}
                 onClick={() => onStudentClick?.(row.student.id)}

@@ -277,18 +277,21 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
   const requirementEntries = Object.entries(groupedByRequirement);
 
   // Color scheme based on program type
-  const typeColors: Record<string, { bg: string; text: string }> = {
+  const typeColors: Record<string, { bg: string; text: string; titleText: string }> = {
     major: {
       bg: 'bg-[#2196f3]',
       text: 'text-[#2196f3]',
+      titleText: 'text-white',
     },
     minor: {
       bg: 'bg-[#5E35B1]',
       text: 'text-[#5E35B1]',
+      titleText: 'text-white',
     },
     general_ed: {
       bg: 'bg-[#FF9800]',
       text: 'text-[#FF9800]',
+      titleText: 'text-white',
     },
   };
 
@@ -319,7 +322,7 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
                     {reqIndex + 1}
                   </span>
                 </div>
-                <span className="font-header-semi text-xl font-bold text-white">
+                <span className={`font-header-semi text-xl font-bold ${colors.titleText}`}>
                   Requirement {reqIndex + 1}
                 </span>
               </div>
@@ -379,7 +382,7 @@ function ClassicCourseCard({
         border: 'border-[#ef4444]',
         titleText: 'text-[#991b1b]',
         bodyText: 'text-[#7f1d1d]',
-        badge: 'bg-[#ef4444] text-white',
+        badge: 'bg-[#ef4444] text-primary-foreground',
         infoBg: 'bg-[#fecaca]',
         infoText: 'text-[#7f1d1d]'
       }
@@ -388,7 +391,7 @@ function ClassicCourseCard({
         border: 'border-[#10b981]',
         titleText: 'text-[#065f46]',
         bodyText: 'text-[#064e3b]',
-        badge: 'bg-[#10b981] text-white',
+        badge: 'bg-[#10b981] text-primary-foreground',
         infoBg: 'bg-[#a7f3d0]',
         infoText: 'text-[#064e3b]'
       };
@@ -434,7 +437,7 @@ function ClassicCourseCard({
 
         {/* Relationship Insights */}
         {isSelected && insights.length > 0 && (
-          <div className="mt-3 space-y-2 border-t-2 border-gray-300 pt-3">
+          <div className="mt-3 space-y-2 border-t-2 border-zinc-300 dark:border-zinc-600 pt-3">
             <p className="font-body-semi text-xs font-bold text-gray-700">Course Relationships:</p>
             {insights.map((insight, idx) => (
               <div
@@ -463,7 +466,7 @@ function ClassicCourseCard({
 
         {/* No relationships message */}
         {isSelected && insights.length === 0 && (
-          <div className="mt-3 border-t-2 border-gray-300 pt-3">
+          <div className="mt-3 border-t-2 border-zinc-300 dark:border-zinc-600 pt-3">
             <p className="font-body text-xs italic text-gray-500">
               No relationships defined in course flow
             </p>

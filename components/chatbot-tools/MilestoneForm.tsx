@@ -98,16 +98,17 @@ export default function MilestoneForm({
 
         <div className="space-y-3">
           <Button
+            variant="primary"
             onClick={() => setHasMilestones(true)}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322] gap-2 justify-start"
+            className="w-full gap-2 justify-start"
           >
             <Target size={18} />
             Yes, I want to add milestones
           </Button>
 
           <Button
+            variant="secondary"
             onClick={handleSkip}
-            variant="outline"
             className="w-full gap-2 justify-start"
           >
             <X size={18} />
@@ -159,8 +160,8 @@ export default function MilestoneForm({
         {/* Add milestone button */}
         {!showMilestoneForm && (
           <Button
+            variant="secondary"
             type="button"
-            variant="outline"
             onClick={() => setShowMilestoneForm(true)}
             className="gap-2"
           >
@@ -235,18 +236,19 @@ export default function MilestoneForm({
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                variant="primary"
                 type="button"
                 size="sm"
                 onClick={handleAddMilestone}
                 disabled={!currentMilestoneType}
-                className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+                className="flex-1"
               >
                 Add to List
               </Button>
               <Button
+                variant="secondary"
                 type="button"
                 size="sm"
-                variant="outline"
                 onClick={() => {
                   setShowMilestoneForm(false);
                   setCurrentMilestoneType('');
@@ -263,16 +265,17 @@ export default function MilestoneForm({
         {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           <Button
+            variant="primary"
             onClick={handleSubmitWithMilestones}
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+            className="flex-1 gap-2"
           >
             <CheckCircle size={18} />
             Continue {milestones.length > 0 ? `with ${milestones.length} milestone${milestones.length > 1 ? 's' : ''}` : ''}
           </Button>
 
           <Button
+            variant="secondary"
             type="button"
-            variant="outline"
             onClick={() => setHasMilestones(null)}
             className="px-4"
           >

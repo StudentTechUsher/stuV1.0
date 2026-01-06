@@ -39,7 +39,7 @@ export default function StudentDrawer({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/30 z-40"
+        className="fixed inset-0 bg-foreground/30 z-40"
         onClick={onClose}
         aria-hidden="true"
       />

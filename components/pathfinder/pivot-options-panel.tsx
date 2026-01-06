@@ -3,14 +3,15 @@ import * as React from 'react';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 
 interface PivotOption {
   id: string;
   title: string;
-  category: 'major-pivot' | 'minor-pivot' | 'minor-audit';
+  category: 'major-pivot' | 'minor-pivot' | 'minor-audit' | 'compare-majors';
   description: string;
   cta: string;
-  icon: 'sparkles' | 'lightbulb' | 'cap';
+  icon: 'sparkles' | 'lightbulb' | 'cap' | 'compare';
   comingSoon?: boolean;
 }
 
@@ -18,6 +19,7 @@ const ICON_MAP: Record<PivotOption['icon'], React.ReactNode> = {
   sparkles: <AutoAwesomeIcon className="text-emerald-600" fontSize="small" />,
   lightbulb: <LightbulbOutlinedIcon className="text-amber-600" fontSize="small" />,
   cap: <SchoolOutlinedIcon className="text-indigo-600" fontSize="small" />,
+  compare: <CompareArrowsIcon className="text-emerald-600" fontSize="small" />,
 };
 
 interface PivotOptionsPanelProps {
@@ -83,6 +85,14 @@ export function useDefaultPivotOptions(): PivotOption[] {
       description: 'Check which minors you might already be close to finishing based on completed coursework and shared requirements.',
       cta: 'Audit potential minors',
       icon: 'cap'
+    },
+    {
+      id: 'compare-majors',
+      title: 'Compare Majors',
+      category: 'compare-majors',
+      description: 'Compare 2-4 majors side-by-side to see completion progress, courses that count, and what\'s still needed.',
+      cta: 'Compare majors',
+      icon: 'compare'
     }
   ]), []);
 }

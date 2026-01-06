@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchUserCourses } from "@/lib/services/userCoursesService";
+import { fetchStudentGpa } from "@/lib/services/studentService";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RequirementProgress = {
   label: string;
@@ -70,22 +72,35 @@ function ProgressBar({
 export default function AcademicProgressCard() {
   const router = useRouter();
   const [hasTranscript, setHasTranscript] = useState(true);
+  const [gpa, setGpa] = useState<number | null>(null);
 
   useEffect(() => {
-    const checkTranscript = async () => {
+    const checkTranscriptAndGpa = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
           const userCoursesData = await fetchUserCourses(supabase, user.id);
-          setHasTranscript(!!userCoursesData && userCoursesData.courses.length > 0);
+          const hasTranscriptData = !!userCoursesData && userCoursesData.courses.length > 0;
+          setHasTranscript(hasTranscriptData);
+
+          // Fetch GPA if transcript exists
+          if (hasTranscriptData) {
+            try {
+              const studentData = await fetchStudentGpa(supabase, user.id);
+              setGpa(studentData?.gpa ?? null);
+            } catch (error) {
+              console.error('Error fetching student GPA:', error);
+              setGpa(null);
+            }
+          }
         }
       } catch (error) {
         console.error('Error checking transcript data:', error);
       }
     };
 
-    checkTranscript();
+    checkTranscriptAndGpa();
   }, []);
 
   const handleGpaCalculatorClick = () => {
@@ -95,9 +110,9 @@ export default function AcademicProgressCard() {
   return (
     // Modern card with clean hierarchy and better spacing
     <div className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-      {/* Bold black header matching semester-results-table */}
-      <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-white">
+      {/* Bold header matching semester-results-table */}
+      <div className="border-b-2 px-6 py-4 bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100">
+        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-zinc-100 dark:text-zinc-900">
           Academic Progress
         </h3>
       </div>
@@ -107,26 +122,37 @@ export default function AcademicProgressCard() {
         {/* Stats Grid - larger, more prominent cards */}
         <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {/* GPA Card - standout design with gradient */}
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-4 shadow-sm transition-transform duration-200 hover:-translate-y-1">
-            <div className="relative z-10 text-center">
-              <div className="font-header-bold text-3xl font-extrabold text-white">
-                3.98
-              </div>
-              <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-white/90">
-                GPA
-              </div>
-            </div>
-            {/* Subtle pattern overlay */}
-            <div className="absolute inset-0 bg-white/5" />
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-4 shadow-sm transition-transform duration-200 hover:-translate-y-1">
+                  <div className="relative z-10 text-center">
+                    <div className="font-header-bold text-3xl font-extrabold text-white">
+                      {gpa !== null ? gpa.toFixed(2) : "3.98"}
+                    </div>
+                    <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-white/90">
+                      GPA
+                    </div>
+                  </div>
+                  {/* Subtle pattern overlay */}
+                  <div className="absolute inset-0 bg-white/5" />
+                </div>
+              </TooltipTrigger>
+              {gpa === null && (
+                <TooltipContent>
+                  <p>This is a placeholder. Upload your transcript to see your actual GPA.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Credits Card - clean and minimal */}
-          <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
+          <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white dark:bg-zinc-900 p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
             <div className="text-center">
-              <div className="font-header-bold text-3xl font-extrabold text-[var(--foreground)]">
+              <div className="font-header-bold text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
                 44
               </div>
-              <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                 Credits Left
               </div>
             </div>

@@ -16,19 +16,25 @@ export type Database = {
     Tables: {
       advisors: {
         Row: {
+          approved: boolean
           created_at: string
           id: number
           profile_id: string | null
+          programs: number[] | null
         }
         Insert: {
+          approved?: boolean
           created_at?: string
           id?: number
           profile_id?: string | null
+          programs?: number[] | null
         }
         Update: {
+          approved?: boolean
           created_at?: string
           id?: number
           profile_id?: string | null
+          programs?: number[] | null
         }
         Relationships: [
           {
@@ -458,12 +464,17 @@ export type Database = {
       }
       program: {
         Row: {
+          applicable_end_year: number | null
+          applicable_start_year: number | null
+          applies_to_freshmen: boolean | null
+          applies_to_transfers: boolean | null
           course_flow: Json | null
           created_at: string
           id: number
           is_general_ed: boolean
           modified_at: string | null
           name: string
+          priority: number | null
           program_type: Database["public"]["Enums"]["Program Types"] | null
           requirements: Json | null
           target_total_credits: number | null
@@ -471,12 +482,17 @@ export type Database = {
           version: string
         }
         Insert: {
+          applicable_end_year?: number | null
+          applicable_start_year?: number | null
+          applies_to_freshmen?: boolean | null
+          applies_to_transfers?: boolean | null
           course_flow?: Json | null
           created_at?: string
           id?: number
           is_general_ed: boolean
           modified_at?: string | null
           name: string
+          priority?: number | null
           program_type?: Database["public"]["Enums"]["Program Types"] | null
           requirements?: Json | null
           target_total_credits?: number | null
@@ -484,12 +500,17 @@ export type Database = {
           version?: string
         }
         Update: {
+          applicable_end_year?: number | null
+          applicable_start_year?: number | null
+          applies_to_freshmen?: boolean | null
+          applies_to_transfers?: boolean | null
           course_flow?: Json | null
           created_at?: string
           id?: number
           is_general_ed?: boolean
           modified_at?: string | null
           name?: string
+          priority?: number | null
           program_type?: Database["public"]["Enums"]["Program Types"] | null
           requirements?: Json | null
           target_total_credits?: number | null
@@ -529,36 +550,45 @@ export type Database = {
       }
       student: {
         Row: {
+          admission_year: number | null
           career_goals: string | null
           class_preferences: number[] | null
           created_at: string
           est_grad_date: string | null
           est_grad_plan: string | null
+          gpa: number | null
           id: number
+          is_transfer: boolean | null
           profile_id: string | null
           selected_interests: number[] | null
           selected_programs: number[] | null
           year_in_school: Database["public"]["Enums"]["Year In School"]
         }
         Insert: {
+          admission_year?: number | null
           career_goals?: string | null
           class_preferences?: number[] | null
           created_at?: string
           est_grad_date?: string | null
           est_grad_plan?: string | null
+          gpa?: number | null
           id?: number
+          is_transfer?: boolean | null
           profile_id?: string | null
           selected_interests?: number[] | null
           selected_programs?: number[] | null
           year_in_school?: Database["public"]["Enums"]["Year In School"]
         }
         Update: {
+          admission_year?: number | null
           career_goals?: string | null
           class_preferences?: number[] | null
           created_at?: string
           est_grad_date?: string | null
           est_grad_plan?: string | null
+          gpa?: number | null
           id?: number
+          is_transfer?: boolean | null
           profile_id?: string | null
           selected_interests?: number[] | null
           selected_programs?: number[] | null
