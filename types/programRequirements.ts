@@ -367,10 +367,25 @@ export interface AuthoringState {
 /**
  * Helper function to get sub-requirements from any requirement type,
  * handling both naming conventions (subRequirements vs subrequirements)
+ * and gen-ed blocks format
  */
 export function getSubRequirements(req: ProgramRequirement): ProgramRequirement[] | undefined {
   if ('subRequirements' in req) return req.subRequirements;
   if ('subrequirements' in req) return req.subrequirements;
+
+  // Gen-ed format: blocks array may contain nested requirement blocks
+  if ('blocks' in req) {
+    const blocks = (req as { blocks?: unknown[] }).blocks;
+    if (Array.isArray(blocks)) {
+      const reqBlocks = blocks.filter(
+        (block): block is ProgramRequirement =>
+          typeof block === 'object' && block !== null &&
+          'requirement' in block
+      );
+      return reqBlocks.length > 0 ? reqBlocks : undefined;
+    }
+  }
+
   return undefined;
 }
 

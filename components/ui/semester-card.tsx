@@ -69,11 +69,11 @@ export function SemesterCard({
       {...props}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium text-sm text-zinc-800">{term}</h3>
+        <h3 className="font-medium text-sm text-foreground">{term}</h3>
         <div className="flex items-center gap-1.5">
           <span className={cn(
             "text-xs font-medium",
-            isOverLimit ? "text-red-500" : "text-zinc-600"
+            isOverLimit ? "text-red-500" : "text-muted-foreground"
           )}>
             {totalCredits} TOTAL
           </span>
@@ -93,18 +93,18 @@ export function SemesterCard({
       </div>
       <div className="flex items-center mb-2 px-4">
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-medium text-zinc-400">Class</span>
+          <span className="text-xs font-medium text-muted-foreground">Class</span>
         </div>
         <div className="w-12 text-right">
-          <span className="text-xs font-medium text-zinc-400">Credits</span>
+          <span className="text-xs font-medium text-muted-foreground">Credits</span>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <SortableContext 
-          items={courseIds} 
+        <SortableContext
+          items={courseIds}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-col gap-1.5 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300/50 scrollbar-track-transparent px-0.5 py-1">
+          <div className="flex flex-col gap-1.5 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent px-0.5 py-1">
             {children}
           </div>
         </SortableContext>

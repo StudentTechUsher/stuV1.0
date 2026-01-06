@@ -112,9 +112,10 @@ export function SavePlanDialog({ open, onOpenChange }: SavePlanDialogProps) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4 mt-4">
-          <Button 
+          <Button
             onClick={handleDownload}
             disabled={downloading}
+            variant="primary"
             className="w-full"
           >
             {downloading ? "Generating..." : "Download My Plan"}

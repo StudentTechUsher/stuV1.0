@@ -322,6 +322,7 @@ export function OnboardingModal({
 
           <Button
             type="submit"
+            variant="primary"
             className="w-full font-body-medium"
             disabled={saving || !selectedUniversity || !selectedRole}
           >

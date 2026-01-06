@@ -58,16 +58,17 @@ export default function AdditionalConcernsForm({
 
         <div className="space-y-3">
           <Button
+            variant="primary"
             onClick={() => setHasAdditionalConcerns(true)}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322] gap-2 justify-start"
+            className="w-full gap-2 justify-start"
           >
             <MessageSquarePlus size={18} />
             Yes, I have preferences to share
           </Button>
 
           <Button
+            variant="secondary"
             onClick={handleSkip}
-            variant="outline"
             className="w-full gap-2 justify-start"
           >
             <X size={18} />
@@ -145,16 +146,17 @@ export default function AdditionalConcernsForm({
         {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           <Button
+            variant="primary"
             type="submit"
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322] gap-2"
+            className="flex-1 gap-2"
           >
             <ArrowRight size={18} />
             Continue with Preferences
           </Button>
 
           <Button
+            variant="secondary"
             type="button"
-            variant="outline"
             onClick={() => setHasAdditionalConcerns(null)}
             className="px-4"
           >

@@ -26,16 +26,17 @@ export default function GeneratePlanConfirmationForm({
 
       <div className="space-y-3">
         <Button
+          variant="primary"
           onClick={() => onSubmit({ confirmed: true })}
-          className="w-full bg-primary hover:bg-primary/90 text-black gap-2 justify-start shadow-lg"
+          className="w-full gap-2 justify-start shadow-lg"
         >
           <ArrowRight size={18} />
           Yes, generate my plan!
         </Button>
 
         <Button
+          variant="secondary"
           onClick={() => onSubmit({ confirmed: false })}
-          variant="outline"
           className="w-full gap-2 justify-start"
         >
           <Edit size={18} />

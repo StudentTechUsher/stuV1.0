@@ -721,7 +721,7 @@ export default function AcademicHistoryPage() {
                 {course.fulfillsRequirements!.length}
               </span>
             )}
-            <span className="font-body-semi text-xs font-semibold text-[var(--foreground)]">
+            <span className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-900">
               {course.subject} {course.number}
               {isTransfer && (
                 <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">↔</span>
@@ -732,7 +732,7 @@ export default function AcademicHistoryPage() {
           {/* Tooltip on hover - uses fixed positioning to be above everything */}
           <div className="course-tooltip pointer-events-none fixed z-[9999] hidden min-w-max -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-xl group-hover:block">
             <div className="space-y-0.5">
-              <p className="font-body-semi text-xs font-semibold text-[var(--foreground)]">{course.title}</p>
+              <p className="font-body-semi text-xs font-semibold text-zinc-900 dark:text-zinc-900">{course.title}</p>
               <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                 <span className="font-body">{course.credits} credits</span>
                 <span>•</span>
@@ -799,7 +799,7 @@ export default function AcademicHistoryPage() {
           </button>
         )}
         <div className="mb-2 flex items-start gap-2 pr-8">
-          <h4 className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
+          <h4 className="font-body-semi text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             {course.subject} {course.number}
           </h4>
           {isTransfer && (
@@ -892,7 +892,7 @@ export default function AcademicHistoryPage() {
       <div className="flex h-full max-w-full flex-col p-4 sm:p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-[var(--foreground)]">
+          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
             Academic History
           </h1>
           <div className="font-body space-y-2 text-sm text-[var(--muted-foreground)]">
@@ -909,7 +909,7 @@ export default function AcademicHistoryPage() {
           href="https://y.byu.edu/ry/ae/prod/records/cgi/stdCourseWork.cgi"
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-8 inline-flex w-fit items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+          className="mb-8 inline-flex w-fit items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
         >
           <ExternalLink size={16} />
           Download BYU Transcript
@@ -936,7 +936,7 @@ export default function AcademicHistoryPage() {
       {/* Header Section */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-[var(--foreground)]">
+          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
             Academic History
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)]">
@@ -974,7 +974,7 @@ export default function AcademicHistoryPage() {
           <button
             type="button"
             onClick={saveToDatabase}
-            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
             title="Save courses to your profile"
           >
             <Save size={16} />
@@ -1128,17 +1128,17 @@ export default function AcademicHistoryPage() {
             <>
               {/* Summary Card */}
               <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-                <div className="border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                <div className="border-b-2 bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-header text-lg font-bold text-white">
+                      <h3 className="font-header text-lg font-bold text-zinc-100 dark:text-zinc-900">
                         Academic Summary
                       </h3>
-                      <p className="font-body text-xs text-white/70">
+                      <p className="font-body text-xs text-zinc-300 dark:text-zinc-700">
                         Total: {totalCredits.toFixed(1)} credits • {totalCourses} courses
                       </p>
                     </div>
-                    <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-black">
+                    <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-primary-foreground">
                       {sortedTerms.length} semester{sortedTerms.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -1181,16 +1181,16 @@ export default function AcademicHistoryPage() {
                   return (
                     <div key={term} className={`rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md ${viewMode === 'full' ? 'overflow-hidden' : 'overflow-visible'}`}>
                       {/* Header */}
-                      <div className="overflow-hidden rounded-t-xl border-b px-4 py-2.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+                      <div className="border-b bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-4 py-2.5">
                         <div className="flex flex-col gap-0.5">
-                          <h3 className="font-header text-sm font-bold text-white">
+                          <h3 className="font-header text-sm font-bold text-zinc-100 dark:text-zinc-900">
                             {term}
                           </h3>
                           <div className="flex items-center justify-between">
-                            <p className="font-body text-xs text-white/60">
+                            <p className="font-body text-xs text-zinc-400 dark:text-zinc-600">
                               {termCredits.toFixed(1)} cr
                             </p>
-                            <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 font-body-semi text-xs font-semibold text-black">
+                            <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 font-body-semi text-xs font-semibold text-primary-foreground">
                               {termCourses.length}
                             </span>
                           </div>
@@ -1227,7 +1227,7 @@ export default function AcademicHistoryPage() {
 
       {/* Upload Dialog */}
       {uploadDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
           <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
             <button
               type="button"
@@ -1250,11 +1250,11 @@ export default function AcademicHistoryPage() {
 
       {/* Edit Course Dialog */}
       {editingCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
           <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-              <h2 className="font-header text-xl font-bold text-[var(--foreground)]">Edit Course</h2>
+              <h2 className="font-header text-xl font-bold text-zinc-900 dark:text-zinc-100">Edit Course</h2>
               <button
                 type="button"
                 onClick={() => setEditingCourse(null)}
@@ -1268,7 +1268,7 @@ export default function AcademicHistoryPage() {
             <div className="space-y-4 p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Subject
                   </label>
                   <input
@@ -1281,7 +1281,7 @@ export default function AcademicHistoryPage() {
                   <p className="font-body mt-1 text-xs text-[var(--muted-foreground)]">e.g., CS, MATH, REL A</p>
                 </div>
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Number
                   </label>
                   <input
@@ -1296,7 +1296,7 @@ export default function AcademicHistoryPage() {
               </div>
 
               <div>
-                <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                   Title
                 </label>
                 <input
@@ -1310,7 +1310,7 @@ export default function AcademicHistoryPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Credits
                   </label>
                   <input
@@ -1323,7 +1323,7 @@ export default function AcademicHistoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     Grade
                   </label>
                   <input
@@ -1337,7 +1337,7 @@ export default function AcademicHistoryPage() {
               </div>
 
               <div>
-                <label className="font-body-semi mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                <label className="font-body-semi mb-1.5 block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                   Term
                 </label>
                 <input
@@ -1363,7 +1363,7 @@ export default function AcademicHistoryPage() {
               <button
                 type="button"
                 onClick={handleSaveEdit}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
               >
                 Save Changes
               </button>
@@ -1374,13 +1374,13 @@ export default function AcademicHistoryPage() {
 
       {/* PDF Viewer Modal */}
       {showPdfViewer && pdfUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80 p-4">
           <div className="relative flex h-[90vh] w-full max-w-7xl flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
               <div className="flex items-center gap-3">
                 <FileText size={24} className="text-[var(--primary)]" />
-                <h2 className="font-header text-xl font-bold text-[var(--foreground)]">Original Transcript</h2>
+                <h2 className="font-header text-xl font-bold text-zinc-900 dark:text-zinc-100">Original Transcript</h2>
               </div>
               <div className="flex items-center gap-2">
                 <a

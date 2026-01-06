@@ -62,8 +62,8 @@
   --secondary-foreground: #18181b;
   --muted: #f4f4f5;
   --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --accent: #f97316;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #e4e4e7;
@@ -90,6 +90,7 @@
   /* 🔹 UI colors */
   --border-light: #ddd;
   --warning-background: #fff3e0;
+  --warning-foreground: #e65100;
   --nav-foreground: #fff;
   --primary-dark: #003228;
 }
@@ -182,8 +183,8 @@
   --secondary-foreground: #fafafa;
   --muted: #27272a;
   --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
+  --accent: #ea580c;
+  --accent-foreground: #ffffff;
   --destructive: #7f1d1d;
   --destructive-foreground: #fafafa;
   --border: #27272a;
@@ -204,6 +205,13 @@
   --action-info-hover: #1565c0;
   --action-cancel: #f44336;
   --action-cancel-hover: #d32f2f;
+
+  /* 🔹 Dark mode UI colors */
+  --border-light: #3f3f46;
+  --warning-background: #422006;
+  --warning-foreground: #fb923c;
+  --nav-foreground: #fafafa;
+  --primary-dark: #12F987;
 }
 
 @layer base {
@@ -217,11 +225,11 @@
 
 @layer components {
   .glass-effect {
-    @apply bg-white/85 backdrop-blur border-b border-primary/10;
+    @apply bg-background/85 backdrop-blur border-b border-primary/10;
   }
 
   .gradient-border {
-    background: linear-gradient(white, white) padding-box,
+    background: linear-gradient(var(--background), var(--background)) padding-box,
                 linear-gradient(to right, var(--primary), var(--primary-light)) border-box;
     border: 1px solid transparent;
   }
@@ -269,5 +277,34 @@
   .font-mono {
     font-family: 'Courier New', monospace;
     font-weight: 400;
+  }
+}
+
+/* Print styles for Compare Majors PDF export */
+@media print {
+  /* Hide navigation, headers, footers */
+  nav, header, footer, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Expand all sections for print */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Remove backgrounds and shadows for cleaner print */
+  body {
+    background: white !important;
+  }
+
+  /* Ensure cards print side-by-side */
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+
+  /* Prevent page breaks inside cards */
+  .print\:break-inside-avoid {
+    break-inside: avoid;
   }
 }

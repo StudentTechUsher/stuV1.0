@@ -488,7 +488,8 @@ export default function UniversityEditor() {
                 <Button
                   onClick={extractColorsFromUrl}
                   disabled={isExtractingFromUrl || !brandUrl.trim()}
-                  className="h-11 px-5 rounded-xl bg-[var(--primary)] hover:bg-[var(--hover-green)] text-black font-semibold shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                  variant="primary"
+                  className="h-11 px-5 rounded-xl"
                 >
                   {isExtractingFromUrl ? (
                     <>
@@ -715,7 +716,8 @@ export default function UniversityEditor() {
               <Button
                 onClick={handleSaveTheme}
                 disabled={isUpdating}
-                className="flex-1 h-12 rounded-xl bg-[var(--primary)] hover:bg-[var(--hover-green)] text-black font-bold shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+                variant="primary"
+                className="flex-1 h-12 rounded-xl"
               >
                 {isUpdating ? (
                   <>
@@ -733,7 +735,8 @@ export default function UniversityEditor() {
               <Button
                 onClick={handleApplyAndRedirect}
                 disabled={isUpdating}
-                className="flex-1 h-12 rounded-xl bg-white hover:bg-[var(--muted)] text-[var(--foreground)] font-semibold border-2 border-[var(--border)] hover:border-[var(--primary)] shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+                variant="secondary"
+                className="flex-1 h-12 rounded-xl"
               >
                 <ExternalLink className="h-5 w-5 mr-2" />
                 Apply & {process.env.NEXT_PUBLIC_ENV === 'dev' ? 'Reload' : 'Visit Site'}
@@ -742,7 +745,8 @@ export default function UniversityEditor() {
               <Button
                 onClick={handleResetToDefault}
                 disabled={isUpdating}
-                className="h-12 px-6 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-semibold border-2 border-red-200 hover:border-red-300 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+                variant="accent"
+                className="h-12 px-6 rounded-xl"
               >
                 {isUpdating ? (
                   <>

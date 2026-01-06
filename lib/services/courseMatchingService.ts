@@ -54,12 +54,14 @@ function normalizeCourseCode(code: string): string {
 }
 
 /**
- * Extracts subject code from a course code (the part before the space/number)
- * E.g., "CS 142" -> "CS", "MATH 110" -> "MATH", "CS-142" -> "CS"
+ * Extracts subject code from a course code (the part before the number)
+ * E.g., "CS 142" -> "CS", "MATH 110" -> "MATH", "M COM 320" -> "MCOM", "REL A 275" -> "RELA"
+ * Handles subjects with spaces by removing them for comparison
  */
 function extractSubject(code: string): string {
-  // Match letters at the start, up to 4 characters
-  const match = code.match(/^([A-Z]{1,4})/i);
+  // Remove spaces and extract letters before the first digit
+  const normalized = code.replace(/[\s-]/g, '');
+  const match = normalized.match(/^([A-Z]+)/i);
   return match ? match[1].toUpperCase() : '';
 }
 
@@ -90,17 +92,10 @@ function doesCourseMatch(userCourseCode: string, requirementCourse: RequirementC
   // This is very lenient - any course with matching subject code qualifies
   if (allowSubjectMatch) {
     const userSubject = extractSubject(userCourseCode).trim().toUpperCase();
-    const reqSubject = extractSubject(requirementCourse.code).trim();
+    const reqSubject = extractSubject(requirementCourse.code).trim().toUpperCase();
 
-    // Match if both have the same subject code (2-4 letters)
+    // Match if both have the same normalized subject code
     if (userSubject && reqSubject && userSubject === reqSubject) {
-      return true;
-    }
-
-    // Also try matching against the normalized requirement code prefix
-    // This handles cases where the requirement might be formatted differently
-    const reqPrefix = normalizedReqCode.replace(/[0-9X]+$/g, '').trim();
-    if (userSubject && reqPrefix && userSubject === reqPrefix) {
       return true;
     }
   }
@@ -278,10 +273,34 @@ export function matchCoursesToProgram(
   console.log(`📚 User has ${userCourses.length} courses to match`);
   console.log(`🎯 Match mode: ${allowSubjectMatch ? 'Subject-only matching ENABLED' : 'Exact/wildcard matching only'}`);
 
-  // Parse program requirements
-  const requirementsStructure = parseProgramRequirementsStructure(program);
+  // Parse program requirements - handle both formats
+  let requirementsArray: ProgramRequirement[] = [];
 
-  if (!requirementsStructure || !requirementsStructure.programRequirements) {
+  try {
+    if (program.requirements && typeof program.requirements === 'object') {
+      const reqsObj = program.requirements as { programRequirements?: ProgramRequirement[]; [key: string]: unknown };
+
+      // Standard format: {programRequirements: [...]}
+      if (reqsObj.programRequirements && Array.isArray(reqsObj.programRequirements)) {
+        requirementsArray = reqsObj.programRequirements;
+        console.log(`📋 Using standard programRequirements format (${requirementsArray.length} requirements)`);
+      }
+      // Alternative format: Direct array with numeric keys ['0', '1', '2', ...]
+      else {
+        const keys = Object.keys(reqsObj);
+        const numericKeys = keys.filter(k => /^\d+$/.test(k)).sort((a, b) => parseInt(a) - parseInt(b));
+
+        if (numericKeys.length > 0) {
+          requirementsArray = numericKeys.map(k => reqsObj[k] as ProgramRequirement);
+          console.log(`📋 Using alternative array format with numeric keys (${requirementsArray.length} requirements)`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to parse program requirements:', error);
+  }
+
+  if (requirementsArray.length === 0) {
     console.log(`⚠️ No valid requirements found for ${program.name}`);
     // No valid requirements, all courses are unmatched
     return {
@@ -292,7 +311,7 @@ export function matchCoursesToProgram(
   }
 
   // Extract all requirement courses
-  const allRequirementCourses = requirementsStructure.programRequirements.flatMap((req) =>
+  const allRequirementCourses = requirementsArray.flatMap((req) =>
     extractRequirementCourses(req)
   );
 

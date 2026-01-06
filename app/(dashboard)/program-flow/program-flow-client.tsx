@@ -28,7 +28,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
     <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="font-header text-3xl font-bold text-[var(--foreground)]">
+        <h1 className="font-header text-3xl font-bold text-zinc-900 dark:text-zinc-100">
           Program Flow
         </h1>
         <p className="font-body text-sm text-[var(--muted-foreground)]">
@@ -48,7 +48,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
             </div>
             <div>
               <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Total Programs</p>
-              <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">{programs.length}</p>
+              <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">{programs.length}</p>
             </div>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
             </div>
             <div>
               <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Majors</p>
-              <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">{majors.length}</p>
+              <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">{majors.length}</p>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
             </div>
             <div>
               <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Minors</p>
-              <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">{minors.length}</p>
+              <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">{minors.length}</p>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
             </div>
             <div>
               <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">General Ed</p>
-              <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">{genEds.length}</p>
+              <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">{genEds.length}</p>
             </div>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
         {/* Majors Section */}
         {majors.length > 0 && (
           <div>
-            <h2 className="font-header mb-4 text-xl font-bold text-[var(--foreground)]">Majors</h2>
+            <h2 className="font-header mb-4 text-xl font-bold text-zinc-900 dark:text-zinc-100">Majors</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {majors.map((program) => (
                 <ProgramCard key={program.id} program={program} onClick={handleProgramClick} />
@@ -118,7 +118,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
         {/* Minors Section */}
         {minors.length > 0 && (
           <div>
-            <h2 className="font-header mb-4 text-xl font-bold text-[var(--foreground)]">Minors</h2>
+            <h2 className="font-header mb-4 text-xl font-bold text-zinc-900 dark:text-zinc-100">Minors</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {minors.map((program) => (
                 <ProgramCard key={program.id} program={program} onClick={handleProgramClick} />
@@ -130,7 +130,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
         {/* General Education Section */}
         {genEds.length > 0 && (
           <div>
-            <h2 className="font-header mb-4 text-xl font-bold text-[var(--foreground)]">General Education</h2>
+            <h2 className="font-header mb-4 text-xl font-bold text-zinc-900 dark:text-zinc-100">General Education</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {genEds.map((program) => (
                 <ProgramCard key={program.id} program={program} onClick={handleProgramClick} />
@@ -142,7 +142,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
         {/* Other Programs Section */}
         {otherPrograms.length > 0 && (
           <div>
-            <h2 className="font-header mb-4 text-xl font-bold text-[var(--foreground)]">Other Programs</h2>
+            <h2 className="font-header mb-4 text-xl font-bold text-zinc-900 dark:text-zinc-100">Other Programs</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {otherPrograms.map((program) => (
                 <ProgramCard key={program.id} program={program} onClick={handleProgramClick} />
@@ -157,7 +157,7 @@ export default function ProgramFlowClient({ programs }: Readonly<ProgramFlowClie
             <svg className="mb-4 h-16 w-16 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <h3 className="font-header-semi mb-2 text-lg font-semibold text-[var(--foreground)]">No programs found</h3>
+            <h3 className="font-header-semi mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">No programs found</h3>
             <p className="font-body text-sm text-[var(--muted-foreground)]">There are no programs available for your university.</p>
           </div>
         )}

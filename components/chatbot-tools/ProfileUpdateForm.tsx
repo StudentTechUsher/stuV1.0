@@ -211,7 +211,7 @@ export default function ProfileUpdateForm({
         <div className="space-y-4">
           {/* Semester Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Graduation Semester
             </label>
             <div className="space-y-2">
@@ -228,14 +228,14 @@ export default function ProfileUpdateForm({
 
           {/* Year Selection */}
           <div>
-            <label htmlFor="grad-year" className="block text-sm font-medium text-gray-900 mb-2">
+            <label htmlFor="grad-year" className="block text-sm font-medium text-foreground mb-2">
               Graduation Year
             </label>
             <select
               id="grad-year"
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+              className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 text-sm"
             >
               <option value="">Select a year</option>
               {yearOptions.map((y) => (
@@ -250,17 +250,18 @@ export default function ProfileUpdateForm({
         {/* Action Buttons */}
         <div className="mt-5 space-y-2">
           <Button
+            variant="primary"
             onClick={handleGraduationContinue}
             disabled={!isGraduationValid}
-            className="w-full bg-[#0a1f1a] hover:bg-[#043322]"
+            className="w-full"
           >
             Continue
           </Button>
 
           {hasActivePlan && onSkip && (
             <Button
+              variant="secondary"
               onClick={onSkip}
-              variant="outline"
               className="w-full"
             >
               Skip to Student Classification
@@ -285,14 +286,14 @@ export default function ProfileUpdateForm({
         <div className="space-y-4">
           {/* Admission Year Selection */}
           <div>
-            <label htmlFor="admission-year" className="block text-sm font-medium text-gray-900 mb-2">
+            <label htmlFor="admission-year" className="block text-sm font-medium text-foreground mb-2">
               Admission Year
             </label>
             <select
               id="admission-year"
               value={admissionYear}
               onChange={(e) => setAdmissionYear(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+              className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 text-sm"
             >
               <option value="">Select a year</option>
               {admissionYearOptions.map((y) => (
@@ -305,7 +306,7 @@ export default function ProfileUpdateForm({
 
           {/* Transfer Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Student Type
             </label>
             <div className="space-y-2">
@@ -328,16 +329,17 @@ export default function ProfileUpdateForm({
         {/* Action Buttons */}
         <div className="flex gap-3 mt-5">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setStep('graduation')}
             className="px-6"
           >
             ← Back
           </Button>
           <Button
+            variant="primary"
             onClick={handleAdmissionContinue}
             disabled={!isAdmissionValid}
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+            className="flex-1"
           >
             Continue
           </Button>
@@ -371,8 +373,8 @@ export default function ProfileUpdateForm({
         <div className="space-y-3">
           {hasExistingCareerGoal && (
             <Button
+              variant="secondary"
               onClick={() => handleIndustryChoice('keep')}
-              variant="outline"
               className="w-full h-auto py-4 flex flex-col items-start gap-1"
             >
               <span className="font-semibold text-base">Keep my current career goal</span>
@@ -383,8 +385,8 @@ export default function ProfileUpdateForm({
           )}
 
           <Button
+            variant="secondary"
             onClick={() => handleIndustryChoice('select')}
-            variant="outline"
             className="w-full h-auto py-4 flex flex-col items-start gap-1"
           >
             <span className="font-semibold text-base">Select an industry first</span>
@@ -394,8 +396,8 @@ export default function ProfileUpdateForm({
           </Button>
 
           <Button
+            variant="secondary"
             onClick={() => handleIndustryChoice('know')}
-            variant="outline"
             className="w-full h-auto py-4 flex flex-col items-start gap-1"
           >
             <span className="font-semibold text-base">
@@ -409,7 +411,7 @@ export default function ProfileUpdateForm({
 
         <div className="mt-5">
           <Button
-            variant="ghost"
+            variant="secondary"
             onClick={() => setStep('admission')}
             className="w-full"
           >
@@ -446,7 +448,7 @@ export default function ProfileUpdateForm({
 
           {/* Custom Industry Input */}
           <div>
-            <label htmlFor="custom-industry" className="block text-sm font-medium text-gray-900 mb-2">
+            <label htmlFor="custom-industry" className="block text-sm font-medium text-foreground mb-2">
               Or enter your own industry
             </label>
             <input
@@ -455,13 +457,13 @@ export default function ProfileUpdateForm({
               value={customIndustry}
               onChange={(e) => setCustomIndustry(e.target.value)}
               placeholder="e.g., Environmental Science, Social Work..."
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white text-sm"
+              className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 text-sm"
             />
           </div>
 
           {/* Disclaimer */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-900">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-xs text-blue-900 dark:text-blue-100">
               💡 <strong>You&apos;re not committing to this yet!</strong> Use the career explorer in Pathfinder if you want to change, or you can make a new graduation plan!
             </p>
           </div>
@@ -470,16 +472,17 @@ export default function ProfileUpdateForm({
         {/* Action Buttons */}
         <div className="flex gap-3 mt-5">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setStep('industry-choice')}
             className="px-6"
           >
             ← Back
           </Button>
           <Button
+            variant="primary"
             onClick={handleIndustryContinue}
             disabled={!isIndustryValid}
-            className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+            className="flex-1"
           >
             Continue with Career Explorer
           </Button>
@@ -502,6 +505,7 @@ export default function ProfileUpdateForm({
       {onCareerPathfinderClick && (
         <div className="flex justify-center mb-6">
           <Button
+            variant="secondary"
             type="button"
             onClick={() =>
               onCareerPathfinderClick?.(
@@ -510,7 +514,6 @@ export default function ProfileUpdateForm({
                   : customIndustry || undefined
               )
             }
-            variant="outline"
             className="gap-2"
           >
             <Compass size={18} />
@@ -527,7 +530,7 @@ export default function ProfileUpdateForm({
             onChange={(e) => setCareerGoals(e.target.value)}
             placeholder="e.g., Software Engineer, Data Scientist, Marketing Manager..."
             rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 bg-white resize-none"
+            className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 resize-none"
           />
           <p className="text-xs text-muted-foreground mt-2">
             Describe your target career or professional goals
@@ -535,8 +538,8 @@ export default function ProfileUpdateForm({
         </div>
 
         {/* Disclaimer */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-900">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-xs text-blue-900 dark:text-blue-100">
             💡 <strong>You&apos;re not committing to this yet!</strong> Use the career explorer in Pathfinder if you want to change, or you can make a new graduation plan!
           </p>
         </div>
@@ -545,16 +548,17 @@ export default function ProfileUpdateForm({
       {/* Action Buttons */}
       <div className="flex gap-3 mt-6">
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={() => setStep('industry-choice')}
           className="px-6"
         >
           ← Back
         </Button>
         <Button
+          variant="primary"
           onClick={handleFinalSubmit}
           disabled={!isCareerValid}
-          className="flex-1 bg-[#0a1f1a] hover:bg-[#043322]"
+          className="flex-1"
         >
           Continue
         </Button>

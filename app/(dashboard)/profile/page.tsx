@@ -84,7 +84,7 @@ export default async function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <h2 className="font-header-bold text-lg text-[var(--foreground)]">
+                <h2 className="font-header-bold text-lg text-zinc-900 dark:text-zinc-100">
                   Account Information
                 </h2>
                 <p className="font-body text-xs text-[var(--muted-foreground)]">
@@ -119,7 +119,7 @@ export default async function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <h2 className="font-header-bold text-lg text-[var(--foreground)]">
+                <h2 className="font-header-bold text-lg text-zinc-900 dark:text-zinc-100">
                   LinkedIn Profile
                 </h2>
                 <p className="font-body text-xs text-[var(--muted-foreground)]">
@@ -138,7 +138,7 @@ export default async function ProfilePage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-body-semi text-sm text-[var(--foreground)]">
+                      <p className="font-body-semi text-sm text-zinc-900 dark:text-zinc-100">
                         Profile Connected
                       </p>
                       <p className="font-body text-xs text-[var(--muted-foreground)]">
@@ -154,7 +154,7 @@ export default async function ProfilePage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-body-semi text-sm text-[var(--foreground)]">
+                      <p className="font-body-semi text-sm text-zinc-900 dark:text-zinc-100">
                         Not Connected
                       </p>
                       <p className="font-body text-xs text-[var(--muted-foreground)]">
@@ -180,7 +180,7 @@ export default async function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <h2 className="font-header-bold text-lg text-[var(--foreground)]">
+                <h2 className="font-header-bold text-lg text-zinc-900 dark:text-zinc-100">
                   Academic Transcript
                 </h2>
                 <p className="font-body text-xs text-[var(--muted-foreground)]">

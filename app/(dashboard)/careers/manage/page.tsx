@@ -75,7 +75,7 @@ export default function ManageCareersPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
-          <h1 className="font-header text-3xl font-bold text-[var(--foreground)]">
+          <h1 className="font-header text-3xl font-bold text-zinc-900 dark:text-zinc-100">
             Manage Careers
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)]">
@@ -106,7 +106,7 @@ export default function ManageCareersPage() {
               </div>
               <div>
                 <p className="font-body text-xs font-medium text-[var(--muted-foreground)]">Total Careers</p>
-                <p className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">{careers.length}</p>
+                <p className="font-header-bold text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">{careers.length}</p>
               </div>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function ManageCareersPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="font-header-bold mb-2 text-lg font-bold text-[var(--foreground)]">No Careers Found</h3>
+                <h3 className="font-header-bold mb-2 text-lg font-bold text-zinc-900 dark:text-zinc-100">No Careers Found</h3>
                 <p className="font-body text-sm text-[var(--muted-foreground)]">Try adjusting your search or create a new career.</p>
               </div>
             ) : (
@@ -210,7 +210,7 @@ export default function ManageCareersPage() {
                 >
                   {/* Career Name */}
                   <div>
-                    <p className="font-body-semi text-sm font-bold text-[var(--foreground)]">
+                    <p className="font-body-semi text-sm font-bold text-zinc-900 dark:text-zinc-100">
                       {career.title}
                     </p>
                     <p className="mt-1 text-xs text-[var(--muted-foreground)]">
@@ -230,7 +230,7 @@ export default function ManageCareersPage() {
 
                   {/* Salary */}
                   <div className="hidden lg:block">
-                    <p className="font-body text-sm text-[var(--foreground)]">
+                    <p className="font-body text-sm text-zinc-900 dark:text-zinc-100">
                       {career.salaryUSD.median
                         ? `$${(career.salaryUSD.median / 1000).toFixed(0)}k`
                         : '-'}

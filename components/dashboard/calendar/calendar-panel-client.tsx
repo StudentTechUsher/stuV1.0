@@ -142,10 +142,10 @@ export default function CalendarPanelClient({
   return (
     // Modern card layout with rounded corners and bold header
     <div className="flex h-full max-h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-      {/* Bold black header like semester-results-table */}
-      <div className="flex-shrink-0 border-b-2 px-6 py-4" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
+      {/* Header */}
+      <div className="flex-shrink-0 border-b-2 px-6 py-4 bg-zinc-900 dark:bg-zinc-100" style={{ borderColor: "var(--primary)" }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-header-bold text-xl font-extrabold text-white">
+          <h2 className="font-header-bold text-xl font-extrabold text-zinc-100 dark:text-zinc-900">
             {semester}
           </h2>
           {showSchedulerButton && (

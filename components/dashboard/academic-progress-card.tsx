@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { GetActiveGradPlan } from "@/lib/services/gradPlanService";
+import { fetchUserCourses } from "@/lib/services/userCoursesService";
+import { fetchStudentGpa } from "@/lib/services/studentService";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RequirementProgress = {
   label: string;
@@ -103,7 +106,8 @@ function ProgressBar({
 
 export default function AcademicProgressCard() {
   const router = useRouter();
-  const [hasGradPlan, setHasGradPlan] = useState(true);
+  const [hasGradPlan, setHasGradPlan] = useState(false);
+  const [gpa, setGpa] = useState<number | null>(null);
   const [requirements, setRequirements] = useState<RequirementProgress[]>([
     { label: "Major", percentage: 0, color: "var(--primary)" },
     { label: "Minor", percentage: 0, color: "#001F54" },
@@ -117,45 +121,46 @@ export default function AcademicProgressCard() {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-          // Get the user's profile ID
-          const { data: profileData } = await supabase
-            .from('profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
+          // Check for transcript and fetch real GPA
+          const userCoursesData = await fetchUserCourses(supabase, user.id);
+          const hasTranscriptData = !!userCoursesData && userCoursesData.courses.length > 0;
 
-          if (!profileData) {
-            setHasGradPlan(false);
-            return;
+          if (hasTranscriptData) {
+            try {
+              const studentData = await fetchStudentGpa(supabase, user.id);
+              setGpa(studentData?.gpa ?? null);
+            } catch (error) {
+              console.error('Error fetching student GPA:', error);
+              setGpa(null);
+            }
           }
 
-          // Fetch the active grad plan
-          const gradPlan = await GetActiveGradPlan(profileData.id);
+          // Fetch grad plan for progress tracking
+          const gradPlan = await GetActiveGradPlan(user.id);
 
-          if (!gradPlan || !gradPlan.plan_details) {
+          if (gradPlan && gradPlan.plan_details) {
+            setHasGradPlan(true);
+
+            // Parse plan_details to get terms
+            const terms = Array.isArray(gradPlan.plan_details)
+              ? gradPlan.plan_details as Term[]
+              : [];
+
+            // Calculate requirement progress based on grad plan courses
+            const majorProgress = calculateRequirementProgressFromPlan(terms, 'Major');
+            const minorProgress = calculateRequirementProgressFromPlan(terms, 'Minor');
+            const geProgress = calculateRequirementProgressFromPlan(terms, 'GE');
+            const electivesProgress = calculateRequirementProgressFromPlan(terms, 'Elective');
+
+            setRequirements([
+              { label: "Major", percentage: majorProgress, color: "var(--primary)" },
+              { label: "Minor", percentage: minorProgress, color: "#001F54" },
+              { label: "General Education", percentage: geProgress, color: "#2196f3" },
+              { label: "Electives", percentage: electivesProgress, color: "#9C27B0" },
+            ]);
+          } else {
             setHasGradPlan(false);
-            return;
           }
-
-          setHasGradPlan(true);
-
-          // Parse plan_details to get terms
-          const terms = Array.isArray(gradPlan.plan_details)
-            ? gradPlan.plan_details as Term[]
-            : [];
-
-          // Calculate requirement progress based on grad plan courses
-          const majorProgress = calculateRequirementProgressFromPlan(terms, 'Major');
-          const minorProgress = calculateRequirementProgressFromPlan(terms, 'Minor');
-          const geProgress = calculateRequirementProgressFromPlan(terms, 'GE');
-          const electivesProgress = calculateRequirementProgressFromPlan(terms, 'Elective');
-
-          setRequirements([
-            { label: "Major", percentage: majorProgress, color: "var(--primary)" },
-            { label: "Minor", percentage: minorProgress, color: "#001F54" },
-            { label: "General Education", percentage: geProgress, color: "#2196f3" },
-            { label: "Electives", percentage: electivesProgress, color: "#9C27B0" },
-          ]);
         }
       } catch (error) {
         console.error('Error fetching progress data:', error);
@@ -174,46 +179,56 @@ export default function AcademicProgressCard() {
   const averageProgress = requirements.reduce((sum, req) => sum + req.percentage, 0) / requirements.length;
 
   return (
-    // Compact card with modern design
     <div className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-      {/* Bold black header - more compact */}
-      <div className="border-b-2 px-4 py-2.5" style={{ backgroundColor: "#0A0A0A", borderColor: "#0A0A0A" }}>
-        <h3 className="font-header text-xs font-bold uppercase tracking-wider text-white">
+      {/* Bold header matching semester-results-table */}
+      <div className="border-b-2 px-6 py-4 bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100">
+        <h3 className="font-header text-sm font-bold uppercase tracking-wider text-zinc-100 dark:text-zinc-900">
           Academic Progress
         </h3>
       </div>
 
-      <div className="p-3">{hasGradPlan ? (
+      <div className="p-5">{hasGradPlan ? (
         <>
-        {/* Stats Grid - more compact */}
-        <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {/* GPA Card - compact design */}
-          <div className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-3 shadow-sm transition-transform duration-200 hover:-translate-y-0.5">
-            <div className="relative z-10 text-center">
-              <div className="font-header-bold text-2xl font-extrabold text-white">
-                3.98
-              </div>
-              <div className="font-body mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/90">
-                GPA
-              </div>
-            </div>
-            {/* Subtle pattern overlay */}
-            <div className="absolute inset-0 bg-white/5" />
-          </div>
+        {/* Stats Grid - larger, more prominent cards */}
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* GPA Card - standout design with gradient */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-4 shadow-sm transition-transform duration-200 hover:-translate-y-1">
+                  <div className="relative z-10 text-center">
+                    <div className="font-header-bold text-3xl font-extrabold text-white">
+                      {gpa !== null ? gpa.toFixed(2) : "3.98"}
+                    </div>
+                    <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-white/90">
+                      GPA
+                    </div>
+                  </div>
+                  {/* Subtle pattern overlay */}
+                  <div className="absolute inset-0 bg-white/5" />
+                </div>
+              </TooltipTrigger>
+              {gpa === null && (
+                <TooltipContent>
+                  <p>This is a placeholder. Upload your transcript to see your actual GPA.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
 
-          {/* Credits Card - compact */}
-          <div className="group overflow-hidden rounded-lg border border-[var(--border)] bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md">
+          {/* Credits Card - clean and minimal */}
+          <div className="group overflow-hidden rounded-xl border border-[var(--border)] bg-white dark:bg-zinc-900 p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-md">
             <div className="text-center">
-              <div className="font-header-bold text-2xl font-extrabold text-[var(--foreground)]">
+              <div className="font-header-bold text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
                 44
               </div>
-              <div className="font-body mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                 Credits Left
               </div>
             </div>
           </div>
 
-          {/* GPA Calculator Card - compact */}
+          {/* GPA Calculator Card */}
           <button
             type="button"
             onClick={handleGpaCalculatorClick}
