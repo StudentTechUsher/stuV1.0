@@ -13,6 +13,7 @@ interface PlanOverviewProps {
   onAddEvent: () => void;
   programs?: Array<{ id: number; name: string }>;
   createdWithTranscript?: boolean;
+  planName?: string;
   estGradSem?: string;
 }
 
@@ -26,6 +27,7 @@ export function PlanOverview({
   onAddEvent,
   programs,
   createdWithTranscript,
+  planName,
   estGradSem
 }: PlanOverviewProps) {
   const totalCredits = currentPlanData.reduce((total, term) => {
@@ -75,6 +77,38 @@ export function PlanOverview({
           <p className="max-w-xl text-sm leading-relaxed text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
             Quickly confirm credits, pacing, and milestones before you dive into each term.
           </p>
+
+          {/* Plan Details */}
+          {(planName || estGradSem) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl">
+              {planName && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                    Plan Name
+                  </label>
+                  <input
+                    type="text"
+                    value={planName}
+                    readOnly
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
+                  />
+                </div>
+              )}
+              {estGradSem && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                    Graduation Semester
+                  </label>
+                  <input
+                    type="text"
+                    value={estGradSem}
+                    readOnly
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-900 pointer-events-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Programs and Graduation Info */}
           <div className="flex flex-wrap items-center gap-2">

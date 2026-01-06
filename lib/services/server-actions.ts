@@ -27,6 +27,8 @@ import {
     deleteGradPlan as _deleteGradPlan,
     GetActiveGradPlan as _getActiveGradPlan,
     setGradPlanActive,
+    setActiveTerm as _setActiveTerm,
+    updateTermTitle as _updateTermTitle,
 } from './gradPlanService';
 import {
     fetchProfileBasicInfo as _fetchProfileBasicInfo,
@@ -488,6 +490,112 @@ export async function deleteGradPlanAction(gradPlanId: string) {
     } catch (error) {
         console.error('❌ Unexpected error deleting grad plan:', error);
         return { success: false, error: 'Unable to delete plan. Please try again.' };
+    }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Sets a specific term as active in a graduation plan
+ */
+export async function setActiveTermAction(gradPlanId: string, termIndex: number) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only modify their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to modify this plan' };
+            }
+        }
+
+        // Call the service function to set active term
+        return await _setActiveTerm(gradPlanId, termIndex);
+    } catch (error) {
+        console.error('❌ Unexpected error setting active term:', error);
+        return { success: false, error: 'Unable to set active term. Please try again.' };
+    }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Updates the title of a specific term in a graduation plan
+ */
+export async function updateTermTitleAction(gradPlanId: string, termIndex: number, newTitle: string) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only modify their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to modify this plan' };
+            }
+        }
+
+        // Call the service function to update term title
+        return await _updateTermTitle(gradPlanId, termIndex, newTitle);
+    } catch (error) {
+        console.error('❌ Unexpected error updating term title:', error);
+        return { success: false, error: 'Unable to update term title. Please try again.' };
     }
 }
 

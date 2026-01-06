@@ -53,6 +53,7 @@ interface GraduationPlannerProps {
   externalEvents?: Event[];
   onEventsChange?: (events: Event[]) => void;
   onOpenEventDialog?: (opener: (event?: Event) => void) => void;
+  gradPlanId?: string;
 }
 
 export default function GraduationPlanner({
@@ -67,7 +68,8 @@ export default function GraduationPlanner({
   advisorChanges,
   externalEvents,
   onEventsChange,
-  onOpenEventDialog: externalOnOpenEventDialog
+  onOpenEventDialog: externalOnOpenEventDialog,
+  gradPlanId
 }: Readonly<GraduationPlannerProps>) {
   // Use universityId from prop or fallback to studentProfile
   const effectiveUniversityId = universityId ?? studentProfile?.university_id ?? 1;
@@ -533,6 +535,8 @@ export default function GraduationPlanner({
             onAddEvent={() => handleOpenEventDialog()}
             programs={(plan as Record<string, unknown>)?.programs as Array<{ id: number; name: string }> | undefined}
             createdWithTranscript={(plan as Record<string, unknown>)?.created_with_transcript as boolean | undefined}
+            planName={(plan as Record<string, unknown>)?.plan_name as string | undefined}
+            estGradSem={(plan as Record<string, unknown>)?.est_grad_sem as string | undefined}
           />
 
           {/* Display terms with events between them */}
@@ -545,6 +549,7 @@ export default function GraduationPlanner({
               onDeleteEvent={handleDeleteEvent}
               onAddCourse={handleOpenAddCourseModal}
               onSubstituteCourse={handleSubstituteCourse}
+              gradPlanId={gradPlanId}
             />
           ) : (
             <DetailView
@@ -559,6 +564,7 @@ export default function GraduationPlanner({
               onDeleteEvent={handleDeleteEvent}
               onAddCourse={handleOpenAddCourseModal}
               onSubstituteCourse={handleSubstituteCourse}
+              gradPlanId={gradPlanId}
             />
           )}
         </Box>

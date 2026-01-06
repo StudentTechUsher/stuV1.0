@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
-import { PencilLine } from 'lucide-react';
+import React, { useState } from 'react';
+import { PencilLine, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DraggableCourse } from './DraggableCourse';
 import { DroppableTerm } from './DroppableTerm';
 import type { Term as PlannerTerm } from './types';
+import { setActiveTermAction, updateTermTitleAction } from '@/lib/services/server-actions';
 
 interface TermCardProps {
   term: PlannerTerm;
@@ -18,6 +19,7 @@ interface TermCardProps {
   onDeleteTerm?: (termIndex: number) => void;
   onAddCourse?: (termIndex: number) => void;
   onSubstituteCourse?: (termIndex: number, courseIndex: number) => void;
+  gradPlanId?: string;
 }
 
 const statBadgeBase =
@@ -39,7 +41,67 @@ export function TermCard({
   onDeleteTerm,
   onAddCourse,
   onSubstituteCourse,
+  gradPlanId,
 }: Readonly<TermCardProps>) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(term.term);
+  const [isSettingActiveTerm, setIsSettingActiveTerm] = useState(false);
+
+  // Debug logging
+  console.log(`TermCard ${termIndex}:`, {
+    gradPlanId,
+    'term.is_active': term.is_active,
+    'showSetActiveButton': gradPlanId && !term.is_active,
+    termTitle: term.term
+  });
+
+  const handleSetActiveTerm = async () => {
+    if (!gradPlanId) return;
+
+    setIsSettingActiveTerm(true);
+    try {
+      const result = await setActiveTermAction(gradPlanId, termIndex);
+      if (result.success) {
+        // Trigger a page refresh to show updated state
+        window.location.reload();
+      } else {
+        console.error('Failed to set active term:', result.error);
+        alert(`Failed to set active term: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error setting active term:', error);
+      alert('An error occurred while setting the active term.');
+    } finally {
+      setIsSettingActiveTerm(false);
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    if (!gradPlanId || !editedTitle.trim()) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    try {
+      const result = await updateTermTitleAction(gradPlanId, termIndex, editedTitle);
+      if (result.success) {
+        setIsEditingTitle(false);
+        // Trigger a page refresh to show updated state
+        window.location.reload();
+      } else {
+        console.error('Failed to update term title:', result.error);
+        alert(`Failed to update term title: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating term title:', error);
+      alert('An error occurred while updating the term title.');
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setEditedTitle(term.term);
+    setIsEditingTitle(false);
+  };
   const termCredits =
     term.credits_planned ||
     (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
@@ -68,13 +130,67 @@ export function TermCard({
       >
         <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[color-mix(in_srgb,var(--muted-foreground)_78%,#0a1f1a_22%)]">
-              Term {termIndex + 1}
-            </span>
             <div className="flex items-center gap-2">
-              <h3 className="font-header text-xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--foreground)_92%,var(--primary)_8%)]">
-                {visibleTermLabel}
-              </h3>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[color-mix(in_srgb,var(--muted-foreground)_78%,#0a1f1a_22%)]">
+                Term {termIndex + 1}
+              </span>
+              {term.is_active && (
+                <span
+                  className="flex h-5 items-center gap-1 rounded-full border border-green-300 bg-green-50 px-2 text-[10px] font-bold uppercase tracking-wide text-green-700"
+                  role="status"
+                  aria-label="Current active term"
+                >
+                  <CheckCircle2 size={12} strokeWidth={2.5} aria-hidden="true" />
+                  Current Term
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTitle();
+                      if (e.key === 'Escape') handleCancelEditTitle();
+                    }}
+                    className="font-header text-xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--foreground)_92%,var(--primary)_8%)] border-b-2 border-primary bg-transparent outline-none px-1"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveTitle}
+                    className="rounded px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelEditTitle}
+                    className="rounded px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-header text-xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--foreground)_92%,var(--primary)_8%)]">
+                    {visibleTermLabel}
+                  </h3>
+                  {gradPlanId && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTitle(true)}
+                      className="rounded p-1 hover:bg-gray-100 transition-colors"
+                      title="Edit term title"
+                    >
+                      <PencilLine size={16} strokeWidth={2} className="text-gray-500" />
+                    </button>
+                  )}
+                </>
+              )}
               {isEditMode && (
                 <span
                   className="flex h-6 items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] px-2 text-[11px] font-medium uppercase text-[color-mix(in_srgb,var(--foreground)_88%,var(--primary)_12%)]"
@@ -86,6 +202,18 @@ export function TermCard({
                 </span>
               )}
             </div>
+            {gradPlanId && !term.is_active && (
+              <button
+                type="button"
+                onClick={handleSetActiveTerm}
+                disabled={isSettingActiveTerm}
+                className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-primary transition-colors disabled:opacity-50 mt-1 w-fit"
+                title="Set as current term"
+              >
+                <Circle size={14} strokeWidth={2} />
+                {isSettingActiveTerm ? 'Setting...' : 'Set as Current Term'}
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

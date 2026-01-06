@@ -784,6 +784,166 @@ export async function updateGradPlanNameWithUniquenessCheck(
 
 /**
  * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Sets a specific term as the active term and ensures all other terms are not active.
+ * @param gradPlanId - The ID of the graduation plan
+ * @param termIndex - Zero-based index of the term to set as active
+ * @returns Success status and optional error message
+ */
+export async function setActiveTerm(
+    gradPlanId: string,
+    termIndex: number
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Fetch the current plan
+        const { data: planData, error: fetchError } = await supabase
+            .from('grad_plan')
+            .select('plan_details')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (fetchError) {
+            console.error('❌ Error fetching grad plan for active term update:', fetchError);
+            return { success: false, error: fetchError.message };
+        }
+
+        if (!planData || !planData.plan_details) {
+            return { success: false, error: 'Plan not found or has no plan details' };
+        }
+
+        // Extract the plan structure
+        const planDetails = planData.plan_details as Record<string, unknown>;
+        const plan = planDetails.plan as Array<Record<string, unknown>>;
+
+        if (!Array.isArray(plan)) {
+            return { success: false, error: 'Invalid plan structure' };
+        }
+
+        // Filter to get only terms (not events)
+        const terms = plan.filter(item => 'term' in item && !('type' in item && 'afterTerm' in item));
+
+        if (termIndex < 0 || termIndex >= terms.length) {
+            return { success: false, error: 'Invalid term index' };
+        }
+
+        // Update the active status for all items in the plan array
+        let termCounter = 0;
+        const updatedPlan = plan.map(item => {
+            // Check if this is a term (not an event)
+            if ('term' in item && !('type' in item && 'afterTerm' in item)) {
+                const isThisTermActive = termCounter === termIndex;
+                termCounter++;
+                return { ...item, is_active: isThisTermActive };
+            }
+            return item; // Events remain unchanged
+        });
+
+        // Update the plan_details
+        const updatedPlanDetails = { ...planDetails, plan: updatedPlan };
+
+        const { error: updateError } = await supabase
+            .from('grad_plan')
+            .update({ plan_details: updatedPlanDetails })
+            .eq('id', gradPlanId);
+
+        if (updateError) {
+            console.error('❌ Error updating active term:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Unexpected error setting active term:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Updates the title/name of a specific term.
+ * @param gradPlanId - The ID of the graduation plan
+ * @param termIndex - Zero-based index of the term to update
+ * @param newTitle - The new title for the term
+ * @returns Success status and optional error message
+ */
+export async function updateTermTitle(
+    gradPlanId: string,
+    termIndex: number,
+    newTitle: string
+): Promise<{ success: boolean; error?: string }> {
+    const trimmedTitle = newTitle.trim();
+
+    if (!trimmedTitle) {
+        return { success: false, error: 'Term title cannot be empty' };
+    }
+
+    try {
+        // Fetch the current plan
+        const { data: planData, error: fetchError } = await supabase
+            .from('grad_plan')
+            .select('plan_details')
+            .eq('id', gradPlanId)
+            .single();
+
+        if (fetchError) {
+            console.error('❌ Error fetching grad plan for term title update:', fetchError);
+            return { success: false, error: fetchError.message };
+        }
+
+        if (!planData || !planData.plan_details) {
+            return { success: false, error: 'Plan not found or has no plan details' };
+        }
+
+        // Extract the plan structure
+        const planDetails = planData.plan_details as Record<string, unknown>;
+        const plan = planDetails.plan as Array<Record<string, unknown>>;
+
+        if (!Array.isArray(plan)) {
+            return { success: false, error: 'Invalid plan structure' };
+        }
+
+        // Filter to get only terms (not events)
+        const terms = plan.filter(item => 'term' in item && !('type' in item && 'afterTerm' in item));
+
+        if (termIndex < 0 || termIndex >= terms.length) {
+            return { success: false, error: 'Invalid term index' };
+        }
+
+        // Update the title for the specified term
+        let termCounter = 0;
+        const updatedPlan = plan.map(item => {
+            // Check if this is a term (not an event)
+            if ('term' in item && !('type' in item && 'afterTerm' in item)) {
+                if (termCounter === termIndex) {
+                    termCounter++;
+                    return { ...item, term: trimmedTitle };
+                }
+                termCounter++;
+            }
+            return item; // Other terms and events remain unchanged
+        });
+
+        // Update the plan_details
+        const updatedPlanDetails = { ...planDetails, plan: updatedPlan };
+
+        const { error: updateError } = await supabase
+            .from('grad_plan')
+            .update({ plan_details: updatedPlanDetails })
+            .eq('id', gradPlanId);
+
+        if (updateError) {
+            console.error('❌ Error updating term title:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Unexpected error updating term title:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
  * Deletes a graduation plan
  * @param gradPlanId - The ID of the graduation plan to delete
  * @returns Success status and optional error message

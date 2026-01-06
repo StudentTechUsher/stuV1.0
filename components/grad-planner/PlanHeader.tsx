@@ -34,6 +34,7 @@ interface Term {
     fulfills?: string[];
   }>;
   credits_planned?: number;
+  is_active?: boolean;
 }
 
 interface GradPlanRecord {
