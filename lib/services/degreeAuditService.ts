@@ -334,8 +334,12 @@ function inferRequirementType(req: ProgramRequirement): ProgramRequirement {
   }
 
   // creditBucket: constraints with minTotalCredits
-  if (hasConstraints && 'minTotalCredits' in req.constraints) {
-    return { ...req, type: 'creditBucket' };
+  if (hasConstraints && 'minTotalCredits' in req.constraints && typeof req.constraints.minTotalCredits === 'number') {
+    return {
+      ...req,
+      type: 'creditBucket',
+      constraints: { ...req.constraints, minTotalCredits: req.constraints.minTotalCredits }
+    };
   }
 
   // chooseNOf: description contains "of" pattern like "Complete 3 of 19 Courses"
@@ -381,16 +385,19 @@ function evaluateRequirement(
       return evaluateSequence(req as SequenceRequirement, userCourses);
     case 'noteOnly':
       return evaluateNoteOnly(req as NoteOnlyRequirement);
-    default:
-      // Unknown type, mark as unsatisfied
+    default: {
+      // Unknown type, mark as unsatisfied (defensive programming)
+      // TypeScript thinks this is unreachable, but we handle it anyway
+      const unknownReq = req as ProgramRequirement;
       return {
-        requirementId: req.requirementId,
-        description: req.description,
-        type: req.type,
+        requirementId: unknownReq.requirementId,
+        description: unknownReq.description,
+        type: unknownReq.type,
         satisfied: false,
-        message: `Unknown requirement type: ${req.type}`,
+        message: `Unknown requirement type: ${unknownReq.type}`,
         appliedCourses: []
       };
+    }
   }
 }
 
