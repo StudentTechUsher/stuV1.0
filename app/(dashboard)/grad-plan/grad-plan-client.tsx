@@ -185,7 +185,6 @@ export default function GradPlanClient({
                 events: events,
               }}
               isEditMode={isEditMode}
-              onToggleView={() => setIsZoomOut(!isZoomOut)}
             />
           </div>
         ) : (
