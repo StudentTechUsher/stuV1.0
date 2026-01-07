@@ -41,6 +41,7 @@ interface Term {
     fulfills?: string[];
   }>;
   credits_planned?: number;
+  is_active?: boolean;
 }
 
 type Role = "student" | "advisor" | "admin";
@@ -908,6 +909,7 @@ export default function EditGradPlanPage() {
                   externalEvents={events}
                   onEventsChange={setEvents}
                   onOpenEventDialog={handleRegisterEventDialogOpener}
+                  gradPlanId={gradPlan.id}
                 />
               );
             })()}

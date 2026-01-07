@@ -27,6 +27,8 @@ import {
     deleteGradPlan as _deleteGradPlan,
     GetActiveGradPlan as _getActiveGradPlan,
     setGradPlanActive,
+    setActiveTerm as _setActiveTerm,
+    updateTermTitle as _updateTermTitle,
 } from './gradPlanService';
 import {
     fetchProfileBasicInfo as _fetchProfileBasicInfo,
@@ -47,8 +49,10 @@ import {
     formatCoursesForDisplay,
     saveManualCourses as _saveManualCourses,
     updateUserCourseTags as _updateUserCourseTags,
+    updateCourseFulfillments as _updateCourseFulfillments,
     upsertUserCourses as _upsertUserCourses,
     type ParsedCourse,
+    type CourseFulfillment,
 } from './userCoursesService';
 import {
     markAllNotificationsRead as _markAllNotificationsRead,
@@ -489,6 +493,112 @@ export async function deleteGradPlanAction(gradPlanId: string) {
     }
 }
 
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Sets a specific term as active in a graduation plan
+ */
+export async function setActiveTermAction(gradPlanId: string, termIndex: number) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only modify their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to modify this plan' };
+            }
+        }
+
+        // Call the service function to set active term
+        return await _setActiveTerm(gradPlanId, termIndex);
+    } catch (error) {
+        console.error('❌ Unexpected error setting active term:', error);
+        return { success: false, error: 'Unable to set active term. Please try again.' };
+    }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Updates the title of a specific term in a graduation plan
+ */
+export async function updateTermTitleAction(gradPlanId: string, termIndex: number, newTitle: string) {
+    try {
+        const supabaseSrv = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabaseSrv.auth.getUser();
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        const { data: profile, error: profileError } = await supabaseSrv
+            .from('profiles')
+            .select('role_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (profileError || !profile) {
+            return { success: false, error: 'Unable to verify user role' };
+        }
+
+        const { data: planRecord, error: planError } = await supabaseSrv
+            .from('grad_plan')
+            .select('student_id')
+            .eq('id', gradPlanId)
+            .maybeSingle();
+
+        if (planError || !planRecord) {
+            return { success: false, error: 'Graduation plan not found' };
+        }
+
+        // Students can only modify their own plans
+        if (profile.role_id === 3) {
+            const { data: studentData, error: studentError } = await supabaseSrv
+                .from('student')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
+                return { success: false, error: 'Not authorized to modify this plan' };
+            }
+        }
+
+        // Call the service function to update term title
+        return await _updateTermTitle(gradPlanId, termIndex, newTitle);
+    } catch (error) {
+        console.error('❌ Unexpected error updating term title:', error);
+        return { success: false, error: 'Unable to update term title. Please try again.' };
+    }
+}
+
 // Program related
 export async function fetchProgramsByUniversity(universityId: number) {
     return await _fetchProgramsByUniversity(universityId);
@@ -635,6 +745,32 @@ export async function updateUserCourseTagsAction(
             });
         }
         return { success: false, error: 'Failed to update course tags' };
+    }
+}
+
+export async function updateCourseFulfillmentsAction(
+    userId: string,
+    courseId: string,
+    fulfillments: CourseFulfillment[]
+) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const result = await _updateCourseFulfillments(supabase, userId, courseId, fulfillments);
+        return { success: true, course: result.course };
+    } catch (error) {
+        console.error('Error updating course fulfillments:', error);
+        const message = error instanceof Error ? error.message : 'Failed to update requirement assignments';
+        return { success: false, error: message };
     }
 }
 

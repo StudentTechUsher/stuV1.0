@@ -245,7 +245,6 @@ export const GradPlanWizardIntegration: React.FC<GradPlanWizardIntegrationProps>
         }
 
         const result = await response.json();
-        console.log('✅ Grad plan generation started:', result);
 
         // Call the completion callback if provided
         if (onPlanCreated) {

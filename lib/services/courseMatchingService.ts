@@ -3,12 +3,14 @@
  * Matches user courses to program requirements
  */
 
-import type { ParsedCourse } from './userCoursesService';
+import type { CourseFulfillment, ParsedCourse } from './userCoursesService';
+import { MAX_COURSE_FULFILLMENTS } from './userCoursesService';
 import type { ProgramRow } from '@/types/program';
 import type {
   ProgramRequirement,
   ProgramRequirementsStructure,
   Course as RequirementCourse,
+  RequirementType,
 } from '@/types/programRequirements';
 import { getCourses, getSubRequirements } from '@/types/programRequirements';
 
@@ -20,6 +22,28 @@ export interface ProgramWithMatches {
   program: ProgramRow;
   matchedCourses: MatchedCourse[];
   unmatchedCourses: ParsedCourse[];
+}
+
+export interface RequirementOption {
+  programId: string;
+  programName: string;
+  requirementId: string;
+  requirementDescription: string;
+  requirementType: RequirementType | string;
+}
+
+export interface GenEdMatchResult {
+  course: ParsedCourse;
+  matchedRequirements: CourseFulfillment[];
+  availableRequirements: RequirementOption[];
+}
+
+interface FlattenedRequirementCourse {
+  program: ProgramRow;
+  course: RequirementCourse;
+  requirementId: string;
+  requirementDescription: string;
+  requirementType: RequirementType;
 }
 
 /**
@@ -48,9 +72,8 @@ function extractSubject(code: string): string {
  * 2. Partial match with wildcards (e.g., "CS 1XX" matches "CS 142")
  * 3. Subject-only match (e.g., "CS 142" matches any "CS XXX" requirement)
  */
-function doesCourseMatch(userCourse: ParsedCourse, requirementCourse: RequirementCourse, allowSubjectMatch = false): boolean {
-  const userCode = `${userCourse.subject}${userCourse.number}`;
-  const normalizedUserCode = normalizeCourseCode(userCode);
+function doesCourseMatch(userCourseCode: string, requirementCourse: RequirementCourse, allowSubjectMatch = false): boolean {
+  const normalizedUserCode = normalizeCourseCode(userCourseCode);
   const normalizedReqCode = normalizeCourseCode(requirementCourse.code);
 
   // Exact match
@@ -68,19 +91,11 @@ function doesCourseMatch(userCourse: ParsedCourse, requirementCourse: Requiremen
   // Subject-only match (for Gen Ed or flexible requirements)
   // This is very lenient - any course with matching subject code qualifies
   if (allowSubjectMatch) {
-    // Normalize both subjects by removing spaces for comparison
-    // "M COM" -> "MCOM", "REL A" -> "RELA", etc.
-    const userSubject = userCourse.subject.replace(/\s/g, '').toUpperCase();
-    const reqSubject = extractSubject(requirementCourse.code);
+    const userSubject = extractSubject(userCourseCode).trim().toUpperCase();
+    const reqSubject = extractSubject(requirementCourse.code).trim().toUpperCase();
 
     // Match if both have the same normalized subject code
     if (userSubject && reqSubject && userSubject === reqSubject) {
-      return true;
-    }
-
-    // Also try matching with the full user course code (handles edge cases)
-    const userCodeSubject = extractSubject(`${userCourse.subject}${userCourse.number}`);
-    if (userCodeSubject && reqSubject && userCodeSubject === reqSubject) {
       return true;
     }
   }
@@ -94,17 +109,24 @@ function doesCourseMatch(userCourse: ParsedCourse, requirementCourse: Requiremen
 function extractRequirementCourses(
   requirement: ProgramRequirement,
   requirementPath: string = ''
-): Array<{ course: RequirementCourse; requirementId: string }> {
-  const results: Array<{ course: RequirementCourse; requirementId: string }> = [];
+): Array<{ course: RequirementCourse; requirementId: string; requirementDescription: string; requirementType: RequirementType }> {
+  const results: Array<{ course: RequirementCourse; requirementId: string; requirementDescription: string; requirementType: RequirementType }> = [];
   const currentPath = requirementPath
     ? `${requirementPath}.${requirement.requirementId}`
     : String(requirement.requirementId);
+  const requirementDescription = requirement.description || `Requirement ${currentPath}`;
 
   // Get courses from this requirement
   const courses = getCourses(requirement);
   if (courses) {
+    console.log(`  📚 Found ${courses.length} courses in requirement ${currentPath} (${requirementDescription})`);
     courses.forEach((course) => {
-      results.push({ course, requirementId: currentPath });
+      results.push({
+        course,
+        requirementId: currentPath,
+        requirementDescription,
+        requirementType: requirement.type,
+      });
     });
   }
 
@@ -121,7 +143,12 @@ function extractRequirementCourses(
   if (requirement.type === 'sequence') {
     requirement.sequence.forEach((seq) => {
       seq.courses.forEach((course) => {
-        results.push({ course, requirementId: `${currentPath}.${seq.sequenceId}` });
+        results.push({
+          course,
+          requirementId: `${currentPath}.${seq.sequenceId}`,
+          requirementDescription,
+          requirementType: requirement.type,
+        });
       });
     });
   }
@@ -135,6 +162,95 @@ function extractRequirementCourses(
   }
 
   return results;
+}
+
+/**
+ * Converts a gen ed requirement object to ProgramRequirement format
+ */
+function convertGenEdToProgramRequirement(genEdReq: Record<string, unknown>, index: number): ProgramRequirement {
+  // Extract the requirement info
+  const subtitle = genEdReq.subtitle as string || `Requirement ${index + 1}`;
+  const requirementObj = genEdReq.requirement as Record<string, unknown> | undefined;
+  const requirementIndex = requirementObj?.index as number | undefined || index + 1;
+  const blocks = genEdReq.blocks as unknown[] | undefined;
+
+  // Create a ProgramRequirement that has the blocks structure
+  // The getCourses() function will handle extracting courses from these blocks
+  return {
+    requirementId: requirementIndex,
+    description: subtitle,
+    type: 'allOf', // Gen eds are typically "complete all" requirements
+    blocks: blocks, // Keep the blocks structure - getCourses() will parse it
+  } as ProgramRequirement;
+}
+
+/**
+ * Detects if requirements is in gen ed array format
+ */
+function isGenEdFormat(requirements: unknown): boolean {
+  if (!Array.isArray(requirements) || requirements.length === 0) {
+    return false;
+  }
+
+  // Check if first element has gen ed structure (subtitle, requirement, blocks)
+  const first = requirements[0];
+  if (typeof first !== 'object' || first === null) {
+    return false;
+  }
+
+  const firstObj = first as Record<string, unknown>;
+  return 'subtitle' in firstObj && 'requirement' in firstObj && 'blocks' in firstObj;
+}
+
+function parseProgramRequirementsStructure(program: ProgramRow): ProgramRequirementsStructure | null {
+  if (!program.requirements) {
+    return null;
+  }
+
+  try {
+    let parsed: unknown;
+
+    // Parse string requirements
+    if (typeof program.requirements === 'string') {
+      parsed = JSON.parse(program.requirements);
+    } else {
+      parsed = program.requirements;
+    }
+
+    // Check if it's already in the correct format (major requirements)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const candidate = parsed as ProgramRequirementsStructure;
+      if (Array.isArray(candidate.programRequirements)) {
+        console.log(`✅ Found major requirements structure with ${candidate.programRequirements.length} requirements`);
+        return candidate;
+      }
+    }
+
+    // Check if it's gen ed format (direct array)
+    if (isGenEdFormat(parsed)) {
+      const genEdArray = parsed as Record<string, unknown>[];
+      console.log(`🔄 Converting ${genEdArray.length} gen ed requirements to standard format`);
+
+      // Convert gen ed format to standard ProgramRequirementsStructure
+      const programRequirements = genEdArray.map((genEdReq, index) =>
+        convertGenEdToProgramRequirement(genEdReq, index)
+      );
+
+      return {
+        programRequirements,
+        metadata: {
+          version: '1.0',
+          lastModified: new Date().toISOString(),
+        },
+      };
+    }
+
+    console.warn('⚠️ Unknown requirements format:', parsed);
+  } catch (error) {
+    console.error('Failed to parse program requirements:', error);
+  }
+
+  return null;
 }
 
 export interface MatchingOptions {
@@ -216,7 +332,7 @@ export function matchCoursesToProgram(
   userCourses.forEach((userCourse) => {
     const userCode = `${userCourse.subject} ${userCourse.number}`;
     const matches = allRequirementCourses.filter(({ course }) =>
-      doesCourseMatch(userCourse, course, allowSubjectMatch)
+      doesCourseMatch(`${userCourse.subject} ${userCourse.number}`, course, allowSubjectMatch)
     );
 
     if (matches.length > 0) {
@@ -251,4 +367,194 @@ export function matchCoursesToPrograms(
   programs: ProgramRow[]
 ): ProgramWithMatches[] {
   return programs.map((program) => matchCoursesToProgram(userCourses, program));
+}
+
+function collectRequirementOptions(
+  program: ProgramRow,
+  requirement: ProgramRequirement,
+  path: string,
+  target: RequirementOption[],
+  seen: Set<string>
+) {
+  const currentPath = path ? `${path}.${requirement.requirementId}` : String(requirement.requirementId);
+  const key = `${program.id}:${currentPath}`;
+
+  if (!seen.has(key)) {
+    target.push({
+      programId: program.id,
+      programName: program.name,
+      requirementId: currentPath,
+      requirementDescription: requirement.description || `Requirement ${currentPath}`,
+      requirementType: requirement.type,
+    });
+    seen.add(key);
+  }
+
+  if (requirement.type === 'optionGroup') {
+    requirement.options.forEach((option) => {
+      option.requirements.forEach((subReq) => {
+        collectRequirementOptions(program, subReq, `${currentPath}.${option.trackId}`, target, seen);
+      });
+    });
+  }
+
+  const subRequirements = getSubRequirements(requirement);
+  if (subRequirements) {
+    subRequirements.forEach((subReq) => collectRequirementOptions(program, subReq, currentPath, target, seen));
+  }
+}
+
+export function extractRequirementOptions(genEdPrograms: ProgramRow[]): RequirementOption[] {
+  const options: RequirementOption[] = [];
+  const seen = new Set<string>();
+
+  genEdPrograms.forEach((program) => {
+    const structure = parseProgramRequirementsStructure(program);
+    if (!structure?.programRequirements) {
+      return;
+    }
+
+    structure.programRequirements.forEach((requirement) => {
+      collectRequirementOptions(program, requirement, '', options, seen);
+    });
+  });
+
+  return options;
+}
+
+export function performGenEdMatching(
+  userCourses: ParsedCourse[],
+  genEdPrograms: ProgramRow[]
+): GenEdMatchResult[] {
+  console.log('🔬 performGenEdMatching called with:', {
+    userCoursesCount: userCourses?.length || 0,
+    genEdProgramsCount: genEdPrograms?.length || 0,
+    userCoursesIsArray: Array.isArray(userCourses),
+    genEdProgramsIsArray: Array.isArray(genEdPrograms),
+  });
+
+  if (!Array.isArray(userCourses) || userCourses.length === 0) {
+    console.log('⚠️ EARLY RETURN: No user courses or not an array');
+    return [];
+  }
+
+  const availableRequirements = extractRequirementOptions(genEdPrograms);
+  console.log('📋 Extracted', availableRequirements.length, 'requirement options');
+
+  if (!Array.isArray(genEdPrograms) || genEdPrograms.length === 0) {
+    console.log('⚠️ EARLY RETURN: No gen ed programs or not an array. Returning courses with empty matches.');
+    return userCourses.map((course) => ({
+      course,
+      matchedRequirements: course.fulfillsRequirements ?? [],
+      availableRequirements,
+    }));
+  }
+
+  console.log('✅ Proceeding with matching logic...');
+
+  const flattenedRequirements: FlattenedRequirementCourse[] = genEdPrograms.flatMap((program) => {
+    console.log(`📖 Processing program: ${program.name} (ID: ${program.id})`);
+    const structure = parseProgramRequirementsStructure(program);
+    if (!structure?.programRequirements) {
+      console.log(`  ⚠️ No valid requirements structure for ${program.name}`);
+      return [];
+    }
+
+    const entries = structure.programRequirements.flatMap((requirement) => extractRequirementCourses(requirement));
+    console.log(`  ✅ Extracted ${entries.length} requirement courses from ${program.name}`);
+    if (entries.length > 0) {
+      console.log(`     Sample courses: ${entries.slice(0, 3).map(e => e.course.code).join(', ')}`);
+    }
+
+    return entries.map((entry) => ({
+      program,
+      course: entry.course,
+      requirementId: entry.requirementId,
+      requirementDescription: entry.requirementDescription,
+      requirementType: entry.requirementType,
+    }));
+  });
+
+  console.log(`📊 Total flattened requirements: ${flattenedRequirements.length}`);
+
+  return userCourses.map((course) => {
+    const hasManualOverrides = course.fulfillsRequirements?.some((fulfillment) => fulfillment.matchType === 'manual');
+
+    if (hasManualOverrides) {
+      return {
+        course,
+        matchedRequirements: course.fulfillsRequirements ?? [],
+        availableRequirements,
+      };
+    }
+
+    if (flattenedRequirements.length === 0) {
+      return {
+        course,
+        matchedRequirements: [],
+        availableRequirements,
+      };
+    }
+
+    const codesToTry: Array<{ code: string; isEquivalent: boolean }> = [];
+    const canonicalCode = `${course.subject} ${course.number}`.trim();
+    if (canonicalCode) {
+      codesToTry.push({ code: canonicalCode, isEquivalent: true });
+    }
+    if (course.origin === 'transfer' && course.transfer) {
+      const originalCode = `${course.transfer.originalSubject} ${course.transfer.originalNumber}`.trim();
+      if (originalCode) {
+        codesToTry.push({ code: originalCode, isEquivalent: false });
+      }
+    }
+
+    const matchedFulfillments: CourseFulfillment[] = [];
+    const usedRequirements = new Set<string>();
+
+    flattenedRequirements.some((requirementEntry) => {
+      const matchedCandidate = codesToTry.find((candidate) =>
+        doesCourseMatch(candidate.code, requirementEntry.course, true)
+      );
+
+      if (!matchedCandidate) {
+        return false;
+      }
+
+      const requirementKey = `${requirementEntry.program.id}:${requirementEntry.requirementId}`;
+      if (usedRequirements.has(requirementKey)) {
+        return false;
+      }
+
+      matchedFulfillments.push({
+        programId: requirementEntry.program.id,
+        programName: requirementEntry.program.name,
+        requirementId: requirementEntry.requirementId,
+        requirementDescription: requirementEntry.requirementDescription,
+        matchType: 'auto',
+        matchedAt: new Date().toISOString(),
+        matchedCourseCode: matchedCandidate.isEquivalent ? undefined : matchedCandidate.code,
+        requirementType: requirementEntry.requirementType,
+      });
+      usedRequirements.add(requirementKey);
+
+      return matchedFulfillments.length >= MAX_COURSE_FULFILLMENTS;
+    });
+
+    const courseWithMatches: ParsedCourse =
+      matchedFulfillments.length > 0
+        ? {
+            ...course,
+            fulfillsRequirements: matchedFulfillments,
+          }
+        : {
+            ...course,
+            fulfillsRequirements: undefined,
+          };
+
+    return {
+      course: courseWithMatches,
+      matchedRequirements: matchedFulfillments,
+      availableRequirements,
+    };
+  });
 }

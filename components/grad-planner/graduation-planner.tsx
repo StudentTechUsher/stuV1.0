@@ -53,6 +53,7 @@ interface GraduationPlannerProps {
   externalEvents?: Event[];
   onEventsChange?: (events: Event[]) => void;
   onOpenEventDialog?: (opener: (event?: Event) => void) => void;
+  gradPlanId?: string;
 }
 
 export default function GraduationPlanner({
@@ -67,7 +68,8 @@ export default function GraduationPlanner({
   advisorChanges,
   externalEvents,
   onEventsChange,
-  onOpenEventDialog: externalOnOpenEventDialog
+  onOpenEventDialog: externalOnOpenEventDialog,
+  gradPlanId
 }: Readonly<GraduationPlannerProps>) {
   // Use universityId from prop or fallback to studentProfile
   const effectiveUniversityId = universityId ?? studentProfile?.university_id ?? 1;
@@ -94,6 +96,8 @@ export default function GraduationPlanner({
   // Add Course Modal state
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
   const [selectedTermForCourse, setSelectedTermForCourse] = useState<number | null>(null);
+  // Substitute Course state
+  const [substitutingCourse, setSubstitutingCourse] = useState<{ termIndex: number; courseIndex: number } | null>(null);
 
   // Set up DnD sensors
   const sensors = useSensors(
@@ -361,9 +365,50 @@ export default function GraduationPlanner({
 
   // Function to add a course to a term
   const handleAddCourse = (course: { code: string; title: string; credits: number }) => {
-    if (!isEditMode || selectedTermForCourse === null) return;
+    if (!isEditMode) return;
 
-    // Calculate new data first
+    // If substituting, replace the course
+    if (substitutingCourse !== null) {
+      const { termIndex, courseIndex } = substitutingCourse;
+
+      const newData = editablePlanData.map((term, idx) => {
+        if (idx === termIndex) {
+          const newCourse: Course = {
+            code: course.code,
+            title: course.title,
+            credits: course.credits,
+            fulfills: [],
+          };
+          const updatedCourses = term.courses ? [...term.courses] : [];
+          updatedCourses[courseIndex] = newCourse;
+          const updatedCredits = updatedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+          return {
+            ...term,
+            courses: updatedCourses,
+            credits_planned: updatedCredits
+          };
+        }
+        return term;
+      });
+
+      // Update state
+      setEditablePlanData(newData);
+      setModifiedTerms(prev => new Set(prev).add(termIndex));
+
+      // Notify parent after state update
+      if (onPlanUpdate) {
+        onPlanUpdate(newData);
+      }
+
+      // Close modal
+      setShowAddCourseModal(false);
+      setSubstitutingCourse(null);
+      return;
+    }
+
+    // If adding (not substituting), add to selected term
+    if (selectedTermForCourse === null) return;
+
     const newData = editablePlanData.map((term, idx) => {
       if (idx === selectedTermForCourse) {
         const newCourse: Course = {
@@ -395,6 +440,12 @@ export default function GraduationPlanner({
     // Close modal
     setShowAddCourseModal(false);
     setSelectedTermForCourse(null);
+  };
+
+  // Function to open the substitute course modal
+  const handleSubstituteCourse = (termIndex: number, courseIndex: number) => {
+    setSubstitutingCourse({ termIndex, courseIndex });
+    setShowAddCourseModal(true);
   };
 
   // Transform current plan data to SpaceView format - MUST be before early return
@@ -484,6 +535,8 @@ export default function GraduationPlanner({
             onAddEvent={() => handleOpenEventDialog()}
             programs={(plan as Record<string, unknown>)?.programs as Array<{ id: number; name: string }> | undefined}
             createdWithTranscript={(plan as Record<string, unknown>)?.created_with_transcript as boolean | undefined}
+            planName={(plan as Record<string, unknown>)?.plan_name as string | undefined}
+            estGradSem={(plan as Record<string, unknown>)?.est_grad_sem as string | undefined}
           />
 
           {/* Display terms with events between them */}
@@ -495,6 +548,8 @@ export default function GraduationPlanner({
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
               onAddCourse={handleOpenAddCourseModal}
+              onSubstituteCourse={handleSubstituteCourse}
+              gradPlanId={gradPlanId}
             />
           ) : (
             <DetailView
@@ -508,6 +563,8 @@ export default function GraduationPlanner({
               onEditEvent={handleOpenEventDialog}
               onDeleteEvent={handleDeleteEvent}
               onAddCourse={handleOpenAddCourseModal}
+              onSubstituteCourse={handleSubstituteCourse}
+              gradPlanId={gradPlanId}
             />
           )}
         </Box>
@@ -542,6 +599,7 @@ export default function GraduationPlanner({
         onClose={() => {
           setShowAddCourseModal(false);
           setSelectedTermForCourse(null);
+          setSubstitutingCourse(null);
         }}
         onAddCourse={handleAddCourse}
         universityId={effectiveUniversityId}

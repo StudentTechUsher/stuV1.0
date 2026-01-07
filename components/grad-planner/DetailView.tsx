@@ -14,6 +14,8 @@ interface DetailViewProps {
   onEditEvent: (event?: Event) => void;
   onDeleteEvent: (eventId: string) => void;
   onAddCourse?: (termIndex: number) => void;
+  onSubstituteCourse?: (termIndex: number, courseIndex: number) => void;
+  gradPlanId?: string;
 }
 
 export function DetailView({
@@ -26,8 +28,24 @@ export function DetailView({
   onDeleteTerm,
   onEditEvent,
   onDeleteEvent,
-  onAddCourse
+  onAddCourse,
+  onSubstituteCourse,
+  gradPlanId
 }: Readonly<DetailViewProps>) {
+  // Sort terms to show "Transfer Credits" first
+  const sortedTermsWithIndices = React.useMemo(() => {
+    return currentPlanData
+      .map((term, originalIndex) => ({ term, originalIndex }))
+      .sort((a, b) => {
+        const aIsTransfer = a.term.term.toLowerCase().includes('transfer');
+        const bIsTransfer = b.term.term.toLowerCase().includes('transfer');
+
+        if (aIsTransfer && !bIsTransfer) return -1;
+        if (!aIsTransfer && bIsTransfer) return 1;
+        return 0; // Keep original order for non-transfer terms
+      });
+  }, [currentPlanData]);
+
   const renderEventsAfterTerm = (termNumber: number, termEvents: Event[]) => {
     if (termEvents.length === 0) {
       return null;
@@ -70,17 +88,17 @@ export function DetailView({
 
   return (
     <div className="flex flex-col gap-6">
-      {currentPlanData.map((term, index) => {
-        const termNumber = index + 1;
+      {sortedTermsWithIndices.map(({ term, originalIndex }) => {
+        const termNumber = originalIndex + 1;
         const eventsAfterThisTerm = events.filter(e => e.afterTerm === termNumber);
 
         return (
-          <React.Fragment key={`term-section-${index}`}>
+          <React.Fragment key={`term-section-${originalIndex}`}>
             {/* Term Card - Full Width */}
             <div className="w-full">
               <TermCard
                 term={term}
-                termIndex={index}
+                termIndex={originalIndex}
                 isEditMode={isEditMode}
                 currentPlanData={currentPlanData}
                 modifiedTerms={modifiedTerms}
@@ -88,6 +106,8 @@ export function DetailView({
                 onMoveCourse={onMoveCourse}
                 onDeleteTerm={onDeleteTerm}
                 onAddCourse={onAddCourse}
+                onSubstituteCourse={onSubstituteCourse}
+                gradPlanId={gradPlanId}
               />
             </div>
 

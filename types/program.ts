@@ -10,4 +10,9 @@ export type ProgramRow = {
     is_general_ed?: boolean;
     course_flow?: unknown;
     target_total_credits?: number | null;
+    applicable_start_year?: number | null;
+    applicable_end_year?: number | null;
+    applies_to_transfers?: boolean | null;
+    applies_to_freshmen?: boolean | null;
+    priority?: number | null;
 };

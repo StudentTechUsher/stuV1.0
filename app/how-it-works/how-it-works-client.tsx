@@ -147,7 +147,7 @@ export default function HowItWorksClient() {
             </div>
             <div>
             <Link href="https://www.figma.com/proto/z9xbhwsGp5AvRkDgP6fWPR/stu?node-id=683-4371&t=D5BlhoZEEIGoKcvA-1">
-              <button className="container px-4 md:px-6 text-zinc-900 dark:text-zinc-100 hover:text-primary"> Explore stu's Wireframe </button>
+              <button className="container px-4 md:px-6 text-zinc-900 dark:text-zinc-100 hover:text-primary"> Explore stu&apos;s Wireframe </button>
             </Link>
           </div>
           </div>

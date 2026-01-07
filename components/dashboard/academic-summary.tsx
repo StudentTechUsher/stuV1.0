@@ -35,8 +35,8 @@ const DEFAULT_DATA = {
   name: "Loading...",
   standing: "Junior",
   requiredCredits: 120,
-  earnedCredits: 76,
-  gradProgress: 0.63,        // 63%
+  earnedCredits: 0,
+  gradProgress: 0,           // Calculated from earnedCredits / requiredCredits
   planProgress: 0.93,        // 93%
   followThrough: 0.70,       // 70%
   estSemester: "Winter 2028",
@@ -140,6 +140,9 @@ export default function AcademicSummary() {
           // Calculate class year from earned credits using classifyCredits utility
           const classYear = classifyCredits(earnedCredits);
 
+          // Calculate overall progress based on credits (earned / required)
+          const gradProgress = requiredCredits > 0 ? earnedCredits / requiredCredits : 0;
+
           setUserData(prev => ({
             ...prev,
             name: displayName,
@@ -148,6 +151,7 @@ export default function AcademicSummary() {
             estGradDate: formattedGradDate,
             earnedCredits,
             requiredCredits,
+            gradProgress: Math.min(gradProgress, 1), // Cap at 100%
           }));
 
           setAvatarUrl(profilePicture);
@@ -321,10 +325,10 @@ export default function AcademicSummary() {
               </Box>
               <Stack spacing={0.75} sx={{ flex: 1 }}>
                 <Typography className="font-body text-xs uppercase tracking-wider" sx={{ color: "var(--muted-foreground)", fontWeight: 700 }}>
-                  Graduation Progress
+                  Overall Progress
                 </Typography>
                 <Typography className="font-body" sx={{ fontSize: "0.875rem", color: "var(--foreground)", lineHeight: 1.5, fontWeight: 500 }}>
-                  You&apos;ve completed <Box component="span" sx={{ fontWeight: 800, color: "#0A0A0A" }}>{Math.round(d.gradProgress * 100)}%</Box> of your degree requirements
+                  You&apos;ve completed <Box component="span" sx={{ fontWeight: 800, color: "#0A0A0A" }}>{Math.round(d.gradProgress * 100)}%</Box> of your total degree requirements across all programs
                 </Typography>
               </Stack>
             </Stack>

@@ -29,8 +29,6 @@ export default function GradPlanRealtimeListener({ userId }: Readonly<GradPlanRe
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
-    console.log('📡 Setting up real-time listener for grad_plan table, userId:', userId);
-
     // Subscribe to INSERT events on grad_plan table
     const channel = supabase
       .channel('grad-plan-changes')
@@ -42,15 +40,6 @@ export default function GradPlanRealtimeListener({ userId }: Readonly<GradPlanRe
           table: 'grad_plan',
         },
         (payload) => {
-          console.log('📡 ========================================');
-          console.log('📡 REALTIME EVENT RECEIVED');
-          console.log('📡 Event Type:', payload.eventType);
-          console.log('📡 Timestamp:', new Date().toISOString());
-          console.log('📡 Full Payload:', payload);
-          console.log('📡 New Record:', payload.new);
-          console.log('📡 Old Record:', payload.old);
-          console.log('📡 ========================================');
-
           // Only show notification for INSERT events
           if (payload.eventType === 'INSERT') {
             // Check if this grad plan belongs to the current user
@@ -61,13 +50,6 @@ export default function GradPlanRealtimeListener({ userId }: Readonly<GradPlanRe
                 .select('profile_id')
                 .eq('id', payload.new.student_id)
                 .single();
-
-              console.log('📡 Student ownership check:', {
-                student_id: payload.new.student_id,
-                profile_id: student?.profile_id,
-                current_userId: userId,
-                matches: student?.profile_id === userId
-              });
 
               if (student?.profile_id === userId) {
                 // This grad plan belongs to the current user!
@@ -84,19 +66,13 @@ export default function GradPlanRealtimeListener({ userId }: Readonly<GradPlanRe
         }
       )
       .subscribe((status, err) => {
-        console.log('📡 ========================================');
-        console.log('📡 SUBSCRIPTION STATUS CHANGE');
-        console.log('📡 Status:', status);
-        console.log('📡 Timestamp:', new Date().toISOString());
         if (err) {
           console.error('📡 Subscription Error:', err);
         }
-        console.log('📡 ========================================');
       });
 
     // Cleanup subscription on unmount
     return () => {
-      console.log('📡 Cleaning up real-time listener');
       supabase.removeChannel(channel);
     };
   }, [userId]);

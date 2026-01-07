@@ -30,6 +30,15 @@ export class ManualCourseSaveError extends Error {
   }
 }
 
+export class CourseFulfillmentUpdateError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'CourseFulfillmentUpdateError';
+  }
+}
+
+export const MAX_COURSE_FULFILLMENTS = 10;
+
 export interface TransferCreditInfo {
   institution: string;          // Transfer institution name
   originalSubject: string;      // Original course subject code
@@ -37,6 +46,17 @@ export interface TransferCreditInfo {
   originalTitle: string;         // Original course title
   originalCredits: number;       // Original course credits
   originalGrade: string;         // Original course grade
+}
+
+export interface CourseFulfillment {
+  programId: string;
+  programName: string;
+  requirementId: string;
+  requirementDescription: string;
+  matchType: 'auto' | 'manual';
+  matchedAt: string;
+  matchedCourseCode?: string;
+  requirementType?: string;
 }
 
 export interface ParsedCourse {
@@ -53,6 +73,7 @@ export interface ParsedCourse {
 
   // Transfer credit information (only populated when origin === 'transfer')
   transfer?: TransferCreditInfo;
+  fulfillsRequirements?: CourseFulfillment[];
 }
 
 export interface UserCourse {
@@ -99,6 +120,65 @@ function normalizeCredits(value: unknown, fallback: number | null = 0): number |
     return Number.isFinite(parsed) ? parsed : fallback;
   }
   return fallback;
+}
+
+function normalizeFulfillments(value: unknown): CourseFulfillment[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const normalized = value
+    .slice(0, MAX_COURSE_FULFILLMENTS)
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+
+      const raw = entry as Partial<CourseFulfillment>;
+      const programId = raw.programId ? String(raw.programId) : '';
+      const programName = raw.programName ? String(raw.programName).trim() : '';
+      const requirementId = raw.requirementId ? String(raw.requirementId).trim() : '';
+      const requirementDescription = raw.requirementDescription ? String(raw.requirementDescription).trim() : '';
+
+      if (!programId || !programName || !requirementId || !requirementDescription) {
+        return null;
+      }
+
+      const normalizedEntry: CourseFulfillment = {
+        programId,
+        programName,
+        requirementId,
+        requirementDescription,
+        matchType: raw.matchType === 'manual' ? 'manual' : 'auto',
+        matchedAt: typeof raw.matchedAt === 'string' ? raw.matchedAt : new Date().toISOString(),
+      };
+
+      if (raw.matchedCourseCode) {
+        const code = String(raw.matchedCourseCode).trim();
+        if (code) {
+          normalizedEntry.matchedCourseCode = code;
+        }
+      }
+
+      if (raw.requirementType) {
+        normalizedEntry.requirementType = String(raw.requirementType);
+      }
+
+      return normalizedEntry;
+    })
+    .filter((entry): entry is CourseFulfillment => Boolean(entry));
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function sanitizeFulfillmentsForSave(entries: CourseFulfillment[] | undefined): CourseFulfillment[] {
+  const normalized = normalizeFulfillments(entries) ?? [];
+  const timestamp = new Date().toISOString();
+
+  return normalized.slice(0, MAX_COURSE_FULFILLMENTS).map((entry) => ({
+    ...entry,
+    matchedAt: entry.matchedAt || timestamp,
+  }));
 }
 
 export function normalizeParsedCourses(courses?: ParsedCourse[] | null): ParsedCourse[] {
@@ -149,6 +229,8 @@ export function normalizeParsedCourses(courses?: ParsedCourse[] | null): ParsedC
         delete normalized.transfer;
       }
     }
+
+    normalized.fulfillsRequirements = normalizeFulfillments(normalized.fulfillsRequirements);
 
     return normalized;
   });
@@ -228,11 +310,6 @@ export async function upsertUserCourses(
       throw new CourseUpsertError('Failed to delete existing courses', deleteError);
     }
 
-    logInfo('Deleted existing courses for user', {
-      userId,
-      action: 'delete_user_courses',
-    });
-
     const { error: insertError } = await supabase
       .from('user_courses')
       .insert({
@@ -247,12 +324,6 @@ export async function upsertUserCourses(
       });
       throw new CourseUpsertError('Failed to insert courses', insertError);
     }
-
-    logInfo('Successfully inserted courses for user', {
-      userId,
-      action: 'insert_user_courses',
-      count: normalizedCourses.length,
-    });
 
     return {
       success: true,
@@ -363,6 +434,77 @@ export async function updateUserCourseTags(
       action: 'update_user_course_tags',
     });
     throw new CourseTagUpdateError('Unexpected error updating course tags', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ * Updates requirement fulfillments for a specific course
+ */
+export async function updateCourseFulfillments(
+  supabase: SupabaseClient,
+  userId: string,
+  courseId: string,
+  fulfillments: CourseFulfillment[]
+): Promise<{ success: boolean; course: ParsedCourse }> {
+  if (!userId) {
+    throw new CourseFulfillmentUpdateError('User ID is required to update course fulfillments');
+  }
+  if (!courseId) {
+    throw new CourseFulfillmentUpdateError('Course ID is required to update course fulfillments');
+  }
+
+  const cleanedFulfillments = sanitizeFulfillmentsForSave(fulfillments);
+
+  try {
+    const record = await fetchUserCourses(supabase, userId);
+    if (!record?.courses || record.courses.length === 0) {
+      throw new CourseFulfillmentUpdateError('No courses found for this user');
+    }
+
+    const normalizedCourses = normalizeParsedCourses(record.courses);
+    const targetIndex = normalizedCourses.findIndex((course) => course.id === courseId);
+
+    if (targetIndex === -1) {
+      throw new CourseFulfillmentUpdateError('Course not found');
+    }
+
+    const updatedCourse: ParsedCourse = {
+      ...normalizedCourses[targetIndex],
+      fulfillsRequirements: cleanedFulfillments.length > 0 ? cleanedFulfillments : undefined,
+    };
+
+    normalizedCourses[targetIndex] = updatedCourse;
+
+    const { error } = await supabase
+      .from('user_courses')
+      .update({ courses: normalizedCourses })
+      .eq('user_id', userId);
+
+    if (error) {
+      logError('Failed to update course fulfillments', error, {
+        userId,
+        action: 'update_course_fulfillments',
+      });
+      throw new CourseFulfillmentUpdateError('Failed to update course fulfillments', error);
+    }
+
+    logInfo('Updated course fulfillments', {
+      userId,
+      action: 'update_course_fulfillments',
+      count: cleanedFulfillments.length,
+    });
+
+    return { success: true, course: updatedCourse };
+  } catch (error) {
+    if (error instanceof CourseFulfillmentUpdateError) {
+      throw error;
+    }
+    logError('Unexpected error updating course fulfillments', error, {
+      userId,
+      action: 'update_course_fulfillments',
+    });
+    throw new CourseFulfillmentUpdateError('Unexpected error updating course fulfillments', error);
   }
 }
 

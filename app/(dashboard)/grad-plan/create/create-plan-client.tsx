@@ -899,20 +899,7 @@ export default function CreatePlanClient({
 
         // Trigger plan generation
         setTimeout(async () => {
-          // Store loading message index before try-catch so it's accessible in catch block
-          const loadingMessageIndex = messages.length;
-
           try {
-            // Add loading message
-            setMessages(prev => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: 'Perfect! Now let me generate your personalized graduation plan. This may take a moment...',
-                timestamp: new Date(),
-              },
-            ]);
-
             // Get the prompt from database
             const promptTemplate = await getAiPromptAction('organize_grad_plan');
             if (!promptTemplate) {
@@ -1004,18 +991,14 @@ export default function CreatePlanClient({
             console.error('Error generating graduation plan:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-            // Remove the loading message and replace with error message
-            setMessages(prev => {
-              const filtered = prev.filter((_, index) => index !== loadingMessageIndex);
-              return [
-                ...filtered,
-                {
-                  role: 'assistant',
-                  content: `I encountered an error while generating your plan:\n\n**Error:** ${errorMessage}\n\nPlease try again or contact support if the issue persists.`,
-                  timestamp: new Date(),
-                },
-              ];
-            });
+            // Replace loading message with error message
+            setMessages([
+              {
+                role: 'assistant',
+                content: `I encountered an error while generating your plan:\n\n**Error:** ${errorMessage}\n\nPlease try again or contact support if the issue persists.`,
+                timestamp: new Date(),
+              },
+            ]);
             setIsProcessing(false);
           }
         }, 1000);

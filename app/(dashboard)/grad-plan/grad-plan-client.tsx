@@ -144,20 +144,18 @@ export default function GradPlanClient({
       ) : (
         <>
 
-      {/* Plan Overview Component - Only show in detail view */}
-      {!isZoomOut && (
-        <PlanOverview
-          currentPlanData={planData}
-          durationYears={Math.ceil(planData.length / 2)} // Rough estimate
-          fulfilledRequirements={[]} // TODO: Calculate from plan data
-          isEditMode={isEditMode}
-          isSpaceView={isZoomOut}
-          onToggleView={() => setIsZoomOut(!isZoomOut)}
-          onAddEvent={() => {/* TODO: Implement */}}
-          programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
-          estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
-        />
-      )}
+      {/* Plan Overview Component - Show in both views */}
+      <PlanOverview
+        currentPlanData={planData}
+        durationYears={Math.ceil(planData.length / 2)} // Rough estimate
+        fulfilledRequirements={[]} // TODO: Calculate from plan data
+        isEditMode={isEditMode}
+        isSpaceView={isZoomOut}
+        onToggleView={() => setIsZoomOut(!isZoomOut)}
+        onAddEvent={() => {/* TODO: Implement */}}
+        programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
+        estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
+      />
 
       {/* Terms View - Grid or Zoom out */}
       <div>
@@ -187,7 +185,6 @@ export default function GradPlanClient({
                 events: events,
               }}
               isEditMode={isEditMode}
-              onToggleView={() => setIsZoomOut(!isZoomOut)}
             />
           </div>
         ) : (
@@ -221,7 +218,7 @@ export default function GradPlanClient({
                       {term.courses?.map((course, courseIndex) => (
                         <div
                           key={courseIndex}
-                          className="p-3 bg-[var(--secondary)] rounded-md text-sm transition-all duration-200 hover:bg-[var(--primary-15)]"
+                          className="p-3 bg-white border border-gray-200 rounded-md text-sm transition-all duration-200 hover:shadow-md hover:border-gray-300"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">

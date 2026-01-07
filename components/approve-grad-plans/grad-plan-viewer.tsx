@@ -16,6 +16,7 @@ interface Term {
   notes?: string;
   courses?: Course[];
   credits_planned?: number;
+  is_active?: boolean;
 }
 
 interface GradPlanViewerProps {

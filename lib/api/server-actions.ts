@@ -154,7 +154,6 @@ ${JSON.stringify(coursesData, null, 2)}
     }
     const openAiMs = Date.now() - tOpenAI;
     const reqId = resp.headers.get("x-request-id") || resp.headers.get("request-id");
-    console.log("📡 OpenAI responded in", openAiMs, "ms | status:", resp.status, "| request-id:", reqId);
 
     if (!resp.ok) {
       const errBody = await resp.text();
@@ -172,14 +171,12 @@ ${JSON.stringify(coursesData, null, 2)}
     let aiResponse: ChatCompletionResponse;
     try {
       aiResponse = (await resp.json()) as ChatCompletionResponse;
-      console.log("🤖 OpenAI JSON parsed (preview):", trunc(JSON.stringify(aiResponse)));
     } catch (parseErr) {
       console.error("❌ Failed to parse OpenAI JSON:", parseErr);
       throw new Error("Unable to parse OpenAI response");
     }
 
     const aiText = aiResponse.choices?.[0]?.message?.content;
-    console.log("🧩 aiText present:", Boolean(aiText));
     if (!aiText) {
       console.error("❌ No content in AI response:", { requestId: reqId, usage: aiResponse.usage });
       throw new Error("No content received from OpenAI");
@@ -188,9 +185,7 @@ ${JSON.stringify(coursesData, null, 2)}
     // Parse JSON (we asked for JSON mode)
     let semesterPlan: unknown;
     try {
-      console.log("🧪 Attempting to parse AI text (preview):", trunc(aiText));
       semesterPlan = JSON.parse(aiText);
-      console.log("✅ Parsed semesterPlan (preview):", trunc(JSON.stringify(semesterPlan)));
     } catch (e) {
       console.error("❌ Error parsing AI response as JSON:", e, "| raw preview:", trunc(aiText));
       throw new Error("Invalid JSON response from AI");

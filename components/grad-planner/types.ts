@@ -3,6 +3,7 @@ export interface Course {
   title: string;
   credits: number;
   fulfills?: string[];
+  isCompleted?: boolean;
 }
 
 export type EventType =
@@ -38,4 +39,5 @@ export interface Term {
   notes?: string;
   courses?: Course[];
   credits_planned?: number;
+  is_active?: boolean;
 }
