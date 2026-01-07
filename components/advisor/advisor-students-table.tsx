@@ -93,7 +93,7 @@ export default function AdvisorStudentsTable({ rows }: Readonly<AdvisorStudentsT
             No Students Yet
           </h3>
           <p className="font-body text-sm text-[var(--muted-foreground)] leading-relaxed">
-            You don't have any advisees assigned yet. Students will appear here once they are assigned to you.
+            You don&apos;t have any advisees assigned yet. Students will appear here once they are assigned to you.
           </p>
         </div>
       </div>

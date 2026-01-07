@@ -103,7 +103,7 @@ export default function AcademicHistoryPage() {
   const [, setMatchResults] = useState<GenEdMatchResult[]>([]);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [requirementDialogCourse, setRequirementDialogCourse] = useState<ParsedCourse | null>(null);
-  const [autoMatchLoading, setAutoMatchLoading] = useState(false);
+  const [_autoMatchLoading, setAutoMatchLoading] = useState(false);
   const [gradPlanPrograms, setGradPlanPrograms] = useState<ProgramRow[]>([]);
 
   const loadingMessages = [

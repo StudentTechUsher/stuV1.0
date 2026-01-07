@@ -484,7 +484,6 @@ export async function updateCourseFulfillments(
     if (error) {
       logError('Failed to update course fulfillments', error, {
         userId,
-        courseId,
         action: 'update_course_fulfillments',
       });
       throw new CourseFulfillmentUpdateError('Failed to update course fulfillments', error);
@@ -492,9 +491,8 @@ export async function updateCourseFulfillments(
 
     logInfo('Updated course fulfillments', {
       userId,
-      courseId,
       action: 'update_course_fulfillments',
-      fulfillmentCount: cleanedFulfillments.length,
+      count: cleanedFulfillments.length,
     });
 
     return { success: true, course: updatedCourse };
@@ -504,7 +502,6 @@ export async function updateCourseFulfillments(
     }
     logError('Unexpected error updating course fulfillments', error, {
       userId,
-      courseId,
       action: 'update_course_fulfillments',
     });
     throw new CourseFulfillmentUpdateError('Unexpected error updating course fulfillments', error);
