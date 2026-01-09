@@ -28,7 +28,7 @@ import { TrashZone } from './TrashZone';
 import { DraggableCourseOverlay } from './DraggableCourseOverlay';
 import { PlanOverview } from './PlanOverview';
 import { DetailView } from './DetailView';
-import { AddCourseModal } from './AddCourseModal';
+import { CourseSearchModal } from './CourseSearchModal';
 
 // Import hooks
 import { usePlanParser } from './usePlanParser';
@@ -594,7 +594,7 @@ export default function GraduationPlanner({
       />
 
       {/* Add Course Modal */}
-      <AddCourseModal
+      <CourseSearchModal
         open={showAddCourseModal}
         onClose={() => {
           setShowAddCourseModal(false);
