@@ -18,6 +18,7 @@ export interface TranscriptParseReport {
   used_ocr: boolean;
   used_llm: boolean;
   used_byu_parser?: boolean;
+  gpa?: number | null;
   confidence_stats: {
     avg: number;
     min: number;
@@ -505,6 +506,7 @@ export async function parseTranscriptFromBuffer(
           used_ocr: false,
           used_llm: false,
           used_byu_parser: true,
+          gpa: byuResult.gpa,
           confidence_stats: {
             avg: 1.0,
             min: 1.0,

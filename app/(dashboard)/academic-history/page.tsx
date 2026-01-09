@@ -10,7 +10,11 @@ import {
   type ParsedCourse,
   type CourseFulfillment,
 } from '@/lib/services/userCoursesService';
-import { updateUserCoursesAction, updateCourseFulfillmentsAction } from '@/lib/services/server-actions';
+import {
+  updateUserCoursesAction,
+  updateCourseFulfillmentsAction,
+  clearUserCoursesAction,
+} from '@/lib/services/server-actions';
 import { GetActiveGradPlan } from '@/lib/services/gradPlanService';
 import { performGenEdMatching, extractRequirementOptions, type GenEdMatchResult, type RequirementOption } from '@/lib/services/courseMatchingService';
 import { GenEdSelector } from '@/components/academic-history/GenEdSelector';
@@ -74,6 +78,7 @@ export default function AcademicHistoryPage() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [userCourses, setUserCourses] = useState<ParsedCourse[]>([]);
   const [activeGradPlan, setActiveGradPlan] = useState<GradPlan | null>(null);
+  const [gpa, setGpa] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
     open: false,
     message: '',
@@ -105,6 +110,8 @@ export default function AcademicHistoryPage() {
   const [requirementDialogCourse, setRequirementDialogCourse] = useState<ParsedCourse | null>(null);
   const [_autoMatchLoading, setAutoMatchLoading] = useState(false);
   const [gradPlanPrograms, setGradPlanPrograms] = useState<ProgramRow[]>([]);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const loadingMessages = [
     'Loading your academic history...',
@@ -281,6 +288,34 @@ export default function AcademicHistoryPage() {
     return () => clearInterval(interval);
   }, [userCoursesLoading, loadingMessages.length]);
 
+  // Fetch GPA from student table
+  useEffect(() => {
+    if (!userId) {
+      setGpa(null);
+      return;
+    }
+
+    (async () => {
+      try {
+        const { data: studentData, error } = await supabase
+          .from('student')
+          .select('gpa')
+          .eq('profile_id', userId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Failed to fetch student GPA:', error);
+          setGpa(null);
+        } else {
+          setGpa(studentData?.gpa ?? null);
+        }
+      } catch (error) {
+        console.error('Error fetching GPA:', error);
+        setGpa(null);
+      }
+    })();
+  }, [userId, supabase]);
+
   // Fetch active grad plan if user has courses
   useEffect(() => {
     if (!userId || !hasUserCourses) {
@@ -346,14 +381,54 @@ export default function AcademicHistoryPage() {
     }
   };
 
-  const clearAll = () => {
-    if (!confirm('Clear all academic history entries? This cannot be undone.')) return;
-    // TODO: Implement clear functionality
-    setSnackbar({
-      open: true,
-      message: 'Clear functionality will be implemented',
-      severity: 'info',
-    });
+  const clearAll = async () => {
+    if (!userId) {
+      setSnackbar({
+        open: true,
+        message: 'User not authenticated',
+        severity: 'error',
+      });
+      return;
+    }
+
+    setIsClearing(true);
+
+    try {
+      const result = await clearUserCoursesAction(userId);
+
+      if (result.success) {
+        // Clear local state
+        setUserCourses([]);
+        setHasUserCourses(false);
+        setActiveGradPlan(null);
+        setPdfUrl(null);
+
+        // Clear session storage as well
+        sessionStorage.removeItem('transcript_pdf_url');
+
+        setSnackbar({
+          open: true,
+          message: 'All courses cleared successfully',
+          severity: 'success',
+        });
+        setShowClearConfirm(false);
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.error || 'Failed to clear courses',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing courses:', error);
+      setSnackbar({
+        open: true,
+        message: 'An error occurred while clearing courses',
+        severity: 'error',
+      });
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const saveToDatabase = async () => {
@@ -909,7 +984,7 @@ export default function AcademicHistoryPage() {
           href="https://y.byu.edu/ry/ae/prod/records/cgi/stdCourseWork.cgi"
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-8 inline-flex w-fit items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+          className="mb-8 inline-flex w-fit items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 font-body-semi text-sm font-semibold text-zinc-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
         >
           <ExternalLink size={16} />
           Download BYU Transcript
@@ -974,7 +1049,7 @@ export default function AcademicHistoryPage() {
           <button
             type="button"
             onClick={saveToDatabase}
-            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-zinc-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
             title="Save courses to your profile"
           >
             <Save size={16} />
@@ -1006,9 +1081,9 @@ export default function AcademicHistoryPage() {
           {/* Clear Button */}
           <button
             type="button"
-            onClick={clearAll}
+            onClick={() => setShowClearConfirm(true)}
             className="flex items-center gap-2 rounded-lg border border-red-200 bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-red-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400 hover:bg-red-50 hover:shadow-md"
-            title="Clear all entries (local)"
+            title="Clear all academic history"
           >
             <RefreshCw size={16} />
             <span className="hidden sm:inline">Clear</span>
@@ -1135,10 +1210,10 @@ export default function AcademicHistoryPage() {
                         Academic Summary
                       </h3>
                       <p className="font-body text-xs text-zinc-300 dark:text-zinc-700">
-                        Total: {totalCredits.toFixed(1)} credits • {totalCourses} courses
+                        Total: {totalCredits.toFixed(1)} credits • {totalCourses} courses • {gpa !== null ? `${gpa.toFixed(2)} GPA` : 'GPA: N/A'}
                       </p>
                     </div>
-                    <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-primary-foreground">
+                    <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-zinc-900">
                       {sortedTerms.length} semester{sortedTerms.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -1190,8 +1265,8 @@ export default function AcademicHistoryPage() {
                             <p className="font-body text-xs text-zinc-400 dark:text-zinc-600">
                               {termCredits.toFixed(1)} cr
                             </p>
-                            <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 font-body-semi text-xs font-semibold text-primary-foreground">
-                              {termCourses.length}
+                            <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 font-body-semi text-xs font-semibold text-zinc-900">
+                              {termCourses.length} course{termCourses.length !== 1 ? 's' : ''}
                             </span>
                           </div>
                         </div>
@@ -1363,7 +1438,7 @@ export default function AcademicHistoryPage() {
               <button
                 type="button"
                 onClick={handleSaveEdit}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-zinc-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
               >
                 Save Changes
               </button>
@@ -1427,6 +1502,63 @@ export default function AcademicHistoryPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Confirmation Dialog */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
+          <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+              <h2 className="font-header text-xl font-bold text-red-600">Clear All Courses?</h2>
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={isClearing}
+                className="rounded-lg p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4 p-6">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="font-body-semi text-sm font-semibold text-red-900 mb-2">
+                  ⚠️ Warning: This action cannot be undone
+                </p>
+                <p className="font-body text-sm text-red-800">
+                  This will permanently delete all {userCourses.length} course{userCourses.length !== 1 ? 's' : ''} from your academic history.
+                  You will need to re-upload your transcript to restore this data.
+                </p>
+              </div>
+
+              <p className="font-body text-sm text-[var(--muted-foreground)]">
+                Are you sure you want to continue?
+              </p>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={isClearing}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] transition-all duration-200 hover:bg-[var(--muted)] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={clearAll}
+                disabled={isClearing}
+                className="rounded-lg bg-red-600 px-4 py-2 font-body-semi text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0"
+              >
+                {isClearing ? 'Clearing...' : 'Clear All Courses'}
+              </button>
             </div>
           </div>
         </div>

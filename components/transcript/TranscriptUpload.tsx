@@ -259,7 +259,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
           ) : ( */}
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground text-center">
-                Copy text from your transcript and paste it below
+                Copy relevant text from your transcript and paste it below
               </p>
               <textarea
                 value={pastedText}
@@ -270,7 +270,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
               <button
                 onClick={handleTextPaste}
                 disabled={!pastedText || pastedText.trim().length < 100}
-                className="w-full py-3 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full py-3 px-4 rounded-lg bg-primary text-zinc-900 font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 Parse Transcript
               </button>
