@@ -23,6 +23,15 @@ interface MajorOverlapDialogProps {
   selectedSemesterName?: string;
 }
 
+interface ProgramOverlapPanelProps {
+  major: MajorProgramData | null;
+  completedCourses: Array<{ code: string; title: string; credits: number; term?: string; grade?: string; tags?: string[] }>;
+  matchedClasses?: number;
+  totalClassesInSemester?: number;
+  selectedSemesterName?: string;
+  className?: string;
+}
+
 // Utility to walk an unknown requirements JSON tree and collect course codes (simple heuristic: look for objects with code or course_code keys or strings that look like codes)
 function extractRequirementCourseCodes(requirements: unknown): string[] {
   const out = new Set<string>();
@@ -51,6 +60,39 @@ function extractRequirementCourseCodes(requirements: unknown): string[] {
 }
 
 export function ProgramOverlapDialog({ open, onClose, major, completedCourses, matchedClasses, totalClassesInSemester, selectedSemesterName }: Readonly<MajorOverlapDialogProps>) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl border border-emerald-200 flex flex-col max-h-[90vh]">
+        <div className="px-5 py-4 border-b flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-semibold text-emerald-800">Program Fit Overview</h2>
+            {major && <p className="text-xs text-gray-600 mt-1">Selected Program: <span className="font-medium text-gray-800">{major.name}</span></p>}
+          </div>
+          <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700">Close</button>
+        </div>
+        <div className="overflow-y-auto p-5">
+          <ProgramOverlapPanel
+            major={major}
+            completedCourses={completedCourses}
+            matchedClasses={matchedClasses}
+            totalClassesInSemester={totalClassesInSemester}
+            selectedSemesterName={selectedSemesterName}
+          />
+        </div>
+        <div className="px-5 py-3 border-t flex justify-end gap-3 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/80 px-4 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          >Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ProgramOverlapPanel({ major, completedCourses, matchedClasses, totalClassesInSemester, selectedSemesterName, className }: Readonly<ProgramOverlapPanelProps>) {
   const requirementCodes = React.useMemo(() => major ? extractRequirementCourseCodes(major.requirements) : [], [major]);
   const completedCodes = React.useMemo(() => completedCourses.map(c => c.code.trim().toUpperCase()), [completedCourses]);
   const completedSet = React.useMemo(() => new Set(completedCodes), [completedCodes]);
@@ -78,73 +120,94 @@ export function ProgramOverlapDialog({ open, onClose, major, completedCourses, m
   }, [matchedClasses, totalClassesInSemester, selectedSemesterName, completedCourses, requirementCodes, matched.length, missing.length]);
 
   const percentSimilar = React.useMemo(() => {
-    if (!derivedCounts || derivedCounts.total <= 0) return null;
+    if (!derivedCounts || derivedCounts.total <= 0) return 0;
     const pct = Math.round((derivedCounts.matched / derivedCounts.total) * 100);
     return Math.max(0, Math.min(100, pct));
   }, [derivedCounts]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl border border-emerald-200 flex flex-col max-h-[90vh]">
-        <div className="px-5 py-4 border-b flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-emerald-800">Program Fit Overview</h2>
-            {major && <p className="text-xs text-gray-600 mt-1">Selected Major: <span className="font-medium text-gray-800">{major.name}</span></p>}
-            {typeof percentSimilar === 'number' && derivedCounts && (
-              <div className="mt-2 inline-flex items-center gap-2 rounded border border-emerald-200 bg-emerald-50 px-2 py-1">
-                <span className="inline-flex items-center justify-center rounded bg-emerald-600 text-white text-[11px] font-semibold px-1.5 py-0.5">
-                  {percentSimilar}% similar
-                </span>
-                <span className="text-[11px] text-emerald-800 truncate">
-                  {derivedCounts.matched} of {derivedCounts.total} {derivedCounts.type === 'overall' ? 'requirements' : `classes${selectedSemesterName ? ` in ${selectedSemesterName}` : ''}`} match
-                </span>
+    <div className={className}>
+      <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-white/70 dark:bg-gray-800/70 backdrop-blur shadow-sm overflow-hidden">
+        {/* Header (Compare Majors style) */}
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-sm font-semibold mb-3 line-clamp-2 min-h-[2.5rem] text-white flex-1">
+              {major?.name ?? 'Selected Program'}
+            </h3>
+            <div className="text-center shrink-0">
+              <div className="text-4xl font-bold mb-1 text-white">
+                {percentSimilar}%
               </div>
-            )}
+              <div className="text-xs text-white opacity-90">Complete</div>
+            </div>
           </div>
-          <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700">Close</button>
+
+          {derivedCounts && (
+            <div className="mt-1 text-center text-xs bg-white/20 dark:bg-white/10 rounded py-1 text-white">
+              {derivedCounts.matched}/{derivedCounts.total} {derivedCounts.type === 'overall' ? 'Requirements' : 'Courses'} Count
+            </div>
+          )}
         </div>
-        <div className="overflow-y-auto p-5 space-y-6 text-sm">
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="rounded border bg-emerald-50/70 border-emerald-200 p-3">
-              <h3 className="text-[11px] font-bold tracking-wide text-emerald-800 uppercase mb-2">Matched ({matched.length})</h3>
+
+        {/* Sections (always visible) */}
+        <div className="p-4 space-y-3 dark:bg-gray-800/50">
+          <div className="rounded-lg border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[color-mix(in_srgb,var(--muted)_35%,transparent)]">
+            <div className="px-3 py-2 border-b border-[color-mix(in_srgb,var(--border)_80%,transparent)]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--foreground)]">Counts / Completed</span>
+                <span className="text-[11px] text-[var(--muted-foreground)]">Matched ({matched.length})</span>
+              </div>
+            </div>
+            <div className="p-3">
               {matched.length ? (
-                <ul className="space-y-1 max-h-40 overflow-auto text-[12px]">
-                  {matched.map(c => <li key={c} className="text-emerald-800">{c}</li>)}
+                <ul className="space-y-1 max-h-40 overflow-auto text-xs custom-scroll">
+                  {matched.map(c => <li key={c} className="text-[var(--foreground)]">{c}</li>)}
                 </ul>
-              ) : <p className="text-[11px] text-emerald-700">No direct matches yet.</p>}
-            </div>
-            <div className="rounded border bg-amber-50/70 border-amber-200 p-3">
-              <h3 className="text-[11px] font-bold tracking-wide text-amber-800 uppercase mb-2">Missing ({missing.length})</h3>
-              {missing.length ? (
-                <ul className="space-y-1 max-h-40 overflow-auto text-[12px]">
-                  {missing.map(c => <li key={c} className="text-amber-800">{c}</li>)}
-                </ul>
-              ) : <p className="text-[11px] text-amber-700">All required courses covered or elective-heavy major.</p>}
-            </div>
-            <div className="rounded border bg-gray-50 border-gray-200 p-3">
-              <h3 className="text-[11px] font-bold tracking-wide text-gray-700 uppercase mb-2">Extra / Other ({extras.length})</h3>
-              {extras.length ? (
-                <ul className="space-y-1 max-h-40 overflow-auto text-[12px]">
-                  {extras.map(c => <li key={c} className="text-gray-700">{c}</li>)}
-                </ul>
-              ) : <p className="text-[11px] text-gray-600">No additional courses beyond requirements.</p>}
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)]">No direct matches yet.</p>
+              )}
             </div>
           </div>
-          <div className="text-[11px] text-gray-500 leading-relaxed">
+
+          <div className="rounded-lg border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)]">
+            <div className="px-3 py-2 border-b border-[color-mix(in_srgb,var(--border)_80%,transparent)]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--foreground)]">Still needed / Remaining</span>
+                <span className="text-[11px] text-[var(--muted-foreground)]">Missing ({missing.length})</span>
+              </div>
+            </div>
+            <div className="p-3">
+              {missing.length ? (
+                <ul className="space-y-1 max-h-40 overflow-auto text-xs custom-scroll">
+                  {missing.map(c => <li key={c} className="text-[var(--foreground)]">{c}</li>)}
+                </ul>
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)]">All required courses covered or elective-heavy program.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[color-mix(in_srgb,var(--muted)_12%,transparent)]">
+            <div className="px-3 py-2 border-b border-[color-mix(in_srgb,var(--border)_80%,transparent)]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--foreground)]">Completed but Not Used</span>
+                <span className="text-[11px] text-[var(--muted-foreground)]">Not used ({extras.length})</span>
+              </div>
+            </div>
+            <div className="p-3">
+              {extras.length ? (
+                <ul className="space-y-1 max-h-40 overflow-auto text-xs custom-scroll">
+                  {extras.map(c => <li key={c} className="text-[var(--foreground)]">{c}</li>)}
+                </ul>
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)]">No additional courses beyond the requirement list.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
             Comparison derived by simple course code matching. Electives, categories, or conditional groups may not be fully represented yet.
           </div>
-        </div>
-        <div className="px-5 py-3 border-t flex justify-end gap-3 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/80 px-4 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-          >Close</button>
-          <button
-            onClick={() => { /* placeholder for continue-to-plan action */ onClose(); }}
-            className="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-          >Continue</button>
         </div>
       </div>
     </div>

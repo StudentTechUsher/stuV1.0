@@ -7,7 +7,7 @@ import { saveTargetedCareerClient } from '@/lib/services/profileService';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/ui/toast';
 import AdjacentCareerForm, { AdjacentCareerFormValues } from '@/components/pathfinder/adjacent-career-form';
-import MajorOverlapDialog from '@/components/pathfinder/program-overlap-dialog';
+import MajorOverlapDialog, { ProgramOverlapPanel } from '@/components/pathfinder/program-overlap-dialog';
 import { fetchMinorByName } from '@/app/(dashboard)/pathfinder/major-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CareerInfoModal from '@/components/pathfinder/CareerInfoModal';
@@ -19,6 +19,10 @@ import { StuLoader } from '@/components/ui/StuLoader';
 import { MajorComparisonSelector } from '@/components/pathfinder/major-comparison-selector';
 import { MajorComparisonView } from '@/components/pathfinder/major-comparison-view';
 import type { MajorComparisonResult } from '@/lib/services/majorComparisonService';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 
 type GlobalWithUniversity = typeof globalThis & { __UNIVERSITY_ID__?: unknown };
 
@@ -38,6 +42,22 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     ? currentPrograms.map(p => p.name).join(', ')
     : 'Undeclared';
   const pivotOptions = useDefaultPivotOptions();
+
+  const getPivotOptionIcon = React.useCallback((optId: string) => {
+  if (optId === 'major-pivot') return <AutoAwesomeIcon className="text-emerald-600" fontSize="inherit" />;
+  if (optId === 'minor-pivot') return <LightbulbOutlinedIcon className="text-amber-600" fontSize="inherit" />;
+  if (optId === 'minor-audit') return <SchoolOutlinedIcon className="text-indigo-600" fontSize="inherit" />;
+  if (optId === 'compare-majors') return <CompareArrowsIcon className="text-emerald-600" fontSize="inherit" />;
+    return null;
+  }, []);
+
+  const getPivotOptionAccent = React.useCallback((optId: string) => {
+    if (optId === 'major-pivot') return { border: 'border-emerald-300', hoverBg: 'hover:bg-emerald-50/40' };
+    if (optId === 'minor-pivot') return { border: 'border-amber-300', hoverBg: 'hover:bg-amber-50/40' };
+    if (optId === 'minor-audit') return { border: 'border-indigo-300', hoverBg: 'hover:bg-indigo-50/40' };
+    if (optId === 'compare-majors') return { border: 'border-emerald-300', hoverBg: 'hover:bg-emerald-50/40' };
+    return { border: 'border-[color-mix(in_srgb,var(--border)_80%,transparent)]', hoverBg: 'hover:bg-[color-mix(in_srgb,var(--muted)_32%,transparent)]' };
+  }, []);
   const [selectedCourse, setSelectedCourse] = React.useState<string | null>(null);
   const [lastAction, setLastAction] = React.useState<string | null>(null);
   const [activePanel, setActivePanel] = React.useState<string | null>(null);
@@ -68,6 +88,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
   const [minorAuditMinors, setMinorAuditMinors] = React.useState<Array<{ id: string; name: string; reason: string }> | null>(null);
   const [minorAuditMessage, setMinorAuditMessage] = React.useState<string | null>(null);
   const [minorCatalog, setMinorCatalog] = React.useState<Array<{ id: number | string; name: string; requirements: unknown }> | null>(null);
+  const [minorDetailsByName, setMinorDetailsByName] = React.useState<Record<string, { id: number | string; name: string; requirements: unknown }>>({});
 
   // Compare Majors state
   const [majorsCatalog, setMajorsCatalog] = React.useState<Array<{ id: string; name: string }> | null>(null);
@@ -492,7 +513,9 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     } catch {
       setOverlapProgram({ id: 'unknown', name: minorName, requirements: {}, kind: 'minor' });
     } finally {
-      setOverlapOpen(true);
+      // Previously: open modal. Now we keep the data in state and render details inline.
+      // (Modal is still available as a fallback if needed.)
+      setOverlapOpen(false);
     }
   }
 
@@ -516,6 +539,27 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
       }
       setMinorAuditMinors(result.minors);
       setMinorAuditMessage(result.message);
+
+      // Prefetch each surfaced minor's details (requirements blob) so we can render details expanded by default.
+      const uniqueNames = Array.from(new Set(result.minors.map(m => m.name).filter(Boolean)));
+      if (uniqueNames.length) {
+        const entries = await Promise.all(uniqueNames.map(async (name) => {
+          try {
+            const res = await fetchMinorByName(1, name);
+            if (res.success && res.minor) {
+              return [name, { id: res.minor.id, name: res.minor.name, requirements: res.minor.requirements }] as const;
+            }
+          } catch {
+            // ignore
+          }
+          return [name, { id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, requirements: {} }] as const;
+        }));
+        setMinorDetailsByName(prev => {
+          const merged = { ...prev };
+          for (const [k, v] of entries) merged[k] = v;
+          return merged;
+        });
+      }
     } catch (error) {
       setMinorAuditError(error instanceof Error ? error.message : 'Unknown error auditing minors');
     } finally {
@@ -652,6 +696,64 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
               />
             </div>
           )}
+
+          {/* Quick navigation (when an option is active) */}
+          {activePanel && (
+            <div className="rounded-lg border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[color-mix(in_srgb,var(--card)_70%,transparent)] backdrop-blur p-3 shadow-sm">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="text-[11px] font-semibold tracking-wide uppercase text-[var(--muted-foreground)] mr-1">
+                  Switch to:
+                </span>
+                <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                  {pivotOptions
+                  .filter(opt => {
+                    if (activePanel === 'major-pivot') return opt.id !== 'major-pivot';
+                    if (activePanel === 'adjacent-career') return opt.id !== 'minor-pivot';
+                    if (activePanel === 'minor-audit') return opt.id !== 'minor-audit';
+                    if (activePanel === 'compare-majors') return opt.id !== 'compare-majors';
+                    return true;
+                  })
+                  .map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setLastAction(`Chose option: ${opt.title}`);
+                        if (opt.id === 'major-pivot') setActivePanel('major-pivot');
+                        if (opt.id === 'minor-pivot') setActivePanel('adjacent-career');
+                        if (opt.id === 'minor-audit') { setActivePanel('minor-audit'); void loadMinorAudit(); }
+                        if (opt.id === 'compare-majors') { void handleCompareMajorsClick(); }
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-md border bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-2 py-1 text-[11px] font-semibold text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--primary)_35%,transparent)] ${getPivotOptionAccent(opt.id).border} ${getPivotOptionAccent(opt.id).hoverBg}`}
+                    >
+                      <span className="shrink-0 text-[14px] leading-none">{getPivotOptionIcon(opt.id)}</span>
+                      <span className="truncate max-w-[8.5rem]">{opt.title}</span>
+                      <span className="text-[10px] text-[var(--muted-foreground)]">→</span>
+                    </button>
+                  ))}
+
+                  <div className="flex-1" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Keep existing behavior: return to initial screen.
+                    // Also preserve panel-specific close behavior where it exists.
+                    if (activePanel === 'minor-audit') {
+                      setMinorAuditMinors(null);
+                      setMinorAuditMessage(null);
+                      setMinorAuditError(null);
+                    }
+                    setActivePanel(null);
+                  }}
+                  className="inline-flex items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[color-mix(in_srgb,var(--muted)_18%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted)_28%,transparent)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--primary)_35%,transparent)] shrink-0"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
           {activePanel === 'minor-audit' && (
             <div className="rounded-lg border border-emerald-200 bg-white/70 backdrop-blur p-5 shadow-sm">
               <div className="flex items-start justify-between mb-4">
@@ -661,7 +763,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                 </div>
                 <button
                   onClick={() => { setActivePanel(null); setMinorAuditMinors(null); setMinorAuditMessage(null); setMinorAuditError(null); }}
-                  className="text-xs text-gray-500 hover:text-gray-700 transition"
+                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition underline underline-offset-4"
                   type="button"
                 >Close</button>
               </div>
@@ -690,18 +792,32 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                     <div className="text-[11px] text-gray-500 border rounded p-3 bg-gray-50">No minors appear close to completion with current course list.</div>
                   )}
                   {minorAuditMinors.length > 0 && (
-                    <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                       {minorAuditMinors.map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => handleMinorClick(m.name)}
-                          className="text-left rounded border border-emerald-200 bg-white/80 hover:bg-emerald-50 transition p-3 group shadow-sm"
-                        >
-                          <div className="font-medium text-sm text-emerald-800 group-hover:text-emerald-900 flex items-center gap-2">
-                            {m.name}
+                        <div key={m.id} className="rounded-lg border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[var(--card)]/70 backdrop-blur shadow-sm overflow-hidden">
+                          <div className="p-4 border-b border-[color-mix(in_srgb,var(--border)_80%,transparent)]">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-[var(--foreground)] truncate">
+                                  {m.name}
+                                </div>
+                                <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                                  {m.reason}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <p className="mt-1 text-[11px] text-gray-600 line-clamp-3">{m.reason}</p>
-                        </button>
+
+                          {/* Default-open details: key info visible immediately (no click required) */}
+                          <div className="p-4">
+                            <ProgramOverlapPanel
+                              major={minorDetailsByName[m.name]
+                                ? { id: minorDetailsByName[m.name].id, name: minorDetailsByName[m.name].name, requirements: minorDetailsByName[m.name].requirements }
+                                : { id: m.id, name: m.name, requirements: {} }}
+                              completedCourses={courses.map(c => ({ code: c.code, title: c.title, credits: c.credits, term: c.term, grade: c.grade, tags: c.tags }))}
+                            />
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
