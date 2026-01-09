@@ -458,6 +458,55 @@ export async function saveManualCourses(
 }
 
 /**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ * Deletes all courses for a user by removing their user_courses record
+ * @param supabase - Supabase client (browser or server)
+ * @param userId - The user ID
+ * @returns Object with success status
+ */
+export async function clearUserCourses(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<{ success: boolean }> {
+  try {
+    if (!userId) {
+      throw new CourseUpsertError('User ID is required');
+    }
+
+    const { error: deleteError } = await supabase
+      .from('user_courses')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      logError('Failed to clear user courses', deleteError, {
+        userId,
+        action: 'clear_user_courses',
+      });
+      throw new CourseUpsertError('Failed to clear user courses', deleteError);
+    }
+
+    logInfo('Successfully cleared all courses for user', {
+      userId,
+      action: 'clear_user_courses',
+    });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof CourseUpsertError) {
+      throw error;
+    }
+
+    logError('Unexpected error clearing courses', error, {
+      userId,
+      action: 'clear_user_courses',
+    });
+
+    throw new CourseUpsertError('Unexpected error clearing courses', error);
+  }
+}
+
+/**
  * Helper function to format user courses for display in components
  * @param courses - Array of ParsedCourse objects
  * @returns Array of formatted courses ready for UI display

@@ -75,9 +75,25 @@ export async function POST(request: NextRequest) {
             .insert({ user_id: user.id, courses: coursesJson });
         }
 
-        // Calculate and save GPA after successful course save
+        // Save GPA from transcript (prefer extracted GPA over calculated)
         try {
-          const gpa = calculateGpaFromCourses(dedupedCourses);
+          let gpa: number | null = null;
+
+          // Use extracted GPA if available, otherwise calculate from courses
+          if (byuResult.gpa !== null && byuResult.gpa !== undefined) {
+            gpa = byuResult.gpa;
+            logInfo('Using extracted GPA from transcript', {
+              userId: user.id,
+              action: 'use_extracted_gpa_text_mode',
+            });
+          } else {
+            gpa = calculateGpaFromCourses(dedupedCourses);
+            logInfo('Calculated GPA from courses (no GPA found in transcript)', {
+              userId: user.id,
+              action: 'calculate_gpa_text_mode',
+            });
+          }
+
           await updateStudentGpa(supabase, user.id, gpa);
           logInfo('Updated student GPA after text transcript parse', {
             userId: user.id,
@@ -196,10 +212,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate and save GPA after successful PDF parsing
+    // Save GPA from transcript (prefer extracted GPA over calculated)
     try {
-      const savedCourses = await fetchUserCoursesArray(supabase, user.id);
-      const gpa = calculateGpaFromCourses(savedCourses);
+      let gpa: number | null = null;
+
+      // Use extracted GPA from report if available, otherwise calculate from courses
+      if (report.gpa !== null && report.gpa !== undefined) {
+        gpa = report.gpa;
+        logInfo('Using extracted GPA from transcript', {
+          userId: user.id,
+          action: 'use_extracted_gpa_pdf_mode',
+        });
+      } else {
+        const savedCourses = await fetchUserCoursesArray(supabase, user.id);
+        gpa = calculateGpaFromCourses(savedCourses);
+        logInfo('Calculated GPA from courses (no GPA found in transcript)', {
+          userId: user.id,
+          action: 'calculate_gpa_pdf_mode',
+        });
+      }
+
       await updateStudentGpa(supabase, user.id, gpa);
       logInfo('Updated student GPA after PDF transcript parse', {
         userId: user.id,

@@ -639,6 +639,33 @@ export async function updateUserCourseTagsAction(
 }
 
 /**
+ * Server action to clear all user courses
+ * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
+ */
+export async function clearUserCoursesAction(userId: string) {
+    try {
+        // Verify user is authenticated and owns the data
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this data' };
+        }
+
+        const { clearUserCourses } = await import('./userCoursesService');
+        await clearUserCourses(supabase, userId);
+        return { success: true };
+    } catch (error) {
+        console.error('Error clearing user courses:', error);
+        return { success: false, error: 'Failed to clear courses' };
+    }
+}
+
+/**
  * Server action to update all user courses
  * AUTHORIZATION: STUDENTS AND ABOVE (own courses only)
  */

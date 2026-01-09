@@ -96,6 +96,7 @@ export const ByuCourseSchema = z.object({
  * Schema for the full OpenAI response structure
  */
 const ByuTranscriptResponseSchema = z.object({
+  gpa: z.number().nullable().optional().describe('Overall undergraduate GPA from transcript, or null if not found'),
   terms: z.array(
     z.object({
       term: z.string().describe('Term/semester label'),
@@ -143,6 +144,7 @@ export interface ByuTranscriptValidationReport {
 export interface ByuTranscriptParseResult {
   success: boolean;
   courses: Array<ByuCourse>;
+  gpa?: number | null;
   validationReport: ByuTranscriptValidationReport;
   rawResponse?: unknown;
   error?: string;
@@ -286,6 +288,10 @@ export async function parseByuTranscriptWithOpenAI(
       type: 'object',
       additionalProperties: false,
       properties: {
+        gpa: {
+          type: ['number', 'null'],
+          description: 'Overall undergraduate GPA from transcript (e.g., 3.75), or null if not found',
+        },
         terms: {
           type: 'array',
           description: 'Array of academic terms/semesters',
@@ -336,40 +342,47 @@ export async function parseByuTranscriptWithOpenAI(
           },
         },
       },
-      required: ['terms'],
+      required: ['gpa', 'terms'],
     };
 
     // Construct the prompt with BYU-specific instructions
-    const userPrompt = `Extract ALL courses from this BYU academic transcript PDF.
+    const userPrompt = `Extract ALL courses AND the overall GPA from this BYU academic transcript.
 
 **IMPORTANT INSTRUCTIONS:**
 
-1. **Course Code Pattern:** BYU course codes follow this pattern:
+1. **GPA Extraction:**
+   - Look for the overall undergraduate GPA on the transcript (often labeled as "Undergraduate GPA", "Cumulative GPA", or "Overall GPA")
+   - Extract the numerical value (e.g., 3.75, 3.50, 2.80)
+   - If no GPA is found on the transcript, return null for the gpa field
+
+2. **Course Code Pattern:** BYU course codes follow this pattern:
    - Subject: Uppercase letters with optional internal spaces, max 8 characters total (e.g., "CS", "MATH", "REL A", "A HTG", "C S", "EC EN", "ME EN")
    - Number: 3 digits, optionally followed by a letter (e.g., "142", "112R", "275")
 
-2. **Credits:** Extract the decimal credit value for each course (e.g., 3.0, 4.0, 1.5)
+3. **Credits:** Extract the decimal credit value for each course (e.g., 3.0, 4.0, 1.5)
 
-3. **Grades:**
+4. **Grades:**
    - Extract letter grades as they appear: A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F
    - Special grades: P (Pass), I (Incomplete), W (Withdrawn), CR (Credit), NC (No Credit), T (Transfer)
-   - For concurrent enrollment or in-progress courses with no grade yet, use null
+   - For concurrent enrollment or in-progress courses with no grade yet, use empty string
 
-4. **Terms:** Group courses by the term/semester they were taken (e.g., "Fall Semester 2023", "Winter Semester 2024")
+5. **Terms:** Group courses by the term/semester they were taken (e.g., "Fall Semester 2023", "Winter Semester 2024")
 
-5. **What to include:**
+6. **What to include:**
    - All regular courses
    - Transfer credits (if shown)
    - AP/IB credits (if shown)
    - Concurrent enrollment courses
 
-6. **What to skip:**
-   - GPA summary lines
+7. **What to skip from course extraction:**
+   - GPA summary lines (extract GPA separately in the gpa field)
    - Total credit lines
    - Header/footer information
    - Administrative notes
 
-Return the data in JSON format with terms as the top-level array, where each term contains an array of courses.
+Return the data in JSON format with:
+- gpa: the overall undergraduate GPA (number) or null if not found
+- terms: array of terms, where each term contains an array of courses
 
 Extract every course you can find. Be thorough and precise.`;
 
@@ -518,6 +531,7 @@ Extract every course you can find. Be thorough and precise.`;
     return {
       success: true,
       courses: validCourses,
+      gpa: parsedResponse.gpa ?? null,
       validationReport,
       rawResponse: parsedResponse,
       usage: usage

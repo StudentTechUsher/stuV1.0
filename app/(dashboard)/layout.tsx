@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-client";
 import { getPendingGradPlansCount, getUnreadNotificationsCount } from '@/lib/services/notifService';
 import type { Role } from '@/lib/mock-role';
+import { OnboardingModalWrapper } from '@/components/onboarding/onboarding-modal-wrapper';
 
 // 👇 NEW: read Supabase session in a server component
 import { cookies } from "next/headers";
@@ -17,6 +18,36 @@ const ROLE_MAP: Record<string, Role> = {
   3: "student",
   4: "super_admin",
 };
+
+/**
+ * Determines if a user needs to complete onboarding based on their profile data.
+ * A user needs onboarding if ANY of the following are true:
+ * - First name is "New" (case-insensitive) AND last name is "User" (case-insensitive)
+ * - university_id is null
+ * - role_id is null
+ * - onboarded is not explicitly true
+ */
+function needsOnboarding(profile: {
+  fname?: string | null;
+  lname?: string | null;
+  university_id?: number | null;
+  role_id?: number | null;
+  onboarded?: boolean | null;
+}): boolean {
+  // Check for default "New User" name (case-insensitive)
+  const hasDefaultName =
+    profile.fname?.toLowerCase().trim() === 'new' ||
+    profile.lname?.toLowerCase().trim() === 'user';
+
+  // Check for missing required fields
+  const missingUniversity = profile.university_id === null || profile.university_id === undefined;
+  const missingRole = profile.role_id === null || profile.role_id === undefined;
+
+  // Check if explicitly onboarded
+  const notOnboarded = profile.onboarded !== true;
+
+  return hasDefaultName || missingUniversity || missingRole || notOnboarded;
+}
 
 // A serializable icon key the client can turn into an actual icon element
 type IconKey =
@@ -66,49 +97,76 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   const userId = userError || !user ? null : user.id;
 
-  // 2) Query profiles for role_id, onboarded status, and university_id (RLS lets users read only their own row)
+  // 2) Query profiles for role_id, onboarded status, university_id, fname, and lname (RLS lets users read only their own row)
   let roleId: string | null = null;
-  let onboarded = true; // Default to true (onboarded) to prevent blocking existing users
   let universityId: number | null = null;
+  let profile: {
+    role_id?: number | null;
+    onboarded?: boolean | null;
+    university_id?: number | null;
+    fname?: string | null;
+    lname?: string | null;
+  } | null = null;
+
   if (userId) {
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
-      .select("role_id, onboarded, university_id")
+      .select("role_id, onboarded, university_id, fname, lname")
       .eq("id", userId)
       .maybeSingle();
 
+    profile = profileData;
+
     // Convert role_id to string for consistent lookup in ROLE_MAP
     roleId = profile?.role_id ? String(profile.role_id) : null;
-    // Only set onboarded to false if explicitly false in the database
-    onboarded = profile?.onboarded !== false;
     universityId = profile?.university_id ?? null;
   }
 
-  // 3) Pick a Role string (you can also fetch role name via FK join)
+  // 3) Check if user needs onboarding
+  if (profile && needsOnboarding(profile)) {
+    // Show onboarding modal for users who haven't completed onboarding
+    const displayName = profile.fname && profile.lname && !(profile.fname.toLowerCase() === 'new' && profile.lname.toLowerCase() === 'user')
+      ? `${profile.fname} ${profile.lname}`
+      : undefined;
+
+    return <OnboardingModalWrapper userName={displayName} />;
+  }
+
+  // 4) Pick a Role string (you can also fetch role name via FK join)
   const role: Role =
     ROLE_MAP[roleId ?? "3"]; // sensible default to "student" if roleId is null or undefined
 
-  // If user hasn't been onboarded yet AND they have selected a university,
-  // they're waiting for admin approval (only for advisors/admins)
-  // Students should be allowed through to complete onboarding immediately
-  // If they haven't selected a university yet, let them through to complete onboarding
-  const hasSelectedUniversity = universityId !== null;
+  // If advisor or admin hasn't been approved yet, show pending approval message
   const requiresApproval = role === 'advisor' || role === 'admin';
+  const hasSelectedUniversity = universityId !== null;
+  const isOnboarded = profile?.onboarded === true;
 
-  if (!onboarded && hasSelectedUniversity && requiresApproval && user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 shadow-lg">
-          <h1 className="text-2xl font-header mb-4">Account Pending Approval</h1>
-          <p className="text-muted-foreground font-body mb-4">
-            Thank you for registering! Your account is currently pending approval by an administrator.
-          </p>
-          <p className="text-muted-foreground font-body">
-            You will receive access to the dashboard once your account has been approved. Please check back later or contact your institution&apos;s administrator if you have questions.
-          </p>
+  if (isOnboarded && hasSelectedUniversity && requiresApproval && user) {
+    // Check if advisor/admin has been approved
+    // This is a separate check from onboarding - user has completed onboarding but may not be approved yet
+    const { data: advisorData } = await supabase
+      .from('advisors')
+      .select('approved')
+      .eq('profile_id', userId)
+      .maybeSingle();
+
+    const needsApproval = advisorData && !advisorData.approved;
+
+    if (needsApproval) {
+      return (
+        <div className="flex min-h-screen items-center justify-center p-4">
+          <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 shadow-lg">
+            <h1 className="text-2xl font-header mb-4">Account Pending Approval</h1>
+            <p className="text-muted-foreground font-body mb-4">
+              Thank you for registering! Your account is currently pending approval by an administrator.
+            </p>
+            <p className="text-muted-foreground font-body">
+              You will receive access to the dashboard once your account has been approved. Please check back later or contact your institution&apos;s administrator if you have questions.
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   // If advisor or super_admin, fetch pending approvals count (for badge)
