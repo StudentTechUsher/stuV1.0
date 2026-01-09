@@ -36,6 +36,10 @@ export interface AdvisorProgressPanelProps {
 /**
  * Calculate category progress from plan data
  * This analyzes courses in the plan and categorizes them based on their fulfills[] array
+ * Courses are classified as:
+ * - Completed: courses with isCompleted: true OR in past terms (before the active term)
+ * - In Progress: courses in the active term (is_active: true) that are not completed
+ * - Planned: courses in future terms that are not completed
  */
 export function calculateCategoryProgress(planData: Term[]): CategoryProgress[] {
   const categoryCounts: Record<string, { completed: number; inProgress: number; planned: number; total: number }> = {
@@ -45,25 +49,69 @@ export function calculateCategoryProgress(planData: Term[]): CategoryProgress[] 
     'Electives': { completed: 0, inProgress: 0, planned: 0, total: 0 },
   };
 
-  planData.forEach((term) => {
+  // Find the index of the active term
+  const activeTermIndex = planData.findIndex((term) => term.is_active === true);
+
+  planData.forEach((term, termIndex) => {
     const courses = term.courses || [];
+    const isActiveTerm = term.is_active === true;
+    const isPastTerm = activeTermIndex !== -1 && termIndex < activeTermIndex;
+    const isFutureTerm = activeTermIndex !== -1 && termIndex > activeTermIndex;
+
     courses.forEach((course) => {
       const credits = course.credits || 0;
       const fulfills = course.fulfills || [];
 
+      // A course is considered completed if:
+      // 1. It has isCompleted: true explicitly set, OR
+      // 2. It's in a past term (before the active term)
+      const isCompleted = course.isCompleted === true || isPastTerm;
+
       // Categorize based on fulfills array
       let category = 'Electives'; // default
 
-      if (fulfills.some(f => f.toLowerCase().includes('major'))) {
-        category = 'Major';
-      } else if (fulfills.some(f => f.toLowerCase().includes('gen ed') || f.toLowerCase().includes('global & cultural') || f.toLowerCase().includes('american heritage'))) {
-        category = 'General Education';
-      } else if (fulfills.some(f => f.toLowerCase().includes('religion') || f.toLowerCase().includes('rel '))) {
-        category = 'Religion';
+      if (fulfills.length > 0) {
+        const fulfillsStr = fulfills.join(' ').toLowerCase();
+
+        // Major: courses with program names in brackets (e.g., "[Information Systems (BSIS)] requirement-3")
+        // This pattern works for any program at any institution
+        if (fulfills.some(f => f.match(/\[.*?\]/))) {
+          category = 'Major';
+        }
+        // Religion: courses that fulfill religion requirements
+        // Looks for "religion" keyword which is common across institutions
+        else if (fulfillsStr.includes('religion')) {
+          category = 'Religion';
+        }
+        // General Education: GE requirements (catch-all for various GE patterns)
+        // This includes: Arts/Letters/Sciences, Skills, Civilization, American Heritage, Global, Foundations
+        else if (
+          fulfillsStr.includes('arts') ||
+          fulfillsStr.includes('letters') ||
+          fulfillsStr.includes('sciences') ||
+          fulfillsStr.includes('skills') ||
+          fulfillsStr.includes('civilization') ||
+          fulfillsStr.includes('american heritage') ||
+          fulfillsStr.includes('global') ||
+          fulfillsStr.includes('foundations') ||
+          fulfillsStr.includes('gen ed') ||
+          fulfillsStr.includes('general education')
+        ) {
+          category = 'General Education';
+        }
+        // Elective: explicitly marked or anything else not categorized above
+        // No need for explicit check - it's the default
       }
 
-      // For demo purposes, assume completed if in past terms (you'd check against current date in production)
-      categoryCounts[category].completed += credits;
+      // Classify credits based on course and term status
+      if (isCompleted) {
+        categoryCounts[category].completed += credits;
+      } else if (isActiveTerm) {
+        categoryCounts[category].inProgress += credits;
+      } else if (isFutureTerm || activeTermIndex === -1) {
+        categoryCounts[category].planned += credits;
+      }
+
       categoryCounts[category].total += credits;
     });
   });
@@ -103,7 +151,8 @@ function CategoryProgressBar({ category, onClick, isClickable = false }: Categor
   const inProgressPercent = total > 0 ? (inProgress / total) * 100 : 0;
   const plannedPercent = total > 0 ? (planned / total) * 100 : 0;
 
-  const overallPercent = Math.round(total > 0 ? ((completed + inProgress + planned) / total) * 100 : 0);
+  // Show percentage of completed credits out of total credits for this category
+  const overallPercent = Math.round(completedPercent);
 
   const Container = isClickable ? 'button' : 'div';
   const containerProps = isClickable

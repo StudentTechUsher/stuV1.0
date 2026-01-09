@@ -140,7 +140,7 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
           <div className="flex items-center justify-between px-3.5 py-5 flex-shrink-0 border-b border-slate-800/30 dark:border-slate-800/30 light:border-slate-200/50">
             {/* Logo */}
             <Link
-              href="/"
+              href="/home"
               className="flex items-center gap-2.5 hover:opacity-75 transition-opacity duration-200"
               aria-label="STU Home"
             >

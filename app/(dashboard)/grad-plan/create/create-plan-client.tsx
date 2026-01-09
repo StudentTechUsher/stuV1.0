@@ -36,7 +36,7 @@ import { getAdditionalConcernsConfirmationMessage, type AdditionalConcernsInput 
 import { getMilestoneConfirmationMessage, type MilestoneInput } from '@/lib/chatbot/tools/milestoneTool';
 import { CAREER_PATHFINDER_INITIAL_MESSAGE, getCareerSelectionConfirmationMessage, type CareerSuggestionsInput, CAREER_PATHFINDER_SYSTEM_PROMPT, careerSuggestionsToolDefinition } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { type ProgramSuggestionsInput, programSuggestionsToolDefinition, buildProgramPathfinderSystemPrompt, fetchAvailableProgramsForRAG } from '@/lib/chatbot/tools/programSuggestionsTool';
-import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction, hasStudentRecordAction } from '@/lib/services/server-actions';
+import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction, ensureStudentRecordAction } from '@/lib/services/server-actions';
 
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -104,7 +104,28 @@ export default function CreatePlanClient({
 
   // Initialize conversation on mount
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length !== 0) return;
+
+    let isMounted = true;
+
+    const initializeConversation = async () => {
+      setIsProcessing(true);
+
+      const studentRecordResult = await ensureStudentRecordAction(user.id);
+      if (!isMounted) return;
+
+      if (!studentRecordResult.success) {
+        setMessages([
+          {
+            role: 'assistant',
+            content: 'I ran into an issue setting up your student record. Please refresh and try again, or contact support if the issue persists.',
+            timestamp: new Date(),
+          },
+        ]);
+        setIsProcessing(false);
+        return;
+      }
+
       // Check profile status for messaging
       const profileCheck = shouldRequestProfileUpdate(studentProfile);
 
@@ -149,8 +170,15 @@ export default function CreatePlanClient({
         },
       ]);
       setActiveTool('profile_update');
-    }
-  }, [messages.length, studentProfile, hasActivePlan]);
+      setIsProcessing(false);
+    };
+
+    void initializeConversation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [messages.length, studentProfile, hasActivePlan, user.id, ensureStudentRecordAction, shouldRequestProfileUpdate]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -862,21 +890,6 @@ export default function CreatePlanClient({
             {
               role: 'assistant',
               content: 'No problem! Take your time to review your information. You can click on any completed step in the sidebar to make changes. When you\'re ready, we\'ll generate your plan.',
-              timestamp: new Date(),
-            },
-          ]);
-          setIsProcessing(false);
-          return;
-        }
-
-        // Check if user has a student record before generating
-        const studentCheck = await hasStudentRecordAction(user.id);
-        if (!studentCheck.success || !studentCheck.exists) {
-          setMessages(prev => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: 'I encountered an issue: Your student account hasn\'t been fully set up yet. This usually means your registration is still pending approval from an advisor.\n\nPlease contact your academic advisor or admin@stuplanning.com for assistance.',
               timestamp: new Date(),
             },
           ]);

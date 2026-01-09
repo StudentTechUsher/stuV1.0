@@ -61,13 +61,6 @@ export default async function HomePage() {
           >
             stu.
           </Link>
-
-          <Link
-            href="/login"
-            className="absolute top-[62px] left-6 text-[var(--primary)] text-base hover:text-[var(--hover-green)] font-body-semi"
-          >
-            Login.
-          </Link>
         </>
 
         {/* Welcome box */}
@@ -99,7 +92,7 @@ export default async function HomePage() {
                 View my {role} dashboard
               </h3>
               <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
-                Access your complete academic overview and tools
+                for quick insights and action items
               </p>
             </div>
           </Link>
@@ -110,7 +103,7 @@ export default async function HomePage() {
               <Link href="/grad-plan" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
-                    Create a four-year graduation map
+                    Create a custom graduation map
                   </h3>
                   <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
                     that gives me my personalized path to finish when I want
@@ -121,10 +114,10 @@ export default async function HomePage() {
               <Link href="/major-choice" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
-                    Help me choose a major
+                    Help me choose a major or minor
                   </h3>
                   <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
-                    based on my preferences and previous coursework
+                    based on my preferences, career goals, and previous coursework
                   </p>
                 </div>
               </Link>
@@ -135,7 +128,7 @@ export default async function HomePage() {
                     Plan my schedule for next semester
                   </h3>
                   <p className="text-muted-foreground text-sm" style={{fontFamily: "var(--font-geist-sans)"}}>
-                    using my current four-year graduation plan
+                    using my current graduation plan
                   </p>
                 </div>
               </Link>

@@ -39,6 +39,7 @@ interface Term {
     title: string;
     credits: number;
     fulfills?: string[];
+    isCompleted?: boolean;
   }>;
   credits_planned?: number;
   is_active?: boolean;
@@ -488,24 +489,51 @@ export default function EditGradPlanPage() {
   }, [currentPlanData]);
 
   // Calculate total credits for progress panel
+  // earned = completed credits (courses with isCompleted: true OR in past terms)
+  // required = total planned credits in the graduation plan
   const totalCreditsData = React.useMemo(() => {
-    if (!currentPlanData) return { earned: 0, required: 133.66 };
+    if (!currentPlanData) return { earned: 0, required: 0 };
 
-    const earned = currentPlanData.reduce((total, term) => {
-      const termCredits = term.credits_planned ||
-                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-      return total + termCredits;
-    }, 0);
+    let completedCredits = 0;
+    let totalPlannedCredits = 0;
 
-    return { earned, required: 133.66 };
+    // Find the active term index
+    const activeTermIndex = currentPlanData.findIndex((term) => term.is_active === true);
+
+    currentPlanData.forEach((term, termIndex) => {
+      const courses = term.courses || [];
+      const isPastTerm = activeTermIndex !== -1 && termIndex < activeTermIndex;
+
+      courses.forEach((course) => {
+        const credits = course.credits || 0;
+        totalPlannedCredits += credits;
+
+        // A course is considered completed if:
+        // 1. It has isCompleted: true explicitly set, OR
+        // 2. It's in a past term (before the active term)
+        const isCompleted = course.isCompleted === true || isPastTerm;
+
+        if (isCompleted) {
+          completedCredits += credits;
+        }
+      });
+    });
+
+    return { earned: completedCredits, required: totalPlannedCredits };
   }, [currentPlanData]);
 
-  // Calculate current semester credits (assuming first term is current)
+  // Calculate current semester credits (use the term with is_active: true)
   const currentSemesterCredits = React.useMemo(() => {
     if (!currentPlanData || currentPlanData.length === 0) return 0;
-    const currentTerm = currentPlanData[0];
-    return currentTerm.credits_planned ||
-           (currentTerm.courses ? currentTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
+
+    // Find the active term
+    const activeTerm = currentPlanData.find((term) => term.is_active === true);
+
+    if (!activeTerm) return 0;
+
+    // Calculate credits from courses in the active term
+    return activeTerm.credits_planned ||
+           (activeTerm.courses ? activeTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
   }, [currentPlanData]);
 
   // Calculate total planned credits in the grad plan
