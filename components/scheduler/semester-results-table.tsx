@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import CreditsPopover from './CreditsPopover';
 
 // ============================================================================
 // Types
@@ -34,6 +35,7 @@ interface SemesterResultsTableProps {
   onWithdraw?: (courseCode: string) => void;
   onSectionClick?: (courseCode: string, section: string) => void;
   onInstructorClick?: (courseCode: string, instructor: string) => void;
+  gradPlanEditUrl?: string;
 }
 
 // ============================================================================
@@ -83,6 +85,7 @@ export default function SemesterResultsTable({
   onWithdraw,
   onSectionClick,
   onInstructorClick,
+  gradPlanEditUrl,
 }: SemesterResultsTableProps) {
   const [rows, setRows] = useState(initialRows);
   const [announceMessage, setAnnounceMessage] = useState('');
@@ -129,13 +132,7 @@ export default function SemesterResultsTable({
 
           {/* Right: Stats */}
           <div className="flex flex-wrap items-center gap-6 text-sm text-zinc-100 dark:text-zinc-900">
-            <button
-              className="flex items-center gap-1.5 hover:opacity-70 transition-opacity font-medium px-3 py-1.5 rounded-md bg-white/10 dark:bg-black/10"
-              onClick={() => {/* TODO: Show credit details */}}
-            >
-              <span className="font-bold text-base">{totalCredits}</span>
-              <span>credits</span>
-            </button>
+            <CreditsPopover credits={totalCredits} colorScheme="dark" gradPlanEditUrl={gradPlanEditUrl} />
 
             <div className="flex items-center gap-1.5">
               <svg

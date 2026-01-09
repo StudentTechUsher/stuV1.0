@@ -5,6 +5,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Card, CardContent, Box, Typography, Chip } from "@mui/material";
 import type { EventClickArg, EventChangeArg, DateSelectArg } from "@fullcalendar/core";
+import CreditsPopover from "./CreditsPopover";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
 
@@ -34,6 +35,7 @@ type Props = {
   slotMinTime?: string;
   slotMaxTime?: string;
   isGenerating?: boolean;
+  gradPlanEditUrl?: string;
 };
 
 
@@ -46,6 +48,7 @@ export default function SchedulerCalendar({
   slotMinTime = "08:00:00",
   slotMaxTime = "20:00:00",
   isGenerating = false,
+  gradPlanEditUrl,
 }: Props) {
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -155,16 +158,7 @@ export default function SchedulerCalendar({
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", color: "white" }}>
             {/* Total Credits Counter */}
-            <button
-              className="flex items-center gap-1.5 hover:opacity-70 transition-opacity font-medium px-3 py-1.5 rounded-md"
-              style={{
-                color: "white",
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-              }}
-            >
-              <span className="font-bold text-base">{totalCredits}</span>
-              <span className="text-sm">credits</span>
-            </button>
+            <CreditsPopover credits={totalCredits} colorScheme="dark" gradPlanEditUrl={gradPlanEditUrl} />
             {isGenerating && (
               <Chip
                 label="Generating..."

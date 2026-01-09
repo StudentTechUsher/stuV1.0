@@ -329,7 +329,18 @@ export async function searchCourseOfferings(
     // Apply search filter if provided
     if (searchTerm && searchTerm.trim()) {
       const term = searchTerm.trim();
-      query = query.or(`course_code.ilike.%${term}%,title.ilike.%${term}%`);
+
+      // Check if multi-word search
+      if (term.includes(' ')) {
+        // For multi-word, create a pattern that allows partial matching
+        // "intro film" becomes "%intro%film%" to match "Introduction to Film"
+        const words = term.split(/\s+/);
+        const pattern = '%' + words.join('%') + '%';
+        query = query.or(`course_code.ilike.${pattern},title.ilike.${pattern}`);
+      } else {
+        // Single word - original simple search
+        query = query.or(`course_code.ilike.%${term}%,title.ilike.%${term}%`);
+      }
     }
 
     // Order by course code

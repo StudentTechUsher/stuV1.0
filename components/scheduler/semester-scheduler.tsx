@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Button, Typography, Alert, Paper } from "@mui/material";
-import { Plus, Trash2, BookOpen, Clock } from "lucide-react";
+import { Box, Button, Typography, Alert, Paper, Collapse, IconButton } from "@mui/material";
+import { Plus, Trash2, BookOpen, Clock, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
 import ClassInfoDialog from "./class-info-dialog";
 import SemesterResultsTable from "./semester-results-table";
 import { loadMockCourses } from "@/lib/course-parser";
+import { encodeAccessIdClient } from "@/lib/utils/access-id";
 
 type GradPlan = {
   id: string;
@@ -33,6 +34,12 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Find active grad plan and construct edit URL
+  const activeGradPlan = gradPlans.find(plan => plan.isActive) || gradPlans[0];
+  const gradPlanEditUrl = activeGradPlan
+    ? `/grad-plan/${encodeAccessIdClient(activeGradPlan.id)}`
+    : '/grad-plan';
 
   const getEventColor = (event: SchedulerEvent) => {
     if (event.type === "personal") {
@@ -84,6 +91,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     event?: SchedulerEvent;
   }>({ isOpen: false });
   const [showAllPersonalEvents, setShowAllPersonalEvents] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -428,6 +436,118 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
             </Typography>
           </Box>
         </Box>
+
+        {/* Instructional Card */}
+        <Paper
+          elevation={0}
+          sx={{
+            mt: 3,
+            borderRadius: 3,
+            border: "2px solid var(--primary)",
+            backgroundColor: "var(--card)",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+            overflow: "hidden",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              p: 3,
+              backgroundColor: "color-mix(in srgb, var(--primary) 5%, var(--card))",
+              borderBottom: showInstructions ? "1px solid var(--border)" : "none",
+            }}
+          >
+            <Typography
+              variant="h6"
+              className="font-header"
+              sx={{
+                fontWeight: 800,
+                color: "var(--foreground)",
+                fontSize: "1.125rem",
+              }}
+            >
+              How to Schedule Your Semester
+            </Typography>
+            <IconButton
+              onClick={() => setShowInstructions(!showInstructions)}
+              size="small"
+              sx={{
+                color: "var(--primary)",
+                "&:hover": {
+                  backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                },
+              }}
+              aria-label={showInstructions ? "Collapse instructions" : "Expand instructions"}
+            >
+              {showInstructions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </IconButton>
+          </Box>
+
+          <Collapse in={showInstructions}>
+            <Box sx={{ p: 3 }}>
+              <Box
+                component="ol"
+                sx={{
+                  m: 0,
+                  pl: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2.5,
+                  listStyle: "none",
+                  counterReset: "step-counter",
+                }}
+              >
+                {[
+                  "Add your time constraints (work schedule, clubs, study time, family commitments, etc.)",
+                  "Select your active graduation plan",
+                  "Auto-generate your course schedule",
+                  "Review and make any adjustments you need"
+                ].map((step, index) => (
+                  <Box
+                    key={index}
+                    component="li"
+                    sx={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 2.5,
+                      counterIncrement: "step-counter",
+                      "&::before": {
+                        content: "counter(step-counter)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minWidth: 36,
+                        height: 36,
+                        borderRadius: "50%",
+                        backgroundColor: "var(--primary)",
+                        color: "var(--dark)",
+                        fontWeight: 800,
+                        fontSize: "1rem",
+                        fontFamily: '"Red Hat Display", sans-serif',
+                      },
+                    }}
+                  >
+                    <Typography
+                      variant="body1"
+                      className="font-body"
+                      sx={{
+                        color: "var(--foreground)",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                        lineHeight: 1.7,
+                        pt: 0.75,
+                      }}
+                    >
+                      {step}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          </Collapse>
+        </Paper>
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -575,6 +695,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
               onSlotSelect={handleSlotSelect}
               slotMinTime="08:00:00"
               slotMaxTime="20:00:00"
+              gradPlanEditUrl={gradPlanEditUrl}
             />
           </Box>
         </Box>
@@ -597,6 +718,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
                 }}
                 onSectionClick={handleSectionClick}
                 onInstructorClick={handleInstructorClick}
+                gradPlanEditUrl={gradPlanEditUrl}
               />
             </Box>
           );
