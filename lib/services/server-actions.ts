@@ -6,6 +6,7 @@ import { ValidationError } from 'yup';
 import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
+import type { TablesInsert } from '@/lib/database/types';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
 import { GetAiPrompt } from './aiDbService';
 import {
@@ -857,6 +858,61 @@ export async function hasStudentRecordAction(userId: string) {
     } catch (error) {
         console.error('Error checking student record:', error);
         return { success: false, exists: false, error: error instanceof Error ? error.message : 'Failed to check student record' };
+    }
+}
+
+/**
+ * Server action to ensure student record exists (creates if missing)
+ * AUTHORIZATION: AUTHENTICATED USERS
+ */
+export async function ensureStudentRecordAction(userId: string) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        if (user.id !== userId) {
+            return { success: false, error: 'Not authorized to modify this profile' };
+        }
+
+        const { data: existingStudent, error: fetchError } = await supabase
+            .from('student')
+            .select('id')
+            .eq('profile_id', userId)
+            .maybeSingle();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error('Error fetching student record:', fetchError);
+            return { success: false, error: 'Failed to check student record' };
+        }
+
+        if (existingStudent) {
+            return { success: true, created: false };
+        }
+
+        const studentInsert: TablesInsert<'student'> = {
+            profile_id: userId,
+            selected_programs: [],
+            selected_interests: [],
+            class_preferences: [],
+        };
+
+        const { error: insertError } = await supabase
+            .from('student')
+            .insert(studentInsert);
+
+        if (insertError) {
+            console.error('Error creating student record:', insertError);
+            return { success: false, error: 'Failed to create student record' };
+        }
+
+        return { success: true, created: true };
+    } catch (error) {
+        console.error('Error ensuring student record:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to ensure student record' };
     }
 }
 

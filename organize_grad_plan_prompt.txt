@@ -7,7 +7,8 @@ NON-NEGOTIABLE OUTPUT RULES
 
 INPUT: TAKEN COURSES (if provided)
 - takenCourses items may include: code, title, credits, term, year, grade, status (Completed/In-Progress), source, fulfills.
-- Place takenCourses into historical terms exactly as provided (do not edit course objects, credits, or fulfills).
+- Place takenCourses into historical terms preserving all provided data (code, title, credits, term, grade, status, source).
+- IMPORTANT: For historical courses missing fulfills, analyze the course and add appropriate fulfills values matching the requirements it satisfies (gen ed, major requirement, elective, etc.).
 - A taken course with passing grade or status Completed MUST NOT be scheduled again.
 - If catalog text specifies a minimum grade and the taken grade is below it, schedule a retake (the only allowed duplicate).
 - In-Progress courses occupy their historical term and MUST NOT be scheduled again.
