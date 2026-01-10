@@ -43,6 +43,7 @@ jobs:
 
       - name: Run ESLint
         run: pnpm lint
+        # Will fail on errors, but allow warnings (165 warnings are acceptable technical debt)
 
   # Quality Check 2: Type Checking
   typecheck:
