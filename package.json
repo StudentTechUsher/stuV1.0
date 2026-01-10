@@ -61,7 +61,7 @@
     "pdf-parse": "^2.3.0",
     "pdf2pic": "^3.2.0",
     "pdfjs-dist": "^5.4.296",
-    "playwright": "^1.56.1",
+    "playwright": "^1.57.0",
     "posthog-js": "^1.318.0",
     "posthog-node": "^5.17.2",
     "react": "^19.2.1",
