@@ -107,6 +107,71 @@ The workflow runs on:
 - Pull request updates (new commits)
 - Push to main branch
 
+## Automated Dependency Updates (Dependabot)
+
+In addition to CI checks, this repository has **Dependabot** configured to automatically create PRs for dependency updates and security patches.
+
+### What Dependabot Does
+
+Dependabot automatically:
+- 🔒 **Security patches** - Creates PRs for known vulnerabilities (checked daily)
+- 📦 **Dependency updates** - Keeps dependencies up-to-date
+- 📋 **Detailed changelogs** - Includes release notes and compatibility info
+- 🎯 **Smart grouping** - Groups related updates to reduce PR noise
+- ✅ **CI integration** - All Dependabot PRs run through your CI checks
+
+### Configuration
+
+Dependabot is configured in `.github/dependabot.yml` with:
+
+**Update Schedule:**
+- Security updates: **Daily** at 3:00 AM (MST)
+- Regular updates: **Daily** check with smart grouping
+
+**Grouped Updates:**
+- Dev dependencies (`@types/*`, `eslint`, `typescript`, etc.)
+- Radix UI components (`@radix-ui/*`)
+- Material UI components (`@mui/*`)
+- Supabase packages (`@supabase/*`)
+- FullCalendar packages (`@fullcalendar/*`)
+
+**Labels:**
+- All Dependabot PRs are tagged with `dependencies` and `automated`
+- Easy to filter and review in bulk
+
+### How to Handle Dependabot PRs
+
+1. **Review the PR** - Dependabot includes changelogs and compatibility notes
+2. **Check CI status** - All 5 CI checks run automatically
+3. **Test locally if needed** - For major updates, pull and test locally
+4. **Merge if green** - If CI passes and changes look good, merge it
+
+**Example Dependabot PR you might see:**
+```
+Title: ⬆️ Bump @radix-ui/react-dialog from 1.1.15 to 1.1.16
+Labels: dependencies, automated
+
+Changelog:
+- Fixed accessibility issue with dialog close button
+- Updated TypeScript types for better inference
+
+CI Status: ✅ All checks passed
+```
+
+### Benefits for Your Project
+
+1. **Security** - Those 12 vulnerabilities we found? Dependabot would have flagged them automatically
+2. **Maintenance** - Keeps dependencies fresh without manual tracking
+3. **CI Integration** - Every update is tested before you even look at it
+4. **Time Saver** - Reduces manual dependency management work
+
+### Demo Tip
+
+When showing your CI/CD setup, you can point out:
+- "We also have Dependabot configured to automatically create PRs for security updates"
+- "It runs daily checks and would have caught those security vulnerabilities automatically"
+- Shows you understand modern DevOps best practices beyond basic CI
+
 ## Viewing CI Results
 
 ### From Pull Request
@@ -160,4 +225,6 @@ Total automated checks: **5 quality checks**
 ---
 
 **Created**: January 2026
-**CI File**: `.github/workflows/ci.yml`
+**Files:**
+- `.github/workflows/ci.yml` - CI/CD workflow
+- `.github/dependabot.yml` - Automated dependency updates

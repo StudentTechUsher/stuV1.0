@@ -1,0 +1,83 @@
+version: 2
+updates:
+  # Dependency updates for npm/pnpm packages
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      # Check for security updates daily
+      interval: "daily"
+      time: "03:00"
+      timezone: "America/Denver"
+    # Open PRs for security updates immediately
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+    # Semantic versioning strategy
+    versioning-strategy: "increase"
+    # Group dev dependencies together to reduce PR noise
+    groups:
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "@testing-library/*"
+          - "@vitest/*"
+          - "eslint*"
+          - "typescript"
+          - "prettier"
+          - "vitest"
+          - "happy-dom"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group production dependencies by category
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      fullcalendar:
+        patterns:
+          - "@fullcalendar/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      mui:
+        patterns:
+          - "@mui/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      supabase:
+        patterns:
+          - "@supabase/*"
+          - "supabase"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Auto-approve and merge patch updates for dev dependencies
+    # (You can enable this with GitHub Actions if desired)
+
+    # Commit message prefix
+    commit-message:
+      prefix: ":arrow_up:"
+      prefix-development: ":arrow_up:"
+      include: "scope"
+
+  # GitHub Actions workflow updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: ":construction_worker:"
