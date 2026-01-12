@@ -20,3 +20,7 @@ export {
   mockElectivesProgress,
   mockAllCategories,
 } from './mockProgressData';
+export {
+  convertCategoryProgressToProgressCategory,
+  convertCategoriesToProgressCategories,
+} from './dataAdapter';

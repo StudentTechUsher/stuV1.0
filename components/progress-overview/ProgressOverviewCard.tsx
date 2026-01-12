@@ -9,6 +9,7 @@ export function ProgressOverviewCard({
   category,
   isExpandable = true,
   defaultExpanded = true,
+  compact = false,
 }: ProgressOverviewCardProps) {
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
 
@@ -31,21 +32,24 @@ export function ProgressOverviewCard({
 
   return (
     <div
-      className="rounded-2xl p-10 shadow-sm"
+      className={compact ? "rounded-xl p-6 shadow-sm" : "rounded-2xl p-10 shadow-sm"}
       style={cardBackgroundStyle}
     >
       {/* Header Row */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-4xl font-black text-[var(--foreground)]">
+      <div className={compact ? "flex items-center justify-between mb-4" : "flex items-center justify-between mb-6"}>
+        <h2 className={compact ? "text-2xl font-black text-[var(--foreground)]" : "text-4xl font-black text-[var(--foreground)]"}>
           {name}
         </h2>
-        <span className="text-xl font-semibold text-[var(--foreground)]">
-          <span className="font-black">{totalCredits}</span> required credit hours
+        <span className={compact ? "text-sm font-semibold text-[var(--foreground)]" : "text-xl font-semibold text-[var(--foreground)]"}>
+          <span className="font-black">{totalCredits}</span> {compact ? "cr" : "required credit hours"}
         </span>
       </div>
 
       {/* Main Progress Bar (THICK with text inside) - Segmented */}
-      <div className="relative w-full h-20 rounded-2xl bg-white dark:bg-zinc-800 shadow-md mb-6 overflow-hidden">
+      <div className={compact
+        ? "relative w-full h-14 rounded-xl bg-white dark:bg-zinc-800 shadow-sm mb-4 overflow-hidden"
+        : "relative w-full h-20 rounded-2xl bg-white dark:bg-zinc-800 shadow-md mb-6 overflow-hidden"
+      }>
         {/* Calculate segment percentages based on credits */}
         {(() => {
           const completedPercent = totalCredits > 0 ? (completed / totalCredits) * 100 : 0;
@@ -102,22 +106,22 @@ export function ProgressOverviewCard({
 
         {/* Percentage text INSIDE bar */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-black text-black relative z-10">
+          <span className={compact ? "text-lg font-black text-black dark:text-white relative z-10" : "text-2xl font-black text-black relative z-10"}>
             {percentComplete} % complete
           </span>
         </div>
       </div>
 
       {/* Status Legend Row (Large circular badges) */}
-      <div className="flex items-start gap-6 mb-8">
+      <div className={compact ? "flex items-start gap-4 mb-6" : "flex items-start gap-6 mb-8"}>
         {/* Completed badge - solid category color */}
         {completed > 0 && (
           <div className="flex flex-col items-center gap-2">
             <div
-              className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md"
+              className={compact ? "flex h-12 w-12 items-center justify-center rounded-full border-2 border-transparent shadow-md" : "flex h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md"}
               style={{ backgroundColor: getCompletedColor(color) }}
             >
-              <span className="text-xl font-bold text-black">{completed}</span>
+              <span className={compact ? "text-lg font-bold text-black" : "text-xl font-bold text-black"}>{completed}</span>
             </div>
             <span className="text-sm font-medium text-[var(--foreground)]">Completed</span>
           </div>
@@ -127,10 +131,10 @@ export function ProgressOverviewCard({
         {inProgress > 0 && (
           <div className="flex flex-col items-center gap-2">
             <div
-              className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md"
+              className={compact ? "flex h-12 w-12 items-center justify-center rounded-full border-2 border-transparent shadow-md" : "flex h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md"}
               style={{ backgroundColor: getInProgressColor(color) }}
             >
-              <span className="text-xl font-bold text-black dark:text-white">{inProgress}</span>
+              <span className={compact ? "text-lg font-bold text-black dark:text-white" : "text-xl font-bold text-black dark:text-white"}>{inProgress}</span>
             </div>
             <span className="text-sm font-medium text-[var(--foreground)]">In Progress</span>
           </div>
@@ -140,16 +144,16 @@ export function ProgressOverviewCard({
         {planned > 0 && (
           <div className="flex flex-col items-center gap-2">
             <div
-              className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md dark:hidden"
+              className={compact ? "flex h-12 w-12 items-center justify-center rounded-full border-2 border-transparent shadow-md dark:hidden" : "flex h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md dark:hidden"}
               style={{ backgroundColor: getPlannedColor() }}
             >
-              <span className="text-xl font-bold text-black">{planned}</span>
+              <span className={compact ? "text-lg font-bold text-black" : "text-xl font-bold text-black"}>{planned}</span>
             </div>
             <div
-              className="hidden h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md dark:flex"
+              className={compact ? "hidden h-12 w-12 items-center justify-center rounded-full border-2 border-transparent shadow-md dark:flex" : "hidden h-14 w-14 items-center justify-center rounded-full border-2 border-transparent shadow-md dark:flex"}
               style={{ backgroundColor: getPlannedColorDark() }}
             >
-              <span className="text-xl font-bold text-white">{planned}</span>
+              <span className={compact ? "text-lg font-bold text-white" : "text-xl font-bold text-white"}>{planned}</span>
             </div>
             <span className="text-sm font-medium text-[var(--foreground)]">Planned</span>
           </div>
@@ -158,8 +162,8 @@ export function ProgressOverviewCard({
         {/* Remaining badge */}
         {remaining > 0 && (
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-zinc-300 bg-white dark:bg-zinc-800 shadow-md">
-              <span className="text-xl font-bold text-zinc-600 dark:text-zinc-400">{remaining}</span>
+            <div className={compact ? "flex h-12 w-12 items-center justify-center rounded-full border-2 border-zinc-300 bg-white dark:bg-zinc-800 shadow-md" : "flex h-14 w-14 items-center justify-center rounded-full border-2 border-zinc-300 bg-white dark:bg-zinc-800 shadow-md"}>
+              <span className={compact ? "text-lg font-bold text-zinc-600 dark:text-zinc-400" : "text-xl font-bold text-zinc-600 dark:text-zinc-400"}>{remaining}</span>
             </div>
             <span className="text-sm font-medium text-[var(--foreground)]">Remaining</span>
           </div>

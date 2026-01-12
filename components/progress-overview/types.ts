@@ -58,4 +58,5 @@ export interface ProgressOverviewCardProps {
   category: ProgressCategory;
   isExpandable?: boolean;
   defaultExpanded?: boolean;
+  compact?: boolean; // Use compact sizing for sidebars/narrow spaces
 }
