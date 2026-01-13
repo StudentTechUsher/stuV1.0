@@ -40,6 +40,9 @@ export interface ProgramOption {
   slug?: string;
   course_flow?: Json | null;
   requirements?: Json | null;
+  minimum_credits?: number | null;
+  target_total_credits?: number | null;
+  program_description?: string | null;
 }
 
 // Tool result type
@@ -126,7 +129,7 @@ export async function fetchProgramsByType(
   programType: 'major' | 'minor' | 'graduate' | 'gen_ed',
   studentMetadata?: {
     admissionYear?: number | null;
-    isTransfer?: boolean | null;
+    isTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
   }
 ): Promise<ProgramOption[]> {
   try {

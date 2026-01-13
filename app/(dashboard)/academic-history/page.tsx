@@ -149,7 +149,7 @@ export default function AcademicHistoryPage() {
 
         setUniversityId(profile?.university_id ?? null);
         setEnrollmentYear(student?.admission_year ?? null);
-        setIsTransferStudent(Boolean(student?.is_transfer));
+        setIsTransferStudent(student?.is_transfer === 'transfer');
       } catch (error) {
         console.error('Failed to fetch profile metadata:', error);
       }

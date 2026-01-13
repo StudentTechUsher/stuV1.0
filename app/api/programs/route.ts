@@ -35,7 +35,7 @@ async function handleGetPrograms(request: NextRequest) {
     // Build query
     let query = supabase
       .from('program')
-      .select('id,name,university_id,program_type,course_flow,requirements,applicable_start_year,applicable_end_year,applies_to_transfers,applies_to_freshmen,priority')
+      .select('id,name,university_id,program_type,course_flow,requirements,applicable_start_year,applicable_end_year,applies_to_transfers,applies_to_freshmen,priority,minimum_credits,target_total_credits,program_description')
       .order('name');
 
     if (type) {

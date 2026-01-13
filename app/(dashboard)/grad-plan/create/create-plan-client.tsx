@@ -163,7 +163,7 @@ export default function CreatePlanClient({
               est_grad_sem: studentProfile.est_grad_sem,
               career_goals: studentProfile.career_goals,
               admission_year: (studentProfile as { admission_year?: number | null }).admission_year,
-              is_transfer: (studentProfile as { is_transfer?: boolean | null }).is_transfer,
+              is_transfer: (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null }).is_transfer,
             },
             hasActivePlan,
           },
@@ -404,7 +404,7 @@ export default function CreatePlanClient({
           estGradSem?: string | null;
           careerGoals?: string | null;
           admissionYear?: number | null;
-          isTransfer?: boolean | null;
+          isTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
           isGraduationOnly?: boolean;
         };
 
@@ -1148,7 +1148,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
               estGradSem: studentProfile.est_grad_sem || null,
               careerGoals: studentProfile.career_goals || null,
               admissionYear: (studentProfile as { admission_year?: number | null }).admission_year || null,
-              isTransfer: (studentProfile as { is_transfer?: boolean | null }).is_transfer || null,
+              isTransfer: (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null }).is_transfer || null,
             },
             completedStep: ConversationStep.PROFILE_SETUP,
           });
@@ -1202,7 +1202,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
               estGradSem: studentProfile.est_grad_sem || null,
               careerGoals: studentProfile.career_goals || null,
               admissionYear: (studentProfile as { admission_year?: number | null }).admission_year || null,
-              isTransfer: (studentProfile as { is_transfer?: boolean | null }).is_transfer || null,
+              isTransfer: (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null }).is_transfer || null,
             },
             completedStep: ConversationStep.PROFILE_SETUP,
           });
@@ -1725,10 +1725,25 @@ One last question: On a scale of 1-10, how committed are you to this career path
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
           {/* Chat Area - Takes 3/4 on large screens */}
           <div className="lg:col-span-3 h-full min-h-0">
-            <div className="border rounded-xl bg-gray-50 shadow-sm flex flex-col h-full max-h-full">
+            <div className="border rounded-xl bg-gray-50 dark:bg-zinc-800 shadow-sm flex flex-col h-full max-h-full">
               {/* Messages Container */}
               <div className="flex-1 min-h-0 max-h-full overflow-y-auto pt-3 px-3 pb-0 space-y-2">
-                {messages.map((message, index) => {
+                {messages
+                  // Hide previous messages when course selection tool is active
+                  .filter((_message, index) => {
+                    // If course_selection is active, only show the course selection tool and any messages after it
+                    if (activeTool === 'course_selection') {
+                      // Find the index of the course_selection tool message
+                      const courseSelectionIndex = messages.findIndex(
+                        m => m.role === 'tool' && m.toolType === 'course_selection'
+                      );
+                      // Only show messages from course selection onwards
+                      return index >= courseSelectionIndex;
+                    }
+                    // Otherwise, show all messages
+                    return true;
+                  })
+                  .map((message, index) => {
                   // Tool messages render as interactive components
                   // Only show if it's the active tool (not completed)
                   if (message.role === 'tool' && message.toolType) {
@@ -1797,13 +1812,13 @@ One last question: On a scale of 1-10, how committed are you to this career path
                             className={`max-w-[80%] px-3 py-2 rounded-2xl ${
                               message.role === 'user'
                                 ? 'bg-[#0a1f1a] text-white'
-                                : 'bg-white border border-border shadow-sm'
+                                : 'bg-white dark:bg-zinc-900 dark:text-white border border-border shadow-sm'
                             }`}
                           >
                             {message.content && <MarkdownMessage content={message.content} />}
                             <p
                               className={`text-xs mt-1 ${
-                                message.role === 'user' ? 'text-white/60' : 'text-muted-foreground'
+                                message.role === 'user' ? 'text-white/60' : 'text-muted-foreground dark:text-white/60'
                               }`}
                             >
                               {message.timestamp.toLocaleTimeString([], {
@@ -1844,8 +1859,8 @@ One last question: On a scale of 1-10, how committed are you to this career path
                 })}
                 {isProcessing && !messages.some(m => m.content?.includes('Perfect! Now let me generate your personalized graduation plan')) && (
                   <div className="flex justify-start">
-                    <div className="bg-white border border-border shadow-sm px-3 py-2 rounded-2xl">
-                      <p className="text-sm italic text-muted-foreground">Thinking...</p>
+                    <div className="bg-white dark:bg-zinc-900 dark:text-white border border-border shadow-sm px-3 py-2 rounded-2xl">
+                      <p className="text-sm italic text-muted-foreground dark:text-white/60">Thinking...</p>
                     </div>
                   </div>
                 )}
@@ -1857,7 +1872,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
               {/* Input Area - Always show when no active tool, pinned to bottom */}
               {!activeTool && (
-                <div className="border-t bg-gray-50 pt-2 pb-2 px-3 flex-shrink-0">
+                <div className="border-t bg-gray-50 dark:bg-zinc-800 pt-2 pb-2 px-3 flex-shrink-0">
                   <div className="flex gap-2 items-end">
                     <TextField
                       fullWidth
@@ -1937,7 +1952,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                       {conversationState.currentStep !== ConversationStep.COMPLETE && (
                         <div className="mt-4 p-3 rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30">
                           <p className="text-sm text-center">
-                            <span className="font-semibold text-[var(--primary)]">Current Step:</span>{' '}
+                            <span className="font-semibold text-green-800 dark:text-green-600">Current Step:</span>{' '}
                             <span className="text-foreground">{progress.currentStepLabel}</span>
                           </p>
                         </div>

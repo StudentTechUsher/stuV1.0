@@ -27,31 +27,123 @@ export interface AdvisorProgressPanelProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   currentSemesterCredits?: number; // Credits student is currently taking
-  plannedCredits?: number; // Total credits planned in the grad plan
   expandableCategories?: ExpandableCategoryData[]; // Optional detailed category data for expansion
 }
 
 // === Helper Functions ===
 
 /**
+ * Extracts unique requirement categories from plan data
+ * Groups them into: Programs, Gen Ed, Institution-Specific, Electives
+ */
+interface ExtractedCategories {
+  programs: Set<string>;
+  genEd: Set<string>;
+  institutionSpecific: Set<string>;
+  electives: Set<string>;
+}
+
+function extractCategories(planData: Term[]): ExtractedCategories {
+  const categories: ExtractedCategories = {
+    programs: new Set<string>(),
+    genEd: new Set<string>(),
+    institutionSpecific: new Set<string>(),
+    electives: new Set<string>()
+  };
+
+  planData.forEach(term => {
+    term.courses?.forEach(course => {
+      course.fulfills?.forEach(fulfillment => {
+        // Extract program name from "[Program Name] requirement-X" pattern
+        const programMatch = fulfillment.match(/^\[(.+?)\]\s+requirement/);
+        if (programMatch) {
+          categories.programs.add(programMatch[1]);
+          return;
+        }
+
+        // Categorize others
+        const lower = fulfillment.toLowerCase();
+        if (lower === 'elective') {
+          categories.electives.add('Electives');
+        } else if (
+          lower.includes('religion') ||
+          lower.includes('byu foundations') ||
+          lower.includes('foundations for student success')
+        ) {
+          categories.institutionSpecific.add('Institutional Requirements');
+        } else {
+          // Everything else is Gen Ed (Arts/Letters/Sciences, Skills, etc.)
+          categories.genEd.add('General Education');
+        }
+      });
+    });
+  });
+
+  return categories;
+}
+
+/**
+ * Gets a color for a program category based on its index
+ * Cycles through a palette of distinct colors for multiple majors/minors
+ */
+function getProgramColor(index: number): string {
+  const programColors = [
+    'var(--primary)',     // Green - Primary major
+    '#FF6B6B',            // Coral - Second major/minor
+    '#4ECDC4',            // Teal - Third major/minor
+    '#FFE66D',            // Yellow - Fourth (rare)
+    '#95E1D3',            // Mint - Fifth (very rare)
+  ];
+  return programColors[index % programColors.length];
+}
+
+/**
  * Calculate category progress from plan data
  * This analyzes courses in the plan and categorizes them based on their fulfills[] array
+ * Dynamically discovers categories instead of hardcoding them.
+ *
  * Courses are classified as:
  * - Completed: courses with isCompleted: true OR in past terms (before the active term)
  * - In Progress: courses in the active term (is_active: true) that are not completed
  * - Planned: courses in future terms that are not completed
  */
 export function calculateCategoryProgress(planData: Term[]): CategoryProgress[] {
-  const categoryCounts: Record<string, { completed: number; inProgress: number; planned: number; total: number }> = {
-    'Major': { completed: 0, inProgress: 0, planned: 0, total: 0 },
-    'General Education': { completed: 0, inProgress: 0, planned: 0, total: 0 },
-    'Religion': { completed: 0, inProgress: 0, planned: 0, total: 0 },
-    'Electives': { completed: 0, inProgress: 0, planned: 0, total: 0 },
-  };
+  // First, extract all unique categories from the plan data
+  const extractedCategories = extractCategories(planData);
+
+  // Build a dynamic list of category names with their types
+  const categoryDefinitions: Array<{ name: string; type: 'program' | 'genEd' | 'institutional' | 'elective'; colorIndex?: number }> = [];
+
+  // Add programs
+  Array.from(extractedCategories.programs).forEach((program, index) => {
+    categoryDefinitions.push({ name: program, type: 'program', colorIndex: index });
+  });
+
+  // Add Gen Ed if present
+  if (extractedCategories.genEd.size > 0) {
+    categoryDefinitions.push({ name: 'General Education', type: 'genEd' });
+  }
+
+  // Add Institutional Requirements if present
+  if (extractedCategories.institutionSpecific.size > 0) {
+    categoryDefinitions.push({ name: 'Institutional Requirements', type: 'institutional' });
+  }
+
+  // Add Electives if present
+  if (extractedCategories.electives.size > 0) {
+    categoryDefinitions.push({ name: 'Electives', type: 'elective' });
+  }
+
+  // Initialize counters for each discovered category
+  const categoryCounts: Record<string, { completed: number; inProgress: number; planned: number; total: number }> = {};
+  categoryDefinitions.forEach(cat => {
+    categoryCounts[cat.name] = { completed: 0, inProgress: 0, planned: 0, total: 0 };
+  });
 
   // Find the index of the active term
   const activeTermIndex = planData.findIndex((term) => term.is_active === true);
 
+  // Iterate through courses and count credits per category
   planData.forEach((term, termIndex) => {
     const courses = term.courses || [];
     const isActiveTerm = term.is_active === true;
@@ -67,73 +159,89 @@ export function calculateCategoryProgress(planData: Term[]): CategoryProgress[] 
       // 2. It's in a past term (before the active term)
       const isCompleted = course.isCompleted === true || isPastTerm;
 
-      // Categorize based on fulfills array
-      let category = 'Electives'; // default
+      // Determine which category this course belongs to
+      let categoryName = 'Electives'; // default
 
-      if (fulfills.length > 0) {
-        const fulfillsStr = fulfills.join(' ').toLowerCase();
+      for (const fulfillment of fulfills) {
+        // Check for program match
+        const programMatch = fulfillment.match(/^\[(.+?)\]\s+requirement/);
+        if (programMatch) {
+          categoryName = programMatch[1];
+          break;
+        }
 
-        // Major: courses with program names in brackets (e.g., "[Information Systems (BSIS)] requirement-3")
-        // This pattern works for any program at any institution
-        if (fulfills.some(f => f.match(/\[.*?\]/))) {
-          category = 'Major';
-        }
-        // Religion: courses that fulfill religion requirements
-        // Looks for "religion" keyword which is common across institutions
-        else if (fulfillsStr.includes('religion')) {
-          category = 'Religion';
-        }
-        // General Education: GE requirements (catch-all for various GE patterns)
-        // This includes: Arts/Letters/Sciences, Skills, Civilization, American Heritage, Global, Foundations
-        else if (
-          fulfillsStr.includes('arts') ||
-          fulfillsStr.includes('letters') ||
-          fulfillsStr.includes('sciences') ||
-          fulfillsStr.includes('skills') ||
-          fulfillsStr.includes('civilization') ||
-          fulfillsStr.includes('american heritage') ||
-          fulfillsStr.includes('global') ||
-          fulfillsStr.includes('foundations') ||
-          fulfillsStr.includes('gen ed') ||
-          fulfillsStr.includes('general education')
+        // Check for institutional requirements
+        const lower = fulfillment.toLowerCase();
+        if (
+          lower.includes('religion') ||
+          lower.includes('byu foundations') ||
+          lower.includes('foundations for student success')
         ) {
-          category = 'General Education';
+          categoryName = 'Institutional Requirements';
+          break;
         }
-        // Elective: explicitly marked or anything else not categorized above
-        // No need for explicit check - it's the default
+
+        // Check for electives
+        if (lower === 'elective') {
+          categoryName = 'Electives';
+          break;
+        }
+
+        // Everything else is Gen Ed
+        categoryName = 'General Education';
+        break;
       }
 
-      // Classify credits based on course and term status
-      if (isCompleted) {
-        categoryCounts[category].completed += credits;
-      } else if (isActiveTerm) {
-        categoryCounts[category].inProgress += credits;
-      } else if (isFutureTerm || activeTermIndex === -1) {
-        categoryCounts[category].planned += credits;
-      }
+      // Only count if this category exists in our discovered categories
+      if (categoryCounts[categoryName]) {
+        // Classify credits based on course and term status
+        if (isCompleted) {
+          categoryCounts[categoryName].completed += credits;
+        } else if (isActiveTerm) {
+          categoryCounts[categoryName].inProgress += credits;
+        } else if (isFutureTerm || activeTermIndex === -1) {
+          categoryCounts[categoryName].planned += credits;
+        }
 
-      categoryCounts[category].total += credits;
+        categoryCounts[categoryName].total += credits;
+      }
     });
   });
 
-  // Map to CategoryProgress format
-  // Colors match semester-results-table.tsx for consistency
+  // Define colors by category type
   const categoryColors: Record<string, string> = {
-    'Major': 'var(--primary)', // Green
     'General Education': '#2196f3', // Blue
-    'Religion': '#5E35B1', // Indigo
+    'Institutional Requirements': '#5E35B1', // Indigo
     'Electives': '#9C27B0', // Magenta
   };
 
-  return Object.entries(categoryCounts).map(([category, counts]) => ({
-    category,
-    completed: counts.completed,
-    inProgress: counts.inProgress,
-    planned: counts.planned,
-    remaining: 0, // calculated as total - (completed + inProgress + planned)
-    total: counts.total,
-    color: categoryColors[category] || '#71717a',
-  }));
+  // Map to CategoryProgress format with colors
+  const progressData = categoryDefinitions
+    .map(catDef => {
+      const counts = categoryCounts[catDef.name];
+
+      // Determine color based on type
+      let color: string;
+      if (catDef.type === 'program') {
+        color = getProgramColor(catDef.colorIndex || 0);
+      } else {
+        color = categoryColors[catDef.name] || '#71717a';
+      }
+
+      return {
+        category: catDef.name,
+        completed: counts.completed,
+        inProgress: counts.inProgress,
+        planned: counts.planned,
+        remaining: 0, // calculated as total - (completed + inProgress + planned)
+        total: counts.total,
+        color,
+      };
+    })
+    // Filter out categories with 0 total credits
+    .filter(cat => cat.total > 0);
+
+  return progressData;
 }
 
 // === Sub-Components ===
@@ -280,7 +388,6 @@ export function AdvisorProgressPanel({
   isCollapsed = false,
   onToggleCollapse,
   currentSemesterCredits = 0,
-  plannedCredits = 0,
   expandableCategories,
 }: AdvisorProgressPanelProps) {
   const totalPercent = totalCredits.required > 0
@@ -368,13 +475,13 @@ export function AdvisorProgressPanel({
 
             {/* Credit badges */}
             <div className="flex flex-col gap-2">
-              {/* Total credits badge */}
+              {/* Credits completed badge */}
               <div className="inline-flex items-center justify-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.18)_40%,transparent)] bg-[#0a1f1a] px-4 py-2 shadow-[0_28px_70px_-50px_rgba(10,31,26,0.65)]">
                 <span className="text-sm font-semibold tracking-wide text-white">
                   {totalCredits.earned.toFixed(2)} / {totalCredits.required.toFixed(2)}
                 </span>
                 <span className="text-xs font-medium uppercase tracking-[0.18em] text-[color-mix(in_srgb,white_70%,transparent)]">
-                  Total Credits
+                  Credits Completed
                 </span>
               </div>
 
@@ -386,18 +493,6 @@ export function AdvisorProgressPanel({
                   </span>
                   <span className="text-xs font-medium uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--foreground)_68%,var(--action-edit)_32%)]">
                     Current Semester
-                  </span>
-                </div>
-              )}
-
-              {/* Planned credits badge */}
-              {plannedCredits > 0 && (
-                <div className="inline-flex items-center justify-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_42%,transparent)] bg-[color-mix(in_srgb,var(--primary)_14%,white)] px-4 py-2 shadow-[0_18px_50px_-40px_rgba(18,249,135,0.45)]">
-                  <span className="text-sm font-semibold tracking-wide text-[color-mix(in_srgb,var(--foreground)_88%,var(--primary)_12%)]">
-                    {plannedCredits.toFixed(1)}
-                  </span>
-                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--foreground)_68%,var(--primary)_32%)]">
-                    Planned in Grad Plan
                   </span>
                 </div>
               )}

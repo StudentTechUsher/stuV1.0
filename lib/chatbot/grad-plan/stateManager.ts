@@ -215,17 +215,28 @@ export function getConversationProgress(state: ConversationState): ConversationP
 
   const collectedFields = [];
 
-  // Profile fields
-  if (state.collectedData.estGradDate) {
+  // Profile fields - Combine Graduation Date and Semester
+  if (state.collectedData.estGradDate && state.collectedData.estGradSem) {
+    // Extract year from date (format: "2030-04-30" -> "2030")
+    const year = state.collectedData.estGradDate.split('-')[0];
+    const semester = state.collectedData.estGradSem;
+
+    collectedFields.push({
+      field: 'desiredGraduation',
+      label: 'Desired Graduation',
+      value: `${semester} ${year}`,
+      completed: true,
+    });
+  } else if (state.collectedData.estGradDate) {
+    // Fallback if only date is provided
     collectedFields.push({
       field: 'estGradDate',
       label: 'Graduation Date',
       value: state.collectedData.estGradDate,
       completed: true,
     });
-  }
-
-  if (state.collectedData.estGradSem) {
+  } else if (state.collectedData.estGradSem) {
+    // Fallback if only semester is provided
     collectedFields.push({
       field: 'estGradSem',
       label: 'Graduation Semester',
@@ -243,6 +254,21 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
+  // Student entry type (freshman, transfer, dual enrollment)
+  if (state.collectedData.isTransfer) {
+    const entryTypeLabels = {
+      freshman: 'Freshman',
+      transfer: 'Transfer Student',
+      dual_enrollment: 'Freshman with Credits',
+    };
+    collectedFields.push({
+      field: 'studentEntryType',
+      label: 'Admission Type',
+      value: entryTypeLabels[state.collectedData.isTransfer],
+      completed: true,
+    });
+  }
+
   if (state.collectedData.careerGoals) {
     collectedFields.push({
       field: 'careerGoals',
@@ -252,12 +278,24 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
-  // Transcript
-  if (state.collectedData.hasTranscript) {
+  // Transcript - Show status if transcript check step is completed
+  if (state.completedSteps.includes(ConversationStep.TRANSCRIPT_CHECK)) {
+    let transcriptValue = 'Not using transcript';
+
+    if (state.collectedData.hasTranscript) {
+      if (state.collectedData.transcriptUploaded) {
+        transcriptValue = 'New transcript uploaded';
+      } else if (state.collectedData.needsTranscriptUpdate) {
+        transcriptValue = 'Transcript updated';
+      } else {
+        transcriptValue = 'Using existing transcript';
+      }
+    }
+
     collectedFields.push({
       field: 'transcript',
-      label: 'Transcript',
-      value: state.collectedData.transcriptUploaded ? 'Uploaded' : 'On file',
+      label: 'Transcript Status',
+      value: transcriptValue,
       completed: true,
     });
   }

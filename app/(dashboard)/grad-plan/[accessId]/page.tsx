@@ -536,15 +536,6 @@ export default function EditGradPlanPage() {
            (activeTerm.courses ? activeTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
   }, [currentPlanData]);
 
-  // Calculate total planned credits in the grad plan
-  const plannedCredits = React.useMemo(() => {
-    if (!currentPlanData) return 0;
-    return currentPlanData.reduce((total, term) => {
-      const termCredits = term.credits_planned ||
-                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-      return total + termCredits;
-    }, 0);
-  }, [currentPlanData]);
 
   if (isCheckingAccess || loading) {
     return (
@@ -988,7 +979,6 @@ export default function EditGradPlanPage() {
                 isCollapsed={isPanelCollapsed}
                 onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
                 currentSemesterCredits={currentSemesterCredits}
-                plannedCredits={plannedCredits}
                 expandableCategories={mockExpandableCategories}
               />
             )}

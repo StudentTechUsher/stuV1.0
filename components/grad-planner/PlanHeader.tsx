@@ -394,8 +394,9 @@ export default function PlanHeader({
                   className="font-body-semi"
                   sx={{
                     backgroundColor: 'var(--primary)',
-                    color: 'var(--primary-foreground)',
+                    color: 'black',
                     px: 2.5,
+                    fontWeight: 700,
                     '&:hover': { backgroundColor: 'var(--hover-green)' },
                   }}
                 >
