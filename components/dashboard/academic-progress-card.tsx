@@ -9,6 +9,9 @@ import { GetActiveGradPlan } from "@/lib/services/gradPlanService";
 import { fetchUserCourses } from "@/lib/services/userCoursesService";
 import { fetchStudentGpa } from "@/lib/services/studentService";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ProgressOverviewCard } from "@/components/progress-overview/ProgressOverviewCard";
+import { CategoryTabs } from "@/components/progress-overview/CategoryTabs";
+import type { ProgressCategory } from "@/components/progress-overview/types";
 
 type RequirementProgress = {
   label: string;
@@ -71,49 +74,20 @@ function getStatusMessage(avgProgress: number): { text: string; color: string; b
   }
 }
 
-function ProgressBar({
-  label,
-  percentage,
-  color
-}: RequirementProgress) {
-  return (
-    // Compact progress bar
-    <div className="space-y-1">
-      {/* Label and percentage row */}
-      <div className="flex items-center justify-between">
-        <span className="font-body-semi text-xs font-medium text-[var(--foreground)]">
-          {label}
-        </span>
-        <span className="font-body-semi text-xs font-bold" style={{ color }}>
-          {percentage}%
-        </span>
-      </div>
-
-      {/* Progress bar track */}
-      <div className="relative h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--muted)_60%,transparent)]">
-        {/* Filled portion with smooth gradient and animation */}
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{
-            width: `${percentage}%`,
-            background: `linear-gradient(90deg, ${color} 0%, color-mix(in srgb, ${color} 70%, white) 100%)`
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function AcademicProgressCard() {
   const router = useRouter();
   const [hasGradPlan, setHasGradPlan] = useState(false);
   const [gpa, setGpa] = useState<number | null>(null);
   const [requirements, setRequirements] = useState<RequirementProgress[]>([
     { label: "Major", percentage: 0, color: "var(--primary)" },
-    { label: "Minor", percentage: 0, color: "#001F54" },
+    { label: "Minor", percentage: 0, color: "#003D82" },
     { label: "General Education", percentage: 0, color: "#2196f3" },
     { label: "Electives", percentage: 0, color: "#9C27B0" },
   ]);
+
+  // New state for ProgressOverviewCard
+  const [progressCategories, setProgressCategories] = useState<ProgressCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("Major");
 
   useEffect(() => {
     const fetchProgressData = async () => {
@@ -154,9 +128,58 @@ export default function AcademicProgressCard() {
 
             setRequirements([
               { label: "Major", percentage: majorProgress, color: "var(--primary)" },
-              { label: "Minor", percentage: minorProgress, color: "#001F54" },
+              { label: "Minor", percentage: minorProgress, color: "#003D82" },
               { label: "General Education", percentage: geProgress, color: "#2196f3" },
               { label: "Electives", percentage: electivesProgress, color: "#9C27B0" },
+            ]);
+
+            // Convert to new ProgressCategory format (using mock data for now)
+            // TODO: Extract actual requirement details from grad plan
+            setProgressCategories([
+              {
+                name: "Major",
+                color: "var(--primary)",
+                totalCredits: 64,
+                percentComplete: majorProgress,
+                completed: Math.round((majorProgress / 100) * 64),
+                inProgress: 0,
+                planned: 0,
+                remaining: Math.round(((100 - majorProgress) / 100) * 64),
+                requirements: [],
+              },
+              {
+                name: "Minor",
+                color: "#003D82",
+                totalCredits: 18,
+                percentComplete: minorProgress,
+                completed: Math.round((minorProgress / 100) * 18),
+                inProgress: 0,
+                planned: 0,
+                remaining: Math.round(((100 - minorProgress) / 100) * 18),
+                requirements: [],
+              },
+              {
+                name: "General Education",
+                color: "#2196f3",
+                totalCredits: 39,
+                percentComplete: geProgress,
+                completed: Math.round((geProgress / 100) * 39),
+                inProgress: 0,
+                planned: 0,
+                remaining: Math.round(((100 - geProgress) / 100) * 39),
+                requirements: [],
+              },
+              {
+                name: "Electives",
+                color: "#9C27B0",
+                totalCredits: 10,
+                percentComplete: electivesProgress,
+                completed: Math.round((electivesProgress / 100) * 10),
+                inProgress: 0,
+                planned: 0,
+                remaining: Math.round(((100 - electivesProgress) / 100) * 10),
+                requirements: [],
+              },
             ]);
           } else {
             setHasGradPlan(false);
@@ -257,20 +280,25 @@ export default function AcademicProgressCard() {
           );
         })()}
 
-        {/* Progress Bars Section - more compact */}
-        <div className="space-y-2">
-          <h4 className="font-body text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-            Requirement Progress
-          </h4>
-          {requirements.map((requirement) => (
-            <ProgressBar
-              key={requirement.label}
-              label={requirement.label}
-              percentage={requirement.percentage}
-              color={requirement.color}
-            />
-          ))}
+        {/* Category Navigation Tabs */}
+        <div className="mb-4">
+          <CategoryTabs
+            categories={progressCategories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
         </div>
+
+        {/* Selected Category Details */}
+        {progressCategories.find((cat) => cat.name === selectedCategory) && (
+          <div className="overflow-hidden">
+            <ProgressOverviewCard
+              category={progressCategories.find((cat) => cat.name === selectedCategory)!}
+              isExpandable={false}
+              defaultExpanded={false}
+            />
+          </div>
+        )}
         </>
       ) : (
         <Link href="/grad-plan" style={{ textDecoration: 'none' }}>

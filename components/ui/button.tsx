@@ -10,9 +10,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-[#12F987] text-white shadow-sm hover:bg-[#0ED978] hover:shadow-md active:scale-[0.98] dark:bg-[#12F987] dark:text-zinc-900 dark:hover:bg-[#0ED978]",
+          "bg-[#12F987] text-black shadow-sm hover:bg-[#0ED978] hover:shadow-md active:scale-[0.98] dark:bg-[#12F987] dark:text-zinc-900 dark:hover:bg-[#0ED978]",
         secondary:
-          "bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:shadow-md active:scale-[0.98] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100",
+          "bg-white text-zinc-900 shadow-sm hover:bg-zinc-100 hover:shadow-md active:scale-[0.98] dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800",
         accent:
           "bg-[#F0FFF9] text-zinc-900 shadow-sm hover:bg-[#E0F9EF] hover:shadow-md active:scale-[0.98] dark:bg-[#12F987] dark:text-zinc-900 dark:hover:bg-[#0ED978]",
       },

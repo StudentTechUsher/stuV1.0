@@ -30,7 +30,7 @@ interface ToolRendererProps {
       est_grad_sem?: string | null;
       career_goals?: string | null;
       admission_year?: number | null;
-      is_transfer?: boolean | null;
+      is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
     };
     hasActivePlan?: boolean;
     hasCourses?: boolean;
@@ -42,7 +42,7 @@ interface ToolRendererProps {
     userId?: string;
     profileId?: string;
     studentAdmissionYear?: number | null;
-    studentIsTransfer?: boolean | null;
+    studentIsTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
     careerSuggestions?: CareerSuggestionsInput;
     programSuggestions?: ProgramSuggestionsInput;
     suggestedPrograms?: Array<{ programName: string; programType: string }>;

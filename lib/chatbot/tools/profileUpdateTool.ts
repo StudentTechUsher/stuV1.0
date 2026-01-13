@@ -11,7 +11,7 @@ export const ProfileUpdateSchema = z.object({
   estGradSem: z.enum(['Fall', 'Spring', 'Summer', 'Winter']).optional().nullable(),
   careerGoals: z.string().min(1).optional().nullable(),
   admissionYear: z.number().int().optional().nullable(),
-  isTransfer: z.boolean().optional().nullable(),
+  isTransfer: z.enum(['freshman', 'transfer', 'dual_enrollment']).optional().nullable(),
   isGraduationOnly: z.boolean().optional(),
 });
 
@@ -72,7 +72,7 @@ export function shouldRequestProfileUpdate(student: {
   est_grad_plan?: string | null;
   career_goals?: string | null;
   admission_year?: number | null;
-  is_transfer?: boolean | null;
+  is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
 }): {
   needsUpdate: boolean;
   missingFields: string[];
@@ -89,8 +89,8 @@ export function shouldRequestProfileUpdate(student: {
   if (!student.admission_year) {
     missingFields.push('admission year');
   }
-  if (student.is_transfer === null || student.is_transfer === undefined) {
-    missingFields.push('transfer status');
+  if (!student.is_transfer) {
+    missingFields.push('student entry type');
   }
   if (!student.career_goals) {
     missingFields.push('career goals');

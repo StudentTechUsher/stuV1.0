@@ -50,10 +50,10 @@ export default function CareerSuggestionsDisplay({
             <div
               key={career.title}
               className={`
-                p-4 rounded-lg border-2 transition-all
+                p-4 rounded-lg border-2 transition-all bg-white
                 ${isSelected
                   ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                  : 'border-gray-200 hover:border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900'
+                  : 'border-gray-200 hover:border-gray-300'
                 }
               `}
             >
@@ -61,9 +61,9 @@ export default function CareerSuggestionsDisplay({
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-base">{career.title}</h4>
+                    <h4 className="font-semibold text-base text-gray-900">{career.title}</h4>
                     {index === 0 && (
-                      <span className="px-2 py-0.5 text-xs font-medium bg-[var(--primary)] text-primary-foreground rounded-full">
+                      <span className="px-2 py-0.5 text-xs font-medium bg-[var(--primary)] text-black rounded-full">
                         Top Match
                       </span>
                     )}

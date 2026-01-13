@@ -928,7 +928,7 @@ export async function updateProfileForChatbotAction(
         careerGoals?: string | null;
         potentialCareerPaths?: string | null;
         admissionYear?: number | null;
-        isTransfer?: boolean | null;
+        isTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
     }
 ) {
     try {

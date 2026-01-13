@@ -18,6 +18,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles, Info, Search } from 'lucide-react';
 import {
   CourseSelectionInput,
@@ -101,6 +103,12 @@ export default function CourseSelectionForm({
 
   // Gen Ed distribution preference
   const [genEdDistribution, setGenEdDistribution] = useState<'early' | 'balanced'>('balanced');
+
+  // Course selection method preference (AI vs Manual)
+  const [selectionMethod, setSelectionMethod] = useState<'ai' | 'manual'>('manual');
+
+  // Active tab state
+  const [activeTab, setActiveTab] = useState(0);
 
   // Substitution state
   const [substitutionDialogOpen, setSubstitutionDialogOpen] = useState(false);
@@ -1044,7 +1052,29 @@ export default function CourseSelectionForm({
   };
 
   const handleSubmit = () => {
-    // Build the course selection data
+    // In AI mode, skip course selection and only include electives
+    // Note: We bypass the Zod schema validation for AI mode since it has different requirements
+    if (selectionMethod === 'ai') {
+      const aiModeData = {
+        selectionMode: 'ai' as const,
+        programs: [], // Empty - AI will select courses during plan generation
+        ...(userElectives.length > 0 && {
+          userAddedElectives: userElectives.map(e => ({
+            code: e.code,
+            title: e.title,
+            credits: e.credits,
+          })),
+        }),
+        genEdDistribution,
+      };
+
+      // Type assertion: AI mode intentionally has different shape than schema
+      // We cast through 'unknown' to bypass strict type checking since AI mode is a special case
+      onSubmit(aiModeData as unknown as CourseSelectionInput);
+      return;
+    }
+
+    // Manual mode - Build the course selection data
     const generalEducation: RequirementCourses[] = [];
     const programs: ProgramCourseSelection[] = [];
 
@@ -1123,7 +1153,7 @@ export default function CourseSelectionForm({
       }
     });
 
-    // Validate
+    // Validate (Manual mode only)
     if (programs.length === 0) {
       alert('Please select at least one course for your program requirements');
       return;
@@ -1223,6 +1253,36 @@ export default function CourseSelectionForm({
         )}
       </div>
 
+      {/* Course Selection Method Preference */}
+      <div className="mb-4 flex justify-center">
+        <div className="inline-flex items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-full shadow-sm p-1">
+          <button
+            type="button"
+            onClick={() => setSelectionMethod('ai')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              selectionMethod === 'ai'
+                ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+            }`}
+          >
+            <Sparkles size={16} />
+            I want AI to choose for me
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectionMethod('manual')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              selectionMethod === 'manual'
+                ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+            }`}
+          >
+            <BookOpen size={16} />
+            I want to choose for myself
+          </button>
+        </div>
+      </div>
+
       {/* Gen Ed Distribution Preference - Only for undergraduates */}
       {!isGraduateStudent && (
         <div className="mb-4 flex justify-center">
@@ -1237,7 +1297,7 @@ export default function CourseSelectionForm({
               }`}
             >
               <Zap size={16} />
-              Early Gen Eds
+              I want to get Gen Eds done early
             </button>
             <button
               type="button"
@@ -1249,7 +1309,7 @@ export default function CourseSelectionForm({
               }`}
             >
               <Scale size={16} />
-              Balanced Distribution
+              I want to balance Gen Eds throughout
             </button>
           </div>
         </div>
@@ -1270,11 +1330,131 @@ export default function CourseSelectionForm({
         </Button>
       </div> */}
 
+      {/* AI Mode - Only show electives section */}
+      {selectionMethod === 'ai' && (
+        <div className="mb-4">
+          <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+            <div className="flex items-start gap-2">
+              <Sparkles size={18} className="mt-0.5 flex-shrink-0" />
+              <div>
+                <strong>AI Course Selection Enabled</strong>
+                <p className="mt-1 text-sm">
+                  Our AI will select the best courses for your graduation plan based on your programs, preferences, and academic goals. You can still add any elective courses you'd like to include below.
+                </p>
+              </div>
+            </div>
+          </Alert>
+        </div>
+      )}
+
+      {/* Tabs for Programs and Gen Ed - Only show in Manual mode */}
+      {selectionMethod === 'manual' && (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_event, newValue) => setActiveTab(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                minHeight: '64px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              },
+            }}
+          >
+            {/* Gen Ed tab for undergraduates */}
+            {!isGraduateStudent && requirements.length > 0 && (
+              <Tab
+                label={
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                    <svg width="32" height="32" viewBox="0 0 32 32">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="12"
+                        fill="none"
+                        stroke="#f97316"
+                        strokeWidth="4"
+                      />
+                    </svg>
+                    <span style={{ fontSize: '0.75rem' }}>Gen Ed</span>
+                  </Box>
+                }
+              />
+            )}
+
+            {/* Tab for each selected program */}
+            {Array.from(selectedPrograms).map((programId, index) => {
+              const program = programsData?.find(p => String(p.id) === programId);
+              if (!program) return null;
+
+              // Assign different colors to different programs
+              const colors = [
+                '#8b5cf6', // Purple for first major
+                '#3b82f6', // Blue for second major
+                '#6366f1', // Indigo for third
+                '#ec4899', // Pink for fourth
+              ];
+              const color = colors[index % colors.length];
+
+              // Shorten program name for tab if too long
+              const shortName = program.name && program.name.length > 20
+                ? program.name.substring(0, 18) + '...'
+                : program.name;
+
+              return (
+                <Tab
+                  key={programId}
+                  label={
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                      <svg width="32" height="32" viewBox="0 0 32 32">
+                        <circle
+                          cx="16"
+                          cy="16"
+                          r="12"
+                          fill="none"
+                          stroke={color}
+                          strokeWidth="4"
+                        />
+                      </svg>
+                      <span style={{ fontSize: '0.75rem' }}>{shortName}</span>
+                    </Box>
+                  }
+                />
+              );
+            })}
+
+            {/* Electives tab */}
+            <Tab
+              label={
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                  <svg width="32" height="32" viewBox="0 0 32 32">
+                    <circle
+                      cx="16"
+                      cy="16"
+                      r="12"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="4"
+                    />
+                  </svg>
+                  <span style={{ fontSize: '0.75rem' }}>Electives</span>
+                </Box>
+              }
+            />
+          </Tabs>
+        </Box>
+      )}
+
       <div className="space-y-3">
-        {/* General Education Requirements (Undergraduate Only) */}
-        {!isGraduateStudent && requirements.length > 0 && (
+        {/* General Education Requirements Tab Content - Only show in Manual mode */}
+        {selectionMethod === 'manual' && !isGraduateStudent && requirements.length > 0 && activeTab === 0 && (
           <div>
-            <h4 className="text-sm font-semibold mb-3 text-gray-900">General Education</h4>
             <div className="space-y-3">
               {requirements.map((req, idx) => {
                 const dropdownCount = getDropdownCount(req);
@@ -1512,23 +1692,40 @@ export default function CourseSelectionForm({
                 );
               })}
             </div>
+
+            {/* Continue button for Gen Ed tab */}
+            <div className="pt-4 flex justify-end">
+              <Button
+                variant="primary"
+                onClick={() => setActiveTab(activeTab + 1)}
+                className="px-4 py-2 text-sm font-medium"
+              >
+                Continue
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Program Requirements */}
-        {Array.from(selectedPrograms).map((programId) => {
+        {/* Program Requirements - Only show in Manual mode */}
+        {selectionMethod === 'manual' && Array.from(selectedPrograms).map((programId, programIndex) => {
           const program = programsData?.find(p => String(p.id) === programId);
           if (!program) return null;
 
           const programReqs = programRequirementsMap[programId] || [];
           if (programReqs.length === 0) return null;
 
+          // Calculate which tab index this program corresponds to
+          // For undergraduates: Gen Ed is tab 0, so programs start at tab 1
+          // For graduates: Programs start at tab 0
+          const programTabIndex = !isGraduateStudent && requirements.length > 0
+            ? programIndex + 1
+            : programIndex;
+
+          // Only render if this program's tab is active
+          if (activeTab !== programTabIndex) return null;
+
           return (
             <div key={programId}>
-              <h4 className="text-sm font-semibold mb-3 text-gray-900">
-                {program.name} {program.version && `(${program.version})`}
-              </h4>
-
               <div className="space-y-3">
                 {programReqs.map((req, reqIdx) => {
                   if (!req.courses || req.courses.length === 0) return null;
@@ -1758,11 +1955,163 @@ export default function CourseSelectionForm({
                   );
                 })}
               </div>
+
+              {/* Continue button for program tab */}
+              <div className="pt-4 flex justify-end">
+                <Button
+                  variant="primary"
+                  onClick={() => setActiveTab(activeTab + 1)}
+                  className="px-4 py-2 text-sm font-medium"
+                >
+                  Continue
+                </Button>
+              </div>
             </div>
           );
         })}
 
-        {/* Additional Electives - Second Search Box at Bottom */}
+        {/* Electives Tab Content */}
+        {(() => {
+          // In AI mode, always show electives section
+          if (selectionMethod === 'ai') {
+            return (
+              <div>
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <Search size={16} />
+                    Additional Electives
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    Search for any additional courses you'd like to add to your plan. These can be electives, exploratory courses, or anything not covered in your program requirements.
+                  </p>
+                  <CourseSearch
+                    universityId={universityId}
+                    onSelect={handleAddElective}
+                    placeholder="Search by course code or name..."
+                    size="small"
+                    fullWidth
+                  />
+                  {userElectives.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Your additional courses ({userElectives.length}):
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {userElectives.map((elective) => (
+                          <Chip
+                            key={elective.id}
+                            label={`${elective.code} — ${elective.title} (${elective.credits} cr)`}
+                            onDelete={() => handleRemoveElective(elective.id)}
+                            deleteIcon={<X size={14} />}
+                            size="small"
+                            sx={{
+                              backgroundColor: 'var(--primary)',
+                              color: '#ffffff',
+                              '& .MuiChip-deleteIcon': {
+                                color: '#ffffff',
+                              },
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {electiveError && (
+                    <Alert severity="warning" sx={{ mt: 2, fontSize: '0.75rem' }}>
+                      {electiveError}
+                    </Alert>
+                  )}
+                </div>
+
+                {/* Submit button for AI mode */}
+                <div className="pt-4 flex justify-end">
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmit}
+                    className="px-4 py-2 text-sm font-medium"
+                  >
+                    Submit & Continue
+                  </Button>
+                </div>
+              </div>
+            );
+          }
+
+          // In Manual mode, only show when Electives tab is active
+          // Calculate the total number of tabs
+          const genEdTabCount = !isGraduateStudent && requirements.length > 0 ? 1 : 0;
+          const programTabCount = selectedPrograms.size;
+          const electivesTabIndex = genEdTabCount + programTabCount;
+
+          // Only render if Electives tab is active
+          if (activeTab !== electivesTabIndex) return null;
+
+          return (
+            <div>
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <Search size={16} />
+                  Additional Electives
+                </h4>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  Search for any additional courses you'd like to add to your plan. These can be electives, exploratory courses, or anything not covered in your program requirements.
+                </p>
+                <CourseSearch
+                  universityId={universityId}
+                  onSelect={handleAddElective}
+                  placeholder="Search by course code or name..."
+                  size="small"
+                  fullWidth
+                />
+                {userElectives.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Your additional courses ({userElectives.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {userElectives.map((elective) => (
+                        <Chip
+                          key={elective.id}
+                          label={`${elective.code} — ${elective.title} (${elective.credits} cr)`}
+                          onDelete={() => handleRemoveElective(elective.id)}
+                          deleteIcon={<X size={14} />}
+                          size="small"
+                          sx={{
+                            backgroundColor: 'var(--primary)',
+                            color: '#ffffff',
+                            '& .MuiChip-deleteIcon': {
+                              color: '#ffffff',
+                            },
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {electiveError && (
+                  <Alert severity="warning" sx={{ mt: 2, fontSize: '0.75rem' }}>
+                    {electiveError}
+                  </Alert>
+                )}
+              </div>
+
+              {/* Submit button for Electives tab */}
+              <div className="pt-4 flex justify-end">
+                <Button
+                  variant="primary"
+                  onClick={handleSubmit}
+                  className="px-4 py-2 text-sm font-medium"
+                >
+                  Submit & Continue
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Additional Electives - Second Search Box at Bottom - REMOVED (now in Electives tab) */}
+        {/* Keeping old code commented out for reference */}
+        {/*
         <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-lg">
           <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Search size={16} />
@@ -1804,6 +2153,7 @@ export default function CourseSelectionForm({
             </div>
           )}
         </div>
+        */}
 
         {/* Course Preference Dialog */}
         {preferenceDialogOpen && (
@@ -2099,16 +2449,7 @@ export default function CourseSelectionForm({
           </div>
         )}
 
-        {/* Submit Button */}
-        <div className="pt-3 flex gap-2 justify-end">
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            className="px-4 py-2 text-sm font-medium"
-          >
-            Continue
-          </Button>
-        </div>
+        {/* Old Submit Button - REMOVED (now in Electives tab) */}
 
         {/* Course Description Dialog */}
         <Dialog

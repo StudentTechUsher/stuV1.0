@@ -5,20 +5,25 @@ import { Button } from '@/components/ui/button';
 import Autocomplete, { AutocompleteRenderInputParams } from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
-import { School, GraduationCap, Plus, Compass, FileCheck } from 'lucide-react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import { School, GraduationCap, Plus, Compass, FileCheck, Info } from 'lucide-react';
 import {
   ProgramSelectionInput,
   ProgramOption,
   fetchProgramsByType,
 } from '@/lib/chatbot/tools/programSelectionTool';
 import CourseFlowModal from './CourseFlowModal';
+import MarkdownMessage from '@/components/chatbot/MarkdownMessage';
 import { fetchActiveGradPlanProgramsAction } from '@/lib/services/server-actions';
 
 interface ProgramSelectionFormProps {
   studentType: 'undergraduate' | 'graduate';
   universityId: number;
   studentAdmissionYear?: number | null;
-  studentIsTransfer?: boolean | null;
+  studentIsTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
   profileId?: string;
   onSubmit: (data: ProgramSelectionInput) => void;
   onProgramPathfinderClick?: () => void;
@@ -56,6 +61,10 @@ export default function ProgramSelectionForm({
   // Course flow modal state
   const [courseFlowModalOpen, setCourseFlowModalOpen] = useState(false);
   const [selectedProgramForFlow, setSelectedProgramForFlow] = useState<ProgramOption | null>(null);
+
+  // Program description modal state
+  const [programDescModalOpen, setProgramDescModalOpen] = useState(false);
+  const [selectedProgramForDesc, setSelectedProgramForDesc] = useState<ProgramOption | null>(null);
 
   // Prior grad plan state
   const [hasActiveGradPlan, setHasActiveGradPlan] = useState(false);
@@ -250,6 +259,35 @@ export default function ProgramSelectionForm({
     setSelectedProgramForFlow(null);
   };
 
+  const handleViewProgramDescription = (program: ProgramOption, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSelectedProgramForDesc(program);
+    setProgramDescModalOpen(true);
+  };
+
+  const handleCloseProgramDescModal = () => {
+    setProgramDescModalOpen(false);
+    setSelectedProgramForDesc(null);
+  };
+
+  const formatCreditRequirements = (program: ProgramOption): string => {
+    const hasMin = program.minimum_credits !== null && program.minimum_credits !== undefined;
+    const hasTarget = program.target_total_credits !== null && program.target_total_credits !== undefined;
+
+    if (hasMin && hasTarget) {
+      // If min and target are the same, just show one value
+      if (program.minimum_credits === program.target_total_credits) {
+        return `${program.minimum_credits} credits`;
+      }
+      return `${program.minimum_credits}-${program.target_total_credits} credits`;
+    } else if (hasTarget) {
+      return `${program.target_total_credits} credits`;
+    } else if (hasMin) {
+      return `Min. ${program.minimum_credits} credits`;
+    }
+    return '';
+  };
+
   return (
     <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
       <div className="mb-6">
@@ -278,7 +316,7 @@ export default function ProgramSelectionForm({
               className="gap-2"
             >
               <Compass size={18} />
-              Need help choosing your program?
+              I need help choosing my program(s)
             </Button>
           )}
           {hasActiveGradPlan && (
@@ -289,7 +327,7 @@ export default function ProgramSelectionForm({
               className="gap-2"
             >
               <FileCheck size={18} />
-              Use my prior grad plan as a template
+              Use the programs from my prior active grad plan
             </Button>
           )}
         </div>
@@ -312,22 +350,39 @@ export default function ProgramSelectionForm({
                 loading={loadingMajors}
                 renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
                   const { key, ...otherProps } = props;
+                  const creditInfo = formatCreditRequirements(option);
                   return (
                     <li key={key} {...otherProps}>
                       <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="flex-1">{option.name}</span>
-                        {option.course_flow && (
-                          <button
-                            type="button"
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              handleViewCourseFlow(option, e);
-                            }}
-                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
-                          >
-                            View Program
-                          </button>
-                        )}
+                        <div className="flex-1">
+                          <div className="font-medium">{option.name}</div>
+                          {creditInfo && (
+                            <div className="text-xs text-muted-foreground">{creditInfo}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {option.program_description && (
+                            <button
+                              type="button"
+                              onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
+                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
+                            >
+                              Program Description
+                            </button>
+                          )}
+                          {option.course_flow && (
+                            <button
+                              type="button"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleViewCourseFlow(option, e);
+                              }}
+                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
+                            >
+                              View Program
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </li>
                   );
@@ -344,24 +399,13 @@ export default function ProgramSelectionForm({
                     // Extract key from getTagProps to avoid spreading it (React warning)
                     const { key, ...chipProps } = getTagProps({ index });
                     return (
-                      <div key={option.id} className="inline-flex items-center gap-1">
-                        <Chip
-                          {...chipProps}
-                          label={option.name}
-                          size="small"
-                          className="bg-[var(--primary)] text-primary-foreground"
-                        />
-                      {option.course_flow && (
-                        <button
-                          type="button"
-                          onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
-                          title="View Program"
-                        >
-                          View
-                        </button>
-                      )}
-                    </div>
+                      <Chip
+                        key={option.id}
+                        {...chipProps}
+                        label={option.name}
+                        size="small"
+                        className="bg-[var(--primary)] text-primary-foreground"
+                      />
                     );
                   })
                 }
@@ -382,22 +426,39 @@ export default function ProgramSelectionForm({
                 loading={loadingMinors}
                 renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
                   const { key, ...otherProps } = props;
+                  const creditInfo = formatCreditRequirements(option);
                   return (
                     <li key={key} {...otherProps}>
                       <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="flex-1">{option.name}</span>
-                        {option.course_flow && (
-                          <button
-                            type="button"
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              handleViewCourseFlow(option, e);
-                            }}
-                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
-                          >
-                            View Program
-                          </button>
-                        )}
+                        <div className="flex-1">
+                          <div className="font-medium">{option.name}</div>
+                          {creditInfo && (
+                            <div className="text-xs text-muted-foreground">{creditInfo}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {option.program_description && (
+                            <button
+                              type="button"
+                              onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
+                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
+                            >
+                              Program Description
+                            </button>
+                          )}
+                          {option.course_flow && (
+                            <button
+                              type="button"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleViewCourseFlow(option, e);
+                              }}
+                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
+                            >
+                              View Program
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </li>
                   );
@@ -414,23 +475,12 @@ export default function ProgramSelectionForm({
                     // Extract key from getTagProps to avoid spreading it (React warning)
                     const { key, ...chipProps } = getTagProps({ index });
                     return (
-                      <div key={option.id} className="inline-flex items-center gap-1">
-                        <Chip
-                          {...chipProps}
-                          label={option.name}
-                          size="small"
-                        />
-                        {option.course_flow && (
-                          <button
-                            type="button"
-                            onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
-                            title="View Program"
-                          >
-                            View
-                          </button>
-                        )}
-                      </div>
+                      <Chip
+                        key={option.id}
+                        {...chipProps}
+                        label={option.name}
+                        size="small"
+                      />
                     );
                   })
                 }
@@ -451,22 +501,40 @@ export default function ProgramSelectionForm({
                   loading={loadingGenEds}
                   renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
                     const { key, ...otherProps } = props;
+                    const creditInfo = formatCreditRequirements(option);
                     return (
                       <li key={key} {...otherProps}>
                         <div className="flex items-center justify-between gap-2 w-full">
-                          <span className="flex-1">{option.name}</span>
-                          {option.course_flow && (
-                            <button
-                              type="button"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleViewCourseFlow(option, e);
-                              }}
-                              className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
-                            >
-                              View Program
-                            </button>
-                          )}
+                          <div className="flex-1">
+                            <div className="font-medium">{option.name}</div>
+                            {creditInfo && (
+                              <div className="text-xs text-muted-foreground">{creditInfo}</div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {option.program_description && (
+                              <button
+                                type="button"
+                                onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
+                                className="p-1 text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
+                                title="View program description"
+                              >
+                                <Info size={16} />
+                              </button>
+                            )}
+                            {option.course_flow && (
+                              <button
+                                type="button"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handleViewCourseFlow(option, e);
+                                }}
+                                className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
+                              >
+                                View Program
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </li>
                     );
@@ -482,17 +550,6 @@ export default function ProgramSelectionForm({
                     />
                   )}
                 />
-                {selectedGenEd?.course_flow && (
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={(e: React.MouseEvent) => handleViewCourseFlow(selectedGenEd, e)}
-                      className="px-3 py-1.5 text-sm font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
-                    >
-                      View Program Details
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -511,22 +568,40 @@ export default function ProgramSelectionForm({
               loading={loadingGraduate}
               renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
                 const { key, ...otherProps } = props;
+                const creditInfo = formatCreditRequirements(option);
                 return (
                   <li key={key} {...otherProps}>
                     <div className="flex items-center justify-between gap-2 w-full">
-                      <span className="flex-1">{option.name}</span>
-                      {option.course_flow && (
-                        <button
-                          type="button"
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            handleViewCourseFlow(option, e);
-                          }}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors flex-shrink-0"
-                        >
-                          View Program
-                        </button>
-                      )}
+                      <div className="flex-1">
+                        <div className="font-medium">{option.name}</div>
+                        {creditInfo && (
+                          <div className="text-xs text-muted-foreground">{creditInfo}</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {option.program_description && (
+                          <button
+                            type="button"
+                            onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
+                            className="p-1 text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
+                            title="View program description"
+                          >
+                            <Info size={16} />
+                          </button>
+                        )}
+                        {option.course_flow && (
+                          <button
+                            type="button"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleViewCourseFlow(option, e);
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
+                          >
+                            View Program
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </li>
                 );
@@ -543,24 +618,13 @@ export default function ProgramSelectionForm({
                   // Extract key from getTagProps to avoid spreading it (React warning)
                   const { key, ...chipProps } = getTagProps({ index });
                   return (
-                    <div key={option.id} className="inline-flex items-center gap-1">
-                      <Chip
-                        {...chipProps}
-                        label={option.name}
-                        size="small"
-                        className="bg-[var(--primary)] text-primary-foreground"
-                      />
-                      {option.course_flow && (
-                        <button
-                          type="button"
-                          onClick={(e: React.MouseEvent) => handleViewCourseFlow(option, e)}
-                          className="px-2 py-1 text-xs font-medium text-[var(--primary)] bg-background dark:bg-zinc-900 border border-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
-                          title="View Program"
-                        >
-                          View
-                        </button>
-                      )}
-                    </div>
+                    <Chip
+                      key={option.id}
+                      {...chipProps}
+                      label={option.name}
+                      size="small"
+                      className="bg-[var(--primary)] text-primary-foreground"
+                    />
                   );
                 })
               }
@@ -590,6 +654,32 @@ export default function ProgramSelectionForm({
           program={selectedProgramForFlow}
         />
       )}
+
+      {/* Program Description Modal */}
+      <Dialog
+        open={programDescModalOpen}
+        onClose={handleCloseProgramDescModal}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedProgramForDesc?.name}
+        </DialogTitle>
+        <DialogContent>
+          {selectedProgramForDesc?.program_description ? (
+            <div className="mt-2">
+              <MarkdownMessage content={selectedProgramForDesc.program_description} />
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No description available for this program.</p>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button variant="secondary" onClick={handleCloseProgramDescModal}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

@@ -12,7 +12,7 @@ interface ProfileUpdateFormProps {
     est_grad_sem?: string | null;
     career_goals?: string | null;
     admission_year?: number | null;
-    is_transfer?: boolean | null;
+    is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
   };
   hasActivePlan?: boolean;
   onSubmit: (data: ProfileUpdateInput) => void;
@@ -99,10 +99,8 @@ export default function ProfileUpdateForm({
   const [admissionYear, setAdmissionYear] = useState<string>(
     currentValues.admission_year ? String(currentValues.admission_year) : ''
   );
-  const [isTransfer, setIsTransfer] = useState<boolean | null>(
-    currentValues.is_transfer !== null && currentValues.is_transfer !== undefined
-      ? currentValues.is_transfer
-      : null
+  const [studentEntryType, setStudentEntryType] = useState<'freshman' | 'transfer' | 'dual_enrollment' | null>(
+    currentValues.is_transfer ?? null
   );
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [customIndustry, setCustomIndustry] = useState('');
@@ -127,7 +125,7 @@ export default function ProfileUpdateForm({
   }, [currentYear]);
 
   const isGraduationValid = semester && year;
-  const isAdmissionValid = admissionYear && isTransfer !== null;
+  const isAdmissionValid = admissionYear && studentEntryType !== null;
   const isIndustryValid = selectedIndustries.length > 0 || customIndustry.trim().length > 0;
   const isCareerValid = careerGoals.trim().length > 0;
 
@@ -139,14 +137,14 @@ export default function ProfileUpdateForm({
   };
 
   const handleAdmissionContinue = () => {
-    if (admissionYear && isTransfer !== null) {
+    if (admissionYear && studentEntryType !== null) {
       // Submit graduation and admission info together
       const gradDate = calculateGraduationDate(semester, Number(year));
       onSubmit({
         estGradDate: gradDate,
         estGradSem: (semester as ProfileUpdateInput['estGradSem']),
         admissionYear: Number(admissionYear),
-        isTransfer,
+        isTransfer: studentEntryType,
         isGraduationOnly: true,
       });
       setStep('industry-choice');
@@ -304,23 +302,29 @@ export default function ProfileUpdateForm({
             </select>
           </div>
 
-          {/* Transfer Status */}
+          {/* Student Entry Type */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Student Type
             </label>
             <div className="space-y-2">
               <OptionTile
-                title="Freshman (started here)"
-                description="I started my undergraduate degree at this university"
-                selected={isTransfer === false}
-                onClick={() => setIsTransfer(false)}
+                title="Freshman"
+                description="I started my undergraduate degree at this university without any credits"
+                selected={studentEntryType === 'freshman'}
+                onClick={() => setStudentEntryType('freshman')}
+              />
+              <OptionTile
+                title="Freshman with Credits"
+                description="I completed credits elsewhere (dual enrollment, AP, etc.), but am not considered a transfer student"
+                selected={studentEntryType === 'dual_enrollment'}
+                onClick={() => setStudentEntryType('dual_enrollment')}
               />
               <OptionTile
                 title="Transfer Student"
                 description="I transferred from another institution"
-                selected={isTransfer === true}
-                onClick={() => setIsTransfer(true)}
+                selected={studentEntryType === 'transfer'}
+                onClick={() => setStudentEntryType('transfer')}
               />
             </div>
           </div>
