@@ -24,19 +24,19 @@ export function convertCategoryProgressToProgressCategory(
     id: index + 1,
     title: req.title,
     description: req.description,
-    progress: req.completed,
-    total: req.required,
-    status: getRequirementStatus(req.completed, req.required),
-    completed: req.completed,
+    progress: req.progress,
+    total: req.total,
+    status: getRequirementStatus(req.progress, req.total),
+    completed: req.progress,
     inProgress: 0, // TODO: Calculate from courses if available
     planned: 0, // TODO: Calculate from courses if available
-    remaining: Math.max(0, req.required - req.completed),
+    remaining: Math.max(0, req.total - req.progress),
     courses: req.courses?.map((course, courseIndex) => ({
       id: `${index}-${courseIndex}`,
       code: course.code || 'UNKN 000',
-      title: course.name || 'Unknown Course',
+      title: course.title || 'Unknown Course',
       credits: course.credits || 0,
-      status: course.completed ? 'completed' : 'remaining',
+      status: course.status,
     })) || [],
   })) || [];
 

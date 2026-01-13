@@ -46,7 +46,7 @@ export function RedesignedCourseCard({
       className={`${baseCardClasses} dark:hidden`}
       style={{
         backgroundColor: statusColors.bg,
-        borderColor: course.status === 'remaining' ? statusColors.border : 'transparent',
+        borderColor: course.status === 'remaining' ? (statusColors as { border: string }).border : 'transparent',
       }}
     >
       {renderCardContent()}
@@ -59,7 +59,7 @@ export function RedesignedCourseCard({
       className={`${baseCardClasses} hidden dark:flex`}
       style={{
         backgroundColor: statusColors.bgDark,
-        borderColor: course.status === 'remaining' ? statusColors.borderDark : 'transparent',
+        borderColor: course.status === 'remaining' ? (statusColors as { borderDark: string }).borderDark : 'transparent',
       }}
     >
       {renderCardContent()}

@@ -11,11 +11,7 @@ import { RedesignedTermCard } from './RedesignedTermCard';
  * Wraps RedesignedTermCard with drag-and-drop droppable functionality
  * Uses @dnd-kit/core useDroppable hook
  */
-interface DroppableTermCardProps extends RedesignedTermCardProps {
-  // All props from RedesignedTermCard
-}
-
-export function DroppableTermCard(props: DroppableTermCardProps) {
+export function DroppableTermCard(props: RedesignedTermCardProps) {
   const { term } = props;
 
   // Make this term a droppable zone

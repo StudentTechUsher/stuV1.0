@@ -32,6 +32,11 @@ export default function ProgressOverviewPreview() {
         progress: 2,
         total: 4,
         status: 'in-progress' as const,
+        completed: 2,
+        inProgress: 1,
+        planned: 1,
+        remaining: 0,
+        courses: [],
       },
       {
         id: 2,
@@ -40,6 +45,11 @@ export default function ProgressOverviewPreview() {
         progress: 1,
         total: 2,
         status: 'in-progress' as const,
+        completed: 1,
+        inProgress: 0,
+        planned: 1,
+        remaining: 0,
+        courses: [],
       },
     ],
   };
