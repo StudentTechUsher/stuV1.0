@@ -8,7 +8,6 @@ import {
   mockGEProgress,
   mockReligionProgress,
   mockElectivesProgress,
-  mockAllCategories,
 } from '@/components/progress-overview/mockProgressData';
 
 export default function ProgressOverviewPreview() {
