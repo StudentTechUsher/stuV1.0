@@ -11,7 +11,6 @@ export function ProgressOverviewCard({
   defaultExpanded = true,
   compact = false,
 }: ProgressOverviewCardProps) {
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
 
   const {
     name,
