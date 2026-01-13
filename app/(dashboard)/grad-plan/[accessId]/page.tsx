@@ -946,13 +946,13 @@ export default function EditGradPlanPage() {
             sx={{
               flex: isPanelCollapsed
                 ? { xs: '0 0 auto', lg: '0 0 80px' }
-                : { xs: '1 1 auto', lg: '0 0 380px' },
+                : { xs: '1 1 auto', lg: '0 0 550px' },
               minWidth: isPanelCollapsed
                 ? { xs: '100%', lg: '80px' }
-                : { xs: '100%', lg: '360px' },
+                : { xs: '100%', lg: '530px' },
               maxWidth: isPanelCollapsed
                 ? { lg: '80px' }
-                : { lg: '380px' },
+                : { lg: '550px' },
               display: 'flex',
               flexDirection: 'column',
               gap: 3,
