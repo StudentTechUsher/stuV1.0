@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { StuLoader } from "@/components/ui/StuLoader";
 import CalendarPanel from "@/components/dashboard/calendar/calendar-panel";
-import AcademicSummary from "@/components/dashboard/academic-summary";
-import AcademicProgressCard from "@/components/dashboard/academic-progress-card";
+import {
+  UnifiedAcademicCard,
+  UnifiedAcademicCardSkeleton,
+} from "@/components/dashboard/unified-academic-card";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { AdvisorDashboard } from "@/components/dashboard/advisor-dashboard";
 import { OnboardingModalWrapper } from "@/components/onboarding/onboarding-modal-wrapper";
@@ -119,18 +121,10 @@ function StudentDashboard({
   return (
     // Modern grid layout with responsive columns and consistent gap spacing
     <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-      {/* Left Column - Academic Summary and Progress Card */}
-      <div className="flex flex-col gap-4 sm:gap-6">
-        <Suspense fallback={
-          // Clean, modern loading state matching new design system
-          <div className="flex items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-8 shadow-sm">
-            <StuLoader variant="card" text="Loading your academic summary..." />
-          </div>
-        }>
-          <AcademicSummary />
-        </Suspense>
-        <AcademicProgressCard />
-      </div>
+      {/* Left Column - Unified Academic Card (combines Summary + Progress) */}
+      <Suspense fallback={<UnifiedAcademicCardSkeleton />}>
+        <UnifiedAcademicCard />
+      </Suspense>
 
       {/* Right Column - Calendar */}
       <Suspense fallback={
