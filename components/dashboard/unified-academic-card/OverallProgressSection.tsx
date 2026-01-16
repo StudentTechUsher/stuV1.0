@@ -70,7 +70,7 @@ function getOptimizationColor(score: number): {
  * Expands to show Graduation Plan, Plan Follow Through, and Optimization
  */
 // Primary color for degree progress bar
-const DEGREE_COLOR = 'var(--primary)';
+const DEGREE_COLOR = 'var(--degree-progress)';
 
 export function OverallProgressSection() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -188,7 +188,7 @@ export function OverallProgressSection() {
 
                 {/* Percentage text INSIDE bar - centered */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-black text-black dark:text-white relative z-10">
+                  <span className="text-lg font-black text-white dark:text-black relative z-10">
                     Degree {percentage}% Complete
                   </span>
                 </div>

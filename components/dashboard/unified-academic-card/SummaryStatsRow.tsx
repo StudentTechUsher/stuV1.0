@@ -33,17 +33,15 @@ export function SummaryStatsRow({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--hover-green)] p-4 shadow-sm transition-transform duration-200 hover:-translate-y-1 cursor-default">
+            <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-zinc-950 to-zinc-700 text-zinc-100 dark:from-zinc-50 dark:to-zinc-300 dark:text-zinc-900 p-4 shadow-sm transition-transform duration-200 hover:-translate-y-1 cursor-default">
               <div className="relative z-10 text-center">
-                <div className="font-header-bold text-3xl font-extrabold text-white">
+                <div className="font-header-bold text-3xl font-extrabold">
                   {gpa !== null ? gpa.toFixed(2) : "—"}
                 </div>
-                <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-white/90">
+                <div className="font-body mt-1 text-xs font-semibold uppercase tracking-wider text-zinc-300 dark:text-zinc-600">
                   GPA
                 </div>
               </div>
-              {/* Subtle pattern overlay */}
-              <div className="absolute inset-0 bg-white/5" />
             </div>
           </TooltipTrigger>
           {gpa === null && (
@@ -68,7 +66,7 @@ export function SummaryStatsRow({
             <div className="font-body text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
               Est. Graduation
             </div>
-            <div className="font-header-bold text-sm font-bold text-[var(--foreground)] truncate">
+            <div className="font-header-bold text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
               {estimatedGraduation}
             </div>
           </div>

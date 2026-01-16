@@ -93,6 +93,7 @@
   --warning-foreground: #e65100;
   --nav-foreground: #fff;
   --primary-dark: #003228;
+  --degree-progress: #0a0a0a;
 }
 
 /* MUI Time Picker Clock Styling - Override default blue to green */
@@ -170,6 +171,39 @@
   background-color: var(--hover-green) !important;
 }
 
+/* Sidebar scrollbars */
+.stu-sidebar-scroll {
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+.stu-sidebar-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.stu-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stu-sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--muted-foreground);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Dashboard calendar time labels */
+.stu-dashboard-calendar .fc-timegrid-axis-cushion,
+.stu-dashboard-calendar .fc-timegrid-axis-frame,
+.stu-dashboard-calendar .fc-timegrid-axis {
+  color: var(--foreground) !important;
+}
+
+.dark .stu-dashboard-calendar .fc-timegrid-axis-cushion,
+.dark .stu-dashboard-calendar .fc-timegrid-axis-frame,
+.dark .stu-dashboard-calendar .fc-timegrid-axis {
+  color: #ffffff !important;
+}
+
 .dark {
   --background: #18181b;
   --foreground: #fafafa;
@@ -212,6 +246,7 @@
   --warning-foreground: #fb923c;
   --nav-foreground: #fafafa;
   --primary-dark: #12F987;
+  --degree-progress: #e4e4e7;
 }
 
 @layer base {

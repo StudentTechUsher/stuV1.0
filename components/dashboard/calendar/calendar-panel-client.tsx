@@ -197,6 +197,7 @@ export default function CalendarPanelClient({
         >
           {/* Calendar */}
           <Box
+            className="stu-dashboard-calendar"
             data-calendar-export-grid="true"
             sx={{
               p: 0,
@@ -227,13 +228,13 @@ export default function CalendarPanelClient({
               "& .fc-col-header-cell-cushion": {
                 textTransform: "uppercase",
                 fontWeight: 800,
-                color: "var(--dark)",
+                color: "var(--foreground)",
               },
 
               // Hour labels (8 AM, 9 AM …)
               "& .fc-timegrid-axis-cushion": {
                 fontWeight: 700,
-                color: "var(--dark)",
+                color: "var(--foreground)",
               },
 
               // Row height (taller slots)
@@ -296,6 +297,11 @@ export default function CalendarPanelClient({
               info.el.style.minHeight = `${slotHeightPx}px`;
               info.el.style.maxHeight = `${slotHeightPx}px`;
               info.el.style.lineHeight = `${slotHeightPx}px`;
+              info.el.style.setProperty("color", "var(--foreground)", "important");
+              const cell = info.el.closest('td');
+              if (cell instanceof HTMLElement) {
+                cell.style.setProperty("color", "var(--foreground)", "important");
+              }
               const row = info.el.closest('tr');
               if (row instanceof HTMLElement) {
                 row.style.height = `${slotHeightPx}px`;

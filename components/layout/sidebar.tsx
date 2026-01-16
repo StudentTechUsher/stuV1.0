@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Inbox,
   MapPin,
   Clock,
@@ -30,6 +31,13 @@ import {
   Moon,
   Sun,
   Bot,
+  ExternalLink,
+  DollarSign,
+  Mail,
+  FileText,
+  BookOpen,
+  Layers,
+  LifeBuoy,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -44,6 +52,24 @@ const SIDEBAR_STORAGE_KEY = 'stu-sidebar-expanded';
 const COLLAPSED_WIDTH = 70;
 const EXPANDED_WIDTH = 260;
 const ICON_SIZE = 20;
+
+type SchoolPortalLink = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+const SCHOOL_PORTAL_LINKS_BY_SUBDOMAIN: Record<string, SchoolPortalLink[]> = {
+  byu: [
+    { label: 'Academic Calendar', href: 'https://academiccalendar.byu.edu/', icon: Calendar },
+    { label: 'Academic Summary', href: 'https://y.byu.edu/records/cgi/stdCourseWork.cgi', icon: FileText },
+    { label: 'Financial Center', href: 'https://mfc.byu.edu/', icon: DollarSign },
+    { label: 'Learning Suite', href: 'https://learningsuite.byu.edu/', icon: BookOpen },
+    { label: 'Canvas Learning', href: 'https://byu.instructure.com/', icon: Layers },
+    { label: 'Student Email', href: 'https://microsoft.byu.edu/email.byu.edu', icon: Mail },
+    { label: 'Success Hub', href: 'https://byu2.my.site.com/s/', icon: LifeBuoy },
+  ],
+};
 
 // Map icon names to lucide components
 const iconMap: Record<string, LucideIcon> = {
@@ -77,10 +103,12 @@ interface SidebarProps {
 
 export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPortalOpen, setIsPortalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { university } = useUniversityTheme();
   const { isDark, setMode } = useDarkMode();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load persisted state on mount
   useEffect(() => {
@@ -106,11 +134,24 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
     };
   }, [items]);
 
+  const portalLinks = useMemo(() => {
+    const subdomain = university?.subdomain?.toLowerCase() ?? '';
+    return SCHOOL_PORTAL_LINKS_BY_SUBDOMAIN[subdomain] ?? SCHOOL_PORTAL_LINKS_BY_SUBDOMAIN.byu ?? [];
+  }, [university?.subdomain]);
+
+  const shouldShowPortal = portalLinks.length > 0;
+
   const sidebarWidth = isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
+
+  useEffect(() => {
+    if (isPortalOpen && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [isPortalOpen]);
 
   return (
     <>
@@ -183,14 +224,12 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
           {/* ─────────────────────────────────────────────────────────────
               PRIMARY NAVIGATION
               ───────────────────────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto overflow-x-visible px-2 py-4 space-y-0.5">
-            {isExpanded && (
-              <div className="px-4 py-3 mb-3">
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-500 light:text-slate-600 uppercase tracking-wider">
-                  Navigation
-                </span>
-              </div>
-            )}
+          <div
+            ref={scrollRef}
+            className={`stu-sidebar-scroll flex-1 overflow-x-visible px-2 py-4 space-y-0.5 ${
+              isPortalOpen ? 'overflow-y-auto' : 'overflow-y-hidden'
+            }`}
+          >
 
             <ul className="space-y-1">
               {groupedItems.primary.map(item => (
@@ -203,6 +242,16 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
                   />
                 </li>
               ))}
+              {shouldShowPortal && (
+                <li>
+                  <SchoolPortalNav
+                    isExpanded={isExpanded}
+                    links={portalLinks}
+                    isOpen={isPortalOpen}
+                    onToggle={() => setIsPortalOpen((prev) => !prev)}
+                  />
+                </li>
+              )}
             </ul>
 
             {/* ─────────────────────────────────────────────────────────────
@@ -402,6 +451,101 @@ function NavItem({ item, isActive, isExpanded, isDark }: NavItemProps) {
             }}
           >
             {item.label}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
+interface SchoolPortalNavProps {
+  isExpanded: boolean;
+  links: SchoolPortalLink[];
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+function SchoolPortalNav({ isExpanded, links, isOpen, onToggle }: SchoolPortalNavProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isHovered && itemRef.current) {
+      const rect = itemRef.current.getBoundingClientRect();
+      setTooltipPos({
+        top: rect.top + rect.height / 2,
+        left: rect.right + 12,
+      });
+    }
+  }, [isHovered]);
+
+  return (
+    <div
+      ref={itemRef}
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg transition-all duration-150 min-h-[40px] ${
+          isExpanded ? '' : 'justify-center'
+        } text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-slate-100 dark:hover:text-slate-100 light:hover:text-slate-800 hover:bg-slate-800/40 dark:hover:bg-slate-800/40 light:hover:bg-slate-200/30 focus:outline-none focus:ring-2 focus:ring-[#12F987]/50 focus:ring-offset-2 dark:focus:ring-offset-[#020617] light:focus:ring-offset-white`}
+        aria-expanded={isOpen}
+        aria-controls="school-portal-links"
+        aria-label="School Portal"
+      >
+        <span className="flex-shrink-0 flex items-center justify-center">
+          <Building2 size={ICON_SIZE} />
+        </span>
+        {isExpanded && (
+          <>
+            <span className="text-sm font-medium flex-1 whitespace-nowrap overflow-hidden text-ellipsis leading-tight">
+              School Portal
+            </span>
+            <ChevronDown
+              size={16}
+              className={`transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </>
+        )}
+      </button>
+
+      {isExpanded && isOpen && (
+        <ul id="school-portal-links" className="mt-1 ml-9 space-y-1">
+          {links.map((link) => (
+            <li key={link.href}>
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-slate-100 dark:hover:text-slate-100 light:hover:text-slate-800 hover:bg-slate-800/40 dark:hover:bg-slate-800/40 light:hover:bg-slate-200/30 transition-colors duration-150"
+              >
+                <link.icon size={14} aria-hidden="true" className="flex-shrink-0" />
+                <span className="flex-1">{link.label}</span>
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {isHovered && !isExpanded &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed bg-popover text-popover-foreground border border-border text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none shadow-md"
+            role="tooltip"
+            style={{
+              top: `${tooltipPos.top}px`,
+              left: `${tooltipPos.left}px`,
+              transform: 'translateY(-50%)',
+              zIndex: 9999,
+            }}
+          >
+            School Portal
           </div>,
           document.body
         )}
