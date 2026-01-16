@@ -3,9 +3,17 @@ import type { ProgressCategory } from '@/components/progress-overview/types';
 /**
  * DUMMY DATA for overall degree progress
  * This represents total progress across all degree requirements
+ * Credit breakdown for segmented bar: completed + inProgress + planned = totalCredits
  */
 export const OVERALL_PROGRESS_MOCK = {
   percentage: 63,
+  creditsCompleted: 76,      // Solid green - courses already passed
+  creditsInProgress: 12,      // 50% transparent - current semester
+  creditsPlanned: 32,         // Grey - planned in grad plan
+  creditsRemaining: 0,        // Outline only - not yet planned
+  totalCredits: 120,
+  coursesCompleted: 25,
+  coursesRemaining: 15,
   tooltip: "You've completed 63% of your total degree requirements across all programs",
 };
 

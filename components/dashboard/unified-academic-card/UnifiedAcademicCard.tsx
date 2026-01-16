@@ -194,11 +194,6 @@ export function UnifiedAcademicCard() {
     cat => cat.name === selectedCategory
   ) || DASHBOARD_MOCK_CATEGORIES[0];
 
-  // Credits display string
-  const creditsDisplay = userData.hasTranscript
-    ? `${userData.earnedCredits} / ${userData.requiredCredits} credits`
-    : "Upload transcript to track credits";
-
   if (isLoading) {
     return <UnifiedAcademicCardSkeleton />;
   }
@@ -211,7 +206,8 @@ export function UnifiedAcademicCard() {
           name={userData.name}
           avatarUrl={userData.avatarUrl}
           standing={userData.standing}
-          creditsDisplay={creditsDisplay}
+          earnedCredits={userData.earnedCredits}
+          hasTranscript={userData.hasTranscript}
         />
 
         {/* Content Area */}

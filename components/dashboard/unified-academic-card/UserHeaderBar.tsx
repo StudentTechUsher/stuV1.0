@@ -2,11 +2,48 @@
 
 import { Avatar } from "@mui/material";
 
+/**
+ * Credit thresholds for class standing
+ * Based on typical university requirements
+ */
+const STANDING_THRESHOLDS = {
+  SOPHOMORE: 30,
+  JUNIOR: 60,
+  SENIOR: 90,
+};
+
+/**
+ * Get credits needed until next standing
+ */
+function getCreditsUntilNextStanding(earnedCredits: number, currentStanding: string): string | null {
+  if (currentStanding === 'Senior') {
+    return null; // Already at highest standing
+  }
+
+  if (currentStanding === 'Freshman' || earnedCredits < STANDING_THRESHOLDS.SOPHOMORE) {
+    const needed = STANDING_THRESHOLDS.SOPHOMORE - earnedCredits;
+    return needed > 0 ? `${needed} credits until Sophomore` : null;
+  }
+
+  if (currentStanding === 'Sophomore' || earnedCredits < STANDING_THRESHOLDS.JUNIOR) {
+    const needed = STANDING_THRESHOLDS.JUNIOR - earnedCredits;
+    return needed > 0 ? `${needed} credits until Junior` : null;
+  }
+
+  if (currentStanding === 'Junior' || earnedCredits < STANDING_THRESHOLDS.SENIOR) {
+    const needed = STANDING_THRESHOLDS.SENIOR - earnedCredits;
+    return needed > 0 ? `${needed} credits until Senior` : null;
+  }
+
+  return null;
+}
+
 interface UserHeaderBarProps {
   name: string;
   avatarUrl: string | null;
   standing: string;
-  creditsDisplay: string;
+  earnedCredits: number;
+  hasTranscript: boolean;
 }
 
 /**
@@ -18,8 +55,11 @@ export function UserHeaderBar({
   name,
   avatarUrl,
   standing,
-  creditsDisplay,
+  earnedCredits,
+  hasTranscript,
 }: UserHeaderBarProps) {
+  const creditsUntilNext = getCreditsUntilNextStanding(earnedCredits, standing);
+
   return (
     <div className="bg-[#0A0A0A] border-b-2 border-[#0A0A0A] p-5">
       <div className="flex items-center gap-5">
@@ -62,9 +102,25 @@ export function UserHeaderBar({
             </span>
 
             {/* Credits display */}
-            <span className="font-body text-sm font-medium text-white/80">
-              {creditsDisplay}
-            </span>
+            {hasTranscript ? (
+              <div className="flex items-center gap-2">
+                <span className="font-body text-sm font-medium text-white">
+                  {earnedCredits} credits complete
+                </span>
+                {creditsUntilNext && (
+                  <>
+                    <span className="text-white/40">•</span>
+                    <span className="font-body text-sm font-medium text-white/60">
+                      ({creditsUntilNext})
+                    </span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <span className="font-body text-sm font-medium text-white/60 italic">
+                Upload transcript to track credits
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { Box, Button } from "@mui/material";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PriorityRegistrationBadge } from "./PriorityRegistrationBadge";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
 
@@ -175,6 +176,8 @@ export default function CalendarPanelClient({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
+        {/* Priority Registration Reminder - shows X days before registration */}
+        <PriorityRegistrationBadge />
 
         {/* Calendar */}
         <Box
