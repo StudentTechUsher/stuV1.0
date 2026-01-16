@@ -111,3 +111,61 @@ export const DUMMY_CREDITS = {
   earned: 76,
   required: 120,
 };
+
+/**
+ * DUMMY DATA for personal information panel
+ * Real data (email, university, standing) will be passed from UnifiedAcademicCard
+ * These are placeholder values for fields not yet wired to backend
+ */
+export const PERSONAL_INFO_MOCK = {
+  netId: 'jpratt02',
+  studentId: '557891485',
+  birthdate: '12 July 2001',
+  age: 24,
+};
+
+/**
+ * Status level types for color-coded indicators
+ */
+export type StatusLevel = 'good' | 'warning' | 'critical' | 'info';
+
+/**
+ * Status item interface for holds/status display
+ */
+export interface StatusItem {
+  label: string;
+  value: string;
+  status: StatusLevel;
+}
+
+/**
+ * DUMMY DATA for status and holds section (POC)
+ * Color rules:
+ * - good (green): No action required
+ * - warning (yellow/orange): Action needed soon
+ * - critical (red): Immediate action required
+ * - info (blue): Informational, no action needed
+ */
+export const STATUS_HOLDS_MOCK: StatusItem[] = [
+  { label: 'Academic Standing', value: 'GOOD', status: 'good' },
+  { label: 'Account Holds', value: 'NO', status: 'good' },
+  { label: 'Endorsement', value: 'Valid thru 11 Jan 2027', status: 'good' },
+  { label: 'Honor Code Commitment', value: 'Valid thru 4 Nov 2026', status: 'warning' },
+  { label: 'Aid Eligibility', value: 'FinAid', status: 'info' },
+  // Generic institution-agnostic placeholders for future schools
+  { label: 'Immunization Clearance', value: 'CLEARED', status: 'good' },
+  { label: 'Advising Required', value: 'NO', status: 'good' },
+  { label: 'Tuition Balance', value: '$0.00', status: 'good' },
+];
+
+/**
+ * BYU-specific links for status items
+ * Only shown when university is BYU
+ */
+export const BYU_STATUS_LINKS: Record<string, string> = {
+  'Academic Standing': 'https://aso.byu.edu/general-policies',
+  'Account Holds': 'https://sa.byu.edu/psc/ps/EMPLOYEE/HRMS/c/Y_MY_FINANCIAL_CENTER.Y_MFC_HOME_V2_FL.GBL?Page=Y_MFC_HOME_V2_FL',
+  'Endorsement': 'https://honorcode.byu.edu/ecclesiastical-endorsements',
+  'Honor Code Commitment': 'https://commtech.byu.edu/auth/honor/',
+  'Aid Eligibility': 'https://commtech.byu.edu/auth/financial-aid/my-aid/',
+};

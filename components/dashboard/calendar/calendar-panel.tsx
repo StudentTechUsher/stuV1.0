@@ -13,8 +13,8 @@ async function getUserWeekEventsFake(_userId: string): Promise<CalendarEvent[]> 
 
 export default async function CalendarPanel({
   userId,
-  slotMinTime = "07:00:00",
-  slotMaxTime = "20:00:00",
+  slotMinTime = "08:00:00",
+  slotMaxTime = "19:00:00",
   showSchedulerButton = false,
 }: Readonly<{
   userId: string;

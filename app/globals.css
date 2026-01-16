@@ -308,3 +308,41 @@
     break-inside: avoid;
   }
 }
+
+/* Calendar export overrides for html2canvas */
+.stu-calendar-exporting {
+  background-color: #ffffff !important;
+}
+
+.stu-calendar-exporting .fc {
+  background-color: #ffffff !important;
+}
+
+.stu-calendar-exporting .fc-theme-standard td,
+.stu-calendar-exporting .fc-theme-standard th {
+  border-color: #e5e7eb !important;
+}
+
+.stu-calendar-exporting .fc-timegrid .fc-timegrid-col.fc-day-today {
+  background-color: rgba(18, 249, 135, 0.12) !important;
+}
+
+.stu-calendar-exporting .fc-event.waitlisted .fc-event-main {
+  background: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.stu-calendar-exporting .priority-registration-badge {
+  display: none !important;
+}
+
+.stu-calendar-exporting [data-calendar-export-grid="true"] {
+  overflow: hidden !important;
+}
+
+.stu-calendar-exporting [data-calendar-export-legend="true"] {
+  position: relative;
+  z-index: 2;
+  margin-top: 12px;
+  background-color: #ffffff;
+}

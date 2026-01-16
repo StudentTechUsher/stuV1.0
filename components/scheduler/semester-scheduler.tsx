@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Button, Typography, Alert, Paper, Collapse, IconButton } from "@mui/material";
-import { Plus, Trash2, BookOpen, Clock, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, BookOpen, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
@@ -10,6 +10,8 @@ import ClassInfoDialog from "./class-info-dialog";
 import SemesterResultsTable from "./semester-results-table";
 import { loadMockCourses } from "@/lib/course-parser";
 import { encodeAccessIdClient } from "@/lib/utils/access-id";
+import { CalendarExportButtons } from "@/components/dashboard/calendar/CalendarExportButtons";
+import type { CourseScheduleRow } from "@/components/dashboard/calendar/scheduleTableMockData";
 
 type GradPlan = {
   id: string;
@@ -34,6 +36,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const calendarExportRef = useRef<HTMLDivElement>(null);
 
   // Find active grad plan and construct edit URL
   const activeGradPlan = gradPlans.find(plan => plan.isActive) || gradPlans[0];
@@ -380,6 +383,17 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     });
   };
 
+  const exportRows: CourseScheduleRow[] = convertEventsToRows(events).map(row => ({
+    course: row.courseCode,
+    section: row.section,
+    difficulty: row.difficulty,
+    instructor: row.instructor,
+    schedule: `${row.days.join('') || ''} ${row.time}`.trim(),
+    location: row.location,
+    credits: row.hours,
+    requirement: row.requirements.map(req => req.label).join(', ') || 'N/A',
+  }));
+
   if (isLoading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -694,8 +708,17 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
               onEventDrop={handleEventDrop}
               onSlotSelect={handleSlotSelect}
               slotMinTime="08:00:00"
-              slotMaxTime="20:00:00"
+              slotMaxTime="19:00:00"
               gradPlanEditUrl={gradPlanEditUrl}
+              exportRef={calendarExportRef}
+              headerActions={(
+                <CalendarExportButtons
+                  calendarRef={calendarExportRef}
+                  semester="Semester Schedule"
+                  tableRows={exportRows}
+                  showEditButton={false}
+                />
+              )}
             />
           </Box>
         </Box>

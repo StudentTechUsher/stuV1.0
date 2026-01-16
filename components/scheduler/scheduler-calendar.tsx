@@ -6,6 +6,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { Card, CardContent, Box, Typography, Chip } from "@mui/material";
 import type { EventClickArg, EventChangeArg, DateSelectArg } from "@fullcalendar/core";
 import CreditsPopover from "./CreditsPopover";
+import type { ReactNode, RefObject } from "react";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
 
@@ -36,6 +37,8 @@ type Props = {
   slotMaxTime?: string;
   isGenerating?: boolean;
   gradPlanEditUrl?: string;
+  exportRef?: RefObject<HTMLDivElement | null>;
+  headerActions?: ReactNode;
 };
 
 
@@ -46,9 +49,11 @@ export default function SchedulerCalendar({
   onEventDrop,
   onSlotSelect,
   slotMinTime = "08:00:00",
-  slotMaxTime = "20:00:00",
+  slotMaxTime = "19:00:00",
   isGenerating = false,
   gradPlanEditUrl,
+  exportRef,
+  headerActions,
 }: Props) {
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -159,6 +164,7 @@ export default function SchedulerCalendar({
           <Box sx={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", color: "white" }}>
             {/* Total Credits Counter */}
             <CreditsPopover credits={totalCredits} colorScheme="dark" gradPlanEditUrl={gradPlanEditUrl} />
+            {headerActions}
             {isGenerating && (
               <Chip
                 label="Generating..."
@@ -176,158 +182,168 @@ export default function SchedulerCalendar({
       </Box>
 
       <CardContent sx={{ p: 3, height: "100%" }}>
-
         <Box
-          sx={{
-            height: "800px",
-            border: "1px solid var(--border)",
-            borderRadius: 2,
-            overflow: "hidden",
-
-            "--fc-border-color": "var(--border)",
-            "& .fc": { background: "var(--background)" },
-
-            "& .fc-theme-standard td, & .fc-theme-standard th": {
-              borderColor: "var(--border)",
-            },
-
-            "& .fc-timegrid-divider": { display: "none" },
-
-            "& .fc-col-header-cell-cushion": {
-              textTransform: "uppercase",
-              fontWeight: 700,
-              color: "var(--foreground)",
-              fontFamily: "Work Sans, sans-serif",
-            },
-
-            "& .fc-timegrid-axis-cushion": {
-              fontWeight: 600,
-              color: "var(--muted-foreground)",
-              fontFamily: "Inter, sans-serif",
-            },
-
-            "& .fc-timegrid-slot": { height: "28px" },
-
-            "& .fc-event": {
-              border: "none",
-              borderRadius: "6px",
-              overflow: "hidden",
-              cursor: "pointer",
-            },
-
-            "& .fc-event.class-event .fc-event-main": {
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 600,
-              color: "var(--muted-foreground)",
-            },
-
-            "& .fc-event.personal-event .fc-event-main": {
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 500,
-              opacity: 0.8,
-            },
-
-            "& .fc-event.waitlisted .fc-event-main": {
-              background: "repeating-linear-gradient(45deg, var(--secondary), var(--secondary) 10px, var(--muted) 10px, var(--muted) 20px)",
-              color: "var(--foreground)",
-            },
-
-            "& .fc-select-helper": {
-              background: "var(--primary-15)",
-              border: "2px dashed var(--primary)",
-            },
-          }}
+          ref={exportRef}
+          id="stu-calendar-export-root"
+          data-calendar-export="true"
+          sx={{ display: "flex", flexDirection: "column" }}
         >
-          <FullCalendar
-            plugins={[timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
-            allDaySlot={false}
-            firstDay={1}
-            hiddenDays={[0]}
-            slotMinTime={slotMinTime}
-            slotMaxTime={slotMaxTime}
-            validRange={{
-              start: '2024-01-01',
-              end: '2024-01-08'
+          <Box
+            data-calendar-export-grid="true"
+            sx={{
+              height: "900px",
+              border: "1px solid var(--border)",
+              borderRadius: 2,
+              overflow: "hidden",
+
+              "--fc-border-color": "var(--border)",
+              "& .fc": { background: "var(--background)" },
+
+              "& .fc-theme-standard td, & .fc-theme-standard th": {
+                borderColor: "var(--border)",
+              },
+
+              "& .fc-timegrid-divider": { display: "none" },
+
+              "& .fc-col-header-cell-cushion": {
+                textTransform: "uppercase",
+                fontWeight: 700,
+                color: "var(--foreground)",
+                fontFamily: "Work Sans, sans-serif",
+              },
+
+              "& .fc-timegrid-axis-cushion": {
+                fontWeight: 600,
+                color: "var(--muted-foreground)",
+                fontFamily: "Inter, sans-serif",
+              },
+
+              "& .fc-timegrid-slot": { height: "9px" },
+
+              "& .fc-event": {
+                border: "none",
+                borderRadius: "6px",
+                overflow: "hidden",
+                cursor: "pointer",
+              },
+
+              "& .fc-event.class-event .fc-event-main": {
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 600,
+                color: "var(--muted-foreground)",
+              },
+
+              "& .fc-event.personal-event .fc-event-main": {
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 500,
+                opacity: 0.8,
+              },
+
+              "& .fc-event.waitlisted .fc-event-main": {
+                background: "repeating-linear-gradient(45deg, var(--secondary), var(--secondary) 10px, var(--muted) 10px, var(--muted) 20px)",
+                color: "var(--foreground)",
+              },
+
+              "& .fc-select-helper": {
+                background: "var(--primary-15)",
+                border: "2px dashed var(--primary)",
+              },
             }}
-            slotDuration="00:30:00"
-            slotLabelInterval="01:00"
-            slotLabelFormat={{
-              hour: "numeric",
-              meridiem: "short",
-              hour12: true,
-            }}
-            dayHeaderFormat={{ weekday: "short" }}
-            headerToolbar={false}
-            expandRows
-            nowIndicator={false}
-            height="100%"
-            selectable
-            selectMirror
-            editable
-            eventResizableFromStart
-            eventDurationEditable
-            events={events.map(event => {
-              // Convert to generic weekly format - use a fixed week
-              const baseDate = new Date(2024, 0, 1); // January 1, 2024 (Monday)
-              const eventDate = new Date(baseDate);
-              eventDate.setDate(baseDate.getDate() + (event.dayOfWeek - 1));
+          >
+            <FullCalendar
+              plugins={[timeGridPlugin, interactionPlugin]}
+              initialView="timeGridWeek"
+              allDaySlot={false}
+              firstDay={1}
+              hiddenDays={[0]}
+              slotMinTime={slotMinTime}
+              slotMaxTime={slotMaxTime}
+              validRange={{
+                start: '2024-01-01',
+                end: '2024-01-08'
+              }}
+              slotDuration="00:30:00"
+              slotLabelInterval="01:00"
+              slotLabelFormat={{
+                hour: "numeric",
+                meridiem: "short",
+                hour12: true,
+              }}
+              dayHeaderFormat={{ weekday: "short" }}
+              headerToolbar={false}
+              expandRows
+              nowIndicator={false}
+              height="100%"
+              selectable
+              selectMirror
+              editable
+              eventResizableFromStart
+              eventDurationEditable
+              events={events.map(event => {
+                // Convert to generic weekly format - use a fixed week
+                const baseDate = new Date(2024, 0, 1); // January 1, 2024 (Monday)
+                const eventDate = new Date(baseDate);
+                eventDate.setDate(baseDate.getDate() + (event.dayOfWeek - 1));
 
-              const [startHour, startMin] = event.startTime.split(':').map(Number);
-              const [endHour, endMin] = event.endTime.split(':').map(Number);
+                const [startHour, startMin] = event.startTime.split(':').map(Number);
+                const [endHour, endMin] = event.endTime.split(':').map(Number);
 
-              const startDateTime = new Date(eventDate);
-              startDateTime.setHours(startHour, startMin, 0, 0);
+                const startDateTime = new Date(eventDate);
+                startDateTime.setHours(startHour, startMin, 0, 0);
 
-              const endDateTime = new Date(eventDate);
-              endDateTime.setHours(endHour, endMin, 0, 0);
+                const endDateTime = new Date(eventDate);
+                endDateTime.setHours(endHour, endMin, 0, 0);
 
-              return {
-                id: event.id,
-                title: event.title,
-                start: startDateTime,
-                end: endDateTime,
-                backgroundColor: getEventColor(event),
-                borderColor: getEventColor(event),
-                classNames: [
-                  event.type === "class" ? "class-event" : "personal-event",
-                  event.status || "",
-                ],
-                editable: event.type === "personal",
-                startEditable: event.type === "personal",
-                durationEditable: event.type === "personal",
-                extendedProps: {
-                  type: event.type,
-                  status: event.status,
-                  category: event.category,
-                  course_code: event.course_code,
-                  professor: event.professor,
-                  location: event.location,
-                },
-              };
-            })}
-            select={handleSlotSelect}
-            eventClick={handleEventClick}
-            eventChange={handleEventChange}
+                return {
+                  id: event.id,
+                  title: event.title,
+                  start: startDateTime,
+                  end: endDateTime,
+                  backgroundColor: getEventColor(event),
+                  borderColor: getEventColor(event),
+                  classNames: [
+                    event.type === "class" ? "class-event" : "personal-event",
+                    event.status || "",
+                  ],
+                  editable: event.type === "personal",
+                  startEditable: event.type === "personal",
+                  durationEditable: event.type === "personal",
+                  extendedProps: {
+                    type: event.type,
+                    status: event.status,
+                    category: event.category,
+                    course_code: event.course_code,
+                    professor: event.professor,
+                    location: event.location,
+                  },
+                };
+              })}
+              select={handleSlotSelect}
+              eventClick={handleEventClick}
+              eventChange={handleEventChange}
             eventContent={(arg) => (
-              <div style={{ padding: "4px 8px", lineHeight: 1.2 }}>
-                <div style={{ fontWeight: 700, fontSize: "12px" }}>
+              <div style={{ padding: "2px 6px", lineHeight: 1.1 }}>
+                <div style={{ fontWeight: 700, fontSize: "9px" }}>
                   {arg.event.extendedProps.course_code || arg.event.title}
                 </div>
                 {arg.event.extendedProps.location && (
-                  <div style={{ fontSize: "10px", opacity: 0.9 }}>
+                  <div style={{ fontSize: "8px", opacity: 0.9 }}>
                     {arg.event.extendedProps.location}
                   </div>
                 )}
               </div>
             )}
-          />
-        </Box>
+            />
+          </Box>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-          <LegendItem color="var(--primary)" label="Registered Classes" />
-          <LegendItem color="var(--secondary)" label="Waitlisted" pattern />
-          <LegendItem color="var(--muted)" label="Personal Events" />
+          <Box
+            sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}
+            data-calendar-export-legend="true"
+          >
+            <LegendItem color="var(--primary)" label="Registered Classes" />
+            <LegendItem color="var(--secondary)" label="Waitlisted" pattern />
+            <LegendItem color="var(--muted)" label="Personal Events" />
+          </Box>
         </Box>
       </CardContent>
     </Card>

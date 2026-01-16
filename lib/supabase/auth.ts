@@ -89,7 +89,8 @@ export async function getVerifiedUserProfile() {
         .maybeSingle()
 
       if (studentError) {
-        console.error('Error fetching student data:', studentError)
+        const studentErrorMessage = studentError.message || studentError.details || studentError.hint || 'Unknown error'
+        console.error('Error fetching student data:', studentErrorMessage)
       } else if (student) {
         // Merge student fields into profile
         // Map est_grad_plan to est_grad_sem for backward compatibility

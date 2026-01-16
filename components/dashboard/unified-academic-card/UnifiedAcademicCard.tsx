@@ -26,6 +26,7 @@ import { UnifiedAcademicCardSkeleton } from "./UnifiedAcademicCardSkeleton";
 import { UserHeaderBar } from "./UserHeaderBar";
 import { SummaryStatsRow } from "./SummaryStatsRow";
 import { OverallProgressSection } from "./OverallProgressSection";
+import { PersonalInfoPanel } from "./PersonalInfoPanel";
 import { DASHBOARD_MOCK_CATEGORIES, DEFAULT_CATEGORY, DUMMY_CREDITS } from "./dashboardMockData";
 
 type GradMonth = "April" | "June" | "August" | "December";
@@ -39,6 +40,8 @@ interface UserData {
   gpa: number | null;
   estimatedGraduation: string;
   hasTranscript: boolean;
+  email?: string;
+  university?: string;
 }
 
 const DEFAULT_USER_DATA: UserData = {
@@ -50,6 +53,8 @@ const DEFAULT_USER_DATA: UserData = {
   gpa: null,
   estimatedGraduation: "December 2028",
   hasTranscript: false,
+  email: undefined,
+  university: undefined,
 };
 
 /**
@@ -64,6 +69,7 @@ export function UnifiedAcademicCard() {
   const [gradDialogOpen, setGradDialogOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<GradMonth>("December");
   const [selectedYear, setSelectedYear] = useState(2028);
+  const [headerExpanded, setHeaderExpanded] = useState(false);
 
   // Consolidated data fetching
   const loadUserData = useCallback(async () => {
@@ -78,7 +84,7 @@ export function UnifiedAcademicCard() {
       const [profileResult, studentResult, coursesResult, gpaResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("fname, lname")
+          .select("fname, lname, university:university_id(name)")
           .eq("id", user.id)
           .single(),
         supabase
@@ -134,6 +140,13 @@ export function UnifiedAcademicCard() {
       // Calculate standing from credits
       const standing = classifyCredits(earnedCredits);
 
+      // Get email from user
+      const userEmail = user.email || undefined;
+
+      // Get university name from joined query
+      const universityData = profileResult.data?.university as { name?: string } | null;
+      const universityName = universityData?.name || undefined;
+
       setUserData({
         name: displayName,
         avatarUrl,
@@ -143,6 +156,8 @@ export function UnifiedAcademicCard() {
         gpa,
         estimatedGraduation,
         hasTranscript,
+        email: userEmail,
+        university: universityName,
       });
 
       // Initialize dialog values from graduation date
@@ -201,13 +216,23 @@ export function UnifiedAcademicCard() {
   return (
     <>
       <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-        {/* Header Bar - REAL data */}
+        {/* Header Bar - REAL data, clickable to expand personal info */}
         <UserHeaderBar
           name={userData.name}
           avatarUrl={userData.avatarUrl}
           standing={userData.standing}
           earnedCredits={userData.earnedCredits}
           hasTranscript={userData.hasTranscript}
+          onToggleExpand={() => setHeaderExpanded(!headerExpanded)}
+          isExpanded={headerExpanded}
+        />
+
+        {/* Personal Info Dropdown Panel - expands from header */}
+        <PersonalInfoPanel
+          isVisible={headerExpanded}
+          standing={userData.standing}
+          email={userData.email}
+          university={userData.university}
         />
 
         {/* Content Area */}

@@ -110,7 +110,7 @@ export function OverallProgressSection() {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-md bg-[color-mix(in_srgb,var(--primary)_15%,transparent)]">
-            <GraduationCap size={14} className="text-[var(--primary)]" />
+            <GraduationCap size={14} className="text-emerald-600 dark:text-[var(--primary)]" />
           </div>
           <div>
             <span className="font-header-bold text-sm font-bold text-[var(--foreground)]">{creditsCompleted}</span>
@@ -120,7 +120,7 @@ export function OverallProgressSection() {
         <div className="w-px h-4 bg-[var(--border)]" />
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-md bg-[color-mix(in_srgb,var(--primary)_15%,transparent)]">
-            <BookOpen size={14} className="text-[var(--primary)]" />
+            <BookOpen size={14} className="text-emerald-600 dark:text-[var(--primary)]" />
           </div>
           <div>
             <span className="font-header-bold text-sm font-bold text-[var(--foreground)]">{coursesCompleted}</span>

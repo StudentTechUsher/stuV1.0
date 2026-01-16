@@ -57,6 +57,14 @@ function getDaysUntil(priorityRegDateStr: string): number {
 }
 
 /**
+ * Format date as short string (e.g., "Jan 26", "Mar 12")
+ */
+function formatShortDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/**
  * Priority Registration Reminder Badge
  * Shows X days before the student's priority registration date
  * Reminds them to keep their grad plan updated
@@ -75,7 +83,7 @@ export function PriorityRegistrationBadge() {
   return (
     <Link
       href="/grad-plan"
-      className="group block mb-4 rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md"
+      className="priority-registration-badge group block mb-4 rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md"
     >
       <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-amber-500/15 to-orange-500/15 dark:from-amber-500/20 dark:to-orange-500/20 border border-amber-500/30 dark:border-amber-400/30 rounded-xl">
         {/* Icon */}
@@ -85,9 +93,13 @@ export function PriorityRegistrationBadge() {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-body-semi text-sm font-bold text-amber-700 dark:text-amber-300">
               {daysUntil === 0 ? 'Registration is today!' : `${daysUntil} day${daysUntil === 1 ? '' : 's'} until registration`}
+            </span>
+            {/* Date pill showing the actual registration date */}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/30 dark:bg-amber-400/30 text-amber-800 dark:text-amber-200 text-xs font-bold">
+              {formatShortDate(priorityRegDate)}
             </span>
           </div>
           <p className="font-body text-xs text-amber-600/90 dark:text-amber-300/80 mt-0.5">

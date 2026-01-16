@@ -1,6 +1,7 @@
 'use client';
 
 import { Avatar } from "@mui/material";
+import { ChevronDown } from "lucide-react";
 
 /**
  * Credit thresholds for class standing
@@ -44,6 +45,8 @@ interface UserHeaderBarProps {
   standing: string;
   earnedCredits: number;
   hasTranscript: boolean;
+  onToggleExpand?: () => void;
+  isExpanded?: boolean;
 }
 
 /**
@@ -57,11 +60,17 @@ export function UserHeaderBar({
   standing,
   earnedCredits,
   hasTranscript,
+  onToggleExpand,
+  isExpanded = false,
 }: UserHeaderBarProps) {
   const creditsUntilNext = getCreditsUntilNextStanding(earnedCredits, standing);
 
   return (
-    <div className="bg-[#0A0A0A] border-b-2 border-[#0A0A0A] p-5">
+    <button
+      type="button"
+      onClick={onToggleExpand}
+      className="w-full bg-[#0A0A0A] border-b-2 border-[#0A0A0A] p-5 cursor-pointer hover:bg-zinc-900 transition-colors text-left"
+    >
       <div className="flex items-center gap-5">
         {/* Avatar with white border - 56x56px */}
         <Avatar
@@ -123,7 +132,12 @@ export function UserHeaderBar({
             )}
           </div>
         </div>
+
+        {/* Expand/collapse indicator */}
+        <div className={`flex-shrink-0 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+          <ChevronDown size={20} className="text-white/50" />
+        </div>
       </div>
-    </div>
+    </button>
   );
 }
