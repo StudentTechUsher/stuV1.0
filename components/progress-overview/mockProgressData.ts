@@ -85,12 +85,12 @@ export const mockFinanceProgress: ProgressCategory = {
       planned: 2,
       remaining: 0,
       courses: [
-        { id: '3-1', code: 'ACC 310', title: 'Principles of Acctg 2', credits: 3, status: 'completed' },
-        { id: '3-2', code: 'FIN 326', title: 'Professional Development', credits: 2, status: 'completed' },
-        { id: '3-3', code: 'FIN 400', title: 'Analytical Methods in Finance', credits: 3, status: 'completed' },
-        { id: '3-4', code: 'FIN 401', title: 'Adv Financial Management', credits: 3, status: 'in-progress' },
-        { id: '3-5', code: 'FIN 410', title: 'Investments', credits: 3, status: 'planned' },
-        { id: '3-6', code: 'FIN 453', title: 'Money, Banking, & Business', credits: 3, status: 'planned' },
+        { id: '3-1', code: 'ACC 310', title: 'Principles of Acctg 2', credits: 3, status: 'completed', term: 'Fall 2023' },
+        { id: '3-2', code: 'FIN 326', title: 'Professional Development', credits: 2, status: 'completed', term: 'Winter 2024' },
+        { id: '3-3', code: 'FIN 400', title: 'Analytical Methods in Finance', credits: 3, status: 'completed', term: 'Fall 2024' },
+        { id: '3-4', code: 'FIN 401', title: 'Adv Financial Management', credits: 3, status: 'in-progress', term: 'Winter 2025' },
+        { id: '3-5', code: 'FIN 410', title: 'Investments', credits: 3, status: 'planned', term: 'Fall 2025' },
+        { id: '3-6', code: 'FIN 453', title: 'Money, Banking, & Business', credits: 3, status: 'planned' }, // No term - shows TBD
       ],
     },
     {
@@ -125,9 +125,9 @@ export const mockFinanceProgress: ProgressCategory = {
       planned: 1,
       remaining: 0,
       courses: [
-        { id: '5-1', code: 'HRM 391', title: 'Organizational Effectiveness', credits: 3, status: 'completed' },
-        { id: '5-2', code: 'MSB 390', title: 'Ethics for Management', credits: 3, status: 'in-progress' },
-        { id: '5-3', code: 'STRAT 392', title: 'Strategy and Economics', credits: 3, status: 'planned' },
+        { id: '5-1', code: 'HRM 391', title: 'Organizational Effectiveness', credits: 3, status: 'completed', term: 'Fall 2024' },
+        { id: '5-2', code: 'MSB 390', title: 'Ethics for Management', credits: 3, status: 'in-progress', term: 'Winter 2025' },
+        { id: '5-3', code: 'STRAT 392', title: 'Strategy and Economics', credits: 3, status: 'planned', term: 'Spring 2025' },
       ],
     },
     {
@@ -284,8 +284,8 @@ export const mockGEProgress: ProgressCategory = {
       planned: 1,
       remaining: 0,
       courses: [
-        { id: 'ge6-1', code: 'WRTG 150', title: 'Writing & Rhetoric', credits: 3, status: 'in-progress' },
-        { id: 'ge6-2', code: 'MATH 112', title: 'Calculus I', credits: 3, status: 'planned' },
+        { id: 'ge6-1', code: 'WRTG 150', title: 'Writing & Rhetoric', credits: 3, status: 'in-progress', term: 'Winter 2025' },
+        { id: 'ge6-2', code: 'MATH 112', title: 'Calculus I', credits: 3, status: 'planned', term: 'Summer 2025' },
       ],
     },
   ],
@@ -362,8 +362,8 @@ export const mockReligionProgress: ProgressCategory = {
       planned: 1,
       remaining: 0,
       courses: [
-        { id: 'rel4-1', code: 'REL C 324', title: 'Doctrine & Covenants I', credits: 2, status: 'in-progress' },
-        { id: 'rel4-2', code: 'REL C 325', title: 'Doctrine & Covenants II', credits: 2, status: 'planned' },
+        { id: 'rel4-1', code: 'REL C 324', title: 'Doctrine & Covenants I', credits: 2, status: 'in-progress', term: 'Winter 2025' },
+        { id: 'rel4-2', code: 'REL C 325', title: 'Doctrine & Covenants II', credits: 2, status: 'planned', term: 'Fall 2025' },
       ],
     },
   ],

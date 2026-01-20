@@ -10,14 +10,17 @@ import {
   getPlannedColor,
   getPlannedColorDark,
 } from './colorUtils';
+import { TermBadge } from './TermBadge';
 
 interface CourseItemProps {
   course: Course;
   categoryColor: string;
+  /** If true, show term badge. Defaults to true. */
+  showTermBadge?: boolean;
 }
 
-export function CourseItem({ course, categoryColor }: CourseItemProps) {
-  const { code, title, credits, status } = course;
+export function CourseItem({ course, categoryColor, showTermBadge = true }: CourseItemProps) {
+  const { code, title, credits, status, term } = course;
 
   // Card styling based on status - color the ENTIRE card
   const isCompleted = status === 'completed';
@@ -70,11 +73,16 @@ export function CourseItem({ course, categoryColor }: CourseItemProps) {
           borderColor: getCardBorder(),
         }}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0.5">
           <span className="text-sm font-bold">{code}</span>
           <span className="text-xs opacity-80">{title}</span>
         </div>
-        <span className="text-xs font-semibold opacity-70">{credits} cr</span>
+        <div className="flex items-center gap-2">
+          {showTermBadge && (
+            <TermBadge status={status} term={term} />
+          )}
+          <span className="text-xs font-semibold opacity-70">{credits} cr</span>
+        </div>
       </div>
 
       {/* Dark mode */}
@@ -85,11 +93,16 @@ export function CourseItem({ course, categoryColor }: CourseItemProps) {
           borderColor: getCardBorderDark(),
         }}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0.5">
           <span className="text-sm font-bold">{code}</span>
           <span className="text-xs opacity-80">{title}</span>
         </div>
-        <span className="text-xs font-semibold opacity-70">{credits} cr</span>
+        <div className="flex items-center gap-2">
+          {showTermBadge && (
+            <TermBadge status={status} term={term} />
+          )}
+          <span className="text-xs font-semibold opacity-70">{credits} cr</span>
+        </div>
       </div>
     </>
   );

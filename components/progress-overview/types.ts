@@ -9,6 +9,12 @@ export interface Course {
   title: string;       // e.g., "Intro to Finance"
   credits: number;     // e.g., 3
   status: CourseStatus;
+  /**
+   * Optional term when the course was/is/will be taken.
+   * Can be a readable string ("Fall 2024") or a term code ("20243").
+   * If missing, the UI will show status only or "Term TBD".
+   */
+  term?: string;
 }
 
 export interface Subrequirement {
@@ -59,4 +65,33 @@ export interface ProgressOverviewCardProps {
   isExpandable?: boolean;
   defaultExpanded?: boolean;
   compact?: boolean; // Use compact sizing for sidebars/narrow spaces
+}
+
+// Types for Main Progress Overview (overall degree summary)
+
+export interface OverallProgress {
+  percentComplete: number;    // Overall percentage complete (0-100)
+  totalCredits: number;       // Total credits required for degree
+  completedCredits: number;   // Credits completed
+  inProgressCredits: number;  // Credits in progress
+  plannedCredits: number;     // Credits planned
+  remainingCredits: number;   // Credits remaining (not planned)
+  totalCourses: number;       // Total courses (for display)
+  completedCourses: number;   // Courses completed (for display)
+}
+
+export interface SectionProgress {
+  name: string;               // "Finance", "General Education", etc.
+  displayName: string;        // "MAJOR", "GE", "REL", etc.
+  color: string;              // Category color
+  percentComplete: number;    // 0-100
+  completedCredits: number;   // Credits completed in this section
+  totalCredits: number;       // Total credits for this section
+}
+
+export interface MainProgressOverviewProps {
+  overallProgress: OverallProgress;
+  sectionProgress: SectionProgress[];
+  /** Called when a section card is clicked, with the section's original name */
+  onSectionClick?: (sectionName: string) => void;
 }
