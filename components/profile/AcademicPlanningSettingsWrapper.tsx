@@ -41,19 +41,19 @@ export function AcademicPlanningSettingsWrapper({
     est_grad_term?: string | null;
     admission_year?: number | null;
   }) => {
-    await updateGraduationTimelineAction(userId, data);
+    await updateGraduationTimelineAction(data);
   };
 
   const handleUpdateStudentType = async (studentType: 'undergraduate' | 'graduate') => {
-    await updateStudentTypeAction(userId, studentType);
+    await updateStudentTypeAction(studentType);
   };
 
   const handleUpdateWorkStatus = async (workStatus: 'not_working' | 'part_time' | 'full_time' | 'variable') => {
-    await updateWorkStatusAction(userId, workStatus);
+    await updateWorkStatusAction(workStatus);
   };
 
   const handleUpdateCareerGoals = async (careerGoals: string | null) => {
-    await updateCareerGoalsAction(userId, careerGoals);
+    await updateCareerGoalsAction(careerGoals);
   };
 
   const handleUpdate = () => {

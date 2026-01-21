@@ -393,7 +393,7 @@ export default function ProgramSelectionForm({
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {option.program_description && (
+                          {!!option.program_description && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
@@ -402,7 +402,7 @@ export default function ProgramSelectionForm({
                               Program Description
                             </button>
                           )}
-                          {option.course_flow && (
+                          {!!option.course_flow && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => {
@@ -469,7 +469,7 @@ export default function ProgramSelectionForm({
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {option.program_description && (
+                          {!!option.program_description && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
@@ -478,7 +478,7 @@ export default function ProgramSelectionForm({
                               Program Description
                             </button>
                           )}
-                          {option.course_flow && (
+                          {!!option.course_flow && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => {
@@ -589,7 +589,7 @@ export default function ProgramSelectionForm({
                                   </div>
                                 )}
                               </div>
-                              {genEd.program_description && (
+                              {!!genEd.program_description && (
                                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                   {genEd.program_description}
                                 </p>
@@ -601,7 +601,7 @@ export default function ProgramSelectionForm({
                               )}
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              {genEd.program_description && (
+                              {!!genEd.program_description && (
                                 <button
                                   type="button"
                                   onClick={(e: React.MouseEvent) => handleViewProgramDescription(genEd, e)}
@@ -611,7 +611,7 @@ export default function ProgramSelectionForm({
                                   <Info size={16} />
                                 </button>
                               )}
-                              {genEd.course_flow && (
+                              {!!genEd.course_flow && (
                                 <button
                                   type="button"
                                   onClick={(e: React.MouseEvent) => {
@@ -659,7 +659,7 @@ export default function ProgramSelectionForm({
                         )}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        {option.program_description && (
+                        {!!option.program_description && (
                           <button
                             type="button"
                             onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
@@ -669,7 +669,7 @@ export default function ProgramSelectionForm({
                             <Info size={16} />
                           </button>
                         )}
-                        {option.course_flow && (
+                        {!!option.course_flow && (
                           <button
                             type="button"
                             onClick={(e: React.MouseEvent) => {

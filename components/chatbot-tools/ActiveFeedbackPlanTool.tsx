@@ -69,31 +69,21 @@ export default function ActiveFeedbackPlanTool({
     setCompletedPhases({});
   }, [initialPlan]);
 
-  if (!courseData) {
-    return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
-        <p className="text-sm text-muted-foreground">
-          We could not load your course selections yet. Please go back and try again.
-        </p>
-      </div>
-    );
-  }
-
-  const handleEdit = (edit: PlanEdit) => {
+  const handleEdit = useCallback((edit: PlanEdit) => {
     const update = applyPlanEdit(draftPlan, edit);
     setDraftPlan(update.plan);
     setStatusMessage(update.explanations?.[0] || update.changes[0] || null);
     setAlternatives(update.alternatives || []);
-  };
+  }, [draftPlan]);
 
-  const handleAddGlobalNote = () => {
+  const handleAddGlobalNote = useCallback(() => {
     const trimmed = globalInput.trim();
     if (!trimmed) return;
     setGlobalNotes(prev => [...prev, trimmed]);
     setGlobalInput('');
-  };
+  }, [globalInput]);
 
-  const handleAddTermNote = (termId: string) => {
+  const handleAddTermNote = useCallback((termId: string) => {
     const inputValue = termInputs[termId]?.trim();
     if (!inputValue) return;
     setTermNotes(prev => ({
@@ -101,7 +91,7 @@ export default function ActiveFeedbackPlanTool({
       [termId]: [...(prev[termId] || []), inputValue],
     }));
     setTermInputs(prev => ({ ...prev, [termId]: '' }));
-  };
+  }, [termInputs]);
 
   const handleInsertTermBetween = useCallback((index: number, option: TermInsertOption) => {
     if (!academicTerms) return;
@@ -203,7 +193,7 @@ export default function ActiveFeedbackPlanTool({
       let parsedJson: unknown;
       try {
         parsedJson = JSON.parse(fullText);
-      } catch (error) {
+      } catch (_error) {
         throw new Error('AI response was not valid JSON');
       }
 
@@ -231,16 +221,18 @@ export default function ActiveFeedbackPlanTool({
     draftPlan,
     milestones,
     draftMilestones,
+    globalNotes,
+    termNotes,
     phase,
     phaseLabel,
   ]);
 
-  const handleAdvancePhase = () => {
+  const handleAdvancePhase = useCallback(() => {
     if (!nextPhase) return;
     setPhase(nextPhase);
     setHasPhaseResult(false);
     setStreamError(null);
-  };
+  }, [nextPhase]);
 
   useEffect(() => {
     if (hasAutoRun.current) return;
@@ -249,6 +241,16 @@ export default function ActiveFeedbackPlanTool({
     hasAutoRun.current = true;
     void handleRunPhase();
   }, [courseData, phase, handleRunPhase]);
+
+  if (!courseData) {
+    return (
+      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+        <p className="text-sm text-muted-foreground">
+          We could not load your course selections yet. Please go back and try again.
+        </p>
+      </div>
+    );
+  }
 
   const canFinalize = Boolean(completedPhases.gen_ed_fill);
 
@@ -666,13 +668,16 @@ function convertPlanToDraftPlan(
     const targetCredits = distribution?.suggestedCredits ?? 15;
 
     const courses = Array.isArray(term.courses)
-      ? term.courses.map((course, courseIndex) => ({
-        id: `${index}-${courseIndex}`,
-        code: String(course.code || ''),
-        title: String(course.title || 'Untitled course'),
-        credits: normalizeCredits(course.credits),
-        source: 'selected' as const,
-      }))
+      ? term.courses.map((course, courseIndex) => {
+        const courseObj = course && typeof course === 'object' ? course as Record<string, unknown> : {};
+        return {
+          id: `${index}-${courseIndex}`,
+          code: String(courseObj.code || ''),
+          title: String(courseObj.title || 'Untitled course'),
+          credits: normalizeCredits(courseObj.credits),
+          source: 'selected' as const,
+        };
+      })
       : [];
 
     return {

@@ -13,36 +13,27 @@ export function getNextStep(state: ConversationState): ConversationStep {
 
   switch (currentStep) {
     case ConversationStep.INITIALIZE:
-      // After initialization, always go to profile setup
-      return ConversationStep.PROFILE_SETUP;
+      // After initialization, always go to profile check
+      return ConversationStep.PROFILE_CHECK;
 
-    case ConversationStep.PROFILE_SETUP:
-      // After basic profile setup (graduation info), go to career selection
-      return ConversationStep.CAREER_SELECTION;
-
-    case ConversationStep.CAREER_SELECTION:
-      // Career selection can optionally lead to career pathfinder
-      // By default, move to transcript check
+    case ConversationStep.PROFILE_CHECK:
+      // After basic profile setup, go to transcript check
       return ConversationStep.TRANSCRIPT_CHECK;
 
     case ConversationStep.CAREER_PATHFINDER:
-      // After career pathfinder, go back to career selection to finalize
-      return ConversationStep.CAREER_SELECTION;
+      // After career pathfinder, go to transcript check
+      return ConversationStep.TRANSCRIPT_CHECK;
 
     case ConversationStep.PROGRAM_PATHFINDER:
       // After program pathfinder, go to program selection
       return ConversationStep.PROGRAM_SELECTION;
 
     case ConversationStep.STUDENT_INTERESTS:
-      // After student interests, go to transcript check
-      return ConversationStep.TRANSCRIPT_CHECK;
+      // After student interests, go to credit distribution
+      return ConversationStep.CREDIT_DISTRIBUTION;
 
     case ConversationStep.TRANSCRIPT_CHECK:
-      // After transcript check/upload, ask about student type
-      return ConversationStep.STUDENT_TYPE;
-
-    case ConversationStep.STUDENT_TYPE:
-      // After student type, go to program selection
+      // After transcript check/upload, go to program selection
       return ConversationStep.PROGRAM_SELECTION;
 
     case ConversationStep.PROGRAM_SELECTION:
@@ -63,11 +54,15 @@ export function getNextStep(state: ConversationState): ConversationStep {
       return determineElectivesStep(state);
 
     case ConversationStep.ELECTIVES:
-      // After electives, ask for additional concerns
-      return ConversationStep.ADDITIONAL_CONCERNS;
+      // After electives, go to credit distribution
+      return ConversationStep.CREDIT_DISTRIBUTION;
 
-    case ConversationStep.ADDITIONAL_CONCERNS:
-      // After additional concerns, generate the plan
+    case ConversationStep.CREDIT_DISTRIBUTION:
+      // After credit distribution, go to milestones and constraints
+      return ConversationStep.MILESTONES_AND_CONSTRAINTS;
+
+    case ConversationStep.MILESTONES_AND_CONSTRAINTS:
+      // After milestones and constraints, generate the plan
       return ConversationStep.GENERATING_PLAN;
 
     case ConversationStep.GENERATING_PLAN:
@@ -98,8 +93,8 @@ function determineElectivesStep(state: ConversationState): ConversationStep {
     return ConversationStep.ELECTIVES;
   }
 
-  // Skip electives and go to additional concerns
-  return ConversationStep.ADDITIONAL_CONCERNS;
+  // Skip electives and go to credit distribution
+  return ConversationStep.CREDIT_DISTRIBUTION;
 }
 
 /**
@@ -122,14 +117,11 @@ export function getPreviousStep(state: ConversationState): ConversationStep | nu
     case ConversationStep.INITIALIZE:
       return null; // Can't go back from start
 
-    case ConversationStep.PROFILE_SETUP:
+    case ConversationStep.PROFILE_CHECK:
       return ConversationStep.INITIALIZE;
 
-    case ConversationStep.CAREER_SELECTION:
-      return ConversationStep.PROFILE_SETUP;
-
     case ConversationStep.CAREER_PATHFINDER:
-      return ConversationStep.CAREER_SELECTION;
+      return ConversationStep.PROFILE_CHECK;
 
     case ConversationStep.PROGRAM_PATHFINDER:
       return ConversationStep.PROGRAM_SELECTION;
@@ -139,16 +131,13 @@ export function getPreviousStep(state: ConversationState): ConversationStep | nu
       if (state.completedSteps.includes(ConversationStep.CAREER_PATHFINDER)) {
         return ConversationStep.CAREER_PATHFINDER;
       }
-      return ConversationStep.PROFILE_SETUP;
+      return ConversationStep.PROFILE_CHECK;
 
     case ConversationStep.TRANSCRIPT_CHECK:
-      return ConversationStep.CAREER_SELECTION;
-
-    case ConversationStep.STUDENT_TYPE:
-      return ConversationStep.TRANSCRIPT_CHECK;
+      return ConversationStep.PROFILE_CHECK;
 
     case ConversationStep.PROGRAM_SELECTION:
-      return ConversationStep.STUDENT_TYPE;
+      return ConversationStep.TRANSCRIPT_CHECK;
 
     case ConversationStep.COURSE_METHOD:
       return ConversationStep.PROGRAM_SELECTION;
@@ -163,7 +152,7 @@ export function getPreviousStep(state: ConversationState): ConversationStep | nu
       }
       return ConversationStep.COURSE_METHOD;
 
-    case ConversationStep.ADDITIONAL_CONCERNS:
+    case ConversationStep.CREDIT_DISTRIBUTION:
       // Could have come from electives or skipped electives
       if (state.completedSteps.includes(ConversationStep.ELECTIVES)) {
         return ConversationStep.ELECTIVES;
@@ -173,8 +162,11 @@ export function getPreviousStep(state: ConversationState): ConversationStep | nu
       }
       return ConversationStep.COURSE_METHOD;
 
+    case ConversationStep.MILESTONES_AND_CONSTRAINTS:
+      return ConversationStep.CREDIT_DISTRIBUTION;
+
     case ConversationStep.GENERATING_PLAN:
-      return ConversationStep.ADDITIONAL_CONCERNS;
+      return ConversationStep.MILESTONES_AND_CONSTRAINTS;
 
     case ConversationStep.COMPLETE:
       return ConversationStep.GENERATING_PLAN;
@@ -205,8 +197,8 @@ export function canSkipStep(state: ConversationState, step: ConversationStep): b
       // Can skip if programs don't require electives
       return !checkIfProgramsRequireElectives(state);
 
-    case ConversationStep.ADDITIONAL_CONCERNS:
-      // Additional concerns are optional - can be skipped
+    case ConversationStep.MILESTONES_AND_CONSTRAINTS:
+      // Milestones and constraints are optional - can be skipped
       return true;
 
     default:
@@ -221,10 +213,8 @@ export function canSkipStep(state: ConversationState, step: ConversationStep): b
 export function getRequiredSteps(state: ConversationState): ConversationStep[] {
   const required: ConversationStep[] = [
     ConversationStep.INITIALIZE,
-    ConversationStep.PROFILE_SETUP,
-    ConversationStep.CAREER_SELECTION,
+    ConversationStep.PROFILE_CHECK,
     ConversationStep.TRANSCRIPT_CHECK,
-    ConversationStep.STUDENT_TYPE,
     ConversationStep.PROGRAM_SELECTION,
     ConversationStep.COURSE_METHOD,
   ];
@@ -240,6 +230,7 @@ export function getRequiredSteps(state: ConversationState): ConversationStep[] {
   }
 
   // Always required at the end
+  required.push(ConversationStep.CREDIT_DISTRIBUTION);
   required.push(ConversationStep.GENERATING_PLAN);
   required.push(ConversationStep.COMPLETE);
 
@@ -257,14 +248,8 @@ export function canProceedToNextStep(state: ConversationState): boolean {
     case ConversationStep.INITIALIZE:
       return true; // Just needs to fetch data
 
-    case ConversationStep.PROFILE_SETUP:
-      return !!(
-        collectedData.estGradDate &&
-        collectedData.estGradSem
-      );
-
-    case ConversationStep.CAREER_SELECTION:
-      return !!collectedData.careerGoals;
+    case ConversationStep.PROFILE_CHECK:
+      return true; // Profile check validates required data internally
 
     case ConversationStep.CAREER_PATHFINDER:
       return true; // Career pathfinder is optional, doesn't block progression
@@ -274,9 +259,6 @@ export function canProceedToNextStep(state: ConversationState): boolean {
 
     case ConversationStep.TRANSCRIPT_CHECK:
       return true; // Just asking questions, always can proceed
-
-    case ConversationStep.STUDENT_TYPE:
-      return !!collectedData.studentType;
 
     case ConversationStep.PROGRAM_SELECTION:
       return collectedData.selectedPrograms.length > 0;
@@ -293,7 +275,15 @@ export function canProceedToNextStep(state: ConversationState): boolean {
       // Optional step, always can proceed
       return true;
 
-    case ConversationStep.ADDITIONAL_CONCERNS:
+    case ConversationStep.STUDENT_INTERESTS:
+      // Optional step, always can proceed
+      return true;
+
+    case ConversationStep.CREDIT_DISTRIBUTION:
+      // Optional, always can proceed
+      return true;
+
+    case ConversationStep.MILESTONES_AND_CONSTRAINTS:
       // Optional, always can proceed
       return true;
 
