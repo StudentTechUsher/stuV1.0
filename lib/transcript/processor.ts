@@ -8,6 +8,21 @@ import {
 } from '@/lib/transcript/byuTranscriptParserOpenAI';
 import { randomUUID } from 'crypto';
 
+/**
+ * Determines the status of a course based on its grade
+ * @param grade - The course grade (can be null, empty string, or a letter grade)
+ * @returns Status string: "completed", "withdrawn", or "in-progress"
+ */
+function deriveStatus(grade: string | null): 'completed' | 'withdrawn' | 'in-progress' {
+  if (!grade || grade.trim() === '') {
+    return 'in-progress';
+  }
+  if (grade.toUpperCase() === 'W') {
+    return 'withdrawn';
+  }
+  return 'completed';
+}
+
 export interface TranscriptParseReport {
   success: boolean;
   courses_found: number;
@@ -422,16 +437,18 @@ export async function parseTranscriptFromBuffer(
         // Convert BYU courses to the format expected by user_courses table
         // The table stores courses as a JSON array in the 'courses' column
         const coursesJson = dedupedCourses.map((course) => {
+          const grade = course.grade.trim() === '' ? null : course.grade;
           const baseCourse = {
             id: randomUUID(),
             subject: course.subject,
             number: course.number,
             title: course.title,
             credits: course.credits,
-            grade: course.grade.trim() === '' ? null : course.grade,
+            grade,
             term: course.term,
             tags: [],
             origin: 'parsed' as const,
+            status: deriveStatus(grade),
           };
 
           // Add transfer information if present

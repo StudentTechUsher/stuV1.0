@@ -108,7 +108,7 @@ export default function AcademicSummary() {
           // Fetch student data for graduation timeline
           const { data: studentData } = await supabase
             .from("student")
-            .select("est_grad_plan, est_grad_date")
+            .select("est_grad_term, est_grad_date")
             .eq("profile_id", user.id)
             .maybeSingle();
 
@@ -147,7 +147,7 @@ export default function AcademicSummary() {
             ...prev,
             name: displayName,
             standing: classYear,
-            estSemester: studentData?.est_grad_plan || prev.estSemester,
+            estSemester: studentData?.est_grad_term || prev.estSemester,
             estGradDate: formattedGradDate,
             earnedCredits,
             requiredCredits,

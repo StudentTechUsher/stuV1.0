@@ -224,7 +224,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
         // 3b. Student graduation timeline
         const { data: studentGradData, error: studentGradError } = await supabase
             .from('student')
-            .select('est_grad_plan, est_grad_date')
+            .select('est_grad_term, est_grad_date')
             .eq('id', gradPlanData.student_id)
             .maybeSingle();
         if (studentGradError) {
@@ -253,7 +253,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             plan_details: gradPlanData.plan_details,
             student_id: gradPlanData.student_id,
             programs,
-            est_grad_sem: studentGradData?.est_grad_plan || null,
+            est_grad_sem: studentGradData?.est_grad_term || null,
             est_grad_date: studentGradData?.est_grad_date || null,
             advisor_notes: gradPlanData.advisor_notes || null,
             plan_name: gradPlanData.plan_name ?? null,

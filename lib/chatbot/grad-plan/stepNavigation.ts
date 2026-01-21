@@ -12,37 +12,28 @@ import { updateState } from './stateManager';
  */
 export const STEP_DEPENDENCIES: Record<ConversationStep, ConversationStep[]> = {
   [ConversationStep.INITIALIZE]: [],
-  [ConversationStep.PROFILE_SETUP]: [
-    ConversationStep.CAREER_SELECTION,
+  [ConversationStep.PROFILE_CHECK]: [
     ConversationStep.CAREER_PATHFINDER,
   ],
-  [ConversationStep.CAREER_SELECTION]: [],
   [ConversationStep.CAREER_PATHFINDER]: [],
+  [ConversationStep.PROGRAM_PATHFINDER]: [],
   [ConversationStep.TRANSCRIPT_CHECK]: [],
-  [ConversationStep.STUDENT_TYPE]: [
-    ConversationStep.PROGRAM_SELECTION,
-    ConversationStep.PROGRAM_PATHFINDER,
-    ConversationStep.COURSE_METHOD,
-    ConversationStep.COURSE_SELECTION,
-    ConversationStep.MILESTONES,
-  ],
   [ConversationStep.PROGRAM_SELECTION]: [
     ConversationStep.COURSE_METHOD,
     ConversationStep.COURSE_SELECTION,
-    ConversationStep.MILESTONES,
+    ConversationStep.MILESTONES_AND_CONSTRAINTS,
   ],
-  [ConversationStep.PROGRAM_PATHFINDER]: [],
   [ConversationStep.COURSE_METHOD]: [
     ConversationStep.COURSE_SELECTION,
-    ConversationStep.MILESTONES,
+    ConversationStep.MILESTONES_AND_CONSTRAINTS,
   ],
   [ConversationStep.COURSE_SELECTION]: [
-    ConversationStep.MILESTONES,
+    ConversationStep.MILESTONES_AND_CONSTRAINTS,
   ],
   [ConversationStep.ELECTIVES]: [],
   [ConversationStep.STUDENT_INTERESTS]: [],
-  [ConversationStep.MILESTONES]: [],
-  [ConversationStep.ADDITIONAL_CONCERNS]: [],
+  [ConversationStep.CREDIT_DISTRIBUTION]: [],
+  [ConversationStep.MILESTONES_AND_CONSTRAINTS]: [],
   [ConversationStep.GENERATING_PLAN]: [],
   [ConversationStep.COMPLETE]: [],
 };
@@ -53,19 +44,17 @@ export const STEP_DEPENDENCIES: Record<ConversationStep, ConversationStep[]> = {
  */
 export const STEP_DATA_FIELDS: Record<ConversationStep, Array<keyof ConversationState['collectedData']>> = {
   [ConversationStep.INITIALIZE]: [],
-  [ConversationStep.PROFILE_SETUP]: ['estGradDate', 'estGradSem', 'admissionYear', 'isTransfer'],
-  [ConversationStep.CAREER_SELECTION]: ['careerGoals'],
-  [ConversationStep.CAREER_PATHFINDER]: ['careerGoals'],
-  [ConversationStep.TRANSCRIPT_CHECK]: ['hasTranscript', 'needsTranscriptUpdate', 'transcriptUploaded'],
-  [ConversationStep.STUDENT_TYPE]: ['studentType'],
-  [ConversationStep.PROGRAM_SELECTION]: ['selectedPrograms'],
+  [ConversationStep.PROFILE_CHECK]: [],
+  [ConversationStep.CAREER_PATHFINDER]: [],
   [ConversationStep.PROGRAM_PATHFINDER]: [],
+  [ConversationStep.TRANSCRIPT_CHECK]: ['hasTranscript', 'needsTranscriptUpdate', 'transcriptUploaded'],
+  [ConversationStep.PROGRAM_SELECTION]: ['selectedPrograms'],
   [ConversationStep.COURSE_METHOD]: ['courseSelectionMethod'],
   [ConversationStep.COURSE_SELECTION]: ['selectedCourses'],
   [ConversationStep.ELECTIVES]: ['electiveCourses', 'needsElectives'],
   [ConversationStep.STUDENT_INTERESTS]: ['studentInterests'],
-  [ConversationStep.MILESTONES]: ['milestones'],
-  [ConversationStep.ADDITIONAL_CONCERNS]: ['additionalConcerns'],
+  [ConversationStep.CREDIT_DISTRIBUTION]: ['creditDistributionStrategy'],
+  [ConversationStep.MILESTONES_AND_CONSTRAINTS]: ['milestones', 'workConstraints'],
   [ConversationStep.GENERATING_PLAN]: [],
   [ConversationStep.COMPLETE]: [],
 };

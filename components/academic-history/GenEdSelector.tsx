@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo } from 'react';
 import type { ProgramRow } from '@/types/program';
+import { Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GenEdSelectorProps {
   programs: ProgramRow[];
@@ -168,11 +170,39 @@ export function GenEdSelector({
           <p className="font-body text-sm">{matchStatus.total}</p>
         </div>
         <div>
-          <p className="font-body-semi text-[var(--foreground)]">Matched</p>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1">
+                  <p className="font-body-semi text-[var(--foreground)]">Matched</p>
+                  <Info size={14} className="text-[var(--muted-foreground)]" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">
+                  Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use "Change Requirements" to manually adjust if needed.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <p className="font-body text-sm text-green-600">{matchStatus.matched}</p>
         </div>
         <div>
-          <p className="font-body-semi text-[var(--foreground)]">Unmatched</p>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1">
+                  <p className="font-body-semi text-[var(--foreground)]">Unmatched</p>
+                  <Info size={14} className="text-[var(--muted-foreground)]" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">
+                  Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use "Change Requirements" to manually assign if needed.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <p className="font-body text-sm text-red-600">{matchStatus.unmatched}</p>
         </div>
       </div>

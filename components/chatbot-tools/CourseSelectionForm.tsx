@@ -71,6 +71,18 @@ interface CourseSelectionFormProps {
   onSubmit: (data: CourseSelectionInput) => void;
 }
 
+// Color palette for requirement backgrounds
+const REQUIREMENT_COLORS = [
+  'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800',
+  'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800',
+  'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',
+  'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800',
+  'bg-pink-50 dark:bg-pink-950/20 border-pink-200 dark:border-pink-800',
+  'bg-cyan-50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800',
+  'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800',
+  'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800',
+];
+
 export default function CourseSelectionForm({
   studentType,
   universityId,
@@ -494,6 +506,90 @@ export default function CourseSelectionForm({
     return map;
   }, [selectedPrograms, programRequirementsMap, careerGoals, studentInterests, processCourses, recommendationContext]);
 
+  // Calculate total credits from all selected courses and electives
+  const totalSelectedCredits = useMemo(() => {
+    let total = 0;
+
+    // Helper function to extract credits from a course
+    const extractCredits = (credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null): number => {
+      if (typeof credits === 'number') {
+        return credits;
+      }
+      if (credits && typeof credits === 'object') {
+        if ('fixed' in credits) {
+          return credits.fixed;
+        }
+        if ('min' in credits && credits.min) {
+          return credits.min;
+        }
+      }
+      return 3; // Default fallback
+    };
+
+    // Count credits from general education courses
+    Object.entries(selectedCourses).forEach(([subtitle, courseCodes]) => {
+      const coursesList = requirementCoursesMap[subtitle] || [];
+      courseCodes.forEach(courseCode => {
+        if (courseCode && courseCode.trim() !== '') {
+          const course = coursesList.find(c => c.code === courseCode);
+          if (course) {
+            total += extractCredits(course.credits);
+          } else {
+            total += 3; // Default if course not found
+          }
+        }
+      });
+    });
+
+    // Count credits from program courses
+    Object.entries(selectedProgramCourses).forEach(([key, courseCodes]) => {
+      // Parse the key to find the program and requirement
+      const programIdMatch = key.match(/^(\d+)-(req|subreq)-(.+)$/);
+      if (!programIdMatch) return;
+
+      const [, programId, reqType, reqId] = programIdMatch;
+      const programReqs = programRequirementsMap[programId] || [];
+
+      let coursesList: Array<{ code: string; title: string; credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null }> = [];
+
+      if (reqType === 'req') {
+        const req = programReqs.find(r => String(r.requirementId) === reqId);
+        if (req && req.courses) {
+          coursesList = req.courses;
+        }
+      } else if (reqType === 'subreq') {
+        // Find the parent requirement that has this subrequirement
+        for (const req of programReqs) {
+          if (req.subRequirements) {
+            const subReq = req.subRequirements.find(sr => String(sr.requirementId) === reqId);
+            if (subReq && subReq.courses) {
+              coursesList = subReq.courses;
+              break;
+            }
+          }
+        }
+      }
+
+      courseCodes.forEach(courseCode => {
+        if (courseCode && courseCode.trim() !== '') {
+          const course = coursesList.find(c => c.code === courseCode);
+          if (course) {
+            total += extractCredits(course.credits);
+          } else {
+            total += 3; // Default if course not found
+          }
+        }
+      });
+    });
+
+    // Count credits from user-added electives
+    userElectives.forEach(elective => {
+      total += elective.credits;
+    });
+
+    return total;
+  }, [selectedCourses, selectedProgramCourses, userElectives, requirementCoursesMap, programRequirementsMap]);
+
   // Ensure state array length matches dropdown count
   const ensureSlots = useCallback((subtitle: string, count: number) => {
     setSelectedCourses(prev => {
@@ -764,6 +860,58 @@ export default function CourseSelectionForm({
 
   const handleRemoveElective = (id: string) => {
     setUserElectives(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Dev tool: Auto-fill with middle course options
+  const handleFeelingLucky = () => {
+    // Switch to manual mode
+    setSelectionMethod('manual');
+
+    // Fill Gen Ed requirements
+    const newGenEdSelections: Record<string, string[]> = {};
+    requirements.forEach(req => {
+      const courses = requirementCoursesMap[req.subtitle] || [];
+      if (courses.length > 0) {
+        const dropdownCount = getDropdownCount(req);
+        const selections: string[] = [];
+
+        for (let i = 0; i < dropdownCount; i++) {
+          // Pick courses spread evenly across the list to avoid duplicates
+          const index = Math.floor((i / dropdownCount) * courses.length);
+          selections.push(courses[index]?.code || '');
+        }
+
+        newGenEdSelections[req.subtitle] = selections;
+      }
+    });
+    setSelectedCourses(newGenEdSelections);
+
+    // Fill Program requirements
+    const newProgramSelections: Record<string, string[]> = {};
+    selectedPrograms.forEach(programId => {
+      const programReqs = programRequirementsMap[programId] || [];
+
+      programReqs.forEach(req => {
+        if (!req.courses || req.courses.length === 0) return;
+
+        const dropdownCount = getProgramDropdownCount(req);
+        const requirementKey = getRequirementKey(programId, req);
+        const validCourses = getValidCourses(req);
+
+        if (validCourses.length > 0) {
+          const selections: string[] = [];
+
+          for (let i = 0; i < dropdownCount; i++) {
+            // Pick courses spread evenly across the list to avoid duplicates
+            const index = Math.floor((i / dropdownCount) * validCourses.length);
+            selections.push(validCourses[index]?.code || '');
+          }
+
+          newProgramSelections[requirementKey] = selections;
+        }
+      });
+    });
+    setSelectedProgramCourses(newProgramSelections);
   };
 
   // Course preference dialog handlers
@@ -1066,6 +1214,7 @@ export default function CourseSelectionForm({
           })),
         }),
         genEdDistribution,
+        totalSelectedCredits,
       };
 
       // Type assertion: AI mode intentionally has different shape than schema
@@ -1171,6 +1320,7 @@ export default function CourseSelectionForm({
         })),
       }),
       genEdDistribution,
+      totalSelectedCredits,
     };
 
     onSubmit(courseSelectionData);
@@ -1204,6 +1354,9 @@ export default function CourseSelectionForm({
         </h3>
         <p className="text-xs text-gray-600 mt-1">
           Choose courses to fulfill each requirement
+        </p>
+        <p className="text-xs text-muted-foreground mt-2 italic">
+          * Stu will attempt to auto-match courses from your transcript where possible (if included)
         </p>
         <p className="text-xs text-muted-foreground mt-2 italic">
           * Selecting a course indicates interest but does not commit you to taking it
@@ -1280,6 +1433,17 @@ export default function CourseSelectionForm({
             <BookOpen size={16} />
             I want to choose for myself
           </button>
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              type="button"
+              onClick={handleFeelingLucky}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+              title="Dev only: Auto-fill with middle course options"
+            >
+              <Zap size={16} />
+              I'm feeling lucky
+            </button>
+          )}
         </div>
       </div>
 
@@ -1465,12 +1629,15 @@ export default function CourseSelectionForm({
                 const hasCompletedCourse = completedRequirementKeys.has(req.subtitle);
 
                 const sectionKey = `gen-ed-${req.subtitle}`;
-                // Expand by default if has completed course, otherwise collapse if auto-selected
-                const isExpanded = expandedSections[sectionKey] ?? (hasCompletedCourse || !isAutoSelected);
+                // Always expand by default to show what course is required
+                const isExpanded = expandedSections[sectionKey] ?? true;
                 const recommendations = genEdRecommendationsMap[req.subtitle] || [];
 
+                // Get color for this requirement
+                const colorClass = REQUIREMENT_COLORS[idx % REQUIREMENT_COLORS.length];
+
                 return (
-                  <div key={`${req.subtitle}-${idx}`} className="space-y-2 border border-gray-200 rounded p-2.5">
+                  <div key={`${req.subtitle}-${idx}`} className={`space-y-2 border rounded p-2.5 ${colorClass}`}>
                     <button
                       type="button"
                       onClick={() => setExpandedSections(prev => ({
@@ -1498,12 +1665,12 @@ export default function CourseSelectionForm({
                         />
                       ) : isAutoSelected ? (
                         <Chip
-                          label="Auto-selected"
+                          label={courses.length === 1 ? "Only 1 Course Available" : "Auto-selected"}
                           size="small"
                           className="text-xs ml-auto"
                           sx={{
                             backgroundColor: 'var(--primary)',
-                            color: 'white',
+                            color: 'black',
                             height: '20px',
                           }}
                         />
@@ -1514,7 +1681,10 @@ export default function CourseSelectionForm({
                       <>
                         {isAutoSelected && (
                           <p className="text-xs text-muted-foreground italic">
-                            All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                            {courses.length === 1
+                              ? "There is only 1 course available for this requirement, so it has been automatically selected."
+                              : `All available courses for this requirement have been automatically selected (${courses.length} courses).`
+                            }
                           </p>
                         )}
 
@@ -1686,8 +1856,6 @@ export default function CourseSelectionForm({
                         })}
                       </>
                     )}
-
-                    {idx < requirements.length - 1 && <Divider className="my-4" />}
                   </div>
                 );
               })}
@@ -1739,12 +1907,15 @@ export default function CourseSelectionForm({
                   const hasCompletedCourse = autoMatchedKeys.has(requirementKey) && completedRequirementKeys.has(requirementKey);
 
                   const sectionKey = `prog-req-${requirementKey}`;
-                  // Expand by default if has completed course, otherwise collapse if auto-selected
-                  const isExpanded = expandedSections[sectionKey] ?? (hasCompletedCourse || !isAutoSelected);
+                  // Always expand by default to show what course is required
+                  const isExpanded = expandedSections[sectionKey] ?? true;
                   const progRecommendations = programRecommendationsMap[requirementKey] || [];
 
+                  // Get color for this requirement
+                  const colorClass = REQUIREMENT_COLORS[reqIdx % REQUIREMENT_COLORS.length];
+
                   return (
-                    <div key={`${programId}-req-${req.requirementId}`} className="space-y-2 border border-gray-200 rounded p-2.5">
+                    <div key={`${programId}-req-${req.requirementId}`} className={`space-y-2 border rounded p-2.5 ${colorClass}`}>
                       <button
                         type="button"
                         onClick={() => setExpandedSections(prev => ({
@@ -1772,12 +1943,12 @@ export default function CourseSelectionForm({
                           />
                         ) : isAutoSelected ? (
                           <Chip
-                            label="Auto-selected"
+                            label={validCourses.length === 1 ? "Only 1 Course Available" : "Auto-selected"}
                             size="small"
                             className="text-xs ml-auto"
                             sx={{
                               backgroundColor: 'var(--primary)',
-                              color: 'white',
+                              color: 'black',
                               height: '20px',
                             }}
                           />
@@ -1949,8 +2120,6 @@ export default function CourseSelectionForm({
                           })}
                         </>
                       )}
-
-                      {reqIdx < programReqs.length - 1 && <Divider className="my-4" />}
                     </div>
                   );
                 })}

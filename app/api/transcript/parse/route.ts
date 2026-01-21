@@ -9,6 +9,21 @@ import { fetchUserCoursesArray } from '@/lib/services/userCoursesService';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
+/**
+ * Determines the status of a course based on its grade
+ * @param grade - The course grade (can be null, empty string, or a letter grade)
+ * @returns Status string: "completed", "withdrawn", or "in-progress"
+ */
+function deriveStatus(grade: string | null): 'completed' | 'withdrawn' | 'in-progress' {
+  if (!grade || grade.trim() === '') {
+    return 'in-progress';
+  }
+  if (grade.toUpperCase() === 'W') {
+    return 'withdrawn';
+  }
+  return 'completed';
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerComponentClient();
   const {
@@ -44,18 +59,22 @@ export async function POST(request: NextRequest) {
       if (byuResult.success && byuResult.courses.length > 0) {
         const dedupedCourses = deduplicateByuCourses(byuResult.courses);
 
-        // Convert to DB format
-        const coursesJson = dedupedCourses.map((course) => ({
-          id: randomUUID(),
-          subject: course.subject,
-          number: course.number,
-          title: course.title,
-          credits: course.credits,
-          grade: course.grade.trim() === '' ? null : course.grade,
-          term: course.term,
-          tags: [],
-          origin: 'parsed',
-        }));
+        // Convert to DB format with status derivation
+        const coursesJson = dedupedCourses.map((course) => {
+          const grade = course.grade.trim() === '' ? null : course.grade;
+          return {
+            id: randomUUID(),
+            subject: course.subject,
+            number: course.number,
+            title: course.title,
+            credits: course.credits,
+            grade,
+            term: course.term,
+            tags: [],
+            origin: 'parsed',
+            status: deriveStatus(grade),
+          };
+        });
 
         // Check if user has existing record
         const { data: existingRecord } = await supabase

@@ -477,7 +477,7 @@ export async function completeOnboarding(
           class_preferences: [],
         };
 
-        if (estGradSem) studentData.est_grad_plan = estGradSem;
+        if (estGradSem) studentData.est_grad_term = estGradSem;
         if (estGradDate) studentData.est_grad_date = estGradDate;
 
         const { error: studentInsertError } = await supabase
@@ -491,7 +491,7 @@ export async function completeOnboarding(
       } else {
         // Update existing student record with graduation info
         const studentUpdateData: Record<string, unknown> = {};
-        if (estGradSem) studentUpdateData.est_grad_plan = estGradSem;
+        if (estGradSem) studentUpdateData.est_grad_term = estGradSem;
         if (estGradDate) studentUpdateData.est_grad_date = estGradDate;
 
         if (Object.keys(studentUpdateData).length > 0) {

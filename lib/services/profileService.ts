@@ -139,7 +139,7 @@ export async function saveTargetedCareerClient(careerTitle: string): Promise<{ s
 
 /**
  * Update student fields for the authenticated user.
- * Updates fields like est_grad_date, est_grad_plan, career_goals in the student table.
+ * Updates fields like est_grad_date, est_grad_term, career_goals in the student table.
  * Relies on RLS allowing the current user to update their own student row.
  */
 export async function updateStudentClient(updates: Record<string, string | null>): Promise<{ success: boolean; error?: string }> {

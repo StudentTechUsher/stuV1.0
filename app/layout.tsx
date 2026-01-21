@@ -7,6 +7,7 @@ import { UniversityThemeProvider } from "@/contexts/university-theme-context";
 import { DarkModeProvider } from "@/contexts/dark-mode-context";
 import { PostHogProvider } from "@/contexts/posthog-provider";
 import { ReportIssueButton } from "@/components/report-issue/report-issue-button";
+import { ClientErrorCapture } from "@/components/observability/client-error-capture";
 
 const geistSans = localFont({
   src: [
@@ -123,6 +124,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <PostHogProvider>
+          <ClientErrorCapture />
           <DarkModeProvider>
             <UniversityThemeProvider>
               {children}

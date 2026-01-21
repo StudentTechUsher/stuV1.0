@@ -60,8 +60,8 @@ async function handleUpdateProfile(request: NextRequest) {
           { status: 400 }
         );
       }
-      // Map est_grad_sem to est_grad_plan in student table
-      updates.est_grad_plan = est_grad_sem;
+      // Map est_grad_sem to est_grad_term in student table
+      updates.est_grad_term = est_grad_sem;
     }
 
     if (est_grad_date !== undefined) {

@@ -30,23 +30,23 @@ export function createInitialState(
     currentStep: ConversationStep.INITIALIZE,
     completedSteps: [],
     collectedData: {
-      estGradDate: null,
-      estGradSem: null,
-      careerGoals: null,
-      admissionYear: null,
-      isTransfer: null,
+      selectedGenEdProgramId: null,
+      selectedGenEdProgramName: null,
       hasTranscript: false,
       needsTranscriptUpdate: false,
       transcriptUploaded: false,
-      studentType: null,
+      planStartTerm: null,
+      planStartYear: null,
       selectedPrograms: [],
       courseSelectionMethod: null,
       selectedCourses: [],
+      totalSelectedCredits: 0,
       electiveCourses: [],
       needsElectives: false,
       studentInterests: null,
-      milestones: null,
-      additionalConcerns: null,
+      creditDistributionStrategy: null,
+      milestones: [],
+      workConstraints: null,
     },
     pendingToolCall: null,
     lastToolResult: null,
@@ -110,19 +110,15 @@ export function validateStepCompletion(
       // Always valid - just fetches data
       break;
 
-    case ConversationStep.PROFILE_SETUP:
-      if (!state.collectedData.estGradDate) {
-        errors.push('Expected graduation date is required');
-      }
-      if (!state.collectedData.estGradSem) {
-        errors.push('Expected graduation semester is required');
-      }
-      if (!state.collectedData.careerGoals) {
-        errors.push('Career goals are required');
-      }
+    case ConversationStep.PROFILE_CHECK:
+      // Profile data is now fetched from student table - always valid
       break;
 
     case ConversationStep.CAREER_PATHFINDER:
+      // Optional step - always valid
+      break;
+
+    case ConversationStep.PROGRAM_PATHFINDER:
       // Optional step - always valid
       break;
 
@@ -130,23 +126,9 @@ export function validateStepCompletion(
       // Just asking questions - always valid
       break;
 
-    case ConversationStep.STUDENT_TYPE:
-      if (!state.collectedData.studentType) {
-        errors.push('Student type must be selected');
-      }
-      break;
-
     case ConversationStep.PROGRAM_SELECTION:
       if (state.collectedData.selectedPrograms.length === 0) {
         errors.push('At least one program must be selected');
-      } else {
-        // For undergraduates, ensure they have at least one major (not just gen ed)
-        const nonGenEdPrograms = state.collectedData.selectedPrograms.filter(
-          p => p.programType !== 'general_education'
-        );
-        if (state.collectedData.studentType === 'undergraduate' && nonGenEdPrograms.length === 0) {
-          errors.push('At least one major or minor must be selected');
-        }
       }
       break;
 
@@ -171,8 +153,20 @@ export function validateStepCompletion(
       }
       break;
 
-    case ConversationStep.ADDITIONAL_CONCERNS:
+    case ConversationStep.STUDENT_INTERESTS:
       // Optional - always valid
+      break;
+
+    case ConversationStep.CREDIT_DISTRIBUTION:
+      if (!state.collectedData.creditDistributionStrategy) {
+        errors.push('Credit distribution strategy must be selected');
+      }
+      break;
+
+    case ConversationStep.MILESTONES_AND_CONSTRAINTS:
+      if (!state.collectedData.workConstraints) {
+        errors.push('Work status must be selected');
+      }
       break;
 
     case ConversationStep.GENERATING_PLAN:
@@ -197,15 +191,17 @@ export function validateStepCompletion(
 export function getConversationProgress(state: ConversationState): ConversationProgress {
   const stepOrder = [
     ConversationStep.INITIALIZE,
-    ConversationStep.PROFILE_SETUP,
+    ConversationStep.PROFILE_CHECK,
     ConversationStep.CAREER_PATHFINDER,
+    ConversationStep.PROGRAM_PATHFINDER,
     ConversationStep.TRANSCRIPT_CHECK,
-    ConversationStep.STUDENT_TYPE,
     ConversationStep.PROGRAM_SELECTION,
     ConversationStep.COURSE_METHOD,
     ConversationStep.COURSE_SELECTION,
     ConversationStep.ELECTIVES,
-    ConversationStep.ADDITIONAL_CONCERNS,
+    ConversationStep.STUDENT_INTERESTS,
+    ConversationStep.CREDIT_DISTRIBUTION,
+    ConversationStep.MILESTONES_AND_CONSTRAINTS,
     ConversationStep.GENERATING_PLAN,
     ConversationStep.COMPLETE,
   ];
@@ -215,65 +211,12 @@ export function getConversationProgress(state: ConversationState): ConversationP
 
   const collectedFields = [];
 
-  // Profile fields - Combine Graduation Date and Semester
-  if (state.collectedData.estGradDate && state.collectedData.estGradSem) {
-    // Extract year from date (format: "2030-04-30" -> "2030")
-    const year = state.collectedData.estGradDate.split('-')[0];
-    const semester = state.collectedData.estGradSem;
-
+  // General education requirements
+  if (state.collectedData.selectedGenEdProgramName) {
     collectedFields.push({
-      field: 'desiredGraduation',
-      label: 'Desired Graduation',
-      value: `${semester} ${year}`,
-      completed: true,
-    });
-  } else if (state.collectedData.estGradDate) {
-    // Fallback if only date is provided
-    collectedFields.push({
-      field: 'estGradDate',
-      label: 'Graduation Date',
-      value: state.collectedData.estGradDate,
-      completed: true,
-    });
-  } else if (state.collectedData.estGradSem) {
-    // Fallback if only semester is provided
-    collectedFields.push({
-      field: 'estGradSem',
-      label: 'Graduation Semester',
-      value: state.collectedData.estGradSem,
-      completed: true,
-    });
-  }
-
-  if (state.collectedData.admissionYear) {
-    collectedFields.push({
-      field: 'admissionYear',
-      label: 'Admission Year',
-      value: state.collectedData.admissionYear.toString(),
-      completed: true,
-    });
-  }
-
-  // Student entry type (freshman, transfer, dual enrollment)
-  if (state.collectedData.isTransfer) {
-    const entryTypeLabels = {
-      freshman: 'Freshman',
-      transfer: 'Transfer Student',
-      dual_enrollment: 'Freshman with Credits',
-    };
-    collectedFields.push({
-      field: 'studentEntryType',
-      label: 'Admission Type',
-      value: entryTypeLabels[state.collectedData.isTransfer],
-      completed: true,
-    });
-  }
-
-  if (state.collectedData.careerGoals) {
-    collectedFields.push({
-      field: 'careerGoals',
-      label: 'Career Goals',
-      value: state.collectedData.careerGoals,
+      field: 'genEdRequirements',
+      label: 'Gen Ed Requirements',
+      value: state.collectedData.selectedGenEdProgramName,
       completed: true,
     });
   }
@@ -300,12 +243,11 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
-  // Student type
-  if (state.collectedData.studentType) {
+  if (state.collectedData.planStartTerm && state.collectedData.planStartYear) {
     collectedFields.push({
-      field: 'studentType',
-      label: 'Student Type',
-      value: state.collectedData.studentType === 'undergraduate' ? 'Undergraduate' : 'Graduate',
+      field: 'planStart',
+      label: 'Plan Start',
+      value: `${state.collectedData.planStartTerm} ${state.collectedData.planStartYear}`,
       completed: true,
     });
   }
@@ -348,6 +290,16 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
+  // Total Selected Credits
+  if (state.collectedData.totalSelectedCredits > 0) {
+    collectedFields.push({
+      field: 'totalCredits',
+      label: 'Total Credits',
+      value: `${state.collectedData.totalSelectedCredits} credits`,
+      completed: true,
+    });
+  }
+
   // Electives
   if (state.collectedData.electiveCourses.length > 0) {
     collectedFields.push({
@@ -358,32 +310,54 @@ export function getConversationProgress(state: ConversationState): ConversationP
     });
   }
 
-  // Milestones
-  if (state.collectedData.milestones) {
-    try {
-      const milestonesData = JSON.parse(state.collectedData.milestones) as {
-        hasMilestones: boolean;
-        milestones?: Array<{ type: string; title: string; timing: string }>;
-      };
+  // Credit Distribution Strategy
+  if (state.collectedData.creditDistributionStrategy) {
+    const strategyLabels = {
+      fast_track: 'Fast Track',
+      balanced: 'Balanced',
+      explore: 'Explore',
+    };
+    collectedFields.push({
+      field: 'creditStrategy',
+      label: 'Credit Strategy',
+      value: strategyLabels[state.collectedData.creditDistributionStrategy.type],
+      completed: true,
+    });
 
-      if (milestonesData.hasMilestones && milestonesData.milestones && milestonesData.milestones.length > 0) {
-        collectedFields.push({
-          field: 'milestones',
-          label: 'Milestones',
-          value: `${milestonesData.milestones.length} milestone${milestonesData.milestones.length > 1 ? 's' : ''} set`,
-          completed: true,
-        });
-      } else {
-        collectedFields.push({
-          field: 'milestones',
-          label: 'Milestones',
-          value: 'None',
-          completed: true,
-        });
-      }
-    } catch (error) {
-      console.error('Error parsing milestones:', error);
+    if (state.collectedData.creditDistributionStrategy.includeSecondaryCourses) {
+      collectedFields.push({
+        field: 'secondaryTerms',
+        label: 'Spring & Summer Terms',
+        value: 'Included',
+        completed: true,
+      });
     }
+  }
+
+  // Milestones
+  if (state.collectedData.milestones.length > 0) {
+    collectedFields.push({
+      field: 'milestones',
+      label: 'Milestones',
+      value: `${state.collectedData.milestones.length} milestone${state.collectedData.milestones.length > 1 ? 's' : ''}`,
+      completed: true,
+    });
+  }
+
+  // Work Constraints
+  if (state.collectedData.workConstraints) {
+    const workStatusLabels = {
+      not_working: 'Not Working',
+      part_time: 'Part-time Work',
+      full_time: 'Full-time Work',
+      variable: 'Variable Schedule',
+    };
+    collectedFields.push({
+      field: 'workStatus',
+      label: 'Work Status',
+      value: workStatusLabels[state.collectedData.workConstraints.workStatus],
+      completed: true,
+    });
   }
 
   return {
@@ -401,19 +375,17 @@ export function getConversationProgress(state: ConversationState): ConversationP
 export function getStepLabel(step: ConversationStep): string {
   const labels: Record<ConversationStep, string> = {
     [ConversationStep.INITIALIZE]: 'Initializing',
-    [ConversationStep.PROFILE_SETUP]: 'Profile Setup',
-    [ConversationStep.CAREER_SELECTION]: 'Career Selection',
+    [ConversationStep.PROFILE_CHECK]: 'Profile Check',
     [ConversationStep.CAREER_PATHFINDER]: 'Career Exploration',
     [ConversationStep.PROGRAM_PATHFINDER]: 'Program Exploration',
     [ConversationStep.TRANSCRIPT_CHECK]: 'Transcript Review',
-    [ConversationStep.STUDENT_TYPE]: 'Student Classification',
     [ConversationStep.PROGRAM_SELECTION]: 'Program Selection',
-    [ConversationStep.COURSE_METHOD]: 'Course Selection',
+    [ConversationStep.COURSE_METHOD]: 'Course Selection Method',
     [ConversationStep.COURSE_SELECTION]: 'Course Selection',
     [ConversationStep.ELECTIVES]: 'Elective Courses',
     [ConversationStep.STUDENT_INTERESTS]: 'Your Interests',
-    [ConversationStep.MILESTONES]: 'Academic Milestones',
-    [ConversationStep.ADDITIONAL_CONCERNS]: 'Additional Concerns',
+    [ConversationStep.CREDIT_DISTRIBUTION]: 'Credit Distribution',
+    [ConversationStep.MILESTONES_AND_CONSTRAINTS]: 'Milestones & Constraints',
     [ConversationStep.GENERATING_PLAN]: 'Generate Plan',
     [ConversationStep.COMPLETE]: 'Complete',
   };
@@ -427,28 +399,11 @@ export function getStepLabel(step: ConversationStep): string {
 export function isReadyForGeneration(state: ConversationState): ValidationResult {
   const errors: string[] = [];
 
-  if (!state.collectedData.estGradDate) {
-    errors.push('Graduation date is required');
-  }
-
-  if (!state.collectedData.estGradSem) {
-    errors.push('Graduation semester is required');
-  }
-
-  if (!state.collectedData.studentType) {
-    errors.push('Student type is required');
-  }
+  // Profile data (now from student table, not grad plan state)
+  // These are checked during PROFILE_CHECK step, so they should exist
 
   if (state.collectedData.selectedPrograms.length === 0) {
     errors.push('At least one program must be selected');
-  } else {
-    // For undergraduates, ensure they have at least one major (not just gen ed)
-    const nonGenEdPrograms = state.collectedData.selectedPrograms.filter(
-      p => p.programType !== 'general_education'
-    );
-    if (state.collectedData.studentType === 'undergraduate' && nonGenEdPrograms.length === 0) {
-      errors.push('At least one major or minor must be selected');
-    }
   }
 
   if (!state.collectedData.courseSelectionMethod) {
@@ -460,6 +415,14 @@ export function isReadyForGeneration(state: ConversationState): ValidationResult
     state.collectedData.selectedCourses.length === 0
   ) {
     errors.push('Courses must be selected for manual mode');
+  }
+
+  if (!state.collectedData.creditDistributionStrategy) {
+    errors.push('Credit distribution strategy must be selected');
+  }
+
+  if (!state.collectedData.workConstraints) {
+    errors.push('Work status must be specified');
   }
 
   return {

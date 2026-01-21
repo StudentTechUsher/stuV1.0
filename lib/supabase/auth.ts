@@ -84,7 +84,7 @@ export async function getVerifiedUserProfile() {
     if (profile.role_id === 3) {
       const { data: student, error: studentError } = await supabase
         .from('student')
-        .select('est_grad_date, est_grad_plan, career_goals, admission_year, is_transfer')
+        .select('est_grad_date, est_grad_term, career_goals, admission_year, is_transfer')
         .eq('profile_id', user.id)
         .maybeSingle()
 
@@ -93,11 +93,11 @@ export async function getVerifiedUserProfile() {
         console.error('Error fetching student data:', studentErrorMessage)
       } else if (student) {
         // Merge student fields into profile
-        // Map est_grad_plan to est_grad_sem for backward compatibility
+        // Map est_grad_term to est_grad_sem for backward compatibility
         return {
           ...profile,
           est_grad_date: student.est_grad_date,
-          est_grad_sem: student.est_grad_plan,
+          est_grad_sem: student.est_grad_term,
           career_goals: student.career_goals,
           admission_year: student.admission_year,
           is_transfer: student.is_transfer,

@@ -1,6 +1,7 @@
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import { checkUserHasCourses } from '@/lib/chatbot/tools/transcriptCheckTool';
 import { checkUserHasActivePlan } from '@/lib/services/gradPlanService';
+import { fetchUniversityAcademicTerms } from '@/lib/services/institutionService';
 import CreatePlanClient from './create-plan-client';
 
 // Force dynamic rendering for this page because it uses cookies
@@ -29,12 +30,16 @@ export default async function CreateGradPlanPage() {
   // Check if user has an active grad plan
   const hasActivePlan = await checkUserHasActivePlan(user.id);
 
+  // Fetch academic terms configuration for the university
+  const academicTerms = await fetchUniversityAcademicTerms(userProfile.university_id);
+
   return (
     <CreatePlanClient
       user={user}
       studentProfile={userProfile}
       hasCourses={hasCourses}
       hasActivePlan={hasActivePlan}
+      academicTerms={academicTerms}
     />
   );
 }

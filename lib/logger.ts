@@ -2,6 +2,8 @@
 // FERPA-compliant logging utility
 // Ensures no PII (Personally Identifiable Information) is logged
 
+import { captureServerEvent, type ServerEventProperties } from '@/lib/observability/posthog-server';
+
 type LogLevel = 'info' | 'warn' | 'error';
 
 interface LogContext {
@@ -52,6 +54,28 @@ function sanitizeError(error: unknown): { type: string; message?: string; code?:
   };
 }
 
+function buildPosthogProperties(context?: LogContext): ServerEventProperties {
+  if (!context) return {};
+
+  return {
+    action: context.action,
+    status: context.status,
+    count: context.count,
+    duration: context.duration,
+    http_status: context.httpStatus,
+    error_hint: context.errorHint,
+    model: context.model,
+    text_length: context.textLength,
+    start_date: context.startDate,
+    end_date: context.endDate,
+  };
+}
+
+function getDistinctId(context?: LogContext): string | undefined {
+  if (!context?.userId) return undefined;
+  return hashUserId(context.userId);
+}
+
 /**
  * FERPA-compliant logging function
  * Automatically hashes user IDs and sanitizes context
@@ -88,6 +112,16 @@ export function logError(message: string, error: unknown, context?: Omit<LogCont
       : {}
     ),
   });
+
+  const posthogProperties: ServerEventProperties = {
+    ...buildPosthogProperties(context),
+    error_type: sanitizedError.type,
+    error_code: sanitizedError.code,
+    success: false,
+    user_id_hash: context?.userId ? hashUserId(context.userId) : undefined,
+  };
+
+  void captureServerEvent('server_error', posthogProperties, getDistinctId(context));
 }
 
 /**
@@ -112,6 +146,16 @@ function containsPII(text: string): boolean {
  */
 export function logInfo(message: string, context?: LogContext) {
   logSecure('info', message, context);
+
+  if (!context?.action) return;
+
+  const posthogProperties: ServerEventProperties = {
+    ...buildPosthogProperties(context),
+    success: true,
+    user_id_hash: context?.userId ? hashUserId(context.userId) : undefined,
+  };
+
+  void captureServerEvent('server_info', posthogProperties, getDistinctId(context));
 }
 
 /**
@@ -119,4 +163,14 @@ export function logInfo(message: string, context?: LogContext) {
  */
 export function logWarn(message: string, context?: LogContext) {
   logSecure('warn', message, context);
+
+  if (!context?.action) return;
+
+  const posthogProperties: ServerEventProperties = {
+    ...buildPosthogProperties(context),
+    success: false,
+    user_id_hash: context?.userId ? hashUserId(context.userId) : undefined,
+  };
+
+  void captureServerEvent('server_warn', posthogProperties, getDistinctId(context));
 }

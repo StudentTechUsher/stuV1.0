@@ -34,17 +34,15 @@ export default function WizardScreenRouter({
   // Helper function to get screen step number for progress tracking
   const getScreenStepNumber = (): number => {
     switch (currentStep) {
-      case ConversationStep.PROFILE_SETUP:
+      case ConversationStep.PROFILE_CHECK:
         return 1; // Will be further subdivided based on which profile field we're on
       case ConversationStep.TRANSCRIPT_CHECK:
         return 5;
-      case ConversationStep.STUDENT_TYPE:
-        return 6;
       case ConversationStep.PROGRAM_SELECTION:
         return 7;
       case ConversationStep.COURSE_SELECTION:
         return 8;
-      case ConversationStep.ADDITIONAL_CONCERNS:
+      case ConversationStep.MILESTONES_AND_CONSTRAINTS:
         return 9;
       case ConversationStep.GENERATING_PLAN:
         return 10;
@@ -56,7 +54,7 @@ export default function WizardScreenRouter({
   // For now, render screens based on current step
   // Note: Profile setup will be subdivided into multiple screens
   switch (currentStep) {
-    case ConversationStep.PROFILE_SETUP:
+    case ConversationStep.PROFILE_CHECK:
       // Combine fname and lname if available, otherwise fall back to name field
       const fullName = profileData.fname && profileData.lname
         ? `${profileData.fname} ${profileData.lname}`
@@ -78,15 +76,6 @@ export default function WizardScreenRouter({
           onSubmit={(hasTranscript) =>
             onStepComplete({ hasTranscript, wantsToUpload: false, wantsToUpdate: false })
           }
-          onBack={onStepBack}
-          isLoading={isLoading}
-        />
-      );
-
-    case ConversationStep.STUDENT_TYPE:
-      return (
-        <StudentTypeScreen
-          onSubmit={(studentType) => onStepComplete({ studentType })}
           onBack={onStepBack}
           isLoading={isLoading}
         />

@@ -135,20 +135,60 @@ export const courseSelectionPayloadSchema = yup.object({
     })
   ).optional().default([]),
   additionalConcerns: yup.object({
-    hasAdditionalConcerns: yup.boolean().required(),
+    hasAdditionalConcerns: yup.boolean().optional(),
     workStatus: yup.string().oneOf(['not_working', 'part_time', 'full_time']).optional(),
     academicPriority: yup.string().oneOf(['graduate_quickly', 'explore_options', 'balanced']).optional(),
     otherConcerns: yup.string().optional(),
   }).optional(),
-  milestones: yup.object({
-    hasMilestones: yup.boolean().required(),
-    milestones: yup.array().of(
-      yup.object({
-        type: yup.string().required(),
-        title: yup.string().required(),
-        timing: yup.string().oneOf(['ai_choose', 'beginning', 'middle', 'before_last_year', 'after_graduation']).required(),
-      })
-    ).optional(),
+  workStatus: yup.string().oneOf(['not_working', 'part_time', 'full_time', 'variable']).optional(),
+  suggestedDistribution: yup.array().of(
+    yup.object({
+      term: yup.string().required(),
+      year: yup.number().required(),
+      termType: yup.string().oneOf(['primary', 'secondary']).required(),
+      suggestedCredits: yup.number().required(),
+      minCredits: yup.number().required(),
+      maxCredits: yup.number().required(),
+      targetCredits: yup.number().optional(),
+    })
+  ).optional(),
+  milestones: yup.lazy((value) => {
+    if (Array.isArray(value)) {
+      return yup.array().of(
+        yup.object({
+          id: yup.string().optional(),
+          type: yup.string().required(),
+          title: yup.string().required(),
+          timing: yup.string().oneOf([
+            'ai_choose',
+            'beginning',
+            'middle',
+            'before_last_year',
+            'after_graduation',
+            'specific_term',
+          ]).required(),
+          term: yup.string().optional(),
+          year: yup.number().optional(),
+        })
+      );
+    }
+
+    return yup.object({
+      hasMilestones: yup.boolean().required(),
+      milestones: yup.array().of(
+        yup.object({
+          type: yup.string().required(),
+          title: yup.string().required(),
+          timing: yup.string().oneOf([
+            'ai_choose',
+            'beginning',
+            'middle',
+            'before_last_year',
+            'after_graduation',
+          ]).required(),
+        })
+      ).optional(),
+    }).optional();
   }).optional(),
 });
 

@@ -156,6 +156,7 @@ function sanitizeEventProperties(properties?: Record<string, unknown>): Record<s
     'count',
     'success',
     'error_type',
+    'error_code',
     'http_status',
     'page_path',
     'university_id',
@@ -166,6 +167,7 @@ function sanitizeEventProperties(properties?: Record<string, unknown>): Record<s
     'tab_index',
     'button_clicked',
     'feature_flag',
+    'runtime',
   ];
 
   for (const key of allowedKeys) {

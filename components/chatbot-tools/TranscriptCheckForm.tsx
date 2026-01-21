@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, Check, X } from 'lucide-react';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
 import TranscriptReviewDisplay from './TranscriptReviewDisplay';
 import { TranscriptCheckInput } from '@/lib/chatbot/tools/transcriptCheckTool';
+import type { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchUserCoursesAction, fetchUserCoursesMetadataAction } from '@/lib/services/server-actions';
 
@@ -33,11 +34,13 @@ interface ParsedCourse {
 interface TranscriptCheckFormProps {
   hasCourses: boolean;
   onSubmit: (data: TranscriptCheckInput) => void;
+  academicTerms?: AcademicTermsConfig;
 }
 
 export default function TranscriptCheckForm({
   hasCourses,
   onSubmit,
+  academicTerms,
 }: Readonly<TranscriptCheckFormProps>) {
   const { user } = useAuth();
   const [showUpload, setShowUpload] = useState(false);
@@ -46,6 +49,68 @@ export default function TranscriptCheckForm({
   const [showReview, setShowReview] = useState(false);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [showStartTermPrompt, setShowStartTermPrompt] = useState(false);
+  const [startTerm, setStartTerm] = useState('');
+  const [startYear, setStartYear] = useState('');
+  const [startTermError, setStartTermError] = useState<string | null>(null);
+
+  const termOptions = useMemo(() => {
+    const fallbackTerms = ['Fall', 'Winter', 'Spring', 'Summer'];
+    if (!academicTerms) {
+      return fallbackTerms.map(term => ({
+        id: term.toLowerCase(),
+        label: term,
+      }));
+    }
+
+    const allTerms = [...academicTerms.terms.primary, ...academicTerms.terms.secondary];
+    const ordering = academicTerms.ordering && academicTerms.ordering.length > 0
+      ? academicTerms.ordering
+      : allTerms.map(term => term.id);
+
+    const options = ordering.map(termId => {
+      const match = allTerms.find(term =>
+        term.id.toLowerCase() === termId.toLowerCase() ||
+        term.label.toLowerCase() === termId.toLowerCase()
+      );
+      const label = match?.label || termId.charAt(0).toUpperCase() + termId.slice(1);
+      return {
+        id: match?.id || termId,
+        label,
+      };
+    });
+
+    const seen = new Set<string>();
+    return options.filter(option => {
+      const key = option.label.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [academicTerms]);
+
+  const defaultStartTerm = useMemo(() => {
+    if (!termOptions.length) return '';
+    const preferred = academicTerms?.academic_year_start;
+    if (preferred) {
+      const match = termOptions.find(option =>
+        option.id.toLowerCase() === preferred.toLowerCase() ||
+        option.label.toLowerCase() === preferred.toLowerCase()
+      );
+      if (match) return match.label;
+    }
+    return termOptions[0].label;
+  }, [academicTerms, termOptions]);
+
+  useEffect(() => {
+    if (!showStartTermPrompt) return;
+    if (!startTerm && defaultStartTerm) {
+      setStartTerm(defaultStartTerm);
+    }
+    if (!startYear) {
+      setStartYear(String(new Date().getFullYear()));
+    }
+  }, [showStartTermPrompt, startTerm, startYear, defaultStartTerm]);
 
   // Fetch last updated date when component mounts if user has courses
   useEffect(() => {
@@ -63,10 +128,14 @@ export default function TranscriptCheckForm({
   }, [hasCourses, user?.id]);
 
   const handleUploadClick = () => {
+    setShowStartTermPrompt(false);
+    setStartTermError(null);
     setShowUpload(true);
   };
 
   const handleSkip = () => {
+    setShowStartTermPrompt(false);
+    setStartTermError(null);
     onSubmit({
       hasTranscript: hasCourses,
       wantsToUpload: false,
@@ -75,6 +144,8 @@ export default function TranscriptCheckForm({
   };
 
   const handleUpdateClick = () => {
+    setShowStartTermPrompt(false);
+    setStartTermError(null);
     setShowUpload(true);
   };
 
@@ -134,6 +205,8 @@ export default function TranscriptCheckForm({
 
   const handleReviewConfirm = () => {
     setShowReview(false);
+    setShowStartTermPrompt(false);
+    setStartTermError(null);
     onSubmit({
       hasTranscript: true,
       wantsToUpload: true,
@@ -144,6 +217,34 @@ export default function TranscriptCheckForm({
   const handleCancelUpload = () => {
     setShowUpload(false);
   };
+
+  const handleContinueWithoutTranscript = () => {
+    setShowStartTermPrompt(true);
+    setStartTermError(null);
+  };
+
+  const handleStartTermBack = () => {
+    setShowStartTermPrompt(false);
+    setStartTermError(null);
+  };
+
+  const handleStartTermSubmit = () => {
+    const parsedYear = Number.parseInt(startYear, 10);
+    if (!startTerm || Number.isNaN(parsedYear)) {
+      setStartTermError('Please select a start term and year to continue.');
+      return;
+    }
+    onSubmit({
+      hasTranscript: false,
+      wantsToUpload: false,
+      wantsToUpdate: false,
+      startTerm,
+      startYear: parsedYear,
+    });
+  };
+
+  const parsedStartYear = Number.parseInt(startYear, 10);
+  const isStartSelectionValid = !!startTerm && !Number.isNaN(parsedStartYear);
 
   // If loading courses after upload
   if (isLoadingCourses) {
@@ -263,17 +364,78 @@ export default function TranscriptCheckForm({
               </Button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => onSubmit({
-                hasTranscript: false,
-                wantsToUpload: false,
-                wantsToUpdate: false,
-              })}
-              className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
-            >
-              Continue without transcript
-            </button>
+            {showStartTermPrompt ? (
+              <div className="rounded-lg border border-[var(--border)] bg-white p-4">
+                <p className="text-sm font-medium text-[var(--foreground)]">
+                  Where should we start your plan?
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                  Choose the first term you want to plan for.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--foreground)] mb-1">
+                      Start Term
+                    </label>
+                    <select
+                      value={startTerm}
+                      onChange={(e) => {
+                        setStartTerm(e.target.value);
+                        setStartTermError(null);
+                      }}
+                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    >
+                      <option value="" disabled>Select term</option>
+                      {termOptions.map(option => (
+                        <option key={option.id} value={option.label}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--foreground)] mb-1">
+                      Start Year
+                    </label>
+                    <input
+                      type="number"
+                      value={startYear}
+                      onChange={(e) => {
+                        setStartYear(e.target.value);
+                        setStartTermError(null);
+                      }}
+                      min={new Date().getFullYear() - 1}
+                      max={new Date().getFullYear() + 10}
+                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    />
+                  </div>
+                </div>
+                {startTermError && (
+                  <p className="mt-2 text-xs text-red-600">{startTermError}</p>
+                )}
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={handleStartTermBack}>
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleStartTermSubmit}
+                    disabled={!isStartSelectionValid}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleContinueWithoutTranscript}
+                className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              >
+                Continue without transcript
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -311,13 +473,78 @@ export default function TranscriptCheckForm({
               </Button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
-            >
-              Continue without transcript
-            </button>
+            {showStartTermPrompt ? (
+              <div className="rounded-lg border border-[var(--border)] bg-white p-4">
+                <p className="text-sm font-medium text-[var(--foreground)]">
+                  Where should we start your plan?
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                  Choose the first term you want to plan for.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--foreground)] mb-1">
+                      Start Term
+                    </label>
+                    <select
+                      value={startTerm}
+                      onChange={(e) => {
+                        setStartTerm(e.target.value);
+                        setStartTermError(null);
+                      }}
+                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    >
+                      <option value="" disabled>Select term</option>
+                      {termOptions.map(option => (
+                        <option key={option.id} value={option.label}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--foreground)] mb-1">
+                      Start Year
+                    </label>
+                    <input
+                      type="number"
+                      value={startYear}
+                      onChange={(e) => {
+                        setStartYear(e.target.value);
+                        setStartTermError(null);
+                      }}
+                      min={new Date().getFullYear() - 1}
+                      max={new Date().getFullYear() + 10}
+                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                    />
+                  </div>
+                </div>
+                {startTermError && (
+                  <p className="mt-2 text-xs text-red-600">{startTermError}</p>
+                )}
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={handleStartTermBack}>
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleStartTermSubmit}
+                    disabled={!isStartSelectionValid}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleContinueWithoutTranscript}
+                className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              >
+                Continue without transcript
+              </button>
+            )}
           </div>
         </div>
       )}

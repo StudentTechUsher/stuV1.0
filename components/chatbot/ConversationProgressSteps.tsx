@@ -10,17 +10,14 @@ interface ConversationProgressStepsProps {
   onStepClick?: (step: ConversationStep) => void;
 }
 
-// Main visible steps for the progress indicator (simplified for UI)
+// Main visible steps for the progress indicator (NEW: reduced from 9 to 6 steps)
 const MAIN_STEPS: ConversationStep[] = [
-  ConversationStep.PROFILE_SETUP,
-  ConversationStep.CAREER_SELECTION,
-  ConversationStep.TRANSCRIPT_CHECK,
-  ConversationStep.STUDENT_TYPE,
-  ConversationStep.PROGRAM_SELECTION,
-  ConversationStep.COURSE_SELECTION,
-  ConversationStep.MILESTONES,
-  ConversationStep.ADDITIONAL_CONCERNS,
-  ConversationStep.GENERATING_PLAN,
+  ConversationStep.PROFILE_CHECK,           // NEW: Replaces profile_setup, career_selection, student_type
+  ConversationStep.PROGRAM_SELECTION,       // Unchanged
+  ConversationStep.COURSE_SELECTION,        // Unchanged
+  ConversationStep.CREDIT_DISTRIBUTION,     // NEW: Credit strategy selection
+  ConversationStep.MILESTONES_AND_CONSTRAINTS, // NEW: Replaces milestones + additional_concerns
+  ConversationStep.GENERATING_PLAN,         // Unchanged
 ];
 
 export default function ConversationProgressSteps({

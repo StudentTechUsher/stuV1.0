@@ -75,7 +75,6 @@
     "remark-gfm": "^4.0.1",
     "resend": "^6.1.2",
     "sharp": "^0.34.5",
-    "supabase": "^2.54.11",
     "tailwind-merge": "^3.3.1",
     "tailwind-variants": "^3.1.1",
     "tailwindcss-animate": "^1.0.7",
@@ -99,6 +98,7 @@
     "happy-dom": "^20.0.11",
     "pnpm": "^10.28.0",
     "prettier": "^3.6.2",
+    "supabase": "^2.54.11",
     "tailwindcss": "^4.1.14",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

@@ -24,6 +24,7 @@ interface ProgramSelectionFormProps {
   universityId: number;
   studentAdmissionYear?: number | null;
   studentIsTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
+  selectedGenEdProgramId?: number | null;
   profileId?: string;
   onSubmit: (data: ProgramSelectionInput) => void;
   onProgramPathfinderClick?: () => void;
@@ -35,6 +36,7 @@ export default function ProgramSelectionForm({
   universityId,
   studentAdmissionYear,
   studentIsTransfer,
+  selectedGenEdProgramId,
   profileId,
   onSubmit,
   onProgramPathfinderClick,
@@ -43,9 +45,18 @@ export default function ProgramSelectionForm({
   // Undergraduate state
   const [majors, setMajors] = useState<ProgramOption[]>([]);
   const [minors, setMinors] = useState<ProgramOption[]>([]);
+  const certificateOptions = [
+    'Data Analytics',
+    'Cybersecurity',
+    'Project Management',
+    'UX Design',
+    'GIS',
+    'Digital Marketing',
+  ];
   const [genEds, setGenEds] = useState<ProgramOption[]>([]);
   const [selectedMajors, setSelectedMajors] = useState<ProgramOption[]>([]);
   const [selectedMinors, setSelectedMinors] = useState<ProgramOption[]>([]);
+  const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
   const [selectedGenEd, setSelectedGenEd] = useState<ProgramOption | null>(null);
 
   // Graduate state
@@ -85,20 +96,41 @@ export default function ProgramSelectionForm({
         .then(setMinors)
         .finally(() => setLoadingMinors(false));
 
-      // Fetch gen eds with student metadata for filtering
+      // Fetch gen eds - if selectedGenEdProgramId is provided, use it directly
+      // Otherwise, fall back to filtering based on student metadata
       setLoadingGenEds(true);
-      fetchProgramsByType(universityId, 'gen_ed', {
-        admissionYear: studentAdmissionYear ?? undefined,
-        isTransfer: studentIsTransfer ?? undefined,
-      })
-        .then((genEdPrograms) => {
-          setGenEds(genEdPrograms);
-          // Auto-select the first (highest priority) gen ed option
-          if (genEdPrograms.length > 0) {
-            setSelectedGenEd(genEdPrograms[0]);
-          }
+      if (selectedGenEdProgramId) {
+        // Fetch all gen-eds and pre-select the user's choice from profile step
+        fetchProgramsByType(universityId, 'gen_ed')
+          .then((genEdPrograms) => {
+            setGenEds(genEdPrograms);
+            // Pre-select the gen-ed that was chosen in the profile step
+            const preSelectedGenEd = genEdPrograms.find(
+              p => Number(p.id) === selectedGenEdProgramId
+            );
+            if (preSelectedGenEd) {
+              setSelectedGenEd(preSelectedGenEd);
+            } else if (genEdPrograms.length > 0) {
+              // Fallback to first if somehow the pre-selected one isn't found
+              setSelectedGenEd(genEdPrograms[0]);
+            }
+          })
+          .finally(() => setLoadingGenEds(false));
+      } else {
+        // Legacy behavior - filter by student metadata and auto-select highest priority
+        fetchProgramsByType(universityId, 'gen_ed', {
+          admissionYear: studentAdmissionYear ?? undefined,
+          isTransfer: studentIsTransfer ?? undefined,
         })
-        .finally(() => setLoadingGenEds(false));
+          .then((genEdPrograms) => {
+            setGenEds(genEdPrograms);
+            // Auto-select the first (highest priority) gen ed option
+            if (genEdPrograms.length > 0) {
+              setSelectedGenEd(genEdPrograms[0]);
+            }
+          })
+          .finally(() => setLoadingGenEds(false));
+      }
     } else {
       // Fetch graduate programs
       setLoadingGraduate(true);
@@ -106,7 +138,7 @@ export default function ProgramSelectionForm({
         .then(setGraduatePrograms)
         .finally(() => setLoadingGraduate(false));
     }
-  }, [studentType, universityId]);
+  }, [studentType, universityId, selectedGenEdProgramId, studentAdmissionYear, studentIsTransfer]);
 
   // Fetch active grad plan programs if profileId is provided
   useEffect(() => {
@@ -361,7 +393,7 @@ export default function ProgramSelectionForm({
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {option.program_description && (
+                          {!!option.program_description && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
@@ -370,7 +402,7 @@ export default function ProgramSelectionForm({
                               Program Description
                             </button>
                           )}
-                          {option.course_flow && (
+                          {!!option.course_flow && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => {
@@ -437,7 +469,7 @@ export default function ProgramSelectionForm({
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {option.program_description && (
+                          {!!option.program_description && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
@@ -446,7 +478,7 @@ export default function ProgramSelectionForm({
                               Program Description
                             </button>
                           )}
-                          {option.course_flow && (
+                          {!!option.course_flow && (
                             <button
                               type="button"
                               onClick={(e: React.MouseEvent) => {
@@ -487,69 +519,117 @@ export default function ProgramSelectionForm({
               />
             </div>
 
-            {/* Gen Eds - Always show, with auto-selection of highest priority option */}
+            {/* Certificates (placeholder) */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Certificate(s) <span className="text-muted-foreground text-xs">(Optional)</span>
+              </label>
+              <Autocomplete
+                multiple
+                options={certificateOptions}
+                value={selectedCertificates}
+                onChange={(_event: React.SyntheticEvent, newValue: string[]) => setSelectedCertificates(newValue)}
+                renderInput={(params: AutocompleteRenderInputParams) => (
+                  <TextField
+                    {...params}
+                    placeholder="Select certificates..."
+                    helperText="Examples: Data Analytics, Cybersecurity, Project Management, UX Design, GIS, Digital Marketing"
+                  />
+                )}
+                renderTags={(value: string[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
+                  value.map((option: string, index: number) => {
+                    const { key, ...chipProps } = getTagProps({ index });
+                    return (
+                      <Chip
+                        key={option}
+                        {...chipProps}
+                        label={option}
+                        size="small"
+                      />
+                    );
+                  })
+                }
+              />
+            </div>
+
+            {/* Gen Eds - Card-based selection */}
             {genEds.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  General Education <span className="text-muted-foreground text-xs">(Optional)</span>
+                <label className="block text-sm font-medium text-foreground mb-3">
+                  General Education
                 </label>
-                <Autocomplete
-                  options={genEds}
-                  getOptionLabel={(option: ProgramOption) => option.name}
-                  value={selectedGenEd}
-                  onChange={(_event: React.SyntheticEvent, newValue: ProgramOption | null) => setSelectedGenEd(newValue)}
-                  loading={loadingGenEds}
-                  renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
-                    const { key, ...otherProps } = props;
-                    const creditInfo = formatCreditRequirements(option);
-                    return (
-                      <li key={key} {...otherProps}>
-                        <div className="flex items-center justify-between gap-2 w-full">
-                          <div className="flex-1">
-                            <div className="font-medium">{option.name}</div>
-                            {creditInfo && (
-                              <div className="text-xs text-muted-foreground">{creditInfo}</div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            {option.program_description && (
-                              <button
-                                type="button"
-                                onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
-                                className="p-1 text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
-                                title="View program description"
-                              >
-                                <Info size={16} />
-                              </button>
-                            )}
-                            {option.course_flow && (
-                              <button
-                                type="button"
-                                onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  handleViewCourseFlow(option, e);
-                                }}
-                                className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
-                              >
-                                View Program
-                              </button>
-                            )}
+                {loadingGenEds ? (
+                  <div className="text-muted-foreground text-sm">Loading general education options...</div>
+                ) : (
+                  <div className="grid gap-3">
+                    {genEds.map((genEd) => {
+                      const isSelected = selectedGenEd?.id === genEd.id;
+                      const creditInfo = formatCreditRequirements(genEd);
+                      return (
+                        <div
+                          key={genEd.id}
+                          onClick={() => setSelectedGenEd(genEd)}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            isSelected
+                              ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                              : 'border-border hover:border-[var(--primary)]/50 hover:bg-muted/50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-foreground">{genEd.name}</h4>
+                                {isSelected && (
+                                  <div className="flex-shrink-0">
+                                    <div className="w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path d="M5 13l4 4L19 7"></path>
+                                      </svg>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              {!!genEd.program_description && (
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                  {genEd.program_description}
+                                </p>
+                              )}
+                              {creditInfo && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  {creditInfo}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {!!genEd.program_description && (
+                                <button
+                                  type="button"
+                                  onClick={(e: React.MouseEvent) => handleViewProgramDescription(genEd, e)}
+                                  className="p-1.5 text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
+                                  title="View full description"
+                                >
+                                  <Info size={16} />
+                                </button>
+                              )}
+                              {!!genEd.course_flow && (
+                                <button
+                                  type="button"
+                                  onClick={(e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    handleViewCourseFlow(genEd, e);
+                                  }}
+                                  className="px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)] hover:text-primary-foreground rounded transition-colors"
+                                >
+                                  View Program
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </li>
-                    );
-                  }}
-                  renderInput={(params: AutocompleteRenderInputParams) => (
-                    <TextField
-                      {...params}
-                      placeholder="Search for gen ed requirements..."
-                      helperText="Default general education program auto-selected (you can change if needed)"
-                      slotProps={{
-                        inputLabel: { shrink: true }
-                      }}
-                    />
-                  )}
-                />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -579,7 +659,7 @@ export default function ProgramSelectionForm({
                         )}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        {option.program_description && (
+                        {!!option.program_description && (
                           <button
                             type="button"
                             onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
@@ -589,7 +669,7 @@ export default function ProgramSelectionForm({
                             <Info size={16} />
                           </button>
                         )}
-                        {option.course_flow && (
+                        {!!option.course_flow && (
                           <button
                             type="button"
                             onClick={(e: React.MouseEvent) => {
