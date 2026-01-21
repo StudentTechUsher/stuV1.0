@@ -47,6 +47,18 @@ interface CoursesDataInput {
     hasMilestones?: boolean;
     milestones?: MilestoneInput[];
   };
+  // NEW: Credit distribution strategy from Phase 2
+  suggestedDistribution?: Array<{
+    term: string;
+    year: number;
+    suggestedCredits?: number;
+    targetCredits?: number;
+    minCredits: number;
+    maxCredits: number;
+    termType: 'primary' | 'secondary';
+  }>;
+  // NEW: Work status (academicPriority removed per plan)
+  workStatus?: 'not_working' | 'part_time' | 'full_time' | 'variable';
 }
 
 interface CareerOption {
@@ -291,21 +303,15 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       max_output_tokens: promptInput.max_output_tokens ?? 25_000,
     };
 
-    // --- Load example structure file (semester-plan-example.json) for placeholder replacement ---
+    // --- Load example structure file (example-format-byu-2024.json) for placeholder replacement ---
     let exampleStructureJson: string | null = null;
     try {
-      const examplePath = path.join(process.cwd(), 'config', 'prompts', 'semester-plan-example.json');
+      const examplePath = path.join(process.cwd(), 'config', 'prompts', 'example-format-byu-2024.json');
       exampleStructureJson = await fs.readFile(examplePath, 'utf-8');
     } catch (e) {
-      console.warn('⚠️ Could not read semester-plan-example.json:', e);
+      console.warn('Warning: Could not read example-format-byu-2024.json:', e);
     }
 
-    // Prepare base prompt with placeholder substitution patterns.
-    // Supported placeholders:
-    //  - ${JSON.stringify(exampleStructure, null, 2)}
-    //  - ${JSON.stringify(coursesData, null, 2)}
-    //  - {{EXAMPLE_STRUCTURE_JSON}}
-    //  - {{INPUT_JSON}} or {{COURSES_DATA_JSON}}
     let basePrompt = normalized.prompt || '';
 
     if (exampleStructureJson) {

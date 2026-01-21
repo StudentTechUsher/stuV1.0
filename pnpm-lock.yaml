@@ -186,9 +186,6 @@ importers:
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
-      supabase:
-        specifier: ^2.54.11
-        version: 2.54.11
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
@@ -253,6 +250,9 @@ importers:
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
+      supabase:
+        specifier: ^2.54.11
+        version: 2.54.11
       tailwindcss:
         specifier: ^4.1.14
         version: 4.1.14

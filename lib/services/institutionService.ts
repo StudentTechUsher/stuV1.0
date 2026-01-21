@@ -9,6 +9,7 @@
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import { coerceSelectionMode, type SelectionMode } from '@/lib/selectionMode';
 import { InstitutionNotFoundError, InstitutionFetchError, InstitutionUpdateError, InstitutionUnauthorizedError } from './errors/institutionErrors';
+import { AcademicTermsConfig } from './gradPlanGenerationService';
 
 /**
  * AUTHORIZATION: MEMBERS OF INSTITUTION
@@ -92,5 +93,41 @@ export async function updateInstitutionSettings(
       throw error;
     }
     throw new InstitutionUpdateError('Unexpected error updating institution settings', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
+ * Fetches academic terms configuration for a university
+ * @param universityId - The university ID
+ * @returns Academic terms configuration object
+ */
+export async function fetchUniversityAcademicTerms(universityId: number): Promise<AcademicTermsConfig> {
+  try {
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { data, error } = await supabase
+      .from('university')
+      .select('academic_terms')
+      .eq('id', universityId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        throw new InstitutionNotFoundError(`University with ID ${universityId} not found`);
+      }
+      throw new InstitutionFetchError('Failed to fetch university academic terms', error);
+    }
+
+    if (!data?.academic_terms) {
+      throw new InstitutionFetchError('Academic terms configuration not found for university');
+    }
+
+    return data.academic_terms as AcademicTermsConfig;
+  } catch (error) {
+    if (error instanceof InstitutionNotFoundError || error instanceof InstitutionFetchError) {
+      throw error;
+    }
+    throw new InstitutionFetchError('Unexpected error fetching academic terms', error);
   }
 }

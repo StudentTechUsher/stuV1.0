@@ -1,0 +1,91 @@
+Extract ALL courses AND the overall GPA from this BYU academic transcript.
+
+**CRITICAL: EXTRACTION ONLY - NO CALCULATIONS**
+- Do NOT calculate GPA - only extract it if explicitly shown on the transcript
+- Do NOT sum credits - only extract individual course credits as shown
+- Do NOT perform any arithmetic operations
+- Do NOT validate or check totals
+- Your job is ONLY to find and copy data exactly as it appears
+
+**IMPORTANT INSTRUCTIONS:**
+
+1. **GPA Extraction (FIND, DO NOT CALCULATE):**
+   - Look for the overall undergraduate GPA explicitly printed on the transcript
+   - Common labels: "Undergraduate GPA", "Cumulative GPA", "Overall GPA", "Cumulative Undergrad GPA"
+   - Extract the exact numerical value as shown (e.g., 3.75, 3.50, 2.80)
+   - If NO GPA is explicitly printed on the transcript, return null for the gpa field
+   - DO NOT calculate GPA from course grades - only extract if pre-calculated on transcript
+
+2. **Course Code Pattern:** BYU course codes follow this pattern:
+   - Subject: Uppercase letters with optional internal spaces, max 8 characters total
+     Examples: "CS", "MATH", "REL A", "A HTG", "C S", "EC EN", "ME EN", "GSCM", "STDEV"
+   - Number: 3 digits, optionally followed by a single letter
+     Examples: "142", "112R", "275", "303"
+   - DO NOT validate if course codes are "real" - just extract what's printed
+
+3. **Credits (EXTRACT, DO NOT SUM):**
+   - Extract the decimal credit value for each individual course as shown (e.g., 3.0, 4.0, 1.5, 0.5)
+   - DO NOT sum credits per term or calculate totals
+   - Just copy the credit value exactly as printed for each course
+
+4. **Grades (EXTRACT AS-IS):**
+   - Extract letter grades exactly as they appear: A, A-, A+, B+, B, B-, C+, C, C-, D+, D, D-, F
+   - Special status codes: P (Pass), F (Fail), I (Incomplete), W (Withdrawn), CR (Credit), NC (No Credit), T (Transfer)
+   - For concurrent enrollment or in-progress courses with no grade shown, use empty string ""
+   - DO NOT interpret or validate grades - just copy what's printed
+
+5. **Terms (EXTRACT LABELS AS-IS):**
+   - Group courses by the term/semester label printed on the transcript
+   - Copy term names exactly as shown (e.g., "Fall Semester 2023", "Winter Semester 2024", "Spring Term 2025")
+   - DO NOT reformat or standardize term names - use exact wording from transcript
+   - DO NOT sort or reorder terms - extract in the order they appear
+
+6. **What to include:**
+   - All regular courses with course codes and grades
+   - Transfer credits (if shown in a transfer section)
+   - AP/IB credits (if shown)
+   - Concurrent enrollment courses
+   - In-progress courses (current semester)
+   - Any course with a subject, number, and credit value
+
+7. **What to SKIP (do not extract these as courses):**
+   - GPA summary lines/statistics (extract GPA separately in the gpa field, not as a course)
+   - "Total credits" or "Semester Total" lines
+   - Header/footer information (student name, ID, dates)
+   - Administrative notes or comments
+   - Section numbers or CRN codes
+   - Professor names
+   - Course schedules or meeting times
+   - Repeat notations (like "First attempt: B, Second attempt: A" - only extract the most recent)
+
+**OUTPUT FORMAT:**
+Return valid JSON with this exact structure:
+{
+  "gpa": <number or null>,
+  "terms": [
+    {
+      "term": "<exact term label from transcript>",
+      "courses": [
+        {
+          "subject": "<uppercase subject code>",
+          "number": "<course number>",
+          "title": "<course title>",
+          "credits": <decimal number>,
+          "grade": "<letter grade or empty string>"
+        }
+      ]
+    }
+  ]
+}
+
+**QUALITY CHECKLIST:**
+✓ GPA extracted from transcript (not calculated)
+✓ Every course from every term extracted (be thorough)
+✓ Term labels copied exactly as printed
+✓ Course codes split correctly into subject + number
+✓ Credits are individual course values (not summed)
+✓ Grades copied exactly as shown (or empty string if none)
+✓ No calculations performed
+✓ No courses invented or modified
+
+Extract every course you can find. Be thorough and precise. Copy, don't calculate.

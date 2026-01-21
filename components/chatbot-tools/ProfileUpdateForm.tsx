@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Compass } from 'lucide-react';
+import { Compass, Loader2 } from 'lucide-react';
 import OptionTile from '@/components/grad-plan/OptionTile';
 import { ProfileUpdateInput } from '@/lib/chatbot/tools/profileUpdateTool';
+import { fetchProgramsByType, ProgramOption } from '@/lib/chatbot/tools/programSelectionTool';
 
 interface ProfileUpdateFormProps {
   currentValues: {
@@ -13,7 +14,9 @@ interface ProfileUpdateFormProps {
     career_goals?: string | null;
     admission_year?: number | null;
     is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
+    selected_gen_ed_program_id?: number | null;
   };
+  universityId?: number;
   hasActivePlan?: boolean;
   onSubmit: (data: ProfileUpdateInput) => void;
   onSkip?: () => void;
@@ -72,6 +75,7 @@ function extractSemesterAndYear(dateStr: string): { semester: string; year: numb
 
 export default function ProfileUpdateForm({
   currentValues,
+  universityId,
   hasActivePlan = false,
   onSubmit,
   onSkip,
@@ -99,12 +103,31 @@ export default function ProfileUpdateForm({
   const [admissionYear, setAdmissionYear] = useState<string>(
     currentValues.admission_year ? String(currentValues.admission_year) : ''
   );
-  const [studentEntryType, setStudentEntryType] = useState<'freshman' | 'transfer' | 'dual_enrollment' | null>(
-    currentValues.is_transfer ?? null
+  // Gen-ed programs state
+  const [genEdPrograms, setGenEdPrograms] = useState<ProgramOption[]>([]);
+  const [loadingGenEds, setLoadingGenEds] = useState(false);
+  const [selectedGenEdProgramId, setSelectedGenEdProgramId] = useState<string | null>(
+    currentValues.selected_gen_ed_program_id ? String(currentValues.selected_gen_ed_program_id) : null
   );
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [customIndustry, setCustomIndustry] = useState('');
   const [careerGoals, setCareerGoals] = useState(currentValues.career_goals || '');
+
+  // Fetch gen-ed programs when entering admission step
+  useEffect(() => {
+    if (step === 'admission' && universityId && genEdPrograms.length === 0) {
+      setLoadingGenEds(true);
+      fetchProgramsByType(universityId, 'gen_ed')
+        .then((programs) => {
+          setGenEdPrograms(programs);
+          // Auto-select if there's only one option
+          if (programs.length === 1) {
+            setSelectedGenEdProgramId(programs[0].id);
+          }
+        })
+        .finally(() => setLoadingGenEds(false));
+    }
+  }, [step, universityId, genEdPrograms.length]);
 
   // Generate year options (current year to 10 years from now)
   const yearOptions = useMemo(() => {
@@ -125,7 +148,7 @@ export default function ProfileUpdateForm({
   }, [currentYear]);
 
   const isGraduationValid = semester && year;
-  const isAdmissionValid = admissionYear && studentEntryType !== null;
+  const isAdmissionValid = admissionYear && selectedGenEdProgramId !== null;
   const isIndustryValid = selectedIndustries.length > 0 || customIndustry.trim().length > 0;
   const isCareerValid = careerGoals.trim().length > 0;
 
@@ -137,14 +160,17 @@ export default function ProfileUpdateForm({
   };
 
   const handleAdmissionContinue = () => {
-    if (admissionYear && studentEntryType !== null) {
+    if (admissionYear && selectedGenEdProgramId !== null) {
       // Submit graduation and admission info together
       const gradDate = calculateGraduationDate(semester, Number(year));
+      // Find the selected gen-ed program name
+      const selectedGenEdProgram = genEdPrograms.find(p => p.id === selectedGenEdProgramId);
       onSubmit({
         estGradDate: gradDate,
         estGradSem: (semester as ProfileUpdateInput['estGradSem']),
         admissionYear: Number(admissionYear),
-        isTransfer: studentEntryType,
+        selectedGenEdProgramId: Number(selectedGenEdProgramId),
+        selectedGenEdProgramName: selectedGenEdProgram?.name ?? null,
         isGraduationOnly: true,
       });
       setStep('industry-choice');
@@ -270,8 +296,20 @@ export default function ProfileUpdateForm({
     );
   }
 
-  // Step 2: Admission Info
+  // Step 2: Admission Info & Gen Ed Requirements
   if (step === 'admission') {
+    // Helper function to format gen-ed subtext
+    const formatGenEdSubtext = (program: ProgramOption): string => {
+      const parts: string[] = [];
+      if (program.program_description) {
+        parts.push(program.program_description);
+      }
+      if (program.target_total_credits) {
+        parts.push(`${program.target_total_credits} credits`);
+      }
+      return parts.join(' • ');
+    };
+
     return (
       <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
         <div className="mb-4">
@@ -302,31 +340,33 @@ export default function ProfileUpdateForm({
             </select>
           </div>
 
-          {/* Student Entry Type */}
+          {/* Gen Ed Requirements Selection */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Student Type
+              Which set of general education requirements apply to you?
             </label>
-            <div className="space-y-2">
-              <OptionTile
-                title="Freshman"
-                description="I started my undergraduate degree at this university without any credits"
-                selected={studentEntryType === 'freshman'}
-                onClick={() => setStudentEntryType('freshman')}
-              />
-              <OptionTile
-                title="Freshman with Credits"
-                description="I completed credits elsewhere (dual enrollment, AP, etc.), but am not considered a transfer student"
-                selected={studentEntryType === 'dual_enrollment'}
-                onClick={() => setStudentEntryType('dual_enrollment')}
-              />
-              <OptionTile
-                title="Transfer Student"
-                description="I transferred from another institution"
-                selected={studentEntryType === 'transfer'}
-                onClick={() => setStudentEntryType('transfer')}
-              />
-            </div>
+            {loadingGenEds ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading requirements...</span>
+              </div>
+            ) : genEdPrograms.length === 0 ? (
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                No general education programs found for your institution.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {genEdPrograms.map((program) => (
+                  <OptionTile
+                    key={program.id}
+                    title={program.name}
+                    description={formatGenEdSubtext(program)}
+                    selected={selectedGenEdProgramId === program.id}
+                    onClick={() => setSelectedGenEdProgramId(program.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

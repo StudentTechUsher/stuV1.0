@@ -60,6 +60,13 @@ import {
     deleteNotification as _deleteNotification,
     deleteAllReadNotifications as _deleteAllReadNotifications,
 } from './notifService';
+import {
+    updateGraduationTimeline as _updateGraduationTimeline,
+    updateStudentType as _updateStudentType,
+    updateWorkStatus as _updateWorkStatus,
+    updateCareerGoals as _updateCareerGoals,
+    fetchStudentPlanningData as _fetchStudentPlanningData,
+} from './studentService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
 export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: unknown) {
@@ -951,8 +958,8 @@ export async function updateProfileForChatbotAction(
             studentUpdates.est_grad_date = data.estGradDate;
         }
         if (data.estGradSem !== undefined) {
-            // Map est_grad_sem to est_grad_plan in student table
-            studentUpdates.est_grad_plan = data.estGradSem;
+            // Map est_grad_sem to est_grad_term in student table
+            studentUpdates.est_grad_term = data.estGradSem;
         }
         if (data.careerGoals !== undefined) {
             studentUpdates.career_goals = data.careerGoals;
@@ -1156,6 +1163,164 @@ export async function approveStudentAction(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to approve student',
+        };
+    }
+}
+
+// ============================================================================
+// Student Service Actions
+// ============================================================================
+
+/**
+ * Server action to update graduation timeline
+ * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
+ */
+export async function updateGraduationTimelineAction(
+    data: {
+        est_grad_date?: string | null;
+        est_grad_term?: string | null;
+        admission_year?: number | null;
+    }
+) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return {
+                success: false,
+                error: 'Not authenticated',
+            };
+        }
+
+        await _updateGraduationTimeline(supabase, user.id, data);
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error updating graduation timeline:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update graduation timeline',
+        };
+    }
+}
+
+/**
+ * Server action to update student type
+ * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
+ */
+export async function updateStudentTypeAction(studentType: 'undergraduate' | 'graduate') {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return {
+                success: false,
+                error: 'Not authenticated',
+            };
+        }
+
+        await _updateStudentType(supabase, user.id, studentType);
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error updating student type:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update student type',
+        };
+    }
+}
+
+/**
+ * Server action to update work status
+ * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
+ */
+export async function updateWorkStatusAction(workStatus: 'not_working' | 'part_time' | 'full_time' | 'variable') {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return {
+                success: false,
+                error: 'Not authenticated',
+            };
+        }
+
+        await _updateWorkStatus(supabase, user.id, workStatus);
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error updating work status:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update work status',
+        };
+    }
+}
+
+/**
+ * Server action to update career goals
+ * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
+ */
+export async function updateCareerGoalsAction(careerGoals: string | null) {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return {
+                success: false,
+                error: 'Not authenticated',
+            };
+        }
+
+        await _updateCareerGoals(supabase, user.id, careerGoals);
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error updating career goals:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update career goals',
+        };
+    }
+}
+
+/**
+ * Server action to fetch student planning data
+ * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
+ */
+export async function fetchStudentPlanningDataAction() {
+    try {
+        const supabase = await createSupabaseServerComponentClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return {
+                success: false,
+                error: 'Not authenticated',
+                data: null,
+            };
+        }
+
+        const data = await _fetchStudentPlanningData(supabase, user.id);
+        return {
+            success: true,
+            data,
+        };
+    } catch (error) {
+        console.error('Error fetching student planning data:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch student planning data',
+            data: null,
         };
     }
 }

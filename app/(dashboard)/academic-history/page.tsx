@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, Download, RefreshCw, Grid3x3, List, Edit2, X, ExternalLink, FileText } from 'lucide-react';
+import { Upload, Save, Download, RefreshCw, Grid3x3, List, Edit2, X, ExternalLink, FileText, Info } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { StuLoader } from '@/components/ui/StuLoader';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
@@ -23,6 +23,7 @@ import { RequirementOverrideDialog } from '@/components/academic-history/Require
 import { CircularProgress } from '@/components/academic-history/CircularProgress';
 import { GetGenEdsForUniversity, fetchProgramsBatch } from '@/lib/services/programService';
 import type { ProgramRow } from '@/types/program';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GradPlan {
   id: string;
@@ -832,7 +833,7 @@ export default function AcademicHistoryPage() {
                   <p className="font-body-semi text-xs font-semibold text-[var(--muted-foreground)]">Requirements</p>
                   {course.fulfillsRequirements.map((fulfillment) => (
                     <div
-                      key={`${course.id}-${fulfillment.requirementId}`}
+                      key={`${course.id}-${fulfillment.programId}-${fulfillment.requirementId}`}
                       className="font-body text-[11px] text-[var(--muted-foreground)]"
                     >
                       • {fulfillment.requirementDescription}{' '}
@@ -908,7 +909,7 @@ export default function AcademicHistoryPage() {
             <div className="flex flex-wrap gap-1">
               {course.fulfillsRequirements.map((fulfillment) => (
                 <RequirementTag
-                  key={`${course.id}-${fulfillment.requirementId}`}
+                  key={`${course.id}-${fulfillment.programId}-${fulfillment.requirementId}`}
                   fulfillment={fulfillment}
                   onClick={
                     selectedGenEds.length > 0 || (activeGradPlan && gradPlanPrograms.length > 0)
@@ -1115,11 +1116,39 @@ export default function AcademicHistoryPage() {
                   <p className="font-body text-sm">{matchStatus.total}</p>
                 </div>
                 <div>
-                  <p className="font-body-semi text-[var(--foreground)]">Matched</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1">
+                          <p className="font-body-semi text-[var(--foreground)]">Matched</p>
+                          <Info size={14} className="text-[var(--muted-foreground)]" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-xs">
+                          Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use "Change Requirements" to manually adjust if needed.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <p className="font-body text-sm text-green-600">{matchStatus.matched}</p>
                 </div>
                 <div>
-                  <p className="font-body-semi text-[var(--foreground)]">Unmatched</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1">
+                          <p className="font-body-semi text-[var(--foreground)]">Unmatched</p>
+                          <Info size={14} className="text-[var(--muted-foreground)]" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-xs">
+                          Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use "Change Requirements" to manually assign if needed.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <p className="font-body text-sm text-red-600">{matchStatus.unmatched}</p>
                 </div>
               </div>

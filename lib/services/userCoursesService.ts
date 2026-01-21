@@ -67,6 +67,7 @@ export interface ParsedCourse {
   title: string;         // For transfer credits: the equivalent course title
   credits: number | null;
   grade: string | null;
+  status?: 'completed' | 'withdrawn' | 'in-progress'; // Derived from grade
   tags?: string[];
   notes?: string | null;
   origin?: 'parsed' | 'manual' | 'transfer';
@@ -181,6 +182,21 @@ function sanitizeFulfillmentsForSave(entries: CourseFulfillment[] | undefined): 
   }));
 }
 
+/**
+ * Derives the status of a course based on its grade
+ * @param grade - The course grade (can be null or a letter grade)
+ * @returns Status: "completed", "withdrawn", or "in-progress"
+ */
+function deriveStatus(grade: string | null): 'completed' | 'withdrawn' | 'in-progress' {
+  if (!grade || grade.trim() === '') {
+    return 'in-progress';
+  }
+  if (grade.toUpperCase() === 'W') {
+    return 'withdrawn';
+  }
+  return 'completed';
+}
+
 export function normalizeParsedCourses(courses?: ParsedCourse[] | null): ParsedCourse[] {
   if (!Array.isArray(courses)) return [];
 
@@ -195,6 +211,11 @@ export function normalizeParsedCourses(courses?: ParsedCourse[] | null): ParsedC
     normalized.title = typeof normalized.title === 'string' ? normalized.title : 'Untitled Course';
     normalized.credits = normalizeCredits(normalized.credits, normalized.origin === 'manual' ? null : 0);
     normalized.grade = typeof normalized.grade === 'string' ? normalized.grade : normalized.grade === null ? null : 'In Progress';
+
+    // Derive status from grade (for backwards compatibility with courses saved before status field was added)
+    if (!normalized.status) {
+      normalized.status = deriveStatus(normalized.grade);
+    }
 
     if (!Array.isArray(normalized.tags)) {
       normalized.tags = [];

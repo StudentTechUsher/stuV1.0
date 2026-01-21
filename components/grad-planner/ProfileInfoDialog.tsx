@@ -130,7 +130,7 @@ export default function ProfileInfoDialog({
       // Save the student data using client-side service
       const result = await updateStudentClient({
         est_grad_date: estGradDate.trim(),
-        est_grad_plan: estGradSem.trim(), // Map to est_grad_plan in student table
+        est_grad_term: estGradSem.trim(), // Map to est_grad_term in student table
         career_goals: careerGoals.trim(),
       });
 

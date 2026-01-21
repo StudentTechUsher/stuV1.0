@@ -3,6 +3,7 @@ import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import CreateAccountClient from "@/components/create-account/create-account-client";
 import TranscriptUploadSectionWrapper from "@/components/transcript/TranscriptUploadSectionWrapper";
 import LinkedInShareButton from "@/components/profile/LinkedInShareButton";
+import AcademicPlanningSettingsWrapper from "@/components/profile/AcademicPlanningSettingsWrapper";
 import {
   listUniversities,
   listMajors,
@@ -12,6 +13,7 @@ import {
   listClassPreferences,
   getCurrentUserProfile,
 } from "@/components/create-account/server-actions";
+import { fetchStudentPlanningData } from "@/lib/services/studentService";
 
 export default async function ProfilePage() {
   // Get current user
@@ -24,13 +26,14 @@ export default async function ProfilePage() {
 
   // Fetch all data in parallel
   const [
-    universities, 
-    majorsAll, 
-    minorsAll, 
-    interests, 
-    careers, 
+    universities,
+    majorsAll,
+    minorsAll,
+    interests,
+    careers,
     classPrefs,
-    currentProfile
+    currentProfile,
+    studentPlanningData
   ] = await Promise.all([
     listUniversities(),
     listMajors(),
@@ -39,6 +42,7 @@ export default async function ProfilePage() {
     listCareerOptions(),
     listClassPreferences(),
     getCurrentUserProfile(user.id),
+    fetchStudentPlanningData(supabase, user.id).catch(() => null),
   ]);
 
   // Add email from auth user to profile data
@@ -107,6 +111,36 @@ export default async function ProfilePage() {
               preload={{ universities, majorsAll, minorsAll, interests, careers, classPrefs }}
               initial={profileWithEmail}
               isEditMode={true}
+            />
+          </div>
+
+          {/* Profile Settings Card */}
+          <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0A0A0A]">
+                <svg className="h-5 w-5 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="font-header-bold text-lg text-zinc-900 dark:text-zinc-100">
+                  Student Profile
+                </h2>
+                <p className="font-body text-xs text-[var(--muted-foreground)]">
+                  Manage your graduation timeline and academic preferences
+                </p>
+              </div>
+            </div>
+
+            <AcademicPlanningSettingsWrapper
+              userId={user.id}
+              currentStudentData={studentPlanningData ? {
+                ...studentPlanningData,
+                student_type: studentPlanningData.student_type as 'undergraduate' | 'graduate' | null,
+                work_status: studentPlanningData.work_status as 'not_working' | 'part_time' | 'full_time' | 'variable' | null,
+              } : null}
             />
           </div>
 

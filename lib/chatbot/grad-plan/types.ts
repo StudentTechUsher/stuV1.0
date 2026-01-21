@@ -2,22 +2,22 @@
  * Type definitions for the graduation plan chatbot
  */
 
+import { SemesterAllocation } from '@/lib/services/gradPlanGenerationService';
+
 // Conversation steps in the grad plan creation flow
 export enum ConversationStep {
   INITIALIZE = 'initialize',
-  PROFILE_SETUP = 'profile_setup',
-  CAREER_SELECTION = 'career_selection',
-  CAREER_PATHFINDER = 'career_pathfinder',
-  PROGRAM_PATHFINDER = 'program_pathfinder',
+  PROFILE_CHECK = 'profile_check', // NEW - replaces profile_setup, career_selection, student_type
+  CAREER_PATHFINDER = 'career_pathfinder', // Optional career exploration
+  PROGRAM_PATHFINDER = 'program_pathfinder', // Optional program exploration
   TRANSCRIPT_CHECK = 'transcript_check',
-  STUDENT_TYPE = 'student_type',
   PROGRAM_SELECTION = 'program_selection',
   COURSE_METHOD = 'course_method',
   COURSE_SELECTION = 'course_selection',
   ELECTIVES = 'electives',
   STUDENT_INTERESTS = 'student_interests',
-  MILESTONES = 'milestones',
-  ADDITIONAL_CONCERNS = 'additional_concerns',
+  CREDIT_DISTRIBUTION = 'credit_distribution', // NEW - credit strategy selection
+  MILESTONES_AND_CONSTRAINTS = 'milestones_and_constraints', // NEW - combines milestones + concerns
   GENERATING_PLAN = 'generating_plan',
   COMPLETE = 'complete',
 }
@@ -47,6 +47,29 @@ export interface ElectiveCourse {
   reason?: string; // Why the student is considering this elective
 }
 
+// Milestone in graduation plan
+export interface Milestone {
+  id?: string;
+  type: 'internship' | 'study_abroad' | 'research' | 'study_break' | 'custom';
+  title: string;
+  timing: 'beginning' | 'middle' | 'before_last_year' | 'after_graduation' | 'specific_term';
+  term?: string;
+  year?: number;
+}
+
+// Credit distribution strategy
+export interface CreditDistributionStrategy {
+  type: 'fast_track' | 'balanced' | 'explore';
+  includeSecondaryCourses: boolean;
+  suggestedDistribution: SemesterAllocation[];
+}
+
+// Work constraints
+export interface WorkConstraints {
+  workStatus: 'not_working' | 'part_time' | 'full_time' | 'variable';
+  additionalNotes: string;
+}
+
 // Program selection
 export interface ProgramSelection {
   programId: number;
@@ -69,20 +92,16 @@ export interface ConversationState {
 
   // Collected data
   collectedData: {
-    // Profile information
-    estGradDate: string | null;
-    estGradSem: string | null;
-    careerGoals: string | null;
-    admissionYear: number | null;
-    isTransfer: 'freshman' | 'transfer' | 'dual_enrollment' | null;
+    // Gen Ed selection (still part of grad plan)
+    selectedGenEdProgramId: number | null;
+    selectedGenEdProgramName: string | null;
 
     // Transcript status
     hasTranscript: boolean;
     needsTranscriptUpdate: boolean;
     transcriptUploaded: boolean;
-
-    // Student classification
-    studentType: StudentType | null;
+    planStartTerm: string | null;
+    planStartYear: number | null;
 
     // Program selections
     selectedPrograms: ProgramSelection[];
@@ -90,6 +109,7 @@ export interface ConversationState {
     // Course selection
     courseSelectionMethod: CourseSelectionMethod | null;
     selectedCourses: CourseSelection[];
+    totalSelectedCredits: number; // Total credits from course selection
 
     // Electives
     electiveCourses: ElectiveCourse[];
@@ -98,11 +118,14 @@ export interface ConversationState {
     // Student interests
     studentInterests: string | null;
 
-    // Milestones
-    milestones: string | null; // JSON string of milestone data
+    // NEW: Credit distribution strategy
+    creditDistributionStrategy: CreditDistributionStrategy | null;
 
-    // Additional information
-    additionalConcerns: string | null;
+    // NEW: Milestones (structured data, not JSON string)
+    milestones: Milestone[];
+
+    // NEW: Work constraints
+    workConstraints: WorkConstraints | null;
   };
 
   // Tool execution tracking

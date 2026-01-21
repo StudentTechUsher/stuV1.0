@@ -35,6 +35,7 @@ export const CourseSelectionSchema = z.object({
   programs: z.array(ProgramCourseSelectionSchema).min(1, 'At least one program is required'),
   userAddedElectives: z.array(CourseEntrySchema).optional(),
   genEdDistribution: z.enum(['early', 'balanced']).optional(),
+  totalSelectedCredits: z.number().optional(),
 });
 
 export type CourseSelectionInput = z.infer<typeof CourseSelectionSchema>;
@@ -201,6 +202,46 @@ export function countTotalCourses(data: CourseSelectionInput): number {
   // Count electives
   if (data.userAddedElectives) {
     total += data.userAddedElectives.length;
+  }
+
+  return total;
+}
+
+/**
+ * Helper to count total credits from selected courses
+ */
+export function countTotalCredits(data: CourseSelectionInput): number {
+  let total = 0;
+
+  const parseCredits = (credits: number | string): number => {
+    if (typeof credits === 'number') return credits;
+    const parsed = parseFloat(String(credits));
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // Count general education credits
+  if (data.generalEducation) {
+    data.generalEducation.forEach(req => {
+      req.selectedCourses.forEach(course => {
+        total += parseCredits(course.credits);
+      });
+    });
+  }
+
+  // Count program credits
+  data.programs.forEach(program => {
+    program.requirements.forEach(req => {
+      req.selectedCourses.forEach(course => {
+        total += parseCredits(course.credits);
+      });
+    });
+  });
+
+  // Count elective credits
+  if (data.userAddedElectives) {
+    data.userAddedElectives.forEach(course => {
+      total += parseCredits(course.credits);
+    });
   }
 
   return total;

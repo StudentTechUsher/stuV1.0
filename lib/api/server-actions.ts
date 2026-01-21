@@ -37,12 +37,12 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     // Load example structure from external JSON file
     let exampleStructure;
     try {
-      const examplePath = path.join(process.cwd(), "config", "prompts", "semester-plan-example.json");
+      const examplePath = path.join(process.cwd(), "config", "prompts", "example-format-byu-2024.json");
       const exampleContent = fs.readFileSync(examplePath, "utf8");
       exampleStructure = JSON.parse(exampleContent);
     } catch (error) {
-      console.error("❌ Failed to load example structure:", error);
-      throw new Error("Failed to load example structure");
+      console.error("Failed to load example structure:", error);
+      throw new Error("Failed to load example-format-byu-2024.json");
     }
 
     // Prepare the prompt for OpenAI
