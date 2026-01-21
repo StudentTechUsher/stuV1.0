@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { PlanOverview } from '@/components/grad-planner/PlanOverview';
 import { SpaceView } from '@/components/space/SpaceView';
@@ -9,7 +9,8 @@ import PlanHeader from '@/components/grad-planner/PlanHeader';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Event, EventType } from '@/components/grad-planner/types';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
-import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
+import { buildPlanProgress } from '@/components/progress-overview/planProgressAdapter';
+import type { ProgramRow } from '@/types/program';
 
 interface GradPlanRecord {
   id: string;
@@ -44,9 +45,64 @@ export default function GradPlanClient({
   const [isEditMode] = useState(false); // Clean code from main (no unused setter)
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(gradPlan);
   const [studentProfile, setStudentProfile] = useState(initialStudentProfile);
+  const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
+  const [genEdProgram, setGenEdProgram] = useState<ProgramRow | null>(null);
 
   // Parse the plan data - only if we have a plan
   const { planData, assumptions } = usePlanParser(selectedGradPlan || undefined);
+  const progressData = useMemo(() => {
+    return buildPlanProgress({
+      terms: planData,
+      programs: programsData,
+      genEdProgram,
+    });
+  }, [planData, programsData, genEdProgram]);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadPrograms = async () => {
+      const universityId = studentProfile.university_id;
+      if (!universityId || !selectedGradPlan) {
+        setProgramsData([]);
+        setGenEdProgram(null);
+        return;
+      }
+
+      const programIdsRaw = Array.isArray((selectedGradPlan as Record<string, unknown>).programs_in_plan)
+        ? (selectedGradPlan as Record<string, unknown>).programs_in_plan as Array<string | number>
+        : Array.isArray(selectedGradPlan.programs)
+          ? (selectedGradPlan.programs as Array<{ id: number | string }>).map((program) => program.id)
+          : [];
+      const programIds = programIdsRaw.map((id) => String(id)).filter(Boolean);
+
+      if (programIds.length > 0) {
+        const programsRes = await fetch(
+          `/api/programs/batch?ids=${programIds.join(',')}&universityId=${universityId}`
+        );
+        if (programsRes.ok) {
+          const programsJson = await programsRes.json();
+          if (isActive) {
+            setProgramsData(Array.isArray(programsJson) ? programsJson : []);
+          }
+        }
+      } else if (isActive) {
+        setProgramsData([]);
+      }
+
+      const genEdRes = await fetch(`/api/programs?type=gen_ed&universityId=${universityId}`);
+      if (genEdRes.ok) {
+        const genEdJson = await genEdRes.json();
+        if (isActive) {
+          setGenEdProgram(Array.isArray(genEdJson) && genEdJson.length > 0 ? genEdJson[0] : null);
+        }
+      }
+    };
+
+    loadPrograms();
+    return () => {
+      isActive = false;
+    };
+  }, [selectedGradPlan, studentProfile.university_id]);
 
   // Extract events from the plan (they're stored inline in the plan array)
   const events = useMemo<Event[]>(() => {
@@ -294,7 +350,10 @@ export default function GradPlanClient({
           {/* Progress Overview Sidebar */}
           <div className="lg:w-[550px] lg:min-w-[530px] lg:max-w-[550px] lg:sticky lg:top-6 self-start">
             <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
-              <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
+              <ProgressOverviewContainer
+                categories={progressData.categories}
+                overallProgress={progressData.overallProgress}
+              />
             </div>
           </div>
         </div>

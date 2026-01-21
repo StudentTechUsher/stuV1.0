@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import type { ProgressCategory } from './types';
+import type { ProgressCategory, OverallProgress } from './types';
 import { MainProgressOverview } from './MainProgressOverview';
 import { ProgressOverviewCard } from './ProgressOverviewCard';
 import { CategoryTabs, OVERALL_VIEW } from './CategoryTabs';
@@ -14,6 +14,8 @@ interface ProgressOverviewContainerProps {
   initialView?: string;
   /** Use compact sizing for sidebar/narrow spaces */
   compact?: boolean;
+  /** Optional override for overall progress calculation */
+  overallProgress?: OverallProgress;
 }
 
 /**
@@ -28,6 +30,7 @@ export function ProgressOverviewContainer({
   categories,
   initialView = OVERALL_VIEW,
   compact = false,
+  overallProgress,
 }: ProgressOverviewContainerProps) {
   const [selectedView, setSelectedView] = useState(initialView);
 
@@ -36,6 +39,7 @@ export function ProgressOverviewContainer({
     () => computeMainProgressData(categories),
     [categories]
   );
+  const resolvedOverallProgress = overallProgress ?? mainProgressData.overallProgress;
 
   // Handle section click from MainProgressOverview
   const handleSectionClick = useCallback((sectionName: string) => {
@@ -63,13 +67,13 @@ export function ProgressOverviewContainer({
         selectedCategory={selectedView}
         onSelectCategory={handleSelectCategory}
         showOverallTab
-        overallProgressPercent={mainProgressData.overallProgress.percentComplete}
+        overallProgressPercent={resolvedOverallProgress.percentComplete}
       />
 
       {/* Content Area */}
       {isOverallView ? (
         <MainProgressOverview
-          overallProgress={mainProgressData.overallProgress}
+          overallProgress={resolvedOverallProgress}
           sectionProgress={mainProgressData.sectionProgress}
           onSectionClick={handleSectionClick}
         />

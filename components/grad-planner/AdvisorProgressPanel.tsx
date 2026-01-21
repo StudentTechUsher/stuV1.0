@@ -68,14 +68,8 @@ function extractCategories(planData: Term[]): ExtractedCategories {
         const lower = fulfillment.toLowerCase();
         if (lower === 'elective') {
           categories.electives.add('Electives');
-        } else if (
-          lower.includes('religion') ||
-          lower.includes('byu foundations') ||
-          lower.includes('foundations for student success')
-        ) {
-          categories.institutionSpecific.add('Institutional Requirements');
         } else {
-          // Everything else is Gen Ed (Arts/Letters/Sciences, Skills, etc.)
+          // Treat institutional/religion fulfillments as Gen Ed for overview grouping.
           categories.genEd.add('General Education');
         }
       });
@@ -175,15 +169,6 @@ export function calculateCategoryProgress(planData: Term[]): CategoryProgress[] 
 
         // Check for institutional requirements
         const lower = fulfillment.toLowerCase();
-        if (
-          lower.includes('religion') ||
-          lower.includes('byu foundations') ||
-          lower.includes('foundations for student success')
-        ) {
-          categoryName = 'Institutional Requirements';
-          break;
-        }
-
         // Check for electives
         if (lower === 'elective') {
           categoryName = 'Electives';

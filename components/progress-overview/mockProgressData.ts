@@ -457,7 +457,7 @@ export const mockMinorProgress: ProgressCategory = {
   ],
 };
 
-// Array of all mock categories including Minor (for design preview and grad-plan)
+// Array of all mock categories including Minor (for testing and development)
 export const mockAllCategoriesWithMinor: ProgressCategory[] = [
   mockFinanceProgress,
   mockMinorProgress,

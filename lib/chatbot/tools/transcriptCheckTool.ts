@@ -58,11 +58,11 @@ export const transcriptCheckToolDefinition = {
         },
         startTerm: {
           type: 'string',
-          description: 'Preferred start term when continuing without a transcript (e.g., "Fall")',
+          description: 'Preferred start term for planning (e.g., "Fall")',
         },
         startYear: {
           type: 'number',
-          description: 'Preferred start year when continuing without a transcript (e.g., 2024)',
+          description: 'Preferred start year for planning (e.g., 2024)',
         },
       },
       required: ['hasTranscript', 'wantsToUpload'],
