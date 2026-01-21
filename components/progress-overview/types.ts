@@ -58,6 +58,11 @@ export interface ProgressCategory {
   planned: number;           // 8 (credits)
   remaining: number;         // 4 (credits)
   requirements: Requirement[];
+  /**
+   * Optional short label for compact tab headers (e.g., "Major 1", "Minor", "Gen Ed").
+   * Falls back to name-based display labels if not provided.
+   */
+  tabLabel?: string;
 }
 
 export interface ProgressOverviewCardProps {

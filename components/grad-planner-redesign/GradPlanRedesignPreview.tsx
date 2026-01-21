@@ -6,13 +6,13 @@ import type { GradPlan } from './types';
 import { RedesignedPlanView } from './RedesignedPlanView';
 
 /**
- * GRAD PLAN REDESIGN PREVIEW WRAPPER
+ * GRAD PLAN TESTING WRAPPER
  *
  * Purpose:
- * - Wraps the RedesignedPlanView with preview-specific UI
- * - Shows a preview mode banner
+ * - Wraps the RedesignedPlanView for testing with mock data
+ * - Shows a testing mode banner
  * - Provides context that this is NOT connected to backend
- * - Allows testing the redesigned UI/UX before integration
+ * - Allows testing the UI/UX with mock data
  * - Manages plan switching
  */
 export interface GradPlanRedesignPreviewProps {
@@ -32,19 +32,19 @@ export function GradPlanRedesignPreview({
   };
 
   const handleCreateNewPlan = () => {
-    alert('Preview mode: Create new plan functionality would go here');
+    alert('Testing mode: Create new plan functionality would go here');
   };
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Preview Mode Banner - Compact */}
+      {/* Testing Mode Banner - Compact */}
       <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950">
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-500 flex-shrink-0">
           <Info size={16} className="text-white" />
         </div>
         <div className="flex-1">
           <h3 className="text-sm font-bold text-[var(--foreground)] mb-0.5">
-            Design Preview Mode
+            Testing Mode
           </h3>
           <p className="text-xs text-[var(--foreground)] opacity-80">
             Mock data - not connected to backend. Changes won&apos;t be saved.

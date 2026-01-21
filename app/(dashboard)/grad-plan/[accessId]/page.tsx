@@ -12,9 +12,10 @@ import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
 import { Event } from '@/components/grad-planner/types';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
-import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
+import { buildPlanProgress } from '@/components/progress-overview/planProgressAdapter';
 import EditablePlanTitle from '@/components/EditablePlanTitle';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import type { ProgramRow } from '@/types/program';
 
 interface GradPlanDetails {
   id: string;
@@ -202,6 +203,9 @@ export default function EditGradPlanPage() {
   const [isActivePlan, setIsActivePlan] = React.useState(false);
   const [showActivePlanConfirm, setShowActivePlanConfirm] = React.useState(false);
   const [isSettingActive, setIsSettingActive] = React.useState(false);
+  const [programsData, setProgramsData] = React.useState<ProgramRow[]>([]);
+  const [genEdProgram, setGenEdProgram] = React.useState<ProgramRow | null>(null);
+  const [universityId, setUniversityId] = React.useState<number | null>(null);
 
   const isEditMode = true; // Always in edit mode for this page
   const isDev = process.env.NEXT_PUBLIC_ENV === 'development' || process.env.NODE_ENV === 'development';
@@ -237,6 +241,13 @@ export default function EditGradPlanPage() {
   const [requestAdvisorReview, setRequestAdvisorReview] = React.useState(false);
 
   const supabase = createSupabaseBrowserClient();
+  const progressData = React.useMemo(() => {
+    return buildPlanProgress({
+      terms: currentPlanData ?? [],
+      programs: programsData,
+      genEdProgram,
+    });
+  }, [currentPlanData, programsData, genEdProgram]);
 
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setSnackbar({ open: true, message, severity });
@@ -281,7 +292,7 @@ export default function EditGradPlanPage() {
         // Fetch the user's profile to get their role_id
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("role_id")
+          .select("role_id, university_id")
           .eq("id", session.user.id)
           .maybeSingle();
 
@@ -294,6 +305,11 @@ export default function EditGradPlanPage() {
         // Get user role
         const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
         setUserRole(role);
+        if (profile?.university_id) {
+          setUniversityId(typeof profile.university_id === 'number'
+            ? profile.university_id
+            : Number(profile.university_id));
+        }
 
         // Decode the access ID to get the grad plan ID
         const accessId = params.accessId as string;
@@ -375,6 +391,45 @@ export default function EditGradPlanPage() {
 
     checkUserAccess();
   }, [params.accessId, router, supabase]);
+
+  React.useEffect(() => {
+    let isActive = true;
+    const loadPrograms = async () => {
+      if (!gradPlan || !universityId) {
+        setProgramsData([]);
+        setGenEdProgram(null);
+        return;
+      }
+
+      const programIds = gradPlan.programs.map((program) => String(program.id)).filter(Boolean);
+      if (programIds.length > 0) {
+        const programsRes = await fetch(
+          `/api/programs/batch?ids=${programIds.join(',')}&universityId=${universityId}`
+        );
+        if (programsRes.ok) {
+          const programsJson = await programsRes.json();
+          if (isActive) {
+            setProgramsData(Array.isArray(programsJson) ? programsJson : []);
+          }
+        }
+      } else if (isActive) {
+        setProgramsData([]);
+      }
+
+      const genEdRes = await fetch(`/api/programs?type=gen_ed&universityId=${universityId}`);
+      if (genEdRes.ok) {
+        const genEdJson = await genEdRes.json();
+        if (isActive) {
+          setGenEdProgram(Array.isArray(genEdJson) && genEdJson.length > 0 ? genEdJson[0] : null);
+        }
+      }
+    };
+
+    loadPrograms();
+    return () => {
+      isActive = false;
+    };
+  }, [gradPlan, universityId]);
 
   const handleBack = () => {
     if (userRole === "advisor") {
@@ -908,9 +963,12 @@ export default function EditGradPlanPage() {
 
             {/* Progress Overview Panel - NEW component */}
             <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
-              <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
-            </div>
-          </Box>
+            <ProgressOverviewContainer
+              categories={progressData.categories}
+              overallProgress={progressData.overallProgress}
+            />
+          </div>
+        </Box>
         )}
       </Box>
 

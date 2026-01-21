@@ -14,15 +14,14 @@ import type {
  * Maps category names to display names for the MAIN overview
  */
 function getDisplayName(name: string): string {
+  const normalized = name.trim();
   const displayNameMap: Record<string, string> = {
-    'Finance': 'MAJOR',
-    'General Education': 'GE',
-    'Religion': 'REL',
-    'Electives': 'ELECTIVES',
-    'Minor': 'MINOR',
+    'General Education': 'Gen Ed',
+    'Institutional Requirements': 'Institutional',
+    'Electives': 'Electives',
   };
 
-  return displayNameMap[name] || name.toUpperCase();
+  return displayNameMap[normalized] || normalized;
 }
 
 /**

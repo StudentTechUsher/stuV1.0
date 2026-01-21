@@ -1,6 +1,6 @@
 /**
- * Mock graduation plan data for redesign preview
- * This data is used ONLY for the design preview - no backend connection
+ * Mock graduation plan data for testing and development
+ * This data is used for component testing - no backend connection required
  */
 
 // Multiple plans for testing plan switching

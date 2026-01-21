@@ -53,6 +53,11 @@ export default function TranscriptCheckForm({
   const [startTerm, setStartTerm] = useState('');
   const [startYear, setStartYear] = useState('');
   const [startTermError, setStartTermError] = useState<string | null>(null);
+  const [pendingTranscriptDecision, setPendingTranscriptDecision] = useState<{
+    hasTranscript: boolean;
+    wantsToUpload: boolean;
+    wantsToUpdate?: boolean;
+  } | null>(null);
 
   const termOptions = useMemo(() => {
     const fallbackTerms = ['Fall', 'Winter', 'Spring', 'Summer'];
@@ -130,22 +135,24 @@ export default function TranscriptCheckForm({
   const handleUploadClick = () => {
     setShowStartTermPrompt(false);
     setStartTermError(null);
+    setPendingTranscriptDecision(null);
     setShowUpload(true);
   };
 
   const handleSkip = () => {
-    setShowStartTermPrompt(false);
     setStartTermError(null);
-    onSubmit({
-      hasTranscript: hasCourses,
+    setPendingTranscriptDecision({
+      hasTranscript: true,
       wantsToUpload: false,
       wantsToUpdate: false,
     });
+    setShowStartTermPrompt(true);
   };
 
   const handleUpdateClick = () => {
     setShowStartTermPrompt(false);
     setStartTermError(null);
+    setPendingTranscriptDecision(null);
     setShowUpload(true);
   };
 
@@ -175,43 +182,46 @@ export default function TranscriptCheckForm({
           setParsedCourses(courses);
           setShowReview(true);
         } else {
-          // No courses found - just continue
-          onSubmit({
+          // No courses found - still confirm planning start term
+          setPendingTranscriptDecision({
             hasTranscript: true,
             wantsToUpload: true,
             wantsToUpdate: hasCourses,
           });
+          setShowStartTermPrompt(true);
         }
       } catch (error) {
         console.error('Error fetching courses:', error);
-        // Continue anyway
-        onSubmit({
+        // Continue anyway but confirm planning start term
+        setPendingTranscriptDecision({
           hasTranscript: true,
           wantsToUpload: true,
           wantsToUpdate: hasCourses,
         });
+        setShowStartTermPrompt(true);
       } finally {
         setIsLoadingCourses(false);
       }
     } else {
-      // No user - just continue
-      onSubmit({
+      // No user - still confirm planning start term
+      setPendingTranscriptDecision({
         hasTranscript: true,
         wantsToUpload: true,
         wantsToUpdate: hasCourses,
       });
+      setShowStartTermPrompt(true);
     }
   };
 
   const handleReviewConfirm = () => {
     setShowReview(false);
-    setShowStartTermPrompt(false);
     setStartTermError(null);
-    onSubmit({
+    setPendingTranscriptDecision({
       hasTranscript: true,
       wantsToUpload: true,
       wantsToUpdate: hasCourses,
     });
+    setShowStartTermPrompt(true);
   };
 
   const handleCancelUpload = () => {
@@ -219,6 +229,11 @@ export default function TranscriptCheckForm({
   };
 
   const handleContinueWithoutTranscript = () => {
+    setPendingTranscriptDecision({
+      hasTranscript: false,
+      wantsToUpload: false,
+      wantsToUpdate: false,
+    });
     setShowStartTermPrompt(true);
     setStartTermError(null);
   };
@@ -226,6 +241,7 @@ export default function TranscriptCheckForm({
   const handleStartTermBack = () => {
     setShowStartTermPrompt(false);
     setStartTermError(null);
+    setPendingTranscriptDecision(null);
   };
 
   const handleStartTermSubmit = () => {
@@ -234,10 +250,12 @@ export default function TranscriptCheckForm({
       setStartTermError('Please select a start term and year to continue.');
       return;
     }
+    if (!pendingTranscriptDecision) {
+      setStartTermError('Please choose a transcript option before continuing.');
+      return;
+    }
     onSubmit({
-      hasTranscript: false,
-      wantsToUpload: false,
-      wantsToUpdate: false,
+      ...pendingTranscriptDecision,
       startTerm,
       startYear: parsedYear,
     });
@@ -293,7 +311,7 @@ export default function TranscriptCheckForm({
   }
 
   // If user has uploaded in this session
-  if (hasUploaded) {
+  if (hasUploaded && !showStartTermPrompt) {
     return (
       <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
         <div className="flex items-center gap-3 text-green-600">

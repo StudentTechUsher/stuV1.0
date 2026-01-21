@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { OVERALL_PROGRESS_MOCK, PLAN_DETAILS_MOCK } from './dashboardMockData';
+import type { OverallProgress } from '@/components/progress-overview/types';
 import {
   getCompletedColor,
   getInProgressColor,
@@ -72,8 +73,25 @@ function getOptimizationColor(score: number): {
 // Primary color for degree progress bar
 const DEGREE_COLOR = 'var(--degree-progress)';
 
-export function OverallProgressSection() {
+export function OverallProgressSection({
+  overallProgress,
+}: {
+  overallProgress?: OverallProgress;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const resolvedProgress = overallProgress
+    ? {
+        percentage: overallProgress.percentComplete,
+        creditsCompleted: overallProgress.completedCredits,
+        creditsInProgress: overallProgress.inProgressCredits,
+        creditsPlanned: overallProgress.plannedCredits,
+        totalCredits: overallProgress.totalCredits,
+        coursesCompleted: overallProgress.completedCourses,
+        coursesRemaining: Math.max(overallProgress.totalCourses - overallProgress.completedCourses, 0),
+        tooltip: 'Based on your active graduation plan and completed coursework.',
+      }
+    : OVERALL_PROGRESS_MOCK;
 
   const {
     percentage,
@@ -84,7 +102,7 @@ export function OverallProgressSection() {
     coursesCompleted,
     coursesRemaining,
     tooltip,
-  } = OVERALL_PROGRESS_MOCK;
+  } = resolvedProgress;
   const { graduationPlan, planFollowThrough, optimization } = PLAN_DETAILS_MOCK;
 
   // Calculate segment percentages for the progress bar

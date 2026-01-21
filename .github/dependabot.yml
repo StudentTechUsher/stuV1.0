@@ -4,65 +4,27 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      # Check for security updates daily
-      interval: "daily"
+      # Check for updates weekly on Monday mornings
+      interval: "weekly"
+      day: "monday"
       time: "03:00"
       timezone: "America/Denver"
-    # Open PRs for security updates immediately
-    open-pull-requests-limit: 10
+    # Only create one PR at a time with all updates bundled together
+    open-pull-requests-limit: 1
     labels:
       - "dependencies"
       - "automated"
     # Semantic versioning strategy
     versioning-strategy: "increase"
-    # Group dev dependencies together to reduce PR noise
+    # Group ALL dependencies into a single PR
     groups:
-      dev-dependencies:
+      all-dependencies:
         patterns:
-          - "@types/*"
-          - "@testing-library/*"
-          - "@vitest/*"
-          - "eslint*"
-          - "typescript"
-          - "prettier"
-          - "vitest"
-          - "happy-dom"
+          - "*"
         update-types:
           - "minor"
           - "patch"
-
-      # Group production dependencies by category
-      radix-ui:
-        patterns:
-          - "@radix-ui/*"
-        update-types:
-          - "minor"
-          - "patch"
-
-      fullcalendar:
-        patterns:
-          - "@fullcalendar/*"
-        update-types:
-          - "minor"
-          - "patch"
-
-      mui:
-        patterns:
-          - "@mui/*"
-        update-types:
-          - "minor"
-          - "patch"
-
-      supabase:
-        patterns:
-          - "@supabase/*"
-          - "supabase"
-        update-types:
-          - "minor"
-          - "patch"
-
-    # Auto-approve and merge patch updates for dev dependencies
-    # (You can enable this with GitHub Actions if desired)
+          - "major"
 
     # Commit message prefix
     commit-message:

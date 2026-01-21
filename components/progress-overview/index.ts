@@ -32,5 +32,6 @@ export {
   convertCategoryProgressToProgressCategory,
   convertCategoriesToProgressCategories,
 } from './dataAdapter';
+export { buildPlanProgress } from './planProgressAdapter';
 export { computeMainProgressData } from './mainProgressAdapter';
 export { formatTermLabel, getStatusLabel } from './termUtils';

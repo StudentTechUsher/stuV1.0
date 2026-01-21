@@ -30,11 +30,13 @@ export function CategoryTabs({
   overallProgressPercent = 0,
 }: CategoryTabsProps) {
   // Helper to get display name
-  const getDisplayName = (name: string) => {
-    if (name === 'General Education') return 'GE';
-    if (name === 'Religion') return 'REL';
-    if (name === 'Electives') return 'ELECTIVE';
-    return name.toUpperCase();
+  const getDisplayName = (name: string, tabLabel?: string) => {
+    if (tabLabel) return tabLabel;
+    if (name === 'General Education') return 'Gen Ed';
+    if (name === 'Religion') return 'Religion';
+    if (name === 'Electives') return 'Electives';
+    if (name === 'Institutional Requirements') return 'Institutional';
+    return name;
   };
 
   // Helper to get full name for tooltip
@@ -107,7 +109,7 @@ export function CategoryTabs({
                       isSelected ? 'font-black' : 'font-bold'
                     } text-[var(--foreground)]`}
                   >
-                    {getDisplayName(category.name)}
+                    {getDisplayName(category.name, category.tabLabel)}
                   </span>
 
                   {/* Mini progress bar - responsive width */}

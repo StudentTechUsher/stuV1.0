@@ -47,14 +47,6 @@ export function TermCard({
   const [editedTitle, setEditedTitle] = useState(term.term);
   const [isSettingActiveTerm, setIsSettingActiveTerm] = useState(false);
 
-  // Debug logging
-  console.log(`TermCard ${termIndex}:`, {
-    gradPlanId,
-    'term.is_active': term.is_active,
-    'showSetActiveButton': gradPlanId && !term.is_active,
-    termTitle: term.term
-  });
-
   const handleSetActiveTerm = async () => {
     if (!gradPlanId) return;
 
@@ -108,6 +100,24 @@ export function TermCard({
   const totalCourses = term.courses?.length ?? 0;
   const visibleTermLabel = term.term?.trim() || `Term ${termIndex + 1}`;
   const isEmpty = !term.courses || term.courses.length === 0;
+
+  // Check if any courses in the term are completed
+  const hasCompletedCourses = !isEmpty && term.courses?.some(course => course.isCompleted === true);
+
+  // Debug logging
+  console.log(`TermCard ${termIndex} (${term.term}):`, {
+    gradPlanId,
+    'term.is_active': term.is_active,
+    isEmpty,
+    courseCount: term.courses?.length ?? 0,
+    courses: term.courses?.map(c => ({
+      code: c.code,
+      isCompleted: c.isCompleted,
+      type: typeof c.isCompleted
+    })),
+    hasCompletedCourses,
+    'showSetActiveButton': gradPlanId && !term.is_active && !hasCompletedCourses,
+  });
 
   return (
     <DroppableTerm
@@ -202,7 +212,7 @@ export function TermCard({
                 </span>
               )}
             </div>
-            {gradPlanId && !term.is_active && (
+            {gradPlanId && !term.is_active && !hasCompletedCourses && (
               <button
                 type="button"
                 onClick={handleSetActiveTerm}

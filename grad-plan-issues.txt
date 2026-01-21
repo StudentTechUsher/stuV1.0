@@ -1,0 +1,11 @@
+Issues noticed in the shared grad plan JSON:
+- Duplicate term label: "Winter Semester 2024" appears twice (completed and planned).
+- Withdrawn courses show status "Completed" with grade "W" and isCompleted false (e.g., REL A 121, REL C 200).
+- Duplicate course codes across terms with different grades (REL A 121, REL C 200, MUSIC 113, MUSIC 311R) need a dedupe policy.
+- Early terms lack fulfills metadata, so category mapping must rely on requirement matching.
+- Some course titles are null (e.g., ARTHC 201), so UI should tolerate missing titles.
+- No is_active flags on terms, so in-progress classification cannot rely on term activity alone.
+- created_with_transcript is false, but this plan was generated using a transcript (metadata mismatch).
+- Add a post-generation validation step using a cheaper AI model to check plan structure completeness/correctness; if invalid, retry with the original model and original inputs.
+- Add an immutable attribute for transcript-derived courses so their values cannot be edited in the grad plan.
+- Consider splitting general education into separate Gen Ed and Gen Religion programs so they display as distinct sections in Overall Degree Progress.

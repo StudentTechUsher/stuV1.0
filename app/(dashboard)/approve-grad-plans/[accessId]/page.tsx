@@ -14,7 +14,8 @@ import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Course, Term } from '@/components/grad-planner/types';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
-import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
+import { buildPlanProgress } from '@/components/progress-overview/planProgressAdapter';
+import type { ProgramRow } from '@/types/program';
 
 interface GradPlanDetails {
   id: string;
@@ -81,6 +82,9 @@ export default function ApproveGradPlanPage() {
   const [editablePlan, setEditablePlan] = React.useState<Term[] | null>(null); // normalized array of terms
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
+  const [programsData, setProgramsData] = React.useState<ProgramRow[]>([]);
+  const [genEdProgram, setGenEdProgram] = React.useState<ProgramRow | null>(null);
+  const [universityId, setUniversityId] = React.useState<number | null>(null);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -92,6 +96,13 @@ export default function ApproveGradPlanPage() {
   });
 
   const supabase = createSupabaseBrowserClient();
+  const progressData = React.useMemo(() => {
+    return buildPlanProgress({
+      terms: editablePlan ?? [],
+      programs: programsData,
+      genEdProgram,
+    });
+  }, [editablePlan, programsData, genEdProgram]);
 
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setSnackbar({ open: true, message, severity });
@@ -163,7 +174,7 @@ export default function ApproveGradPlanPage() {
         // Fetch the user's profile to get their role_id
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("role_id")
+          .select("role_id, university_id")
           .eq("id", session.user.id)
           .maybeSingle();
 
@@ -179,6 +190,12 @@ export default function ApproveGradPlanPage() {
         if (role !== "advisor") {
           router.push('/home');
           return;
+        }
+
+        if (profile?.university_id) {
+          setUniversityId(typeof profile.university_id === 'number'
+            ? profile.university_id
+            : Number(profile.university_id));
         }
 
         // User is an advisor, allow access
@@ -244,6 +261,45 @@ export default function ApproveGradPlanPage() {
       active = false;
     };
   }, [params.accessId, isCheckingRole]);
+
+  React.useEffect(() => {
+    let isActive = true;
+    const loadPrograms = async () => {
+      if (!gradPlan || !universityId) {
+        setProgramsData([]);
+        setGenEdProgram(null);
+        return;
+      }
+
+      const programIds = gradPlan.programs.map((program) => String(program.id)).filter(Boolean);
+      if (programIds.length > 0) {
+        const programsRes = await fetch(
+          `/api/programs/batch?ids=${programIds.join(',')}&universityId=${universityId}`
+        );
+        if (programsRes.ok) {
+          const programsJson = await programsRes.json();
+          if (isActive) {
+            setProgramsData(Array.isArray(programsJson) ? programsJson : []);
+          }
+        }
+      } else if (isActive) {
+        setProgramsData([]);
+      }
+
+      const genEdRes = await fetch(`/api/programs?type=gen_ed&universityId=${universityId}`);
+      if (genEdRes.ok) {
+        const genEdJson = await genEdRes.json();
+        if (isActive) {
+          setGenEdProgram(Array.isArray(genEdJson) && genEdJson.length > 0 ? genEdJson[0] : null);
+        }
+      }
+    };
+
+    loadPrograms();
+    return () => {
+      isActive = false;
+    };
+  }, [gradPlan, universityId]);
 
   const handleBack = () => {
     router.push('/approve-grad-plans');
@@ -796,7 +852,10 @@ export default function ApproveGradPlanPage() {
           }}
         >
           <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
-            <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
+            <ProgressOverviewContainer
+              categories={progressData.categories}
+              overallProgress={progressData.overallProgress}
+            />
           </div>
         </Box>
       </Box>

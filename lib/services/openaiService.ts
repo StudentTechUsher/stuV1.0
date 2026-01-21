@@ -25,6 +25,71 @@ interface OpenAIJsonResult {
   requestId?: string | null;
 }
 
+const AUTO_PLAN_VALIDATION_PROMPT_TEMPLATE = `You are a strict validator for automatic graduation plan outputs.
+
+Return ONLY JSON with this shape:
+{
+  "is_valid": boolean,
+  "errors": [
+    { "code": "STRING", "message": "STRING", "term": "STRING", "course_code": "STRING" }
+  ],
+  "warnings": [
+    { "code": "STRING", "message": "STRING", "term": "STRING", "course_code": "STRING" }
+  ]
+}
+
+Rules to check:
+1) OUTPUT_JSON is an object with a "plan" array of terms.
+2) No duplicate term labels in the output plan.
+3) Term order: if term labels match "<Season> <Year>" (e.g., "Fall 2024"), enforce order Winter, Spring, Summer, Fall and year roll-over (Fall Y -> Winter Y+1). If terms are numeric or not parseable, add warning code "TERM_ORDER_SKIPPED" and do not error.
+4) Courses from INPUT_JSON.takenCourses with status Completed or In-Progress must not appear in planned terms.
+5) Planned terms must not contain duplicate course codes across planned terms.
+6) Historical terms (terms that contain any course from takenCourses OR any course with isCompleted=true) must appear before any planned terms.
+
+If a rule cannot be evaluated, add a warning with code "UNABLE_TO_VERIFY".`;
+
+function buildAutoPlanValidationPrompt(inputJson: string, outputJson: string) {
+  return `${AUTO_PLAN_VALIDATION_PROMPT_TEMPLATE}\n\nINPUT_JSON:\n${inputJson}\n\nOUTPUT_JSON:\n${outputJson}`;
+}
+
+async function runAutoPlanValidation(args: {
+  userId: string;
+  inputJson: string;
+  outputJson: string;
+}) {
+  const { userId, inputJson, outputJson } = args;
+  try {
+    const validationPrompt = buildAutoPlanValidationPrompt(inputJson, outputJson);
+    const validationResult = await executeJsonPrompt({
+      prompt_name: 'auto_plan_validation',
+      prompt: validationPrompt,
+      model: 'gpt-5-nano',
+      max_output_tokens: 1200,
+    });
+
+    try {
+      const outputTokens = validationResult.usage?.completion_tokens || 0;
+      const { error: insertError } = await supabase.from("ai_responses").insert({
+        user_id: userId,
+        response: validationResult.rawText || validationResult.message,
+        user_prompt: AUTO_PLAN_VALIDATION_PROMPT_TEMPLATE,
+        output_tokens: outputTokens
+      });
+      if (insertError) {
+        console.error("⚠️ Error storing auto plan validation response:", insertError);
+      }
+    } catch (storageError) {
+      console.error("⚠️ Exception storing auto plan validation response:", storageError);
+    }
+
+    if (!validationResult.success) {
+      console.warn("⚠️ Auto plan validation failed:", validationResult.message);
+    }
+  } catch (validationError) {
+    console.error("⚠️ Auto plan validation exception:", validationError);
+  }
+}
+
 // Typed structures for parsed AI responses
 interface CoursesDataInput {
   programs?: unknown;
@@ -369,6 +434,14 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       }
     } catch (storageError) {
       console.error("⚠️ Exception storing AI response:", storageError);
+    }
+
+    if (selectionMode === 'AUTO') {
+      await runAutoPlanValidation({
+        userId: user.id,
+        inputJson: serializedInput,
+        outputJson: aiText,
+      });
     }
 
     // Get the student_id (number) from the students table using the profile_id (UUID)

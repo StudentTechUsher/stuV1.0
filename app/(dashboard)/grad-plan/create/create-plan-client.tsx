@@ -105,6 +105,8 @@ export default function CreatePlanClient({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastUserMessageRef = useRef<HTMLDivElement>(null);
   const lastAssistantMessageRef = useRef<HTMLDivElement>(null);
+  const planGenerationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [planGenerationStage, setPlanGenerationStage] = useState<'generating' | 'validating'>('generating');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Initialize conversation on mount
@@ -454,15 +456,19 @@ export default function CreatePlanClient({
 
         // Add appropriate message based on their choice
         let nextMessage: string;
+        const startLabel = transcriptData.startTerm && transcriptData.startYear
+          ? ` We'll start in ${transcriptData.startTerm} ${transcriptData.startYear}.`
+          : '';
+
         if (transcriptData.wantsToUpload) {
           nextMessage = 'Great! Your transcript has been reviewed and included in your context.';
         } else if (transcriptData.hasTranscript) {
           nextMessage = 'Perfect! We\'ll use the transcript you uploaded previously.';
         } else {
-          const startLabel = transcriptData.startTerm && transcriptData.startYear
-            ? ` We'll start in ${transcriptData.startTerm} ${transcriptData.startYear}.`
-            : '';
           nextMessage = `Okay, we can proceed without a transcript.${startLabel}`;
+        }
+        if (transcriptData.hasTranscript || transcriptData.wantsToUpload) {
+          nextMessage += startLabel;
         }
         nextMessage += ' Now, let\'s select your program(s).';
 
@@ -1523,6 +1529,16 @@ One last question: On a scale of 1-10, how committed are you to this career path
   };
 
   const generationLoadingMessage = 'Perfect! Now let me generate your personalized graduation plan. This may take a moment...';
+  const generationLoaderText = planGenerationStage === 'validating'
+    ? 'Validating generation output...'
+    : 'Generating your personalized graduation plan...';
+
+  const clearPlanGenerationTimer = () => {
+    if (planGenerationTimerRef.current !== null) {
+      clearTimeout(planGenerationTimerRef.current);
+      planGenerationTimerRef.current = null;
+    }
+  };
 
   const removeLastAssistantMessage = (messages: Message[]) => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -1621,6 +1637,9 @@ One last question: On a scale of 1-10, how committed are you to this career path
         },
       ]);
       setIsProcessing(false);
+    } finally {
+      clearPlanGenerationTimer();
+      setPlanGenerationStage('generating');
     }
   };
 
@@ -1633,6 +1652,11 @@ One last question: On a scale of 1-10, how committed are you to this career path
       },
     ]);
     setIsProcessing(true);
+    clearPlanGenerationTimer();
+    setPlanGenerationStage('generating');
+    planGenerationTimerRef.current = setTimeout(() => {
+      setPlanGenerationStage('validating');
+    }, 10000);
 
     setTimeout(() => {
       void runPlanGeneration();
@@ -1736,11 +1760,16 @@ One last question: On a scale of 1-10, how committed are you to this career path
                         {isGeneratingPlan ? (
                           // Show StuLoader for plan generation - centered in chat window
                           <div className="w-full flex justify-center items-center py-8">
-                            <StuLoader
-                              variant="card"
-                              text="Generating your personalized graduation plan..."
-                              speed={2.5}
-                            />
+                            <div className="flex flex-col items-center gap-3 text-center">
+                              <StuLoader
+                                variant="card"
+                                text={generationLoaderText}
+                                speed={2.5}
+                              />
+                              <p className="text-sm text-muted-foreground">
+                                Your grad plan is generating. It&apos;ll take a moment, so you can stay here or leave. You&apos;ll get an email when it&apos;s done!
+                              </p>
+                            </div>
                           </div>
                         ) : (
                           <div
