@@ -11,8 +11,8 @@ import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
 import { Event } from '@/components/grad-planner/types';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
-import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
+import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
+import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
 import EditablePlanTitle from '@/components/EditablePlanTitle';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -198,7 +198,6 @@ export default function EditGradPlanPage() {
     hasSuggestions: boolean;
   } | null>(null);
   const [events, setEvents] = React.useState<Event[]>([]);
-  const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
   const [showJsonDebug, setShowJsonDebug] = React.useState(false);
   const [isActivePlan, setIsActivePlan] = React.useState(false);
   const [showActivePlanConfirm, setShowActivePlanConfirm] = React.useState(false);
@@ -481,61 +480,6 @@ export default function EditGradPlanPage() {
       setShowActivePlanConfirm(false);
     }
   };
-
-  // Calculate category progress for the progress panel
-  const categoryProgress = React.useMemo(() => {
-    if (!currentPlanData) return [];
-    return calculateCategoryProgress(currentPlanData);
-  }, [currentPlanData]);
-
-  // Calculate total credits for progress panel
-  // earned = completed credits (courses with isCompleted: true OR in past terms)
-  // required = total planned credits in the graduation plan
-  const totalCreditsData = React.useMemo(() => {
-    if (!currentPlanData) return { earned: 0, required: 0 };
-
-    let completedCredits = 0;
-    let totalPlannedCredits = 0;
-
-    // Find the active term index
-    const activeTermIndex = currentPlanData.findIndex((term) => term.is_active === true);
-
-    currentPlanData.forEach((term, termIndex) => {
-      const courses = term.courses || [];
-      const isPastTerm = activeTermIndex !== -1 && termIndex < activeTermIndex;
-
-      courses.forEach((course) => {
-        const credits = course.credits || 0;
-        totalPlannedCredits += credits;
-
-        // A course is considered completed if:
-        // 1. It has isCompleted: true explicitly set, OR
-        // 2. It's in a past term (before the active term)
-        const isCompleted = course.isCompleted === true || isPastTerm;
-
-        if (isCompleted) {
-          completedCredits += credits;
-        }
-      });
-    });
-
-    return { earned: completedCredits, required: totalPlannedCredits };
-  }, [currentPlanData]);
-
-  // Calculate current semester credits (use the term with is_active: true)
-  const currentSemesterCredits = React.useMemo(() => {
-    if (!currentPlanData || currentPlanData.length === 0) return 0;
-
-    // Find the active term
-    const activeTerm = currentPlanData.find((term) => term.is_active === true);
-
-    if (!activeTerm) return 0;
-
-    // Calculate credits from courses in the active term
-    return activeTerm.credits_planned ||
-           (activeTerm.courses ? activeTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-  }, [currentPlanData]);
-
 
   if (isCheckingAccess || loading) {
     return (
@@ -941,24 +885,17 @@ export default function EditGradPlanPage() {
           )}
         </Box>
 
-        {(gradPlan.advisor_notes || (isEditMode && currentPlanData) || currentPlanData) && (
+        {(gradPlan.advisor_notes || currentPlanData) && (
           <Box
             sx={{
-              flex: isPanelCollapsed
-                ? { xs: '0 0 auto', lg: '0 0 80px' }
-                : { xs: '1 1 auto', lg: '0 0 550px' },
-              minWidth: isPanelCollapsed
-                ? { xs: '100%', lg: '80px' }
-                : { xs: '100%', lg: '530px' },
-              maxWidth: isPanelCollapsed
-                ? { lg: '80px' }
-                : { lg: '550px' },
+              flex: { xs: '1 1 auto', lg: '0 0 550px' },
+              minWidth: { xs: '100%', lg: '530px' },
+              maxWidth: { lg: '550px' },
               display: 'flex',
               flexDirection: 'column',
               gap: 3,
               position: { lg: 'sticky' },
               top: { lg: 24 },
-              transition: 'all 0.3s ease',
             }}
           >
             {/* Advisor Suggestions - shown at top when present */}
@@ -969,19 +906,10 @@ export default function EditGradPlanPage() {
               />
             )}
 
-            {/* Progress Panel - shown for both students and advisors */}
-            {currentPlanData && (
-              <AdvisorProgressPanel
-                studentName={studentName}
-                totalCredits={totalCreditsData}
-                categories={categoryProgress}
-                planData={currentPlanData}
-                isCollapsed={isPanelCollapsed}
-                onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
-                currentSemesterCredits={currentSemesterCredits}
-                expandableCategories={mockExpandableCategories}
-              />
-            )}
+            {/* Progress Overview Panel - NEW component */}
+            <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
+              <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
+            </div>
           </Box>
         )}
       </Box>

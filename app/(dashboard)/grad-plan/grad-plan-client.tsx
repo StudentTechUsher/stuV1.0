@@ -8,6 +8,8 @@ import { usePlanParser } from '@/components/grad-planner/usePlanParser';
 import PlanHeader from '@/components/grad-planner/PlanHeader';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Event, EventType } from '@/components/grad-planner/types';
+import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
+import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
 
 interface GradPlanRecord {
   id: string;
@@ -142,20 +144,21 @@ export default function GradPlanClient({
           </div>
         </div>
       ) : (
-        <>
-
-      {/* Plan Overview Component - Show in both views */}
-      <PlanOverview
-        currentPlanData={planData}
-        durationYears={Math.ceil(planData.length / 2)} // Rough estimate
-        fulfilledRequirements={[]} // TODO: Calculate from plan data
-        isEditMode={isEditMode}
-        isSpaceView={isZoomOut}
-        onToggleView={() => setIsZoomOut(!isZoomOut)}
-        onAddEvent={() => {/* TODO: Implement */}}
-        programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
-        estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
-      />
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* Plan Overview Component - Show in both views */}
+            <PlanOverview
+              currentPlanData={planData}
+              durationYears={Math.ceil(planData.length / 2)} // Rough estimate
+              fulfilledRequirements={[]} // TODO: Calculate from plan data
+              isEditMode={isEditMode}
+              isSpaceView={isZoomOut}
+              onToggleView={() => setIsZoomOut(!isZoomOut)}
+              onAddEvent={() => {/* TODO: Implement */}}
+              programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
+              estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
+            />
 
       {/* Terms View - Grid or Zoom out */}
       <div>
@@ -271,22 +274,30 @@ export default function GradPlanClient({
         )}
       </div>
 
-      {/* Collapsible Plan Assumptions - TODO */}
-      {assumptions && assumptions.length > 0 && (
-        <div className="border-t pt-6">
-          <details>
-            <summary className="cursor-pointer font-semibold">Plan Assumptions</summary>
-            <div className="mt-2 space-y-1">
-              {assumptions.map((assumption, index) => (
-                <p key={index} className="text-sm text-muted-foreground">
-                  • {assumption}
-                </p>
-              ))}
+            {/* Collapsible Plan Assumptions - TODO */}
+            {assumptions && assumptions.length > 0 && (
+              <div className="border-t pt-6">
+                <details>
+                  <summary className="cursor-pointer font-semibold">Plan Assumptions</summary>
+                  <div className="mt-2 space-y-1">
+                    {assumptions.map((assumption, index) => (
+                      <p key={index} className="text-sm text-muted-foreground">
+                        • {assumption}
+                      </p>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )}
+          </div>
+
+          {/* Progress Overview Sidebar */}
+          <div className="lg:w-[550px] lg:min-w-[530px] lg:max-w-[550px] lg:sticky lg:top-6 self-start">
+            <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
+              <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
             </div>
-          </details>
+          </div>
         </div>
-      )}
-        </>
       )}
       </div>
     </TooltipProvider>

@@ -2,62 +2,9 @@
 
 import React from 'react';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
-import {
-  mockFinanceProgress,
-  mockGEProgress,
-  mockReligionProgress,
-  mockElectivesProgress,
-} from '@/components/progress-overview/mockProgressData';
+import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
 
 export default function ProgressOverviewPreview() {
-  // Add a mock "Minor" category for the navigation
-  const mockMinorProgress = {
-    name: 'Minor',
-    color: '#003D82', // Medium blue - darker than bright but lighter than navy
-    totalCredits: 24,
-    percentComplete: 45,
-    completed: 11,
-    inProgress: 3,
-    planned: 6,
-    remaining: 4,
-    requirements: [
-      {
-        id: 1,
-        title: 'Core Requirements',
-        description: 'Complete 4 courses',
-        progress: 2,
-        total: 4,
-        status: 'in-progress' as const,
-        completed: 2,
-        inProgress: 1,
-        planned: 1,
-        remaining: 0,
-        courses: [],
-      },
-      {
-        id: 2,
-        title: 'Elective Requirements',
-        description: 'Complete 2 courses',
-        progress: 1,
-        total: 2,
-        status: 'in-progress' as const,
-        completed: 1,
-        inProgress: 0,
-        planned: 1,
-        remaining: 0,
-        courses: [],
-      },
-    ],
-  };
-
-  const allCategoriesWithMinor = [
-    mockFinanceProgress,
-    mockMinorProgress,
-    mockGEProgress,
-    mockReligionProgress,
-    mockElectivesProgress,
-  ];
-
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 p-8">
       <div className="max-w-5xl mx-auto">
@@ -77,7 +24,7 @@ export default function ProgressOverviewPreview() {
             Light Mode - Interactive
           </h2>
           <div className="bg-white dark:bg-zinc-800 rounded-2xl p-8 shadow-sm">
-            <ProgressOverviewContainer categories={allCategoriesWithMinor} />
+            <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
           </div>
         </div>
 
@@ -86,7 +33,7 @@ export default function ProgressOverviewPreview() {
           <h2 className="text-2xl font-bold text-zinc-100 mb-6">
             Dark Mode - Interactive
           </h2>
-          <ProgressOverviewContainer categories={allCategoriesWithMinor} />
+          <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
         </div>
 
         {/* Instructions */}

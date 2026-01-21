@@ -13,8 +13,8 @@ import { sendGradPlanApprovalEmail } from '@/lib/services/emailService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Course, Term } from '@/components/grad-planner/types';
-import { AdvisorProgressPanel, calculateCategoryProgress } from '@/components/grad-planner/AdvisorProgressPanel';
-import mockExpandableCategories from '@/components/grad-planner/mockExpandableData';
+import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
+import { mockAllCategoriesWithMinor } from '@/components/progress-overview/mockProgressData';
 
 interface GradPlanDetails {
   id: string;
@@ -81,7 +81,6 @@ export default function ApproveGradPlanPage() {
   const [editablePlan, setEditablePlan] = React.useState<Term[] | null>(null); // normalized array of terms
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [isCheckingRole, setIsCheckingRole] = React.useState(true);
-  const [isPanelCollapsed, setIsPanelCollapsed] = React.useState(false);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -467,33 +466,6 @@ export default function ApproveGradPlanPage() {
     return 'Approve Plan';
   };
 
-  // Calculate category progress for the progress panel
-  const categoryProgress = React.useMemo(() => {
-    if (!editablePlan) return [];
-    return calculateCategoryProgress(editablePlan);
-  }, [editablePlan]);
-
-  // Calculate total credits for progress panel
-  const totalCreditsData = React.useMemo(() => {
-    if (!editablePlan) return { earned: 0, required: 133.66 };
-
-    const earned = editablePlan.reduce((total, term) => {
-      const termCredits = term.credits_planned ||
-                         (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-      return total + termCredits;
-    }, 0);
-
-    return { earned, required: 133.66 }; // You can make 'required' dynamic based on program requirements
-  }, [editablePlan]);
-
-  // Calculate current semester credits (assuming first term is current)
-  const currentSemesterCredits = React.useMemo(() => {
-    if (!editablePlan || editablePlan.length === 0) return 0;
-    const currentTerm = editablePlan[0];
-    return currentTerm.credits_planned ||
-           (currentTerm.courses ? currentTerm.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
-  }, [editablePlan]);
-
   if (isCheckingRole || loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center p-6">
@@ -692,7 +664,7 @@ export default function ApproveGradPlanPage() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: isPanelCollapsed ? '1fr auto' : '1fr 380px' },
+          gridTemplateColumns: { xs: '1fr', lg: '1fr 550px' },
           gap: 4,
           alignItems: 'start',
         }}
@@ -815,18 +787,17 @@ export default function ApproveGradPlanPage() {
           </Alert>
         </Box>
 
-        {/* Right column - Progress Panel (hidden on mobile) */}
-        <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
-          <AdvisorProgressPanel
-            studentName={studentName}
-            totalCredits={totalCreditsData}
-            categories={categoryProgress}
-            planData={editablePlan ?? []}
-            isCollapsed={isPanelCollapsed}
-            onToggleCollapse={() => setIsPanelCollapsed(!isPanelCollapsed)}
-            currentSemesterCredits={currentSemesterCredits}
-            expandableCategories={mockExpandableCategories}
-          />
+        {/* Right column - Progress Panel */}
+        <Box
+          sx={{
+            display: { xs: 'none', lg: 'block' },
+            position: 'sticky',
+            top: 24,
+          }}
+        >
+          <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
+            <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
+          </div>
         </Box>
       </Box>
 

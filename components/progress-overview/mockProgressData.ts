@@ -408,3 +408,60 @@ export const mockAllCategories: ProgressCategory[] = [
   mockReligionProgress,
   mockElectivesProgress,
 ];
+
+// Mock data for Minor category
+export const mockMinorProgress: ProgressCategory = {
+  name: 'Minor',
+  color: '#003D82', // Medium blue - darker than bright but lighter than navy
+  totalCredits: 24,
+  percentComplete: 45,
+  completed: 11,
+  inProgress: 3,
+  planned: 6,
+  remaining: 4,
+  requirements: [
+    {
+      id: 1,
+      title: 'Core Requirements',
+      description: 'Complete 4 courses',
+      progress: 2,
+      total: 4,
+      status: 'in-progress' as const,
+      completed: 2,
+      inProgress: 1,
+      planned: 1,
+      remaining: 0,
+      courses: [
+        { id: 'minor1-1', code: 'MINOR 201', title: 'Introduction to Minor', credits: 3, status: 'completed', term: 'Fall 2023' },
+        { id: 'minor1-2', code: 'MINOR 301', title: 'Intermediate Minor', credits: 3, status: 'completed', term: 'Winter 2024' },
+        { id: 'minor1-3', code: 'MINOR 401', title: 'Advanced Minor', credits: 3, status: 'in-progress', term: 'Winter 2025' },
+        { id: 'minor1-4', code: 'MINOR 450', title: 'Minor Capstone', credits: 3, status: 'planned', term: 'Fall 2025' },
+      ],
+    },
+    {
+      id: 2,
+      title: 'Elective Requirements',
+      description: 'Complete 2 courses',
+      progress: 1,
+      total: 2,
+      status: 'in-progress' as const,
+      completed: 1,
+      inProgress: 0,
+      planned: 1,
+      remaining: 0,
+      courses: [
+        { id: 'minor2-1', code: 'MINOR 320', title: 'Minor Elective I', credits: 3, status: 'completed', term: 'Fall 2024' },
+        { id: 'minor2-2', code: 'MINOR 330', title: 'Minor Elective II', credits: 3, status: 'planned' },
+      ],
+    },
+  ],
+};
+
+// Array of all mock categories including Minor (for design preview and grad-plan)
+export const mockAllCategoriesWithMinor: ProgressCategory[] = [
+  mockFinanceProgress,
+  mockMinorProgress,
+  mockGEProgress,
+  mockReligionProgress,
+  mockElectivesProgress,
+];

@@ -24,7 +24,9 @@ export {
   mockGEProgress,
   mockReligionProgress,
   mockElectivesProgress,
+  mockMinorProgress,
   mockAllCategories,
+  mockAllCategoriesWithMinor,
 } from './mockProgressData';
 export {
   convertCategoryProgressToProgressCategory,
