@@ -347,11 +347,11 @@ export default function PlanHeader({
 
   return (
     <>
-      <section className="rounded-lg border border-gray-400 bg-gray-200/50 px-6 py-6">
+      <section className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] bg-white dark:bg-[var(--card)] px-6 py-6 shadow-sm">
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex flex-col gap-3">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[color-mix(in_srgb,var(--muted-foreground)_60%,black_40%)]">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--muted-foreground)]">
                 Graduation Plan
               </span>
               <div className="flex flex-wrap items-center gap-3">
@@ -360,26 +360,26 @@ export default function PlanHeader({
                     planId={selectedGradPlan.id}
                     initialName={selectedPlanName}
                     onSaved={handleTitleSave}
-                    className="text-2xl font-semibold tracking-tight text-[#0a1f1a]"
+                    className="text-2xl font-black tracking-tight text-[var(--foreground)]"
                   />
                 ) : (
-                  <h1 className="text-2xl font-semibold tracking-tight text-[#0a1f1a]">
+                  <h1 className="text-2xl font-black tracking-tight text-[var(--foreground)]">
                     Untitled Graduation Plan
                   </h1>
                 )}
                 {showStatusBadge && selectedGradPlan && (
                   selectedGradPlan.is_active ? (
-                    <span className="inline-flex items-center rounded-full bg-green-100 border border-green-300 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-700">
+                    <span className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,#10b981_25%,transparent)] bg-[color-mix(in_srgb,#10b981_12%,transparent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#10b981]">
                       Approved
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-yellow-50 border border-yellow-300 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-700">
+                    <span className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)] bg-[var(--muted)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                       Not Yet Approved
                     </span>
                   )
                 )}
                 {!showStatusBadge && selectedPlanCreatedAt && (
-                  <span className="inline-flex items-center rounded-full bg-[#0a1f1a] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_-20px_rgba(10,31,26,0.65)]">
+                  <span className="inline-flex items-center rounded-full bg-[var(--foreground)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--background)] shadow-sm">
                     Created {selectedPlanCreatedAt}
                   </span>
                 )}
@@ -388,43 +388,23 @@ export default function PlanHeader({
 
             <div className="flex flex-wrap items-center gap-2">
               {showCreateButton && (
-                <Button
-                  variant="contained"
+                <button
+                  type="button"
                   onClick={handleCreatePlan}
-                  className="font-body-semi"
-                  sx={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'black',
-                    px: 2.5,
-                    fontWeight: 700,
-                    '&:hover': { backgroundColor: 'var(--hover-green)' },
-                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-sm font-bold text-[var(--background)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <PlusIcon style={{ marginRight: 8 }} />
+                  <PlusIcon size={18} strokeWidth={2.5} />
                   Create New Plan
-                </Button>
+                </button>
               )}
               {showEditButton && selectedGradPlan && (
-                <Button
-                  variant="contained"
+                <button
+                  type="button"
                   onClick={handleEditPlan}
-                  className="font-body-semi"
-                  sx={{
-                    backgroundColor: 'var(--primary)',
-                    color: '#0a1f1a',
-                    px: 2.5,
-                    fontWeight: 700,
-                    '&:hover': {
-                      backgroundColor: 'var(--hover-green)',
-                    },
-                    '&:disabled': {
-                      backgroundColor: 'var(--muted)',
-                      color: 'var(--muted-foreground)',
-                    },
-                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--muted)] px-4 py-2.5 text-sm font-bold text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
                   Edit This Plan
-                </Button>
+                </button>
               )}
             </div>
           </div>
@@ -449,13 +429,13 @@ export default function PlanHeader({
                   onChange={handleGradPlanSelection}
                   className="font-body"
                   sx={{
-                    borderRadius: '7px',
+                    borderRadius: '12px',
                     fontWeight: 500,
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(10,31,26,0.2)',
+                      borderColor: 'color-mix(in srgb, var(--muted-foreground) 10%, transparent)',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#0a1f1a',
+                      borderColor: 'var(--muted-foreground)',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                       borderColor: 'var(--primary)',

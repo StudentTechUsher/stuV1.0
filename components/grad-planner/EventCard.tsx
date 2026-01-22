@@ -88,7 +88,6 @@ export function EventCard({
   const EventIconComponent = getEventIcon(event.type);
   const tintedBackground = `color-mix(in srgb, ${eventColor} 70%, white)`;
   const borderColor = `color-mix(in srgb, ${eventColor}, transparent)`;
-  const glowShadow = `${eventColor}33`;
   const handleDelete = () => {
     if (!event.id) return;
     onDelete?.(event.id);
@@ -97,32 +96,31 @@ export function EventCard({
   if (variant === 'grid') {
     return (
       <div
-        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-[7px] border px-3 py-4 text-center shadow-[0_20px_40px_-24px_rgba(8,35,24,0.46)] transition-all duration-200 ease-out hover:-translate-y-1"
+        className="relative flex h-full flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-center shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md"
         style={{
           backgroundColor: tintedBackground,
           borderColor,
-          boxShadow: `0 26px 52px -34px ${glowShadow}`,
         }}
       >
         <EventIconComponent
           sx={{ fontSize: 24 }}
           style={{ color: `color-mix(in srgb, ${eventColor} 92%, black 8%)` }}
         />
-        <p className="font-body-semi text-xs font-semibold leading-tight tracking-tight" style={{ color: `color-mix(in srgb, var(--foreground) 95%, ${eventColor} 5%)` }}>
+        <p className="font-body-semi text-xs font-bold leading-tight tracking-tight text-[var(--foreground)]">
           {event.title}
         </p>
-        <p className="text-[9px] font-semibold uppercase tracking-[0.16em]" style={{ color: `color-mix(in srgb, var(--foreground) 75%, ${eventColor} 25%)` }}>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
           {event.type}
         </p>
         {isEditMode && (
-          <div className="absolute right-1 top-1 flex gap-0.5">
+          <div className="absolute right-1.5 top-1.5 flex gap-1">
             <button
               type="button"
               onClick={() => onEdit?.(event)}
-              className="flex h-5 w-5 items-center justify-center rounded-[4px] border transition focus-visible:outline-none focus-visible:ring-1"
+              className="flex h-6 w-6 items-center justify-center rounded-full border transition hover:shadow-sm focus-visible:outline-none focus-visible:ring-1"
               style={{
-                borderColor: `color-mix(in srgb, ${eventColor} 40%, transparent)`,
-                backgroundColor: `color-mix(in srgb, ${eventColor} 15%, white)`,
+                borderColor: `color-mix(in srgb, ${eventColor} 30%, transparent)`,
+                backgroundColor: `color-mix(in srgb, ${eventColor} 12%, white)`,
                 color: `color-mix(in srgb, ${eventColor} 85%, black 15%)`,
               }}
               aria-label={`Edit ${event.title}`}
@@ -132,10 +130,10 @@ export function EventCard({
             <button
               type="button"
               onClick={handleDelete}
-              className="flex h-5 w-5 items-center justify-center rounded-[4px] border transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+              className="flex h-6 w-6 items-center justify-center rounded-full border transition hover:shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
               style={{
-                borderColor: 'color-mix(in srgb, #ef4444 50%, transparent)',
-                backgroundColor: 'rgba(239,68,68,0.15)',
+                borderColor: 'color-mix(in srgb, #ef4444 30%, transparent)',
+                backgroundColor: 'rgba(239,68,68,0.1)',
                 color: '#b91c1c',
               }}
               aria-label={`Delete ${event.title}`}
@@ -150,19 +148,18 @@ export function EventCard({
 
   return (
     <div
-      className="group relative flex flex-wrap items-center justify-between gap-3 rounded-[7px] border px-4 py-2.5 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)] transition-all duration-200 ease-out hover:-translate-y-1"
+      className="group relative flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md"
       style={{
         background: tintedBackground,
         borderColor,
-        boxShadow: `0 32px 70px -54px ${glowShadow}`,
       }}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-3">
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-[7px] border"
+          className="flex h-10 w-10 items-center justify-center rounded-full border"
           style={{
-            background: `color-mix(in srgb, ${eventColor} 25%, white)`,
-            borderColor: `color-mix(in srgb, ${eventColor} 50%, transparent)`,
+            background: `color-mix(in srgb, ${eventColor} 20%, white)`,
+            borderColor: `color-mix(in srgb, ${eventColor} 30%, transparent)`,
           }}
         >
           <EventIconComponent
@@ -171,16 +168,10 @@ export function EventCard({
           />
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span
-            className="font-body-semi text-sm font-semibold leading-tight tracking-tight"
-            style={{ color: `color-mix(in srgb, var(--foreground) 92%, ${eventColor} 8%)` }}
-          >
+          <span className="font-body-semi text-sm font-bold leading-tight tracking-tight text-[var(--foreground)]">
             {event.title}
           </span>
-          <span
-            className="text-[10px] font-semibold uppercase tracking-[0.20em]"
-            style={{ color: `color-mix(in srgb, var(--foreground) 68%, ${eventColor} 32%)` }}
-          >
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
             {event.type}
           </span>
         </div>
@@ -191,29 +182,29 @@ export function EventCard({
           <button
             type="button"
             onClick={() => onEdit?.(event)}
-            className="flex h-8 items-center gap-1 rounded-[7px] border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold uppercase tracking-wider transition hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
             style={{
-              color: `color-mix(in srgb, var(--foreground) 78%, ${eventColor} 22%)`,
-              borderColor: `color-mix(in srgb, ${eventColor} 42%, transparent)`,
-              backgroundColor: `color-mix(in srgb, ${eventColor} 10%, transparent)`,
+              color: 'var(--foreground)',
+              borderColor: `color-mix(in srgb, ${eventColor} 25%, transparent)`,
+              backgroundColor: `color-mix(in srgb, ${eventColor} 8%, transparent)`,
             }}
             aria-label={`Edit ${event.title}`}
           >
-            <EditIcon sx={{ fontSize: 16 }} />
+            <EditIcon sx={{ fontSize: 14 }} />
             Edit
           </button>
           <button
             type="button"
             onClick={handleDelete}
-            className="flex h-8 items-center gap-1 rounded-[7px] border px-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destructive)]"
+            className="flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold uppercase tracking-wider transition hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destructive)]"
             style={{
-              color: `color-mix(in srgb, #7f1d1d 75%, ${eventColor} 25%)`,
-              borderColor: `color-mix(in srgb, #ef4444 60%, ${eventColor} 40%)`,
-              backgroundColor: 'rgba(239,68,68,0.12)',
+              color: '#b91c1c',
+              borderColor: 'color-mix(in srgb, #ef4444 25%, transparent)',
+              backgroundColor: 'rgba(239,68,68,0.08)',
             }}
             aria-label={`Delete ${event.title}`}
           >
-            <DeleteIcon sx={{ fontSize: 16 }} />
+            <DeleteIcon sx={{ fontSize: 14 }} />
             Delete
           </button>
         </div>

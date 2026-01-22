@@ -98,15 +98,15 @@ export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse,
   return (
     <div
       ref={setNodeRef}
-      className="rounded-xl bg-white border border-gray-200 shadow-sm p-2 h-full flex flex-col"
+      className="rounded-2xl bg-white dark:bg-[var(--card)] border border-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] shadow-sm p-4 h-full flex flex-col transition-all duration-200 hover:shadow-md"
       style={{
-        outline: isOver && isEditMode ? '2px dashed var(--primary)' : undefined,
+        outline: isOver && isEditMode ? '2px dashed var(--foreground)' : undefined,
         outlineOffset: isOver && isEditMode ? '2px' : undefined,
         borderColor: isModified ? 'var(--action-edit)' : undefined,
       }}
     >
       {/* Term header */}
-      <div className="mb-1.5">
+      <div className="mb-2">
         {isEditingTitle ? (
           <div className="flex items-center gap-1 mb-0.5">
             <input
@@ -117,70 +117,70 @@ export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse,
                 if (e.key === 'Enter') handleSaveTitle();
                 if (e.key === 'Escape') handleCancelEditTitle();
               }}
-              className="text-sm font-bold text-gray-900 border-b border-primary bg-transparent outline-none px-1 flex-1"
+              className="text-sm font-black text-[var(--foreground)] border-b-2 border-[var(--primary)] bg-transparent outline-none px-1 flex-1"
               autoFocus
             />
             <button
               type="button"
               onClick={handleSaveTitle}
-              className="px-1.5 py-0.5 text-[10px] font-semibold text-green-700 hover:bg-green-50 rounded"
+              className="px-2 py-0.5 text-[10px] font-bold text-[var(--foreground)] bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_25%,transparent)] rounded-lg transition-colors"
             >
               Save
             </button>
             <button
               type="button"
               onClick={handleCancelEditTitle}
-              className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-50 rounded"
+              className="px-2 py-0.5 text-[10px] font-bold text-[var(--muted-foreground)] hover:bg-[var(--muted)] rounded-lg transition-colors"
             >
               Cancel
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1 mb-0.5">
-            <h3 className="text-sm font-bold text-gray-900">{term.label}</h3>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <h3 className="text-sm font-black text-[var(--foreground)]">{term.label}</h3>
             {gradPlanId && (
               <button
                 type="button"
                 onClick={() => setIsEditingTitle(true)}
-                className="rounded p-0.5 hover:bg-gray-100 transition-colors"
+                className="rounded-lg p-0.5 hover:bg-[var(--muted)] transition-colors"
                 title="Edit term title"
               >
-                <PencilLine size={12} strokeWidth={2} className="text-gray-500" />
+                <PencilLine size={12} strokeWidth={2} className="text-[var(--muted-foreground)]" />
               </button>
             )}
             {term.rawTerm.is_active && (
-              <span className="flex h-4 items-center gap-1 rounded-full border border-green-300 bg-green-50 px-1.5 text-[9px] font-bold uppercase tracking-wide text-green-700 ml-1">
+              <span className="flex h-4 items-center gap-1 rounded-full bg-[var(--foreground)] px-1.5 text-[9px] font-bold uppercase tracking-wide text-[var(--background)] ml-1">
                 <CheckCircle2 size={10} strokeWidth={2.5} />
                 Current
               </span>
             )}
           </div>
         )}
-        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium">
+        <div className="flex items-center justify-between text-[10px] text-[var(--muted-foreground)] font-bold uppercase tracking-wider">
           <span>Class / Credits</span>
         </div>
       </div>
 
       {/* Course list */}
-      <div className="space-y-1 mb-1.5 flex-1">
+      <div className="space-y-1.5 mb-2 flex-1">
         {term.courses.length > 0 ? (
           term.courses.map((course) => (
             <CoursePill key={course.id} course={course} isEditMode={isEditMode} onSubstituteCourse={onSubstituteCourse} />
           ))
         ) : (
-          <p className="text-xs text-gray-400 text-center py-2">No courses</p>
+          <p className="text-xs text-[var(--muted-foreground)] text-center py-3">No courses</p>
         )}
       </div>
 
       {/* Term footer */}
-      <div className="pt-1.5 border-t border-gray-200">
+      <div className="pt-2 border-t border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)]">
         <div className="flex items-center justify-between">
           {/* Add Course Button - Left side */}
           {isEditMode && onAddCourse && (
             <button
               type="button"
               onClick={() => onAddCourse(term.termIndex)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[color-mix(in_srgb,var(--primary)_80%,var(--foreground)_20%)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] rounded-md hover:bg-[color-mix(in_srgb,var(--primary)_22%,transparent)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[var(--foreground)] bg-[var(--muted)] border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] rounded-xl hover:bg-[color-mix(in_srgb,var(--muted-foreground)_10%,var(--muted))] transition-all duration-200"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -200,8 +200,8 @@ export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse,
             </button>
           )}
           {/* Credits total - Right side */}
-          <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide ml-auto">
-            {totalCredits} TOTAL
+          <span className="rounded-full bg-[var(--foreground)] px-2.5 py-1 text-[10px] font-bold text-[var(--background)] uppercase tracking-wider ml-auto">
+            {totalCredits} Total
           </span>
         </div>
         {/* Set as Current Term button */}
@@ -210,7 +210,7 @@ export function TermCard({ term, isEditMode = false, modifiedTerms, onAddCourse,
             type="button"
             onClick={handleSetActiveTerm}
             disabled={isSettingActiveTerm}
-            className="flex items-center gap-1 text-[10px] font-medium text-gray-600 hover:text-primary transition-colors disabled:opacity-50 mt-1 w-fit"
+            className="flex items-center gap-1 text-[10px] font-bold text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors disabled:opacity-50 mt-1.5 w-fit"
           >
             <Circle size={11} strokeWidth={2} />
             {isSettingActiveTerm ? 'Setting...' : 'Set as Current Term'}

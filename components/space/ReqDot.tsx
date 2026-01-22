@@ -2,14 +2,14 @@
 function getRequirementColor(requirement: string): string {
   const req = requirement.toLowerCase().trim();
 
-  // Direct matches first
+  // Direct matches first - matches Progress Overview colors
   const REQUIREMENT_COLORS: Record<string, string> = {
-    'major': '#12F987', // var(--primary)
-    'minor': '#001F54',
-    'general education': '#2196f3',
+    'major': '#12F987',      // Progress Overview: var(--primary)
+    'minor': '#003D82',      // Progress Overview: Minor blue
+    'general education': '#2196f3',  // Progress Overview: GE blue
     'gen ed': '#2196f3',
-    'religion': '#5E35B1',
-    'electives': '#9C27B0',
+    'religion': '#5E35B1',   // Progress Overview: Religion indigo
+    'electives': '#9C27B0',  // Progress Overview: Electives magenta
     'elective': '#9C27B0',
   };
 
@@ -32,7 +32,7 @@ function getRequirementColor(requirement: string): string {
       req.includes('restoration') ||
       req.includes('religion') ||
       req.includes('rel ')) {
-    return '#5E35B1';
+    return '#5E35B1';  // Progress Overview: Religion indigo
   }
 
   // General Education patterns
@@ -49,7 +49,7 @@ function getRequirementColor(requirement: string): string {
       req.includes('languages of learning') ||
       req.includes('gen ed') ||
       req.includes('general education')) {
-    return '#2196f3';
+    return '#2196f3';  // Progress Overview: GE blue
   }
 
   // Major-related (including generic "requirement" patterns)
@@ -60,17 +60,17 @@ function getRequirementColor(requirement: string): string {
       req.includes('subrequirement') ||
       /^requirement\s*\d*$/.test(req) ||
       /^subrequirement\s*\d*$/.test(req)) {
-    return '#12F987';
+    return '#12F987';  // Progress Overview: var(--primary)
   }
 
   // Minor-related
   if (req.includes('minor')) {
-    return '#001F54';
+    return '#003D82';  // Progress Overview: Minor blue
   }
 
   // Elective-related
   if (req.includes('elective')) {
-    return '#9C27B0';
+    return '#9C27B0';  // Progress Overview: Electives magenta
   }
 
   return '#6b7280'; // gray default

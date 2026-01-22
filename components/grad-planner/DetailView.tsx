@@ -54,16 +54,16 @@ export function DetailView({
     return (
       <div
         key={`events-after-${termNumber}`}
-        className="relative w-full rounded-[7px] border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-6 py-5 shadow-[0_36px_80px_-58px_rgba(8,35,24,0.45)]"
+        className="relative w-full rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--muted)] px-6 py-5 shadow-sm"
       >
-        <div className="absolute left-8 top-0 h-6 w-px -translate-y-3 bg-[color-mix(in_srgb,var(--muted-foreground)_36%,var(--border)_64%)]" aria-hidden="true" />
+        <div className="absolute left-8 top-0 h-6 w-px -translate-y-3 bg-[var(--muted-foreground)]" style={{ opacity: 0.2 }} aria-hidden="true" />
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
+            <span className="text-xs font-black uppercase tracking-wider text-[var(--muted-foreground)]">
               After Term {termNumber}
             </span>
             {isEditMode && (
-              <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--muted-foreground)_62%,var(--foreground)_38%)]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                 {termEvents.length} milestone{termEvents.length === 1 ? '' : 's'}
               </span>
             )}

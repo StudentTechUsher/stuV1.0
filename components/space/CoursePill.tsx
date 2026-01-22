@@ -42,6 +42,51 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
 
   const isCompleted = course.rawCourse.isCompleted || false;
 
+  // Check if this is a placeholder course (no actual course code, just category name)
+  const isPlaceholder = !course.code ||
+    /^(elective|ge|general|religion|rel|minor|major)s?$/i.test(course.code.trim()) ||
+    /^(free\s+)?elective$/i.test(course.code.trim()) ||
+    course.code.toUpperCase() === course.code && !course.code.match(/\d/); // All caps with no numbers
+
+  // Determine category color based on requirements - matches Progress Overview colors
+  const getCategoryColor = (requirements: string[]) => {
+    if (!requirements || requirements.length === 0) return '#6b7280';
+    const req = requirements[0].toLowerCase();
+    if (req.includes('major') || req.includes('core')) return '#12F987';  // Progress Overview: var(--primary)
+    if (req.includes('general') || req.includes('ge ')) return '#2196f3';  // Progress Overview: GE blue
+    if (req.includes('religion') || req.includes('rel ')) return '#5E35B1';  // Progress Overview: Religion indigo
+    if (req.includes('elective')) return '#9C27B0';  // Progress Overview: Electives magenta
+    if (req.includes('minor')) return '#003D82';  // Progress Overview: Minor blue
+    return '#6b7280';
+  };
+
+  const categoryColor = getCategoryColor(course.requirements);
+
+  // Determine background style based on course status
+  const getBackgroundStyle = () => {
+    if (isPlaceholder) {
+      // Placeholder courses: white background
+      return {
+        backgroundColor: 'white',
+        borderColor: 'rgb(212 212 216)', // zinc-300
+      };
+    }
+    if (isCompleted) {
+      // Completed courses: green tinted background
+      return {
+        backgroundColor: `color-mix(in srgb, #12F987 20%, white)`,
+        borderColor: '#12F987',
+      };
+    }
+    // Planned courses: light grey background
+    return {
+      backgroundColor: 'rgb(212 212 216)', // zinc-300
+      borderColor: 'rgb(161 161 170)', // zinc-400
+    };
+  };
+
+  const backgroundStyle = getBackgroundStyle();
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -49,13 +94,10 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
           ref={setNodeRef}
           {...listeners}
           {...attributes}
-          className={`grid grid-cols-[1fr_auto] items-center gap-2 px-2 py-1 rounded-lg shadow-sm ${
-            isCompleted
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-white border border-gray-200'
-          }`}
+          className="grid grid-cols-[1fr_auto] items-center gap-2 px-2.5 py-2 rounded-xl transition-all duration-200 hover:shadow-sm border"
           style={{
             ...style,
+            ...backgroundStyle,
             cursor: isEditMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
             opacity: isDragging ? 0.7 : 1,
             userSelect: 'none',
@@ -73,7 +115,7 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
             )}
 
             {/* Course code and title */}
-            <div className="min-w-0 flex-1 flex items-center gap-1">
+            <div className="min-w-0 flex-1 flex items-center gap-1.5">
               {isCompleted && (
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -85,26 +127,20 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-green-600 shrink-0"
+                  className="shrink-0 text-[#12F987]"
                 >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
-              <span className={`text-[11px] font-medium truncate block max-w-[180px] sm:max-w-[200px] ${
-                isCompleted ? 'text-green-700' : 'text-gray-900'
-              }`}>
+              <span className="text-[11px] font-semibold truncate block max-w-[180px] sm:max-w-[200px] text-[var(--foreground)]">
                 {course.code} - {course.title}
               </span>
             </div>
           </div>
 
           {/* Right: credits */}
-          <div className="shrink-0">
-            <span className={`inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded text-[10px] font-mono ${
-              isCompleted
-                ? 'bg-green-100 text-green-700'
-                : 'bg-gray-100 text-gray-700'
-            }`}>
+          <div className="shrink-0 flex items-center">
+            <span className="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-lg text-[10px] font-bold bg-white dark:bg-[var(--card)] text-[var(--foreground)]">
               {course.credits}
             </span>
           </div>

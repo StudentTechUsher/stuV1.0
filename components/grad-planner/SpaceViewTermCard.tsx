@@ -1,6 +1,4 @@
 import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 
 interface Course {
   code: string;
@@ -31,50 +29,33 @@ export function SpaceViewTermCard({ term, index }: SpaceViewTermCardProps) {
     (term.courses ? term.courses.reduce((sum, course) => sum + (course.credits || 0), 0) : 0);
 
   return (
-    <Box
-      sx={{
-        p: 2,
-        border: '1px solid var(--border)',
-        borderRadius: 2,
-        backgroundColor: 'white',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        minHeight: '150px',
-        height: '100%',
-        width: '100%',
-      }}
-    >
-      <Typography variant="subtitle2" className="font-header-bold" sx={{ color: 'var(--primary)', fontWeight: 700, mb: 1, fontSize: '0.9rem' }}>
+    <div className="rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-4 shadow-sm hover:shadow-md transition-all duration-200 min-h-[150px] h-full w-full">
+      <h3 className="font-header-bold text-sm font-black text-[var(--foreground)] mb-1">
         Term {term.term || index + 1}
-      </Typography>
-      <Typography variant="caption" className="font-body" sx={{ color: 'var(--primary)', fontWeight: 600, display: 'block', mb: 1.5 }}>
+      </h3>
+      <span className="text-xs font-bold text-[var(--muted-foreground)] block mb-3">
         {termCredits} Credits
-      </Typography>
+      </span>
 
       {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <div className="flex flex-col gap-1">
           {term.courses.map((course: Course, courseIndex: number) => {
             if (!course.code || !course.title) return null;
             return (
-              <Typography
+              <span
                 key={`space-term-${index}-course-${courseIndex}`}
-                variant="caption"
-                className="font-body"
-                sx={{
-                  fontSize: '0.75rem',
-                  color: 'text.secondary',
-                  lineHeight: 1.4
-                }}
+                className="text-xs text-[var(--muted-foreground)] leading-relaxed"
               >
                 {course.code}
-              </Typography>
+              </span>
             );
           })}
-        </Box>
+        </div>
       ) : (
-        <Typography variant="caption" className="font-body" color="text.secondary">
+        <span className="text-xs text-[var(--muted-foreground)]">
           No courses
-        </Typography>
+        </span>
       )}
-    </Box>
+    </div>
   );
 }

@@ -23,7 +23,7 @@ interface TermCardProps {
 }
 
 const statBadgeBase =
-  'inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] shadow-[0_26px_60px_-42px_rgba(8,35,24,0.55)] transition-all duration-200';
+  'inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200';
 
 /**
  * Visual + structural refresh for term cards in the grad planner.
@@ -118,29 +118,25 @@ export function TermCard({
     >
       <article
         className={cn(
-          'relative flex h-full flex-col gap-5 rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.18)_32%,var(--border)_68%)] bg-white p-6 shadow-[0_40px_90px_-60px_rgba(8,35,24,0.85)] transition-all duration-200 ease-out',
-          'backdrop-blur-[2px]'
+          'relative flex h-full flex-col gap-5 rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-6 shadow-sm transition-all duration-200 ease-out',
+          'hover:shadow-md',
+          isEditMode && 'border-[color-mix(in_srgb,var(--primary)_25%,var(--border)_75%)]'
         )}
         data-editable={isEditMode}
-        style={{
-          borderColor: isEditMode
-            ? 'color-mix(in srgb, var(--primary) 35%, var(--border) 65%)'
-            : 'color-mix(in srgb, rgba(10,31,26,0.25) 30%, var(--border) 70%)',
-        }}
       >
         <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[color-mix(in_srgb,var(--muted-foreground)_78%,#0a1f1a_22%)]">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--muted-foreground)]">
                 Term {termIndex + 1}
               </span>
               {term.is_active && (
                 <span
-                  className="flex h-5 items-center gap-1 rounded-full border border-green-300 bg-green-50 px-2 text-[10px] font-bold uppercase tracking-wide text-green-700"
+                  className="flex h-6 items-center gap-1.5 rounded-full border border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] px-2.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]"
                   role="status"
                   aria-label="Current active term"
                 >
-                  <CheckCircle2 size={12} strokeWidth={2.5} aria-hidden="true" />
+                  <CheckCircle2 size={12} strokeWidth={2.5} className="text-[var(--primary)]" aria-hidden="true" />
                   Current Term
                 </span>
               )}
@@ -156,48 +152,48 @@ export function TermCard({
                       if (e.key === 'Enter') handleSaveTitle();
                       if (e.key === 'Escape') handleCancelEditTitle();
                     }}
-                    className="font-header text-xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--foreground)_92%,var(--primary)_8%)] border-b-2 border-primary bg-transparent outline-none px-1"
+                    className="font-header text-xl font-black tracking-tight text-[var(--foreground)] border-b-2 border-primary bg-transparent outline-none px-1"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={handleSaveTitle}
-                    className="rounded px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-50"
+                    className="rounded-lg px-2.5 py-1 text-xs font-bold text-[var(--foreground)] bg-[color-mix(in_srgb,var(--primary)_15%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_25%,transparent)] transition-colors"
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={handleCancelEditTitle}
-                    className="rounded px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                    className="rounded-lg px-2.5 py-1 text-xs font-bold text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
               ) : (
                 <>
-                  <h3 className="font-header text-xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--foreground)_92%,var(--primary)_8%)]">
+                  <h3 className="font-header text-xl font-black tracking-tight text-[var(--foreground)]">
                     {visibleTermLabel}
                   </h3>
                   {gradPlanId && (
                     <button
                       type="button"
                       onClick={() => setIsEditingTitle(true)}
-                      className="rounded p-1 hover:bg-gray-100 transition-colors"
+                      className="rounded-lg p-1 hover:bg-[var(--muted)] transition-colors"
                       title="Edit term title"
                     >
-                      <PencilLine size={16} strokeWidth={2} className="text-gray-500" />
+                      <PencilLine size={16} strokeWidth={2} className="text-[var(--muted-foreground)]" />
                     </button>
                   )}
                 </>
               )}
               {isEditMode && (
                 <span
-                  className="flex h-6 items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] px-2 text-[11px] font-medium uppercase text-[color-mix(in_srgb,var(--foreground)_88%,var(--primary)_12%)]"
+                  className="flex h-6 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] px-2.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]"
                   role="status"
                   aria-label="Editable term"
                 >
-                  <PencilLine size={14} strokeWidth={2} aria-hidden="true" />
+                  <PencilLine size={12} strokeWidth={2} className="text-[var(--primary)]" aria-hidden="true" />
                   Edit
                 </span>
               )}
@@ -207,7 +203,7 @@ export function TermCard({
                 type="button"
                 onClick={handleSetActiveTerm}
                 disabled={isSettingActiveTerm}
-                className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-primary transition-colors disabled:opacity-50 mt-1 w-fit"
+                className="flex items-center gap-1.5 text-xs font-bold text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors disabled:opacity-50 mt-1 w-fit"
                 title="Set as current term"
               >
                 <Circle size={14} strokeWidth={2} />
@@ -254,7 +250,7 @@ export function TermCard({
 
         {term.notes && (
           <section
-            className="rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_28%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] px-4 py-3 text-sm leading-relaxed text-[color-mix(in_srgb,var(--foreground)_85%,var(--primary)_15%)] shadow-[0_16px_42px_-32px_rgba(18,249,135,0.6)]"
+            className="rounded-xl border border-[color-mix(in_srgb,var(--primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] px-4 py-3 text-sm leading-relaxed text-[var(--foreground)] shadow-sm"
             aria-label="Term notes"
           >
             {term.notes}
@@ -263,7 +259,7 @@ export function TermCard({
 
         {term.courses && Array.isArray(term.courses) && term.courses.length > 0 ? (
           <section className="flex flex-col gap-3" aria-label="Courses for this term">
-            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">
+            <span className="text-xs font-black uppercase tracking-wider text-[var(--muted-foreground)]">
               Courses
             </span>
             <div className="flex flex-col gap-3">
@@ -291,14 +287,14 @@ export function TermCard({
           </section>
         ) : (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-center rounded-[7px] border border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_38%,var(--border)_62%)] bg-[color-mix(in_srgb,var(--muted)_22%,transparent)] px-4 py-10 text-sm font-medium text-[color-mix(in_srgb,var(--muted-foreground)_78%,var(--foreground)_22%)]">
+            <div className="flex items-center justify-center rounded-xl border border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_30%,transparent)] bg-[var(--muted)] px-4 py-10 text-sm font-medium text-[var(--muted-foreground)]">
               No courses defined for this term yet
             </div>
             {isEditMode && isEmpty && onDeleteTerm && (
               <button
                 type="button"
                 onClick={() => onDeleteTerm(termIndex)}
-                className="flex items-center justify-center gap-2 rounded-[7px] border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition-all hover:bg-red-100 hover:border-red-300"
+                className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition-all hover:bg-red-100 hover:border-red-300 hover:shadow-sm"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -326,7 +322,7 @@ export function TermCard({
           <button
             type="button"
             onClick={() => onAddCourse(termIndex)}
-            className="flex items-center justify-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] px-4 py-2.5 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_88%,var(--primary)_12%)] transition-all hover:bg-[color-mix(in_srgb,var(--primary)_22%,transparent)] hover:border-[color-mix(in_srgb,var(--primary)_45%,transparent)]"
+            className="flex items-center justify-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] px-4 py-2.5 text-sm font-bold text-[var(--foreground)] transition-all hover:bg-[color-mix(in_srgb,var(--primary)_18%,transparent)] hover:border-[color-mix(in_srgb,var(--primary)_35%,transparent)] hover:shadow-sm"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

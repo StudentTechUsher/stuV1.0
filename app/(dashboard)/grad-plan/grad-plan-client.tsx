@@ -191,85 +191,166 @@ export default function GradPlanClient({
             />
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-header-bold text-zinc-900 dark:text-zinc-100">Detailed View</h2>
-              <button
-                type="button"
-                onClick={() => setIsZoomOut(!isZoomOut)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
-              >
-                Return to Space View
-              </button>
-            </div>
-            <div className={`grid gap-6 ${
-              planData.length <= 4 ? 'grid-cols-4' :
-              planData.length <= 6 ? 'grid-cols-3' :
-              'grid-cols-4'
-            }`}>
-              {planData.map((term, index) => (
-                <div key={index} className="relative min-h-[450px]">
-                  {/* Term Card */}
-                  <div className="border border-[var(--border)] rounded-lg p-5 bg-[var(--card)] shadow-sm h-full flex flex-col transition-all duration-300 hover:shadow-md">
-                    <div className="flex items-start justify-between mb-4 pb-3 border-b border-[var(--border)]">
-                      <h3 className="font-header-bold text-lg text-[var(--primary)] uppercase tracking-wide">{term.term || `Term ${index + 1}`}</h3>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1.5 text-sm font-body-semi text-white whitespace-nowrap">
-                        {term.courses?.reduce((sum, course) => sum + (course.credits || 0), 0) || 0} credits
+          <div className="flex flex-col gap-6">
+            {/* Detail View - 2 terms per row grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {planData.map((term, index) => {
+                const termCredits = term.courses?.reduce((sum, course) => sum + (course.credits || 0), 0) || 0;
+
+                // Helper to get category color - matches Progress Overview colors
+                const getCategoryColor = (fulfills: string[] | undefined) => {
+                  if (!fulfills || fulfills.length === 0) return '#6b7280';
+                  const req = fulfills[0].toLowerCase();
+                  if (req.includes('major') || req.includes('core')) return '#12F987'; // var(--primary)
+                  if (req.includes('general') || req.includes('ge ')) return '#2196f3';
+                  if (req.includes('religion') || req.includes('rel ')) return '#5E35B1';
+                  if (req.includes('elective')) return '#9C27B0';
+                  if (req.includes('minor')) return '#003D82';
+                  return '#6b7280';
+                };
+
+                // Helper to check if course is a placeholder
+                const isPlaceholder = (code: string | undefined) => {
+                  if (!code) return true;
+                  return /^(elective|ge|general|religion|rel|minor|major)s?$/i.test(code.trim()) ||
+                    /^(free\s+)?elective$/i.test(code.trim()) ||
+                    (code.toUpperCase() === code && !code.match(/\d/));
+                };
+
+                // Helper to get background style based on course status
+                const getCourseBackground = (course: { code?: string; isCompleted?: boolean }) => {
+                  if (isPlaceholder(course.code)) {
+                    return { backgroundColor: 'white', borderColor: 'rgb(212 212 216)' };
+                  }
+                  if (course.isCompleted) {
+                    return { backgroundColor: 'color-mix(in srgb, #12F987 20%, white)', borderColor: '#12F987' };
+                  }
+                  return { backgroundColor: 'rgb(212 212 216)', borderColor: 'rgb(161 161 170)' };
+                };
+
+                return (
+                  <div key={index} className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] bg-white dark:bg-[var(--card)] p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+                    {/* Term Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-black text-[var(--foreground)]">{term.term || `Term ${index + 1}`}</h3>
+                        {term.is_active && (
+                          <span className="flex h-5 items-center gap-1 rounded-full bg-[var(--foreground)] px-2 text-[9px] font-bold uppercase tracking-wide text-[var(--background)]">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <span className="rounded-full bg-[var(--muted)] px-3 py-1 text-xs font-bold text-[var(--foreground)]">
+                        {termCredits} credits
                       </span>
                     </div>
-                    <div className="space-y-2 flex-1">
-                      {term.courses?.map((course, courseIndex) => (
-                        <div
-                          key={courseIndex}
-                          className="p-3 bg-white border border-gray-200 rounded-md text-sm transition-all duration-200 hover:shadow-md hover:border-gray-300"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-header-bold text-zinc-900 dark:text-zinc-100">{course.code}</div>
-                              <div className="text-xs text-[var(--muted-foreground)] truncate">{course.title}</div>
+
+                    {/* Courses List */}
+                    {term.courses && term.courses.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        {term.courses.map((course, courseIndex) => {
+                          const bgStyle = getCourseBackground(course);
+
+                          return (
+                            <div
+                              key={courseIndex}
+                              className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-all duration-200 hover:shadow-sm"
+                              style={bgStyle}
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                {/* Category indicator dots - show multiple if course fulfills multiple reqs */}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {course.fulfills && course.fulfills.length > 0 ? (
+                                    course.fulfills.slice(0, 3).map((req, dotIndex) => (
+                                      <span
+                                        key={dotIndex}
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: getCategoryColor([req]) }}
+                                      />
+                                    ))
+                                  ) : (
+                                    <span className="w-2 h-2 rounded-full bg-[#6b7280]" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    {course.isCompleted && (
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="shrink-0 text-[#12F987]"
+                                      >
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                    )}
+                                    <span className="text-xs font-bold text-[var(--muted-foreground)]">
+                                      {course.code}
+                                    </span>
+                                    <span className="text-sm font-semibold text-[var(--foreground)] truncate">
+                                      {course.title}
+                                    </span>
+                                  </div>
+                                  {course.fulfills && course.fulfills.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {course.fulfills.map((req, reqIndex) => {
+                                        const reqColor = getCategoryColor([req]);
+                                        return (
+                                          <span
+                                            key={reqIndex}
+                                            className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                                            style={{
+                                              backgroundColor: `color-mix(in srgb, ${reqColor} 15%, transparent)`,
+                                              color: reqColor,
+                                            }}
+                                          >
+                                            {req}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold text-[var(--muted-foreground)] shrink-0">
+                                {course.credits} cr
+                              </span>
                             </div>
-                            <span className="text-xs font-body-semi text-[var(--foreground)] whitespace-nowrap">
-                              {course.credits || 0} cr
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {!term.courses || term.courses.length === 0 && (
-                        <p className="text-xs text-[var(--muted-foreground)] text-center py-8">No courses</p>
-                      )}
-                    </div>
-
-                  </div>
-
-                  {/* Arrow to next term (if not last in row and not last term) */}
-                  {index < planData.length - 1 && (
-                    (planData.length <= 4 ? (index + 1) % 4 !== 0 :
-                     planData.length <= 6 ? (index + 1) % 3 !== 0 :
-                     (index + 1) % 4 !== 0) && (
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 w-6 flex items-center justify-center">
-                        <div className="bg-[var(--secondary)] rounded-full p-1.5">
-                          <svg
-                            width="32"
-                            height="32"
-                            viewBox="0 0 32 32"
-                            fill="none"
-                            className="text-[var(--primary)] drop-shadow-lg"
-                          >
-                            <path
-                              d="M4 16 L22 16 M22 16 L17 11 M22 16 L17 21"
-                              stroke="currentColor"
-                              strokeWidth="3.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
+                          );
+                        })}
                       </div>
-                    )
-                  )}
-                </div>
-              ))}
+                    ) : (
+                      <p className="text-xs text-[var(--muted-foreground)] text-center py-6">No courses</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Events/Milestones Section */}
+            {events.length > 0 && (
+              <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] bg-white dark:bg-[var(--card)] p-5 shadow-sm">
+                <h3 className="text-sm font-black text-[var(--foreground)] mb-3">Milestones</h3>
+                <div className="flex flex-wrap gap-2">
+                  {events.map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--muted)] px-3 py-1.5"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-[#ec4899]" />
+                      <span className="text-xs font-bold text-[var(--foreground)]">{event.title}</span>
+                      <span className="text-[10px] text-[var(--muted-foreground)]">after Term {event.afterTerm}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -293,7 +374,7 @@ export default function GradPlanClient({
 
           {/* Progress Overview Sidebar */}
           <div className="lg:w-[550px] lg:min-w-[530px] lg:max-w-[550px] lg:sticky lg:top-6 self-start">
-            <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-4 shadow-sm overflow-auto max-h-[calc(100vh-70px)]">
               <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
             </div>
           </div>

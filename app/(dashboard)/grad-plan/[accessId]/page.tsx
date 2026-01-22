@@ -560,11 +560,11 @@ export default function EditGradPlanPage() {
       <Box
         component="section"
         sx={{
-          borderRadius: '7px',
+          borderRadius: '16px',
           border: '1px solid',
-          borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 35%, var(--border) 65%)',
+          borderColor: 'color-mix(in srgb, var(--muted-foreground) 10%, transparent)',
           backgroundColor: 'var(--card)',
-          boxShadow: '0 56px 120px -90px rgba(10,31,26,0.55)',
+          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
           p: { xs: 3, md: 4 },
           display: 'flex',
           flexDirection: 'column',
@@ -634,11 +634,11 @@ export default function EditGradPlanPage() {
                   gap: 1,
                   px: 2.5,
                   py: 1,
-                  borderRadius: '7px',
+                  borderRadius: '9999px',
                   backgroundColor: '#0a1f1a',
                   color: '#ffffff',
                   fontSize: '0.75rem',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
                 }}
@@ -653,11 +653,11 @@ export default function EditGradPlanPage() {
                     gap: 1,
                     px: 2.5,
                     py: 1,
-                    borderRadius: '7px',
+                    borderRadius: '9999px',
                     backgroundColor: 'color-mix(in srgb, var(--primary) 18%, white 82%)',
                     color: 'color-mix(in srgb, var(--foreground) 82%, var(--primary) 18%)',
                     fontSize: '0.75rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     letterSpacing: '0.18em',
                     textTransform: 'uppercase',
                   }}
@@ -673,7 +673,7 @@ export default function EditGradPlanPage() {
                   <Box
                     key={program.id}
                     sx={{
-                      borderRadius: '7px',
+                      borderRadius: '9999px',
                       border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)',
                       backgroundColor: 'color-mix(in srgb, var(--primary) 12%, white)',
                       px: 2,
@@ -709,12 +709,12 @@ export default function EditGradPlanPage() {
                   sx={{
                     backgroundColor: '#0a1f1a',
                     color: '#ffffff',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     textTransform: 'none',
                     letterSpacing: '0.06em',
                     px: 3,
                     py: 1.25,
-                    borderRadius: '7px',
+                    borderRadius: '12px',
                     '&:hover': {
                       backgroundColor: '#043322',
                       boxShadow: '0 10px 26px -18px rgba(10,31,26,0.6)',
@@ -777,12 +777,12 @@ export default function EditGradPlanPage() {
                 sx={{
                   borderColor: 'color-mix(in srgb, var(--action-cancel) 70%, transparent)',
                   color: 'color-mix(in srgb, var(--action-cancel) 80%, var(--foreground) 20%)',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   textTransform: 'none',
                   letterSpacing: '0.06em',
                   px: 3,
                   py: 1.25,
-                  borderRadius: '7px',
+                  borderRadius: '12px',
                   '&:hover': {
                     borderColor: 'var(--action-cancel-hover)',
                     backgroundColor: 'rgba(244, 67, 54, 0.08)',
@@ -802,12 +802,12 @@ export default function EditGradPlanPage() {
                   sx={{
                     borderColor: '#6366f1',
                     color: '#6366f1',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     textTransform: 'none',
                     letterSpacing: '0.06em',
                     px: 2,
                     py: 1.25,
-                    borderRadius: '7px',
+                    borderRadius: '12px',
                     fontSize: '0.75rem',
                     '&:hover': {
                       borderColor: '#4f46e5',
@@ -840,11 +840,11 @@ export default function EditGradPlanPage() {
         <Box sx={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box
             sx={{
-              borderRadius: '7px',
+              borderRadius: '16px',
               border: '1px solid',
-              borderColor: 'color-mix(in srgb, rgba(10,31,26,0.16) 30%, var(--border) 70%)',
+              borderColor: 'color-mix(in srgb, var(--muted-foreground) 10%, transparent)',
               backgroundColor: 'var(--card)',
-              boxShadow: '0 48px 120px -80px rgba(10,31,26,0.45)',
+              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
               p: { xs: 2, md: 3 },
             }}
           >
@@ -879,7 +879,7 @@ export default function EditGradPlanPage() {
           </Box>
 
           {isStudent && (
-            <Alert severity="info" sx={{ borderRadius: '7px' }}>
+            <Alert severity="info" sx={{ borderRadius: '12px' }}>
               You are editing your graduation plan. Drag courses between terms and add milestones, then submit for approval to lock in your updates.
             </Alert>
           )}
@@ -907,7 +907,7 @@ export default function EditGradPlanPage() {
             )}
 
             {/* Progress Overview Panel - NEW component */}
-            <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-4 shadow-sm overflow-auto max-h-[calc(100vh-70px)]">
               <ProgressOverviewContainer categories={mockAllCategoriesWithMinor} />
             </div>
           </Box>

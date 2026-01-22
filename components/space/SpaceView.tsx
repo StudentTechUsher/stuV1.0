@@ -90,19 +90,60 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
   }, [sortedTermsWithIndices, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent, onAddCourse, onSubstituteCourse]);
 
   return (
-    <div className="space-y-3">
-      {/* Term cards and event cards - One term per row with milestones below */}
-      <div className="flex flex-col gap-4 w-full">
-        {termRows}
+    <div className="space-y-4">
+      {/* Term cards - 2 per row grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {sortedTermsWithIndices.map(({ term, originalIndex }) => (
+          <div key={`term-${term.id}`} className="transition-all duration-200">
+            <TermCard
+              term={term}
+              isEditMode={isEditMode}
+              modifiedTerms={modifiedTerms}
+              onAddCourse={onAddCourse}
+              onSubstituteCourse={onSubstituteCourse}
+              gradPlanId={gradPlanId}
+            />
+          </div>
+        ))}
       </div>
 
-      {/* Bottom legend */}
-      <div className="flex items-center gap-2 text-xs text-gray-600">
-        <span
-          className="inline-block w-2 h-2 rounded-full bg-[var(--primary)]"
-          aria-label="Green dot indicator"
-        />
-        <span>Fulfills both a Major and GE Requirement</span>
+      {/* Events section - below grid */}
+      {plan.events && plan.events.length > 0 && (
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_8%,transparent)] bg-white dark:bg-[var(--card)] p-4 shadow-sm">
+          <h3 className="text-sm font-black text-[var(--foreground)] mb-3">Milestones</h3>
+          <div className="flex flex-wrap gap-2">
+            {plan.events.map((event) => (
+              <div
+                key={`event-${event.id}`}
+                className="flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--muted)] px-3 py-1.5"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#ec4899]" />
+                <span className="text-xs font-bold text-[var(--foreground)]">{event.title}</span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">after Term {event.afterTerm}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom legend - matches Progress Overview colors */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--muted-foreground)] font-medium px-1">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#12F987]" />
+          <span>Major</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#2196f3]" />
+          <span>Gen Ed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#5E35B1]" />
+          <span>Religion</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#9C27B0]" />
+          <span>Elective</span>
+        </div>
       </div>
     </div>
   );
