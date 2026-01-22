@@ -23,6 +23,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import { PATHFINDER_COLORS } from '@/components/pathfinder/pathfinder-progress-ui';
 
 type GlobalWithUniversity = typeof globalThis & { __UNIVERSITY_ID__?: unknown };
 
@@ -82,7 +83,8 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
   const retainedFormRef = React.useRef<MajorPivotFormValues | null>(null);
   const [overlapOpen, setOverlapOpen] = React.useState(false);
   interface OverlapProgram { id: number | string; name: string; requirements: unknown; kind?: 'major' | 'minor'; }
-  const [overlapProgram, setOverlapProgram] = React.useState<OverlapProgram | null>(null);
+  // Minor detail modal is now shown inline; keeping state for potential future modal usage
+  const [overlapProgram, _setOverlapProgram] = React.useState<OverlapProgram | null>(null);
   const [minorAuditLoading, setMinorAuditLoading] = React.useState(false);
   const [minorAuditError, setMinorAuditError] = React.useState<string | null>(null);
   const [minorAuditMinors, setMinorAuditMinors] = React.useState<Array<{ id: string; name: string; reason: string }> | null>(null);
@@ -502,22 +504,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     void loadCareerSuggestions(formValues, true);
   }
 
-  async function handleMinorClick(minorName: string) {
-    try {
-      const res = await fetchMinorByName(1, minorName);
-      if (res.success && res.minor) {
-        setOverlapProgram({ id: res.minor.id, name: res.minor.name, requirements: res.minor.requirements, kind: 'minor' });
-      } else {
-        setOverlapProgram({ id: 'unknown', name: minorName, requirements: {}, kind: 'minor' });
-      }
-    } catch {
-      setOverlapProgram({ id: 'unknown', name: minorName, requirements: {}, kind: 'minor' });
-    } finally {
-      // Previously: open modal. Now we keep the data in state and render details inline.
-      // (Modal is still available as a fallback if needed.)
-      setOverlapOpen(false);
-    }
-  }
+  // Minor click handling is now integrated inline with ProgramOverlapPanel
 
   async function loadMinorAudit() {
     setMinorAuditLoading(true);
@@ -611,7 +598,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
         <div className="max-w-md text-center">
           <div className="mb-6">
             <svg
-              className="mx-auto h-16 w-16 text-gray-400"
+              className="mx-auto h-16 w-16 text-[var(--muted-foreground)]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -625,14 +612,15 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-3">No Course History Found</h2>
-          <p className="text-sm text-gray-600 mb-8">
+          <h2 className="text-2xl font-black text-[var(--foreground)] mb-3">No Course History Found</h2>
+          <p className="text-sm text-[var(--muted-foreground)] mb-8">
             Pathfinder uses your completed coursework to suggest alternative academic and career paths.
             Upload your transcript to get started with personalized recommendations.
           </p>
           <a
             href="/academic-history"
-            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
+            className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold text-white transition-colors"
+            style={{ backgroundColor: PATHFINDER_COLORS.major }}
           >
             Upload Transcript
           </a>
@@ -645,8 +633,8 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     <>
   <div className="min-h-[calc(100vh-60px)] flex flex-col px-4 py-6 relative">
       <div className="mb-6 flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-gray-800">Pathfinder</h1>
-        <p className="text-sm text-gray-600 max-w-3xl">
+        <h1 className="text-2xl font-black text-[var(--foreground)]">Pathfinder</h1>
+        <p className="text-sm text-[var(--muted-foreground)] max-w-3xl">
           Explore alternative academic and career alignments based on your completed coursework. Choose an exploration mode on the right to begin.
         </p>
       </div>
@@ -755,15 +743,23 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
             </div>
           )}
           {activePanel === 'minor-audit' && (
-            <div className="rounded-lg border border-emerald-200 bg-white/70 backdrop-blur p-5 shadow-sm">
-              <div className="flex items-start justify-between mb-4">
+            <div
+              className="rounded-2xl border p-6 shadow-sm"
+              style={{
+                backgroundColor: 'var(--background)',
+                borderColor: `color-mix(in srgb, ${PATHFINDER_COLORS.minor} 30%, var(--border))`,
+                borderLeftWidth: '4px',
+                borderLeftColor: PATHFINDER_COLORS.minor,
+              }}
+            >
+              <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className="text-sm font-semibold text-emerald-800">Near-Completion Minor Audit</h2>
-                  <p className="text-xs text-gray-600 mt-1 max-w-prose">We scan minors and surface those where your completed courses already satisfy a meaningful portion of requirements.</p>
+                  <h2 className="text-sm font-black text-[var(--foreground)] uppercase tracking-wide">Near-Completion Minor Audit</h2>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1 max-w-prose">We scan minors and surface those where your completed courses already satisfy a meaningful portion of requirements.</p>
                 </div>
                 <button
                   onClick={() => { setActivePanel(null); setMinorAuditMinors(null); setMinorAuditMessage(null); setMinorAuditError(null); }}
-                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition underline underline-offset-4"
+                  className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
                   type="button"
                 >Close</button>
               </div>
@@ -773,11 +769,18 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                 </div>
               )}
               {minorAuditError && (
-                <div className="mt-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded p-3">
+                <div
+                  className="mt-4 text-xs rounded-xl p-4 border"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, #ef4444 8%, var(--background))`,
+                    borderColor: `color-mix(in srgb, #ef4444 30%, var(--border))`,
+                    color: 'var(--foreground)',
+                  }}
+                >
                   {minorAuditError}
                   <button
                     type="button"
-                    className="ml-3 underline text-red-700"
+                    className="ml-3 underline font-semibold"
                     onClick={() => { void loadMinorAudit(); }}
                   >Retry</button>
                 </div>
@@ -785,38 +788,31 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
               {!minorAuditLoading && !minorAuditError && minorAuditMinors && (
                 <div className="space-y-5">
                   <div>
-                    <h3 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase">Potential Minors</h3>
-                    {minorAuditMessage && <p className="mt-1 text-[11px] text-gray-600">{minorAuditMessage}</p>}
+                    <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide uppercase">Potential Minors</h3>
+                    {minorAuditMessage && <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{minorAuditMessage}</p>}
                   </div>
                   {minorAuditMinors.length === 0 && (
-                    <div className="text-[11px] text-gray-500 border rounded p-3 bg-gray-50">No minors appear close to completion with current course list.</div>
+                    <div
+                      className="text-[11px] rounded-xl p-4 border"
+                      style={{
+                        backgroundColor: `color-mix(in srgb, var(--muted) 30%, var(--background))`,
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                        color: 'var(--muted-foreground)',
+                      }}
+                    >
+                      No minors appear close to completion with current course list.
+                    </div>
                   )}
                   {minorAuditMinors.length > 0 && (
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                       {minorAuditMinors.map(m => (
-                        <div key={m.id} className="rounded-lg border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[var(--card)]/70 backdrop-blur shadow-sm overflow-hidden">
-                          <div className="p-4 border-b border-[color-mix(in_srgb,var(--border)_80%,transparent)]">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-[var(--foreground)] truncate">
-                                  {m.name}
-                                </div>
-                                <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
-                                  {m.reason}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Default-open details: key info visible immediately (no click required) */}
-                          <div className="p-4">
-                            <ProgramOverlapPanel
-                              major={minorDetailsByName[m.name]
-                                ? { id: minorDetailsByName[m.name].id, name: minorDetailsByName[m.name].name, requirements: minorDetailsByName[m.name].requirements }
-                                : { id: m.id, name: m.name, requirements: {} }}
-                              completedCourses={courses.map(c => ({ code: c.code, title: c.title, credits: c.credits, term: c.term, grade: c.grade, tags: c.tags }))}
-                            />
-                          </div>
+                        <div key={m.id}>
+                          <ProgramOverlapPanel
+                            major={minorDetailsByName[m.name]
+                              ? { id: minorDetailsByName[m.name].id, name: minorDetailsByName[m.name].name, requirements: minorDetailsByName[m.name].requirements }
+                              : { id: m.id, name: m.name, requirements: {} }}
+                            completedCourses={courses.map(c => ({ code: c.code, title: c.title, credits: c.credits, term: c.term, grade: c.grade, tags: c.tags }))}
+                          />
                         </div>
                       ))}
                     </div>
@@ -825,12 +821,21 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                     <button
                       type="button"
                       onClick={() => { setActivePanel(null); }}
-                      className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/70 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors"
+                      style={{
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                        backgroundColor: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
                     >Close</button>
                     <button
                       type="button"
                       onClick={() => { setMinorAuditLoading(true); void loadMinorAudit(); }}
-                      className="inline-flex items-center justify-center rounded border border-emerald-300 bg-emerald-600/90 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold text-white transition-colors"
+                      style={{
+                        borderColor: PATHFINDER_COLORS.minor,
+                        backgroundColor: PATHFINDER_COLORS.minor,
+                      }}
                     >Rescan</button>
                   </div>
                 </div>
@@ -838,15 +843,23 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
             </div>
           )}
           {activePanel === 'major-pivot' && (
-            <div className="rounded-lg border border-emerald-200 bg-white/70 backdrop-blur p-5 shadow-sm">
-              <div className="flex items-start justify-between mb-4">
+            <div
+              className="rounded-2xl border p-6 shadow-sm"
+              style={{
+                backgroundColor: 'var(--background)',
+                borderColor: `color-mix(in srgb, ${PATHFINDER_COLORS.major} 30%, var(--border))`,
+                borderLeftWidth: '4px',
+                borderLeftColor: PATHFINDER_COLORS.major,
+              }}
+            >
+              <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className="text-sm font-semibold text-emerald-800">Major Pivot Exploration</h2>
-                  <p className="text-xs text-gray-600 mt-1 max-w-prose">Tell us a bit about your experience so far so we can surface aligned pivot directions.</p>
+                  <h2 className="text-sm font-black text-[var(--foreground)] uppercase tracking-wide">Major Pivot Exploration</h2>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1 max-w-prose">Tell us a bit about your experience so far so we can surface aligned pivot directions.</p>
                 </div>
                 <button
                   onClick={() => { setActivePanel(null); setLastAction('Closed major pivot form'); }}
-                  className="text-xs text-gray-500 hover:text-gray-700 transition"
+                  className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
                   type="button"
                 >
                   Close
@@ -865,11 +878,18 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                 </div>
               )}
               {suggestionError && (
-                <div className="mt-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded p-3">
+                <div
+                  className="mt-4 text-xs rounded-xl p-4 border"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, #ef4444 8%, var(--background))`,
+                    borderColor: `color-mix(in srgb, #ef4444 30%, var(--border))`,
+                    color: 'var(--foreground)',
+                  }}
+                >
                   {suggestionError}
                   <button
                     type="button"
-                    className="ml-3 underline text-red-700"
+                    className="ml-3 underline font-semibold"
                     onClick={() => {
                       setCareerOptions(null); setSuggestionError(null);
                     }}
@@ -879,8 +899,8 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
               {careerOptions && !loadingSuggestions && !selectedCareer && (
                 <div className="space-y-5">
                   <div>
-                    <h3 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase">Suggested Directions</h3>
-                    {careerMessage && <p className="mt-1 text-[11px] text-gray-600">{careerMessage}</p>}
+                    <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide uppercase">Suggested Directions</h3>
+                    {careerMessage && <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{careerMessage}</p>}
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {careerOptions.map(opt => {
@@ -891,17 +911,32 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                           type="button"
                           aria-label={`Select career direction ${opt.title}`}
                           onClick={() => handleCareerClick(opt.id)}
-                          className={
-                            `relative text-left rounded border transition p-3 group shadow-sm cursor-pointer ` +
-                            `bg-white/80 hover:bg-emerald-50 border-emerald-200 ` +
-                            (isClicked ? 'ring-2 ring-emerald-400 ring-offset-1' : '')
-                          }
+                          className="relative text-left rounded-xl border transition p-4 group shadow-sm cursor-pointer"
+                          style={{
+                            backgroundColor: isClicked
+                              ? `color-mix(in srgb, ${PATHFINDER_COLORS.major} 15%, var(--background))`
+                              : 'var(--background)',
+                            borderColor: isClicked
+                              ? PATHFINDER_COLORS.major
+                              : `color-mix(in srgb, ${PATHFINDER_COLORS.major} 30%, var(--border))`,
+                            boxShadow: isClicked ? `0 0 0 2px ${PATHFINDER_COLORS.major}40` : undefined,
+                          }}
                         >
-                          <div className="font-medium text-sm text-emerald-800 group-hover:text-emerald-900 flex items-center gap-2">
+                          <div className="font-semibold text-sm text-[var(--foreground)] flex items-center gap-2">
                             {opt.title}
-                            {isClicked && <span className="text-[10px] uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Selected</span>}
+                            {isClicked && (
+                              <span
+                                className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full font-bold"
+                                style={{
+                                  backgroundColor: `color-mix(in srgb, ${PATHFINDER_COLORS.major} 20%, transparent)`,
+                                  color: 'var(--foreground)',
+                                }}
+                              >
+                                Selected
+                              </span>
+                            )}
                           </div>
-                          <p className="mt-1 text-[11px] text-gray-600 line-clamp-3">{opt.rationale}</p>
+                          <p className="mt-1 text-[11px] text-[var(--muted-foreground)] line-clamp-3">{opt.rationale}</p>
                         </button>
                       );
                     })}
@@ -909,17 +944,26 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                       onClick={() => handleNoneOfThese({
                         whyMajor: '', notWorking: '', partsLiked: '', wantCareerHelp: true, consideredCareer: ''
                       })}
-                      className="text-left rounded border border-gray-300 bg-white/80 hover:bg-gray-50 transition p-3 shadow-sm"
+                      className="text-left rounded-xl border transition p-4 shadow-sm"
+                      style={{
+                        backgroundColor: 'var(--background)',
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                      }}
                     >
-                      <div className="font-medium text-sm text-gray-700">None of these</div>
-                      <p className="mt-1 text-[11px] text-gray-500">Show {retryCount === 0 ? 'different options' : 'an advisor instead'}</p>
+                      <div className="font-semibold text-sm text-[var(--foreground)]">None of these</div>
+                      <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">Show {retryCount === 0 ? 'different options' : 'an advisor instead'}</p>
                     </button>
                   </div>
                   <div className="flex gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setActivePanel(null)}
-                      className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/70 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors"
+                      style={{
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                        backgroundColor: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
                     >
                       Cancel
                     </button>
@@ -929,9 +973,9 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
               {selectedCareer && (
                 <div className="space-y-5 mt-6">
                   <div>
-                    <h3 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase">Aligned Majors</h3>
-                    <p className="mt-1 text-[11px] text-gray-600">Career focus: <span className="font-medium text-emerald-800">{selectedCareer.title}</span></p>
-                    {majorMessage && <p className="mt-1 text-[11px] text-gray-600">{majorMessage}</p>}
+                    <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide uppercase">Aligned Majors</h3>
+                    <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">Career focus: <span className="font-semibold text-[var(--foreground)]">{selectedCareer.title}</span></p>
+                    {majorMessage && <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{majorMessage}</p>}
                   </div>
                   {loadingMajors && (
                     <div className="py-4">
@@ -944,27 +988,42 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                         <button
                           key={m.code}
                           onClick={() => handleMajorSelection(m.code)}
-                          className="text-left rounded border border-emerald-200 bg-white/80 hover:bg-emerald-50 transition p-3 group shadow-sm"
+                          className="text-left rounded-xl border transition p-4 group shadow-sm"
+                          style={{
+                            backgroundColor: 'var(--background)',
+                            borderColor: `color-mix(in srgb, ${PATHFINDER_COLORS.major} 30%, var(--border))`,
+                          }}
                         >
-                          <div className="font-medium text-sm text-emerald-800 group-hover:text-emerald-900">{m.name}</div>
-                          <p className="mt-1 text-[11px] text-gray-600 line-clamp-3">{m.rationale}</p>
+                          <div className="font-semibold text-sm text-[var(--foreground)]">{m.name}</div>
+                          <p className="mt-1 text-[11px] text-[var(--muted-foreground)] line-clamp-3">{m.rationale}</p>
                         </button>
                       ))}
                       <button
                         onClick={() => { setSelectedCareer(null); setMajorOptions(null); setMajorMessage(null); }}
-                        className="text-left rounded border border-gray-300 bg-white/80 hover:bg-gray-50 transition p-3 shadow-sm"
+                        className="text-left rounded-xl border transition p-4 shadow-sm"
+                        style={{
+                          backgroundColor: 'var(--background)',
+                          borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                        }}
                       >
-                        <div className="font-medium text-sm text-gray-700">Back to careers</div>
-                        <p className="mt-1 text-[11px] text-gray-500">Choose a different career direction</p>
+                        <div className="font-semibold text-sm text-[var(--foreground)]">Back to careers</div>
+                        <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">Choose a different career direction</p>
                       </button>
                     </div>
                   )}
                   {suggestionError && !loadingMajors && (
-                    <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-3">
+                    <div
+                      className="text-xs rounded-xl p-4 border"
+                      style={{
+                        backgroundColor: `color-mix(in srgb, #ef4444 8%, var(--background))`,
+                        borderColor: `color-mix(in srgb, #ef4444 30%, var(--border))`,
+                        color: 'var(--foreground)',
+                      }}
+                    >
                       {suggestionError}
                       <button
                         type="button"
-                        className="ml-3 underline text-red-700"
+                        className="ml-3 underline font-semibold"
                         onClick={() => { if (selectedCareer) handleCareerClick(selectedCareer.id); }}
                       >Retry</button>
                     </div>
@@ -973,7 +1032,12 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                     <button
                       type="button"
                       onClick={() => { setActivePanel(null); setSelectedCareer(null); setMajorOptions(null); }}
-                      className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/70 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors"
+                      style={{
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                        backgroundColor: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
                     >
                       Close
                     </button>
@@ -983,11 +1047,19 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
             </div>
           )}
           {activePanel === 'compare-majors' && (
-            <div className="rounded-lg border border-emerald-200 bg-white/70 backdrop-blur p-5 shadow-sm">
-              <div className="flex items-start justify-between mb-4">
+            <div
+              className="rounded-2xl border p-6 shadow-sm"
+              style={{
+                backgroundColor: 'var(--background)',
+                borderColor: `color-mix(in srgb, ${PATHFINDER_COLORS.comparison} 30%, var(--border))`,
+                borderLeftWidth: '4px',
+                borderLeftColor: PATHFINDER_COLORS.comparison,
+              }}
+            >
+              <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className="text-sm font-semibold text-emerald-800">Compare Majors</h2>
-                  <p className="text-xs text-gray-600 mt-1 max-w-prose">
+                  <h2 className="text-sm font-black text-[var(--foreground)] uppercase tracking-wide">Compare Majors</h2>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1 max-w-prose">
                     Select 2-4 majors to see a side-by-side comparison of your progress.
                   </p>
                 </div>
@@ -999,7 +1071,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                     setMajorsCatalog(null);
                     setSidebarVisible(true); // Reset sidebar visibility when closing
                   }}
-                  className="text-xs text-gray-500 hover:text-gray-700 transition"
+                  className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
                   type="button"
                 >
                   Close
@@ -1028,15 +1100,23 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
             </div>
           )}
           {activePanel === 'adjacent-career' && (
-            <div className="rounded-lg border border-emerald-200 bg-white/70 backdrop-blur p-5 shadow-sm">
-              <div className="flex items-start justify-between mb-4">
+            <div
+              className="rounded-2xl border p-6 shadow-sm"
+              style={{
+                backgroundColor: 'var(--background)',
+                borderColor: `color-mix(in srgb, ${PATHFINDER_COLORS.career} 30%, var(--border))`,
+                borderLeftWidth: '4px',
+                borderLeftColor: PATHFINDER_COLORS.career,
+              }}
+            >
+              <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className="text-sm font-semibold text-emerald-800">Adjacent Career Exploration</h2>
-                  <p className="text-xs text-gray-600 mt-1 max-w-prose">Tell us what energizes you in your current major and an industry you're curious about. We'll surface adjacent roles that may leverage your existing coursework with minimal extra lift.</p>
+                  <h2 className="text-sm font-black text-[var(--foreground)] uppercase tracking-wide">Adjacent Career Exploration</h2>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1 max-w-prose">Tell us what energizes you in your current major and an industry you&apos;re curious about. We&apos;ll surface adjacent roles that may leverage your existing coursework with minimal extra lift.</p>
                 </div>
                 <button
                   onClick={() => { setActivePanel(null); setLastAction('Closed adjacent career form'); }}
-                  className="text-xs text-gray-500 hover:text-gray-700 transition"
+                  className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
                   type="button"
                 >Close</button>
               </div>
@@ -1077,11 +1157,18 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                 </div>
               )}
               {adjacentError && (
-                <div className="mt-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded p-3">
+                <div
+                  className="mt-4 text-xs rounded-xl p-4 border"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, #ef4444 8%, var(--background))`,
+                    borderColor: `color-mix(in srgb, #ef4444 30%, var(--border))`,
+                    color: 'var(--foreground)',
+                  }}
+                >
                   {adjacentError}
                   <button
                     type="button"
-                    className="ml-3 underline text-red-700"
+                    className="ml-3 underline font-semibold"
                     onClick={() => { setAdjacentError(null); setAdjacentOptions(null); setLoadingAdjacent(false); }}
                   >Clear</button>
                 </div>
@@ -1089,8 +1176,8 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
               {adjacentOptions && !loadingAdjacent && (
                 <div className="space-y-5">
                   <div>
-                    <h3 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase">Suggested Adjacent Roles</h3>
-                    {adjacentMessage && <p className="mt-1 text-[11px] text-gray-600">{adjacentMessage}</p>}
+                    <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide uppercase">Suggested Adjacent Roles</h3>
+                    {adjacentMessage && <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{adjacentMessage}</p>}
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {adjacentOptions.map(opt => {
@@ -1112,16 +1199,32 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                               setLoadingCareer(false);
                             }
                           }}
-                          className={
-                            `text-left rounded border p-3 shadow-sm transition bg-white/80 hover:bg-emerald-50 border-emerald-200 ` +
-                            (isClicked ? 'ring-2 ring-emerald-400 ring-offset-1' : '')
-                          }
+                          className="text-left rounded-xl border p-4 shadow-sm transition cursor-pointer"
+                          style={{
+                            backgroundColor: isClicked
+                              ? `color-mix(in srgb, ${PATHFINDER_COLORS.career} 15%, var(--background))`
+                              : 'var(--background)',
+                            borderColor: isClicked
+                              ? PATHFINDER_COLORS.career
+                              : `color-mix(in srgb, ${PATHFINDER_COLORS.career} 30%, var(--border))`,
+                            boxShadow: isClicked ? `0 0 0 2px ${PATHFINDER_COLORS.career}40` : undefined,
+                          }}
                         >
-                          <div className="font-medium text-sm text-emerald-800 flex items-center gap-2">
+                          <div className="font-semibold text-sm text-[var(--foreground)] flex items-center gap-2">
                             {opt.title}
-                            {isClicked && <span className="text-[10px] uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Viewed</span>}
+                            {isClicked && (
+                              <span
+                                className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full font-bold"
+                                style={{
+                                  backgroundColor: `color-mix(in srgb, ${PATHFINDER_COLORS.career} 20%, transparent)`,
+                                  color: 'var(--foreground)',
+                                }}
+                              >
+                                Viewed
+                              </span>
+                            )}
                           </div>
-                          <p className="mt-1 text-[11px] text-gray-600 line-clamp-3">{opt.rationale}</p>
+                          <p className="mt-1 text-[11px] text-[var(--muted-foreground)] line-clamp-3">{opt.rationale}</p>
                         </button>
                       );
                     })}
@@ -1154,18 +1257,27 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                           }
                         })();
                       }}
-                      className="text-left rounded border border-gray-300 bg-white/80 hover:bg-gray-50 transition p-3 shadow-sm"
+                      className="text-left rounded-xl border transition p-4 shadow-sm"
+                      style={{
+                        backgroundColor: 'var(--background)',
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                      }}
                       type="button"
                     >
-                      <div className="font-medium text-sm text-gray-700">{adjacentRetryCount === 0 ? 'Show different options' : 'Close exploration'}</div>
-                      <p className="mt-1 text-[11px] text-gray-500">{adjacentRetryCount === 0 ? 'Refresh with different adjacent roles' : 'Return to exploration modes'}</p>
+                      <div className="font-semibold text-sm text-[var(--foreground)]">{adjacentRetryCount === 0 ? 'Show different options' : 'Close exploration'}</div>
+                      <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{adjacentRetryCount === 0 ? 'Refresh with different adjacent roles' : 'Return to exploration modes'}</p>
                     </button>
                   </div>
                   <div className="flex gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => { setActivePanel(null); setAdjacentOptions(null); setAdjacentMessage(null); setAdjacentRetryCount(0); }}
-                      className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/70 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold transition-colors"
+                      style={{
+                        borderColor: `color-mix(in srgb, var(--border) 60%, transparent)`,
+                        backgroundColor: 'var(--background)',
+                        color: 'var(--foreground)',
+                      }}
                     >Close</button>
                   </div>
                 </div>
@@ -1173,7 +1285,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
             </div>
           )}
           {(selectedCourse || lastAction) && (
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-[var(--muted-foreground)]">
               {selectedCourse && <span className="mr-3">Focused Course ID: {selectedCourse}</span>}
               {lastAction && <span>{lastAction}</span>}
             </div>
@@ -1194,7 +1306,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     />
     {loadingCareer && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div className="bg-[var(--background)] rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center border border-[color-mix(in_srgb,var(--border)_60%,transparent)]">
           <div className="mb-6 flex justify-center">
             <StuLoader variant="card" text={careerLoadingMessages[careerLoadingMessageIndex].subtitle} />
           </div>
@@ -1203,7 +1315,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
     )}
     {loadingMajor && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div className="bg-[var(--background)] rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center border border-[color-mix(in_srgb,var(--border)_60%,transparent)]">
           <div className="mb-6 flex justify-center">
             <StuLoader variant="card" text={majorLoadingMessages[majorLoadingMessageIndex].subtitle} />
           </div>
