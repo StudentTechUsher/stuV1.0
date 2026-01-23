@@ -10,8 +10,6 @@ export const TranscriptCheckSchema = z.object({
   hasTranscript: z.boolean(),
   wantsToUpload: z.boolean(),
   wantsToUpdate: z.boolean().optional(),
-  startTerm: z.string().optional(),
-  startYear: z.number().int().optional(),
 });
 
 export type TranscriptCheckInput = z.infer<typeof TranscriptCheckSchema>;
@@ -23,8 +21,6 @@ export interface TranscriptCheckResult {
     hasTranscript: boolean;
     wantsToUpload: boolean;
     wantsToUpdate?: boolean;
-    startTerm?: string;
-    startYear?: number;
   };
   error?: string;
 }
@@ -55,14 +51,6 @@ export const transcriptCheckToolDefinition = {
         wantsToUpdate: {
           type: 'boolean',
           description: 'Whether the user wants to update their existing transcript (only relevant if hasTranscript is true)',
-        },
-        startTerm: {
-          type: 'string',
-          description: 'Preferred start term for planning (e.g., "Fall")',
-        },
-        startYear: {
-          type: 'number',
-          description: 'Preferred start year for planning (e.g., 2024)',
         },
       },
       required: ['hasTranscript', 'wantsToUpload'],

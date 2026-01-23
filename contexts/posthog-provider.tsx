@@ -48,12 +48,43 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
       capture_pageview: true, // Safe - just URLs
       capture_pageleave: true, // Safe - timing data
 
-      // Session recording configuration
+      // Session recording configuration - ALWAYS ON with smart PII masking
       session_recording: {
-        // FERPA: Mask all text inputs by default
+        // FERPA: Mask all input fields (text, email, password, etc.)
         maskAllInputs: true,
-        maskTextSelector: '*', // Mask all text content
-        recordCrossOriginIframes: false, // Don't record iframes
+
+        // SMART PII MASKING: Mask specific elements containing student data
+        // This allows UI text, buttons, and labels to be visible in recordings
+        // while protecting FERPA-regulated information
+        maskTextSelector: [
+          // Student personally identifiable information
+          '.student-name',
+          '.student-email',
+          '.student-id',
+          '.student-phone',
+
+          // Academic records
+          '.course-grade',
+          '.gpa-value',
+          '.transcript-data',
+
+          // Any element explicitly marked for masking
+          '[data-ph-mask]',
+          '.ph-mask',
+          '.pii-data',
+        ].join(', '),
+
+        // Don't record iframes (may contain external content)
+        recordCrossOriginIframes: false,
+
+        // Additional privacy settings
+        maskTextFn: (text) => {
+          // Mask any text that looks like an email address
+          if (/\S+@\S+\.\S+/.test(text)) {
+            return '***@***.***';
+          }
+          return text;
+        },
       },
 
       // Privacy settings

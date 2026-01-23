@@ -40,6 +40,7 @@ import { CAREER_PATHFINDER_INITIAL_MESSAGE, getCareerSelectionConfirmationMessag
 import { type ProgramSuggestionsInput, programSuggestionsToolDefinition, buildProgramPathfinderSystemPrompt, fetchAvailableProgramsForRAG } from '@/lib/chatbot/tools/programSuggestionsTool';
 import { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction, ensureStudentRecordAction } from '@/lib/services/server-actions';
+import { findMostRecentTerm } from '@/lib/utils/termCalculation';
 
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -108,6 +109,37 @@ export default function CreatePlanClient({
   const planGenerationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [planGenerationStage, setPlanGenerationStage] = useState<'generating' | 'validating'>('generating');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Helper function to get tool data for plan generation confirmation
+  const getGeneratePlanConfirmationToolData = async (): Promise<Record<string, unknown>> => {
+    const toolData: Record<string, unknown> = {
+      academicTerms,
+    };
+
+    // Fetch last completed term from user courses if they have a transcript
+    if (conversationState.collectedData.hasTranscript) {
+      try {
+        const coursesResult = await fetchUserCoursesAction(user.id);
+        if (coursesResult.success && coursesResult.courses && coursesResult.courses.length > 0) {
+          const terms = coursesResult.courses
+            .map(c => c.term)
+            .filter((term): term is string => !!term);
+
+          const lastTerm = findMostRecentTerm(terms);
+          if (lastTerm) {
+            toolData.lastCompletedTerm = lastTerm;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching courses for last term:', error);
+      }
+    }
+
+    // TODO: Add preferred start terms from student preferences if available
+    // This would come from student table or profile preferences
+
+    return toolData;
+  };
 
   // Initialize conversation on mount
   useEffect(() => {
@@ -229,7 +261,7 @@ export default function CreatePlanClient({
     ]);
 
     // Show the appropriate tool for the target step after a brief delay
-    setTimeout(() => {
+    setTimeout(async () => {
       let toolMessage: Message | null = null;
 
       switch (targetStep) {
@@ -345,16 +377,18 @@ export default function CreatePlanClient({
           setActiveTool('milestones_and_constraints');
           break;
 
-        case ConversationStep.GENERATING_PLAN:
+        case ConversationStep.GENERATING_PLAN: {
+          const toolData = await getGeneratePlanConfirmationToolData();
           toolMessage = {
             role: 'tool',
             content: '',
             timestamp: new Date(),
             toolType: 'generate_plan_confirmation',
-            toolData: {},
+            toolData,
           };
           setActiveTool('generate_plan_confirmation');
           break;
+        }
 
         default:
           // For other steps, just show a message
@@ -430,8 +464,6 @@ export default function CreatePlanClient({
           hasTranscript: boolean;
           wantsToUpload: boolean;
           wantsToUpdate?: boolean;
-          startTerm?: string;
-          startYear?: number;
         };
 
         // Update conversation state
@@ -442,8 +474,6 @@ export default function CreatePlanClient({
               hasTranscript: transcriptData.hasTranscript,
               transcriptUploaded: transcriptData.wantsToUpload,
               needsTranscriptUpdate: transcriptData.wantsToUpdate || false,
-              planStartTerm: transcriptData.startTerm ?? null,
-              planStartYear: transcriptData.startYear ?? null,
             },
             completedStep: ConversationStep.TRANSCRIPT_CHECK,
           });
@@ -456,19 +486,13 @@ export default function CreatePlanClient({
 
         // Add appropriate message based on their choice
         let nextMessage: string;
-        const startLabel = transcriptData.startTerm && transcriptData.startYear
-          ? ` We'll start in ${transcriptData.startTerm} ${transcriptData.startYear}.`
-          : '';
 
         if (transcriptData.wantsToUpload) {
           nextMessage = 'Great! Your transcript has been reviewed and included in your context.';
         } else if (transcriptData.hasTranscript) {
           nextMessage = 'Perfect! We\'ll use the transcript you uploaded previously.';
         } else {
-          nextMessage = `Okay, we can proceed without a transcript.${startLabel}`;
-        }
-        if (transcriptData.hasTranscript || transcriptData.wantsToUpload) {
-          nextMessage += startLabel;
+          nextMessage = 'Okay, we can proceed without a transcript.';
         }
         nextMessage += ' Now, let\'s select your program(s).';
 
@@ -767,7 +791,8 @@ export default function CreatePlanClient({
         ]);
 
         // Move to GENERATING_PLAN step
-        setTimeout(() => {
+        setTimeout(async () => {
+          const toolData = await getGeneratePlanConfirmationToolData();
           setMessages(prev => [
             ...prev,
             {
@@ -780,7 +805,7 @@ export default function CreatePlanClient({
               content: '',
               timestamp: new Date(),
               toolType: 'generate_plan_confirmation',
-              toolData: {},
+              toolData,
             },
           ]);
           setActiveTool('generate_plan_confirmation');
@@ -790,7 +815,7 @@ export default function CreatePlanClient({
       } else if (toolType === 'generate_plan_confirmation') {
         setActiveTool(null);
         const confirmationData = result as
-          | { action: 'generate'; mode: 'automatic' | 'active_feedback' }
+          | { action: 'generate'; mode: 'automatic' | 'active_feedback'; startTerm: string; startYear: number }
           | { action: 'review' };
 
         if (confirmationData.action === 'review') {
@@ -808,13 +833,23 @@ export default function CreatePlanClient({
         }
 
         const generationMode = confirmationData.mode;
+        const startTerm = confirmationData.startTerm;
+        const startYear = confirmationData.startYear;
+
+        // Store start term/year in conversation state
+        setConversationState(prev => updateState(prev, {
+          data: {
+            planStartTerm: startTerm,
+            planStartYear: startYear,
+          },
+        }));
 
         if (generationMode === 'active_feedback') {
           setMessages(prev => [
             ...prev,
             {
               role: 'assistant',
-              content: 'Great choice! Here is a quick draft. Move courses earlier or later and I\'ll adjust the plan as you go.',
+              content: `Great choice! We'll start your plan in ${startTerm} ${startYear}. Here is a quick draft. Move courses earlier or later and I'll adjust the plan as you go.`,
               timestamp: new Date(),
             },
             {
@@ -836,6 +871,16 @@ export default function CreatePlanClient({
           setIsProcessing(false);
           return;
         }
+
+        // Automatic generation mode
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Perfect! I'll generate your complete plan starting from ${startTerm} ${startYear}. This may take a moment...`,
+            timestamp: new Date(),
+          },
+        ]);
 
         startPlanGeneration();
 
