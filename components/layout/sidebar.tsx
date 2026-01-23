@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useUniversityTheme } from '@/contexts/university-theme-context';
 import { useDarkMode } from '@/contexts/dark-mode-context';
+import { StuAiIcon } from '@/components/icons/StuAiIcon';
 
 // Icons from lucide-react
 import {
@@ -30,7 +31,6 @@ import {
   Briefcase,
   Moon,
   Sun,
-  Bot,
   ExternalLink,
   DollarSign,
   Mail,
@@ -592,7 +592,7 @@ function AIAssistantButton({ onClick, isExpanded, isDark }: AIAssistantButtonPro
         } text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-slate-100 dark:hover:text-slate-100 light:hover:text-slate-800 hover:bg-slate-800/40 dark:hover:bg-slate-800/40 light:hover:bg-slate-200/30 focus:outline-none focus:ring-2 focus:ring-[#12F987]/50 focus:ring-offset-2 dark:focus:ring-offset-[#020617] light:focus:ring-offset-white`}
         aria-label="AI Assistant"
       >
-        <Bot size={ICON_SIZE} className="flex-shrink-0" />
+        <StuAiIcon width={ICON_SIZE} height={ICON_SIZE} className="flex-shrink-0" />
         {isExpanded && <span className="text-sm font-medium">AI Assistant</span>}
       </button>
 
