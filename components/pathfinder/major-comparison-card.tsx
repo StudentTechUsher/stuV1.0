@@ -278,23 +278,39 @@ export function MajorComparisonCard({ comparison }: Readonly<MajorComparisonCard
       {/* Header */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
-          <h3 className="text-lg font-black text-[var(--foreground)] flex-1 line-clamp-2 min-h-[2.75rem]">
-            {comparison.program.name}
-          </h3>
+          <div className="flex-1">
+            <h3 className="text-lg font-black text-[var(--foreground)] line-clamp-2">
+              {comparison.program.name}
+            </h3>
+            <p className="text-xs text-[var(--muted-foreground)] mt-1">
+              {comparison.program.target_total_credits ? `${comparison.program.target_total_credits} credits required` : 'Credits required'}
+            </p>
+          </div>
           <span className="text-xs font-semibold text-[var(--muted-foreground)] shrink-0">
-            <span className="font-black">{totalCount}</span> req
+            <span className="font-black">{totalCount}</span> REQUIREMENTS
           </span>
         </div>
 
-        {/* Main Progress Bar */}
-        <SegmentedProgressBar
-          total={totalCount}
-          completed={satisfiedCount}
-          categoryColor={categoryColor}
-          heightClass="h-12"
-          showPercentText={true}
-          compact={true}
-        />
+        {/* Main Progress Bar with Tooltip */}
+        <div
+          className="relative"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <SegmentedProgressBar
+            total={totalCount}
+            completed={satisfiedCount}
+            categoryColor={categoryColor}
+            heightClass="h-12"
+            showPercentText={true}
+            compact={true}
+          />
+          {showTooltip && comparison.program.target_total_credits && (
+            <div className="absolute z-10 mt-2 left-1/2 -translate-x-1/2 bg-[var(--foreground)] text-[var(--background)] text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+              {comparison.percentComplete}% of requirements met
+            </div>
+          )}
+        </div>
 
         {/* Status Legend */}
         <div className="mt-4">

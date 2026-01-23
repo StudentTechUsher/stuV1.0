@@ -221,6 +221,7 @@ export function ProgramOverlapPanel({
   className,
 }: Readonly<ProgramOverlapPanelProps>) {
   const [showAllExtras, setShowAllExtras] = React.useState(false);
+  const [showTooltip, setShowTooltip] = React.useState(false);
   const categoryColor = PATHFINDER_COLORS.minor;
 
   const requirementCodes = React.useMemo(
@@ -292,20 +293,30 @@ export function ProgramOverlapPanel({
               {major?.name ?? 'Selected Program'}
             </h3>
             <span className="text-xs font-semibold text-[var(--muted-foreground)] shrink-0">
-              <span className="font-black">{totalReqs}</span>{' '}
-              {derivedCounts?.type === 'overall' ? 'req' : 'courses'}
+              <span className="font-black">{totalReqs}</span> REQUIREMENTS
             </span>
           </div>
 
-          {/* Main Progress Bar */}
-          <SegmentedProgressBar
-            total={totalReqs}
-            completed={completedReqs}
-            categoryColor={categoryColor}
-            heightClass="h-12"
-            showPercentText={true}
-            compact={true}
-          />
+          {/* Main Progress Bar with Tooltip */}
+          <div
+            className="relative"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <SegmentedProgressBar
+              total={totalReqs}
+              completed={completedReqs}
+              categoryColor={categoryColor}
+              heightClass="h-12"
+              showPercentText={true}
+              compact={true}
+            />
+            {showTooltip && (
+              <div className="absolute z-10 mt-2 left-1/2 -translate-x-1/2 bg-[var(--foreground)] text-[var(--background)] text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+                {totalReqs > 0 ? Math.round((completedReqs / totalReqs) * 100) : 0}% requirements met
+              </div>
+            )}
+          </div>
 
           {/* Status Legend */}
           <div className="mt-4">
