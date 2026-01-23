@@ -3,23 +3,23 @@ import { Metadata } from 'next'
 import { getOrganizationSchema, getSoftwareSchema, getWebsiteSchema } from '@/lib/seo/structured-data'
 
 export const metadata: Metadata = {
-  title: 'Academic Planning & Course Scheduling for Students & Universities',
-  description: 'Stu helps students graduate on time and universities optimize course planning. Intelligent scheduling, degree mapping, and analytics for academic success.',
+  title: 'STU | Academic Planning Platform for Universities',
+  description: 'Enterprise planning for provosts, registrars, and CIOs. Reduce time-to-degree, improve retention, and simplify advising with policy-aligned pathways and demand-aware scheduling.',
   keywords: [
-    'academic planning',
-    'university forecasting',
-    'graduation planning software',
-    'semester scheduler',
+    'academic planning platform',
+    'university retention software',
+    'degree audit automation',
     'course demand forecasting',
-    'advisor tools',
-    'degree planning',
-    'student success platform',
-    'college course planner',
-    'degree tracker'
+    'advising workflow',
+    'time to degree reduction',
+    'student success for registrars',
+    'higher ed scheduling',
+    'degree planning for universities',
+    'university enrollment analytics'
   ],
   openGraph: {
-    title: 'Stu - Academic Planning for Students & Universities',
-    description: 'Intelligent course scheduling and graduation planning. Help students graduate on time while giving advisors and universities powerful planning tools.',
+    title: 'STU — Academic Planning for Universities',
+    description: 'Map the fastest, policy-aligned path to graduation for every student while giving leaders visibility into demand and risk.',
     url: 'https://stuplanning.com',
     type: 'website',
   },

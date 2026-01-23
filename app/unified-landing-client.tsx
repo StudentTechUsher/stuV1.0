@@ -1,51 +1,118 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { ArrowRight, Menu, X, GraduationCap, Building2, HelpCircle, Moon, Sun } from "lucide-react"
+import { useLayoutEffect, useState, FormEvent } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect, useLayoutEffect } from "react"
-import { useUniversityTheme } from "@/contexts/university-theme-context"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import { useDarkMode } from "@/contexts/dark-mode-context"
+import { Button } from "@/components/ui/button"
+import {
+  ArrowRight,
+  CheckCircle2,
+  Menu,
+  ShieldCheck,
+  X,
+} from "lucide-react"
 
-type Audience = 'students' | 'universities'
+type TrackingPayload = Record<string, string | number | undefined>
+
+const pageBg = "#f7f3ec"
+
+const painPoints = [
+  "Fragmented systems between SIS, degree audit, and scheduling slow decisions.",
+  "Transfer credit rules are opaque—students and advisors spend hours reconciling requirements.",
+  "Course bottlenecks and limited seats delay graduation and drive excess credits.",
+  "Advising teams are stretched; guidance varies by advisor and program.",
+  "Leaders lack clear visibility into pathways, demand, and risk cohorts.",
+]
+
+function trackEvent(name: string, payload: TrackingPayload = {}) {
+  if (typeof window === "undefined") return
+  const tracker = (window as any)
+  tracker.dataLayer?.push({ event: name, ...payload })
+  tracker.gtag?.("event", name, payload)
+  tracker.analytics?.track?.(name, payload)
+  // Fallback console to ensure we can verify during QA
+  // eslint-disable-next-line no-console
+  console.log(`[track] ${name}`, payload)
+}
+
+const navLinks = [
+  { href: "#product", label: "Product" },
+  { href: "#solutions", label: "Solutions" },
+  { href: "#case-studies", label: "Success Stories" },
+  { href: "#faq", label: "Resources" },
+  { href: "#footer", label: "Company" },
+]
+
+const faqs = [
+  {
+    q: "How long does implementation take?",
+    a: "Typical institutions launch an initial cohort in weeks. Timeline depends on SIS/degree audit connections and data readiness.",
+  },
+  {
+    q: "What data do you need?",
+    a: "Degree requirements, course catalog, historical schedules, and SIS access (read) to build and validate plans.",
+  },
+  {
+    q: "How is pricing structured?",
+    a: "Aligned to ROI and scale. We scope by enrolled students/advising footprint to keep it budget-friendly.",
+  },
+  {
+    q: "Do you integrate with our SIS?",
+    a: "We support common SIS vendors and can pair via secure exports if direct APIs are not available.",
+  },
+  {
+    q: "What about security and compliance?",
+    a: "SSO, role-based access, audit logging, and least-privilege data flows. Security details available on request.",
+  },
+  {
+    q: "Do you provide training and support?",
+    a: "Yes. We onboard advisors/admins with live sessions, playbooks, and ongoing success check-ins.",
+  },
+  {
+    q: "Can students self-serve?",
+    a: "Yes—students get a guided experience while advisors can adjust, approve, and lock plans.",
+  },
+  {
+    q: "How do you handle accessibility?",
+    a: "We build to WCAG standards and test for keyboard and screen reader support.",
+  },
+]
 
 export function UnifiedLandingClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [audience, setAudience] = useState<Audience>('students')
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
-  const [authError, setAuthError] = useState<string | null>(null)
-  const { university } = useUniversityTheme()
-  const { isDark, setMode } = useDarkMode()
+  const [formStatus, setFormStatus] = useState<"idle" | "submitted">("idle")
 
-  // Enable smooth scrolling for anchor links
   useLayoutEffect(() => {
     const htmlElement = document.documentElement
-    htmlElement.style.scrollBehavior = 'smooth'
-
+    htmlElement.style.scrollBehavior = "smooth"
     return () => {
-      htmlElement.style.scrollBehavior = ''
+      htmlElement.style.scrollBehavior = ""
     }
   }, [])
 
-  // Listen for auth state changes (no auto-redirect to dashboard)
-  useEffect(() => {
-    const supabase = createSupabaseBrowserClient()
+  const handleCtaClick = (source: string) => {
+    trackEvent("cta_click", { source })
+  }
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, _session) => {
-      if (event === 'SIGNED_OUT') {
-        setAuthError(null)
-      }
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    trackEvent("demo_form_submit", {
+      source: "final_cta",
+      name: formData.get("name")?.toString(),
+      email: formData.get("email")?.toString(),
+      role: formData.get("role")?.toString(),
+      institution: formData.get("institution")?.toString(),
     })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    setFormStatus("submitted")
+    event.currentTarget.reset()
+  }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Skip to main content link for keyboard navigation */}
+    <div
+      className="flex min-h-screen flex-col text-foreground"
+      style={{ backgroundColor: pageBg }}
+    >
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-zinc-900 focus:px-4 focus:py-2 focus:rounded-md focus:font-medium focus:shadow-lg"
@@ -53,710 +120,598 @@ export function UnifiedLandingClient() {
         Skip to main content
       </a>
 
-      {/* Auth Error Banner */}
-      {authError && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 relative z-50">
-          <div className="container mx-auto px-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-red-800">{authError}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setAuthError(null)}
-              className="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors"
-              aria-label="Dismiss error"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
+      <header
+        className="sticky top-0 z-30 border-b border-border/60 backdrop-blur"
+        style={{ backgroundColor: pageBg }}
+      >
+        <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-12">
+          <Link href="/" className="flex items-center gap-4 font-bold tracking-tight text-4xl">
+            <Image
+              src="/favicon-96x96.png"
+              alt="stu. logo"
+              width={64}
+              height={64}
+              className="rounded-md"
+              priority
+            />
+            <span>stu.</span>
+          </Link>
 
-      <header className="sticky top-0 z-40 glass-effect border-b border-zinc-200 dark:border-zinc-800">
-        <div className="container mx-auto px-6 flex h-20 items-center justify-between">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-3">
-              {university?.logo_url && (
-                <div className="flex items-center gap-2">
-                  <Image
-                    src={university.logo_url}
-                    alt={`${university.name} logo`}
-                    width={32}
-                    height={32}
-                    className="rounded object-contain"
-                  />
-                  <span className="text-xl font-bold text-zinc-400 dark:text-zinc-600">×</span>
-                </div>
-              )}
-              <div className="flex items-center">
-                <Image
-                  src="/favicon-96x96.png"
-                  alt="stu. logo"
-                  width={32}
-                  height={32}
-                  className="rounded-50 -mb-2"
-                  priority
-                />
-                <span className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">stu.</span>
-              </div>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-8">
-            <Link href="#features" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
-              Features
-            </Link>
-            {audience === 'universities' && (
-              <>
-                {/* TODO: Add pricing page and uncomment link */}
-                <Link href="/security" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
-                  Security & Compliance
-                </Link>
-              </>
-            )}
-            <Link href="#faq" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
-              FAQ
-            </Link>
-            <Link href="/about-us" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
-              About Us
-            </Link>
+          <nav className="hidden items-center gap-10 lg:flex">
+            {navLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
 
-          <div className="hidden lg:flex items-center gap-6">
-            {/* Dark mode toggle */}
-            <button
-              onClick={() => setMode(isDark ? 'light' : 'dark')}
-              className="p-2 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-              aria-label="Toggle dark mode"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            <Link href="/login">
-              <Button variant="secondary" size="lg">
-                Sign In
+          <div className="hidden items-center gap-3 lg:flex">
+            <Link href="/demo" onClick={() => handleCtaClick("header")}>
+              <Button
+                size="lg"
+                className="rounded-full px-10 py-7 text-[1.35rem] font-semibold leading-tight tracking-tight bg-foreground hover:bg-foreground/90"
+                style={{ color: pageBg }}
+              >
+                Request a Demo
               </Button>
             </Link>
-            {audience === 'universities' ? (
-              <Link href="/demo">
-                <Button variant="primary" size="lg">
-                  Request a demo
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/signup">
-                <Button variant="primary" size="lg">
-                  Get Started
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            )}
           </div>
 
-          {/* Mobile Menu Button */}
           <button
-            className="lg:hidden p-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="rounded-md p-2 text-foreground lg:hidden"
+            onClick={() => setMobileMenuOpen((open) => !open)}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-zinc-100 dark:border-zinc-800">
-            <div className="container mx-auto px-6 py-6 flex flex-col gap-3">
-              <Link
-                href="#features"
-                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Features
-              </Link>
-              {audience === 'universities' && (
-                <>
-                  {/* TODO: Add pricing page and uncomment link */}
-                  <Link
-                    href="/security"
-                    className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Security & Compliance
-                  </Link>
-                </>
-              )}
-              <Link
-                href="#faq"
-                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/about-us"
-                className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                About Us
-              </Link>
-
-              {/* Dark mode toggle */}
-              <button
-                onClick={() => setMode(isDark ? 'light' : 'dark')}
-                className="flex items-center gap-2 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
-              >
-                {isDark ? (
-                  <>
-                    <Sun className="h-4 w-4" />
-                    <span>Light Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="h-4 w-4" />
-                    <span>Dark Mode</span>
-                  </>
-                )}
-              </button>
-
-              <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="secondary" className="w-full">
-                    Sign In
-                  </Button>
+          <div className="border-t border-border/60 bg-background lg:hidden">
+            <div className="container mx-auto flex flex-col gap-3 px-4 py-4 md:px-8">
+              {navLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
                 </Link>
-                {audience === 'universities' ? (
-                  <Link href="/demo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="primary" className="w-full">
-                      Request a demo
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="primary" className="w-full">
-                      Get Started
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </Link>
-                )}
-              </div>
+              ))}
+              <Link href="/demo" onClick={() => { setMobileMenuOpen(false); handleCtaClick("mobile_header") }}>
+                <Button className="w-full rounded-full px-6 py-3 text-base">
+                  Request a Demo
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         )}
       </header>
 
       <main id="main-content" className="flex-1">
-        {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden animate-fade-in border-b-2 border-zinc-300" style={{ backgroundColor: '#d0d0d0' }}>
-          {/* Extended FAB below header - Slider style */}
-          <div className="absolute top-0 left-0 right-0 flex justify-center py-4 z-10">
-            <div className="relative flex items-center gap-2 bg-zinc-200 rounded-full p-1 shadow-lg border border-zinc-300">
-              <button
-                onClick={() => setAudience('students')}
-                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all cursor-pointer ${
-                  audience === 'students'
-                    ? 'text-white'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-                aria-label="View for students"
-              >
-                <GraduationCap className="h-5 w-5" />
-                <span>For Students</span>
-              </button>
-              <button
-                onClick={() => setAudience('universities')}
-                className={`relative z-10 flex items-center gap-2 rounded-full px-6 py-2.5 font-semibold transition-all cursor-pointer ${
-                  audience === 'universities'
-                    ? 'text-white'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-                aria-label="View for universities"
-              >
-                <Building2 className="h-5 w-5" />
-                <span>For Universities</span>
-              </button>
-              {/* Sliding background indicator */}
-              <div
-                className="absolute top-1 bottom-1 bg-zinc-800 rounded-full shadow-md transition-all duration-300 ease-in-out"
-                style={{
-                  left: audience === 'students' ? '4px' : '50%',
-                  width: 'calc(50% - 4px)',
-                }}
-              />
-            </div>
-          </div>
-          <div className="container px-4 md:px-6 relative">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
-              <div className="flex flex-col justify-center space-y-5 max-w-full">
-                <div className="space-y-2 max-w-full">
-                  {audience === 'universities' ? (
-                    <>
-                      <h1 className="text-zinc-900 dark:text-zinc-100 text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
-                        <div className="sm:whitespace-nowrap">Boost Graduation Rates</div>
-                        <div className="sm:whitespace-nowrap">Through Intelligent Course Planning</div>
-                      </h1>
-                      <p className="max-w-[600px] text-zinc-700 dark:text-zinc-300 text-[clamp(1rem,1.5vw,1.5rem)] leading-snug font-body-medium">
-                        Our AI-powered planning tools reduce advisor bottlenecks and improve student outcomes with a career-centric focus.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h1 className="text-zinc-900 dark:text-zinc-100 text-[clamp(1.75rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight font-header">
-                        <div className="sm:whitespace-nowrap">Your Degree, Your Schedule</div>
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                          Seamless with
-                          <Image
-                            src="/stu_icon_black.png"
-                            alt="stu. logo"
-                            width={70}
-                            height={70}
-                            className="rounded-50"
-                            priority
-                            style={{ width: "auto", height: "1em" }}
-                          />
-                          <span>stu.</span>
-                        </div>
-                      </h1>
-                      <p className="max-w-[700px] text-zinc-700 text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed font-body-medium mt-6">
-                        Too many course choices and not enough transparency? Not sure what kind of career you&apos;ll have after graduation? Stu helps you answer these questions with graduation maps customized to your goals!
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  {audience === 'universities' ? (
-                    <div className="flex flex-col items-start gap-2">
-                      <Button variant="primary" size="lg" asChild>
-                        <Link href="/demo" className="flex items-center">
-                          Request a demo
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-md">
-                        Schedule a personalized demo to see how stu can transform your institution&apos;s academic planning
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-start gap-2">
-                      <Button variant="primary" size="lg" asChild>
-                        <Link href="/signup" className="flex items-center">
-                          Try{" "}
-                          <Image
-                            src="/stu_icon_black.png"
-                            alt="stu. logo"
-                            width={24}
-                            height={24}
-                            className="rounded-50 -mb-2 pb-3 m-1 ml-2 mr-2"
-                            priority
-                          />{" "}
-                          Today
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-md">
-                        Create your free account and start building your personalized graduation plan in minutes
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center">
-                <div className="relative w-full h-full min-h-[350px] rounded-2xl overflow-hidden bg-gradient-to-br from-mint-300/20 to-mint-200/10">
-                  {/* Optional hero visual */}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Section */}
-        <section id="features" className="py-20 bg-gradient-to-b from-mint-200 via-mint-100 to-mint-50 flex flex-col items-center justify-center text-center border-b-2 border-zinc-300">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center gap-4 text-center md:gap-8">
-              <div className="space-y-2">
-                <div className="flex items-center justify-center gap-2">
-                  <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">
-                    {audience === 'universities'
-                      ? 'Comprehensive Academic Planning Solutions'
-                      : 'Your Personal Academic Planner'}
-                  </h2>
-                  <div className="relative">
-                    <button
-                      onMouseEnter={() => setActiveTooltip('features')}
-                      onMouseLeave={() => setActiveTooltip(null)}
-                      onClick={() => setActiveTooltip(activeTooltip === 'features' ? null : 'features')}
-                      className="text-zinc-500 hover:text-primary transition-colors cursor-help"
-                      aria-label="More information about features"
-                    >
-                      <HelpCircle className="h-6 w-6" />
-                    </button>
-                    {activeTooltip === 'features' && (
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-sm rounded-lg p-3 shadow-xl z-10">
-                        <p>
-                          {audience === 'universities'
-                            ? 'Our platform integrates seamlessly with your existing systems to provide real-time insights and automated planning tools.'
-                            : 'All features are included in your free account. No credit card required to get started.'}
-                        </p>
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900 dark:border-b-zinc-100"></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <p className="mx-auto max-w-[700px] text-muted-foreground font-body-medium md:text-xl">
-                  {audience === 'universities'
-                    ? "Help your students navigate their academic journey while providing valuable insights for your registrar's office."
-                    : 'Everything you need to stay on track and graduate on time.'}
+        {/* Hero */}
+        <section
+            className="border-b border-border/60 py-20 md:py-28"
+            style={{ backgroundColor: pageBg }}
+          >
+          <div className="container mx-auto max-w-5xl px-4 md:px-10">
+            <div className="flex min-h-[85vh] flex-col items-center text-center space-y-8">
+              <div className="space-y-4 pt-6">
+                <h1 className="font-header text-[clamp(1.6rem,5vw,6.75rem)] md:text-[clamp(4rem,5vw,7rem)] font-bold leading-[1.05] tracking-tight text-foreground text-balance">
+                  <span className="block leading-tight">Make every student’s path</span>
+                  <span className="block leading-tight">to graduation clear.</span>
+                </h1>
+                <p className="mx-auto max-w-3xl text-xl text-muted-foreground md:text-2xl text-balance">
+                  STU maps degree requirements, transfer credits, and schedules into a clear path—so students graduate faster and institutions improve retention.
                 </p>
               </div>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {audience === 'universities' ? (
-                  [
-                    {
-                      title: "Smart Degree Planning",
-                      description: "Automate degree mapping with AI-powered course recommendations that account for prerequisites and custom academic rules.",
-                      icon: "/icons/icons8-graduation-scroll-50.png",
-                    },
-                    {
-                      title: "Enrollment Analytics",
-                      description: "Track real-time demand to optimize course offerings, reduce bottlenecks, and improve seat utilization.",
-                      icon: "/icons/icons8-analytics-60.png",
-                    },
-                    {
-                      title: "Prerequisite Validation",
-                      description: "Ensure students meet requirements automatically with built-in checks for prerequisites and co-requisites.",
-                      icon: "/icons/icons8-validation-48.png",
-                    },
-                    {
-                      title: "Student Success Tracking",
-                      description: "Identify at-risk students early through real-time monitoring of academic progress and engagement.",
-                      icon: "/icons/icons8-graduate-48.png",
-                    },
-                    {
-                      title: "Integration Ready",
-                      description: "Connect instantly with your SIS and existing infrastructure—no disruption, no duplicate data entry.",
-                      icon: "/icons/icons8-integration-48.png",
-                    },
-                    {
-                      title: "Customizable Policies",
-                      description: "Tailor degree requirements, course rules, and exceptions to reflect your institution's unique policies.",
-                      icon: "/icons/icons8-policies-48.png",
-                    },
-                  ].map((feature) => (
-                    <div
-                      key={feature.title}
-                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                        <Image
-                          src={feature.icon}
-                          alt={feature.title}
-                          width={32}
-                          height={32}
-                          className="object-contain"
-                        />
-                      </div>
-                      <h3 className="text-xl font-header text-card-foreground">{feature.title}</h3>
-                      <p className="text-muted-foreground font-body-medium">{feature.description}</p>
-                    </div>
-                  ))
-                ) : (
-                  [
-                    {
-                      title: "Smart Course Suggestions",
-                      description: "Get tailored course recommendations based on your degree plan, completed credits, and personal preferences.",
-                      icon: "/icons/icons8-course-assign-50.png",
-                    },
-                    {
-                      title: "Automated Graduation Mapping",
-                      description: "Plan your full academic path with a dynamic roadmap that adjusts automatically as you go.",
-                      icon: "/stu_icon_black.png",
-                    },
-                    {
-                      title: "Prerequisite Tracking",
-                      description: "Automatically monitor prerequisite chains and course sequencing—stu flags gaps before they become problems.",
-                      icon: "/icons/icons8-tracking-48.png",
-                    },
-                    {
-                      title: "Schedule Optimization",
-                      description: "Input your work and personal commitments—stu builds the optimal schedule without compromising your progress.",
-                      icon: "/icons/icons8-schedule-48.png",
-                    },
-                    {
-                      title: "Progress Tracking",
-                      description: "Stay on track with real-time updates—stu dynamically adjusts your roadmap as requirements shift and courses are completed.",
-                      icon: "/icons/icons8-in-progress-60.png",
-                    },
-                    {
-                      title: "Mobile Friendly",
-                      description: "Access your schedule, graduation plan and account info anywhere, anytime from any device.",
-                      icon: "/icons/icons8-iphone-50.png",
-                    },
-                  ].map((feature) => (
-                    <div
-                      key={feature.title}
-                      className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                        <Image
-                          src={feature.icon}
-                          alt={feature.title}
-                          width={32}
-                          height={32}
-                          className="object-contain"
-                        />
-                      </div>
-                      <h3 className="text-xl font-header text-zinc-900 dark:text-zinc-100">{feature.title}</h3>
-                      <p className="text-zinc-700 dark:text-zinc-300 font-body-medium leading-relaxed">{feature.description}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials Section */}
-        <section
-          id="testimonials"
-          className="py-20 flex flex-col items-center justify-center text-center border-b-2 border-zinc-300"
-          style={{ backgroundColor: '#d0d0d0' }}
-        >
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center gap-4 text-center mb-12">
-              <div className="flex items-center justify-center gap-2">
-                <h2 className="text-3xl font-header text-foreground tracking-tighter md:text-4xl/tight">Student Reviews</h2>
-                <div className="relative">
-                  <button
-                    onMouseEnter={() => setActiveTooltip('testimonials')}
-                    onMouseLeave={() => setActiveTooltip(null)}
-                    onClick={() => setActiveTooltip(activeTooltip === 'testimonials' ? null : 'testimonials')}
-                    className="text-zinc-500 hover:text-primary transition-colors cursor-help"
-                    aria-label="More information about reviews"
+              <div className="flex flex-col items-center gap-3">
+                <Link href="/demo" onClick={() => handleCtaClick("hero")}>
+                  <Button
+                    size="lg"
+                    className="rounded-full px-20 md:px-24 py-7 text-[1.35rem] font-semibold leading-tight tracking-tight min-w-[280px] md:min-w-[350px]"
                   >
-                    <HelpCircle className="h-6 w-6" />
-                  </button>
-                  {activeTooltip === 'testimonials' && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-sm rounded-lg p-3 shadow-xl z-10">
-                      <p>
-                        Real feedback from students who have used stu to successfully plan their academic journey and graduate on time.
-                      </p>
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-zinc-900 dark:border-b-zinc-100"></div>
+                    Request a Demo
+                    <ArrowRight className="ml-2 h-6 w-6" />
+                  </Button>
+                </Link>
+                <Link
+                  href="#product"
+                  className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+                >
+                  See how it works
+                </Link>
+              </div>
+              <div className="w-full pt-28">
+                <div className="overflow-hidden rounded-3xl border border-border/60" style={{ backgroundColor: pageBg }}>
+                  <div className="flex items-center justify-between border-b border-border/60 px-5 py-3 text-sm font-semibold text-foreground/80">
+                    <span>Product Preview (replace with screenshot/video)</span>
+                    <span className="text-primary">TODO: Embed real asset</span>
+                  </div>
+                  <div className="flex h-[320px] flex-col items-center justify-center px-6 py-10 md:h-[380px]">
+                    <div className="w-full max-w-3xl rounded-2xl border border-dashed border-border/70 bg-white/80 p-6 text-center text-sm text-muted-foreground">
+                      Minimal placeholder frame. Swap with your clean dashboard or scheduling preview.
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
-              <p className="text-xl text-zinc-700 dark:text-zinc-300 font-body-medium">Here&apos;s what students are saying</p>
             </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              { name: "Tyler S", state: "CA", text: '"The easiest way to schedule classes that would actually help with the major I\'m taking"' },
-              { name: "Isaac B", state: "WA", text: '"I love it!"' },
-              { name: "Zach W", state: "UT", text: '"This is great!"' },
-            ].map((review) => (
-              <div
-                key={`${review.name}-${review.state}`}
-                className="group flex flex-col items-center gap-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-8 text-center shadow-md hover:shadow-2xl hover:border-primary/30 transition-all duration-300"
-              >
-                <h3 className="text-xl font-header text-zinc-900 dark:text-zinc-100">
-                  {review.name}, {review.state}
-                </h3>
-                <p className="text-zinc-700 dark:text-zinc-300 font-body-medium leading-relaxed">{review.text}</p>
-              </div>
-            ))}
-          </div>
           </div>
         </section>
 
-        {/* CTA Section - Only shown for universities */}
-        {audience === 'universities' && (
-          <section id="cta" className="relative py-24 overflow-hidden bg-gradient-to-br from-mint-300 via-mint-400 to-mint-600 flex flex-col items-center justify-center text-center border-b-2 border-zinc-300">
-            <div className="container px-4 md:px-6 relative">
-              <div className="flex flex-col items-center justify-center gap-6 text-center md:gap-10">
-                <div className="space-y-4">
-                  <h2 className="text-3xl font-header text-zinc-900 dark:text-zinc-100 tracking-tighter md:text-5xl/tight font-bold">
-                    Ready to Transform Academic Planning?
-                  </h2>
-                  <p className="mx-auto max-w-[700px] text-zinc-800 dark:text-zinc-200 font-body-medium md:text-xl leading-relaxed">
-                    Join leading universities who have improved graduation rates, empowered advisors, and increased student satisfaction with stu&apos;s planning platform.
-                  </p>
+        {/* Trust bar */}
+        <section className="border-b border-border/60 bg-background py-10">
+          <div className="container mx-auto max-w-6xl px-4 md:px-8">
+            <div className="flex flex-wrap items-center justify-between gap-6">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-muted-foreground">Trusted by forward-looking institutions</p>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-muted px-3 py-1">TODO: Replace logos</span>
+                  <span className="rounded-full bg-muted px-3 py-1">University Logo</span>
+                  <span className="rounded-full bg-muted px-3 py-1">University Logo</span>
+                  <span className="rounded-full bg-muted px-3 py-1">University Logo</span>
                 </div>
-                <div className="w-full max-w-md px-4">
-                  <Link href="/demo">
-                    <Button variant="primary" size="lg" className="w-full">
-                      Request a demo
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </Link>
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="rounded-lg border border-border/70 px-4 py-3 text-left">
+                  <p className="text-xs text-muted-foreground">Mapped students</p>
+                  <p className="text-lg font-semibold">TODO: X,000+</p>
+                </div>
+                <div className="rounded-lg border border-border/70 px-4 py-3 text-left">
+                  <p className="text-xs text-muted-foreground">Advising time saved</p>
+                  <p className="text-lg font-semibold">TODO: Y%</p>
                 </div>
               </div>
             </div>
-          </section>
-        )}
-        {/* TODO: Add student CTA section with email signup form */}
-      </main>
+          </div>
+        </section>
 
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 md:py-8">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-4">
-              <Link href="/" className="flex items-center gap-2 font-bold">
-                <Image
-                  src="/favicon-96x96.png"
-                  alt="stu. logo"
-                  width={32}
-                  height={32}
-                  className="rounded-50"
-                  priority
-                />
-                <span>stu.</span>
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                {audience === 'universities'
-                  ? 'Empowering Universities to Build Better Academic Futures'
-                  : 'Making Academic Planning Simple and Smart'}
+        {/* Problem */}
+        <section className="border-b border-border/60 bg-muted/40 py-16" id="product">
+          <div className="container mx-auto max-w-6xl px-4 md:px-8">
+            <div className="grid gap-10 md:grid-cols-[1.1fr_1fr] md:items-center">
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-primary uppercase tracking-wide">The problem</p>
+                <h2 className="font-header text-3xl font-bold tracking-tight md:text-4xl">
+                  Academic planning is fragmented, manual, and hard to govern.
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  Provosts, registrars, and CIOs juggle disconnected tools, late data, and policies that are difficult to enforce consistently.
+                </p>
+              </div>
+              <div className="grid gap-3 rounded-xl border border-border/70 bg-background p-6 shadow-sm">
+                {painPoints.map((point) => (
+                  <div key={point} className="flex items-start gap-3 rounded-lg bg-muted/60 p-3">
+                    <CheckCircle2 className="mt-1 h-5 w-5 text-primary" />
+                    <p className="text-sm text-foreground">{point}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Solution pillars */}
+        {/* Trusted by */}
+        <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-6xl space-y-6 px-4 md:px-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground text-center">Trusted by</p>
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 text-sm text-muted-foreground">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <span key={i} className="rounded-full border border-border/60 px-4 py-2 bg-white/70">
+                  University Logo
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Role-based value */}
+        <section
+          className="border-b border-border/60 py-20 md:py-24"
+          id="solutions"
+          style={{ backgroundColor: pageBg }}
+        >
+          <div className="container mx-auto max-w-6xl space-y-10 px-4 md:px-8">
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Why STU</p>
+              <h2 className="font-header text-3xl font-bold tracking-tight md:text-4xl">
+                Imagine a university where every pathway is clear.
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Tailored outcomes for every leader who owns student success, policy, and systems.
               </p>
             </div>
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Product</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#features" className="text-muted-foreground hover:text-primary">
-                    Features
-                  </Link>
-                </li>
-                {/* TODO: Add pricing page and uncomment link */}
-                <li>
-                  <Link href="#testimonials" className="text-muted-foreground hover:text-primary">
-                    Testimonials
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#faq" className="text-muted-foreground hover:text-primary">
-                    FAQ
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Company</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/about-us" className="text-muted-foreground hover:text-primary">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Careers
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Contact
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Legal</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Terms
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
-                    Privacy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Cookies
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-muted-foreground hover:text-primary">
-                    Licenses
-                  </Link>
-                </li>
-              </ul>
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                { title: "For Provost & Student Success", copy: "Reduce time-to-degree and lift retention with governed, consistent pathways across every program." },
+                { title: "For Registrar & Academic Affairs", copy: "Codify policies once. Keep degree audits, substitutions, and transfer rules aligned without manual rework." },
+                { title: "For CIO & IT", copy: "Secure, low-friction integrations with SIS and identity. Clear data boundaries and admin controls." },
+              ].map((role) => (
+                <div key={role.title} className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background p-6 shadow-sm">
+                  <div className="text-sm font-semibold text-primary">{role.title}</div>
+                  <p className="text-sm text-foreground">{role.copy}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="mt-8 border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Stu Inc. All rights reserved.</p>
-            <div className="flex gap-4">
-              <Link href="#" className="text-muted-foreground hover:text-primary">
-                <span className="sr-only">Twitter</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                </svg>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary">
-                <span className="sr-only">GitHub</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-                  <path d="M9 18c-4.51 2-5-2-7-2" />
-                </svg>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary">
-                <span className="sr-only">LinkedIn</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-                  <rect width="4" height="12" x="2" y="9" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
+        </section>
+
+        {/* Platform overview */}
+        <section
+          className="border-b border-border/60 py-20 md:py-24"
+          id="product"
+          style={{ backgroundColor: pageBg }}
+        >
+          <div className="container mx-auto max-w-6xl space-y-10 px-4 md:px-8">
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Platform</p>
+              <h2 className="font-header text-3xl font-bold tracking-tight md:text-4xl">
+                One system. Three pillars that cover the journey.
+              </h2>
+              <p className="text-lg text-muted-foreground">Progress, Care, Explore—purpose-built for student pathways and institutional control.</p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                { header: "Progress", items: ["Planner & pathways", "Degree audit alignment", "Policy-aware schedules"] },
+                { header: "Care", items: ["Risk alerts & reporting", "Advisor notes & actions", "Appointments in context"] },
+                { header: "Explore", items: ["Major/what-if compare", "Transfer rule visibility", "Prospective pathways"] },
+              ].map((pillar) => (
+                <div key={pillar.header} className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-background p-6 shadow-sm">
+                  <div className="text-sm font-semibold text-primary uppercase">{pillar.header}</div>
+                  <ul className="space-y-2 text-sm text-foreground">
+                    {pillar.items.map((item) => (
+                      <li key={item} className="flex items-start gap-2">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/demo" onClick={() => handleCtaClick(`pillar_${pillar.header.toLowerCase()}`)} className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+                    Learn about {pillar.header.toLowerCase()}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Works best together */}
+        <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-5xl space-y-4 px-4 text-center md:px-8">
+            <p className="text-sm font-semibold uppercase tracking-wide text-primary">End-to-end</p>
+            <h3 className="font-header text-3xl font-bold tracking-tight md:text-4xl">Like your institution, STU works best together.</h3>
+            <p className="text-lg text-muted-foreground">
+              Replace fragmented planning, audit, and scheduling workflows with one system that keeps policy, demand, and student goals aligned.
+            </p>
+            <div className="flex justify-center">
+              <Link href="/demo" onClick={() => handleCtaClick("works_together")}>
+                <Button size="lg" className="rounded-full px-8 py-3 text-base">
+                  Request a Demo
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </Link>
             </div>
           </div>
+        </section>
+
+        {/* Product visual */}
+        <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-6xl space-y-6 px-4 md:px-8">
+            <div className="space-y-2 text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Product preview</p>
+              <h3 className="font-header text-3xl font-bold tracking-tight md:text-4xl">One clean view for students, advisors, and admins.</h3>
+              <p className="text-lg text-muted-foreground">Swap this frame with your latest dashboard or scheduling walkthrough.</p>
+            </div>
+            <div className="overflow-hidden rounded-3xl border border-border/60 bg-white/70 shadow-lg">
+              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm text-muted-foreground">
+                <span className="h-3 w-3 rounded-full bg-red-400" />
+                <span className="h-3 w-3 rounded-full bg-amber-400" />
+                <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                <span className="ml-3 text-foreground font-semibold">Product Preview (replace with screenshot/video)</span>
+              </div>
+              <div className="flex h-[400px] items-center justify-center bg-muted/30 p-8 md:h-[460px]">
+                <div className="w-full max-w-4xl rounded-2xl border border-dashed border-border/70 bg-background/90 p-8 text-center text-sm text-muted-foreground">
+                  Placeholder preview area. Use a single, clean hero screenshot.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Easy to get started + testimonial */}
+        <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-6xl grid gap-8 px-4 md:grid-cols-[1.1fr_0.9fr] md:px-8">
+            <div className="space-y-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Implementation</p>
+              <h3 className="font-header text-3xl font-bold tracking-tight md:text-4xl">We make it easy to get started.</h3>
+              <p className="text-lg text-muted-foreground">Dedicated launch support, clear data boundaries, and a step-by-step rollout plan.</p>
+              <ul className="space-y-2 text-sm text-foreground">
+                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />Connect SIS/identity with least-privilege access.</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />Map degree rules once; validate against live data.</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />Pilot with advisors; scale to programs fast.</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background p-6 shadow-sm space-y-3">
+              <p className="text-sm font-semibold text-primary">Implementation spotlight</p>
+              <p className="text-lg text-foreground">“Stu kept us policy-aligned from day one. Advisors trusted the plans; IT trusted the data flows.”</p>
+              <p className="text-sm text-muted-foreground">Project Manager, University Partner (placeholder)</p>
+              <p className="text-xs text-muted-foreground">TODO: Replace with real quote and attribution.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Security & privacy */}
+        <section className="border-b border-border/60 py-12 md:py-16" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-6xl grid gap-6 px-4 md:grid-cols-2 md:px-8">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Security & Privacy</p>
+              <h3 className="font-header text-2xl font-bold tracking-tight md:text-3xl">Enterprise-ready controls.</h3>
+              <p className="text-lg text-muted-foreground">SSO, least-privilege access, and auditability for every role.</p>
+              <Link href="/security" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+                View Trust Center (placeholder)
+              </Link>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {[
+                "Safe and secure by design",
+                "Protects student privacy",
+                "Accessibility commitments",
+                "Audit logs & role controls",
+              ].map((item) => (
+                <div key={item} className="rounded-xl border border-border/70 bg-background p-4 text-sm text-foreground">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <span>{item}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Results metric */}
+        <section className="border-b border-border/60 py-14 md:py-18" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-5xl px-4 text-center md:px-8">
+            <p className="text-sm font-semibold uppercase tracking-wide text-primary">Results you can measure</p>
+            <h3 className="font-header text-3xl font-bold tracking-tight md:text-4xl">Impact at scale.</h3>
+            <p className="mt-3 text-lg text-muted-foreground">Replace this with your real impact metric.</p>
+            <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-border/70 bg-background px-6 py-4 shadow-sm">
+              <span className="text-4xl font-bold text-primary">TODO</span>
+              <span className="text-sm text-muted-foreground">students guided with STU pathways</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Institution types */}
+        <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-6xl space-y-8 px-4 md:px-8">
+            <div className="space-y-2 text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Institution fit</p>
+              <h3 className="font-header text-3xl font-bold tracking-tight md:text-4xl">See what STU can do for your campus.</h3>
+              <p className="text-lg text-muted-foreground">Pick your profile—content placeholders until real stories are ready.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-5 text-sm font-semibold text-foreground">
+              {["Large Public", "Small Private", "Community College", "R1", "International"].map((label) => (
+                <div key={label} className="rounded-full border border-border/70 bg-background px-4 py-2 text-center">
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background p-6 shadow-sm">
+              <p className="text-sm font-semibold text-primary">Placeholder testimonial</p>
+              <p className="text-lg text-foreground mt-2">“STU streamlined pathways for our institution type.”</p>
+              <p className="text-sm text-muted-foreground">Role, Institution (placeholder)</p>
+              <p className="text-xs text-muted-foreground mt-2">TODO: Swap with real testimonial per institution type.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Success stories */}
+        <section
+          className="border-b border-border/60 py-20 md:py-24"
+          id="case-studies"
+          style={{ backgroundColor: pageBg }}
+        >
+          <div className="container mx-auto max-w-6xl space-y-8 px-4 md:px-8">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold uppercase tracking-wide text-primary">Success Stories</p>
+                <h3 className="font-header text-3xl font-bold tracking-tight md:text-4xl">Proof your stakeholders will ask for.</h3>
+                <p className="text-lg text-muted-foreground">Add short case studies with outcome headlines.</p>
+              </div>
+              <Link href="/demo" onClick={() => handleCtaClick("case_studies")}>
+                <Button size="lg" className="rounded-full px-7">
+                  Request a Demo
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                "How University A reduced excess credits",
+                "How College B improved time-to-degree",
+                "How Institution C scaled advisor capacity",
+                "How University D aligned transfer pathways",
+              ].map((title) => (
+                <div key={title} className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background p-6 shadow-sm">
+                  <p className="text-base font-semibold text-foreground">{title}</p>
+                  <p className="text-sm text-muted-foreground">TODO: add metric and link.</p>
+                  <Link href="/demo" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+                    View story (placeholder)
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* In the news */}
+        <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+          <div className="container mx-auto max-w-5xl space-y-6 px-4 text-center md:px-8">
+            <p className="text-sm font-semibold uppercase tracking-wide text-primary">In the news</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {["“Placeholder press quote.”", "“Another placeholder quote.”", "“Keep section once real PR exists.”"].map((quote, idx) => (
+                <div key={idx} className="rounded-2xl border border-border/70 bg-background p-5 text-sm text-muted-foreground shadow-sm">
+                  {quote}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">TODO: Replace or hide until real press is available.</p>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section
+          className="border-b border-border/60 py-20 md:py-24"
+          id="faq"
+          style={{ backgroundColor: pageBg }}
+        >
+          <div className="container mx-auto max-w-6xl space-y-8 px-4 md:px-8">
+            <div className="space-y-3 md:w-2/3">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">FAQ</p>
+              <h2 className="font-header text-3xl font-bold tracking-tight md:text-4xl">Procurement-ready answers.</h2>
+              <p className="text-lg text-muted-foreground">Short, direct responses to the most common enterprise questions.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {faqs.map((item) => (
+                <div key={item.q} className="rounded-xl border border-border/70 bg-background p-5 shadow-sm">
+                  <p className="text-base font-semibold">{item.q}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{item.a}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href="/demo" onClick={() => handleCtaClick("faq")}>
+                <Button className="rounded-full px-7">
+                  Request a Demo
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link
+                href="mailto:hello@stuplanning.com"
+                className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Prefer email? hello@stuplanning.com
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section
+          className="py-20 md:py-24"
+          id="demo"
+          style={{ backgroundColor: pageBg }}
+        >
+          <div className="container mx-auto max-w-5xl grid gap-10 px-4 md:grid-cols-[1.1fr_0.9fr] md:px-8">
+            <div className="space-y-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">A better path starts here</p>
+              <h2 className="font-header text-3xl font-bold tracking-tight md:text-4xl">Request a demo.</h2>
+              <p className="text-lg text-muted-foreground">
+                We’ll tailor the walkthrough to your degree requirements, advising workflows, and SIS landscape. No student signup flows—this page is for university leaders.
+              </p>
+              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                <span className="rounded-full bg-muted px-3 py-1">Live or recorded demo</span>
+                <span className="rounded-full bg-muted px-3 py-1">Security review ready</span>
+                <span className="rounded-full bg-muted px-3 py-1">Implementation path included</span>
+              </div>
+              <div className="rounded-lg border border-dashed border-border/70 bg-background/70 p-3 text-xs text-muted-foreground">
+                TODO: Embed Calendly if available; keep this form as fallback.
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background p-6 shadow-xl">
+              <form className="space-y-4" onSubmit={handleFormSubmit}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Name
+                    <input
+                      required
+                      name="name"
+                      type="text"
+                      className="mt-1 w-full rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      placeholder="Your name"
+                    />
+                  </label>
+                  <label className="text-sm font-medium text-foreground">
+                    Work email
+                    <input
+                      required
+                      name="email"
+                      type="email"
+                      className="mt-1 w-full rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      placeholder="you@university.edu"
+                    />
+                  </label>
+                </div>
+                <label className="text-sm font-medium text-foreground">
+                  Role / department
+                  <input
+                    required
+                    name="role"
+                    type="text"
+                    className="mt-1 w-full rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="Registrar, CIO, Advising, etc."
+                  />
+                </label>
+                <label className="text-sm font-medium text-foreground">
+                  Institution
+                  <input
+                    required
+                    name="institution"
+                    type="text"
+                    className="mt-1 w-full rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="University name"
+                  />
+                </label>
+                <label className="text-sm font-medium text-foreground">
+                  Priority / timeline
+                  <textarea
+                    name="timeline"
+                    rows={3}
+                    className="mt-1 w-full rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="e.g., evaluate this term, pilot next term"
+                  />
+                </label>
+                <Button type="submit" className="w-full rounded-full" size="lg" onClick={() => handleCtaClick("demo_form_cta")}>
+                  Request a Demo
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                {formStatus === "submitted" && (
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">
+                    Thanks! We’ll follow up shortly. {/* TODO: wire to backend endpoint */}
+                  </p>
+                )}
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer id="footer" className="border-t border-border/60 bg-background py-8">
+        <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row md:px-8">
+          <div className="flex items-center gap-2 font-semibold text-foreground">
+            <Image src="/favicon-96x96.png" alt="stu. logo" width={24} height={24} className="rounded-md" />
+            <span>stu.</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy-policy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/security" className="hover:text-foreground">
+              Security
+            </Link>
+            <Link href="mailto:hello@stuplanning.com" className="hover:text-foreground">
+              Contact
+            </Link>
+          </div>
+          <p className="text-xs">© {new Date().getFullYear()} Stu. All rights reserved.</p>
         </div>
       </footer>
     </div>
