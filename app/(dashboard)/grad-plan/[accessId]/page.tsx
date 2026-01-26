@@ -928,6 +928,9 @@ export default function EditGradPlanPage() {
                   onEventsChange={setEvents}
                   onOpenEventDialog={handleRegisterEventDialogOpener}
                   gradPlanId={gradPlan.id}
+                  onMoveCourseBlocked={() => {
+                    showSnackbar('Completed courses cannot be moved', 'error');
+                  }}
                 />
               );
             })()}
