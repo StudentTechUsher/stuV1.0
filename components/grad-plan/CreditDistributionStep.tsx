@@ -110,14 +110,14 @@ export function CreditDistributionStep({
     selectedTermIds.includes(t.id)
   );
 
-  const resolveTermLabel = (termId: string) => {
+  const resolveTermLabel = React.useCallback((termId: string) => {
     const allTerms = [...academicTerms.terms.primary, ...academicTerms.terms.secondary];
     const match = allTerms.find(
       term => term.id.toLowerCase() === termId.toLowerCase() || term.label.toLowerCase() === termId.toLowerCase()
     );
     if (match?.label) return match.label;
     return termId.charAt(0).toUpperCase() + termId.slice(1);
-  };
+  }, [academicTerms]);
 
   const getTermMonthIndex = (termId: string) => {
     const termLower = termId.toLowerCase();
@@ -131,7 +131,7 @@ export function CreditDistributionStep({
     return monthMap[termLower] ?? 0;
   };
 
-  const getFallbackCompletion = (
+  const getFallbackCompletion = React.useCallback((
     strategy: 'fast_track' | 'balanced' | 'explore',
     includeSecondary: boolean
   ) => {
@@ -162,7 +162,7 @@ export function CreditDistributionStep({
       termLabel: resolveTermLabel(termId),
       year,
     };
-  };
+  }, [academicTerms, studentData, resolveTermLabel]);
 
   // Calculate distribution whenever strategy or selected terms change
   const distribution = useMemo<SemesterAllocation[] | null>(() => {
@@ -194,7 +194,6 @@ export function CreditDistributionStep({
     totalCredits,
     academicTerms,
     studentData,
-    hasTranscript,
   ]);
 
   // Calculate estimated completion for ALL strategies (for display on cards)
@@ -235,6 +234,7 @@ export function CreditDistributionStep({
     studentData,
     hasTranscript,
     includeSecondaryCourses,
+    getFallbackCompletion,
   ]);
 
   const handleContinue = () => {
@@ -257,7 +257,7 @@ export function CreditDistributionStep({
         Credit Distribution Strategy
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4 }}>
-        Choose how you'd like to distribute your {totalCredits} credits across semesters.
+        Choose how you&apos;d like to distribute your {totalCredits} credits across semesters.
       </Typography>
 
       {/* Error Alert */}

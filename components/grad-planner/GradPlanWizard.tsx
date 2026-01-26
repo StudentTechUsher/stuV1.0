@@ -9,7 +9,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useWizardState } from './wizard/useWizardState';
 import { WizardState } from './wizard/types';
-import { WizardFrame } from './wizard/WizardFrame';
 import { ProgressBar } from './wizard/ProgressBar';
 import { NameStep } from './wizard/steps/NameStep';
 import { StudentTypeStep } from './wizard/steps/StudentTypeStep';
@@ -33,8 +32,9 @@ interface GradPlanWizardProps {
   prefilledData?: Partial<WizardState>;
 
   // Data loaders
-  onLoadPrograms?: (universityId: string) => Promise<any[]>;
+  onLoadPrograms?: (universityId: string) => Promise<unknown[]>;
   onLoadRequirements?: (programIds: string[]) => Promise<Requirement[]>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSearchCourses?: (query: string) => Promise<any[]>;
   onSubmitPlan?: (planData: WizardState) => Promise<{ success: boolean; error?: string }>;
 
@@ -102,13 +102,12 @@ export const GradPlanWizard: React.FC<GradPlanWizardProps> = ({
   studentName = '',
   studentId = '',
   onComplete,
-  onClose,
+
   prefilledData,
   onLoadPrograms,
   onLoadRequirements,
   onSearchCourses,
   onSubmitPlan,
-  showProgressIndicator = false,
 }) => {
   // State management
   const {
@@ -132,7 +131,7 @@ export const GradPlanWizard: React.FC<GradPlanWizardProps> = ({
   );
 
   // Data loading states
-  const [programsData, setProgramsData] = useState<any[]>([]);
+  const [programsData, setProgramsData] = useState<unknown[]>([]);
   const [loadingPrograms, setLoadingPrograms] = useState(false);
   const [requirementsData, setRequirementsData] = useState<Requirement[]>([]);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
@@ -173,7 +172,7 @@ export const GradPlanWizard: React.FC<GradPlanWizardProps> = ({
       };
       loadPrograms();
     }
-  }, [state.currentStep, onLoadPrograms, studentId, programsData.length, setError]);
+  }, [state, state.currentStep, onLoadPrograms, studentId, programsData.length, setError]);
 
   // Load requirements when in manual mode
   useEffect(() => {
@@ -200,6 +199,7 @@ export const GradPlanWizard: React.FC<GradPlanWizardProps> = ({
       loadRequirements();
     }
   }, [
+    state,
     state.currentStep,
     state.selectedPrograms,
     onLoadRequirements,
@@ -215,14 +215,14 @@ export const GradPlanWizard: React.FC<GradPlanWizardProps> = ({
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [state.currentStep, setStep]);
+  }, [state, setStep]);
 
   const goToPreviousStep = useCallback(() => {
     if (state.currentStep > 0) {
       setStep(state.currentStep - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [state.currentStep, setStep]);
+  }, [state, setStep]);
 
   // Handle step submission
   const handleSubmitPlan = useCallback(async () => {
@@ -292,6 +292,7 @@ export const GradPlanWizard: React.FC<GradPlanWizardProps> = ({
             onProgramsSelect={setPrograms}
             onNext={goToNextStep}
             onBack={goToPreviousStep}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             availablePrograms={programsData.map((p: any) => ({
               id: p.id,
               name: p.name,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+
 import { GraduationCap, BookOpen } from 'lucide-react';
 import { StudentTypeInput, getStudentTypeDescription } from '@/lib/chatbot/tools/studentTypeTool';
 

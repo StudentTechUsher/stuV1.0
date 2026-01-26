@@ -80,6 +80,10 @@ export const ElectivesStep: React.FC<ElectivesStepProps> = ({
       <div className="space-y-6">
         {/* Search Input */}
         <div className="relative space-y-3">
+          {/* Assuming Typography is a component that needs to be imported or defined */}
+          {/* <Typography variant="body2" color="error">
+            Credits must be in &quot;min-max&quot; or &quot;fixed&quot; format (e.g., 3, 1-3).
+          </Typography> */}
           <div className="relative">
             <input
               type="text"

@@ -120,7 +120,7 @@ export function SandboxPlanner({
    * Handle drag start: track which course is being dragged
    */
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    const activeData = event.active.data.current as any;
+    const activeData = event.active.data.current as { course?: Course } | undefined;
     if (activeData?.course) {
       setActiveDraggingCourse(activeData.course);
     }
@@ -138,7 +138,7 @@ export function SandboxPlanner({
 
       if (!over) return;
 
-      const activeData = active.data.current as any;
+      const activeData = active.data.current as { course?: Course } | undefined;
       if (!activeData?.course) return;
 
       const { course } = activeData;

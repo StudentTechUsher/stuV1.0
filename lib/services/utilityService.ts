@@ -12,6 +12,7 @@ import * as path from 'path';
  * Extract dominant colors from a webpage screenshot using Playwright
  */
 async function extractColorsViaScreenshot(url: string): Promise<string[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let browser: any = null;
   let tmpFile: string | null = null;
 

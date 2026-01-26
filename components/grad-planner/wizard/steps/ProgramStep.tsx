@@ -3,7 +3,7 @@
  * Select majors, minors, and other programs
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { WizardState } from '../types';
 import { WizardHeader } from '../WizardHeader';
 import { WizardFooter } from '../WizardFooter';

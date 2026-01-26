@@ -62,7 +62,7 @@ const WORK_STATUS_OPTIONS = [
 ];
 
 export function AcademicPlanningSettingsForm({
-  userId,
+  userId: _userId,
   currentStudentData,
   onUpdate,
   onUpdateGraduationTimeline,

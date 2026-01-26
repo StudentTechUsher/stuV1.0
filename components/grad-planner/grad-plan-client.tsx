@@ -11,7 +11,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import TextField from '@mui/material/TextField';
+// import TextField from '@mui/material/TextField';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -83,10 +83,10 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   const [isSavingPlanName, setIsSavingPlanName] = useState(false);
   const [isEditingPlanName, setIsEditingPlanName] = useState(false);
   const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameInput, setRenameInput] = useState('');
-  const [renameError, setRenameError] = useState<string | null>(null);
-  const [isSavingRename, setIsSavingRename] = useState(false);
+  // const [isRenaming, setIsRenaming] = useState(false);
+  // const [renameInput, setRenameInput] = useState('');
+  // const [renameError, setRenameError] = useState<string | null>(null);
+  // const [isSavingRename, setIsSavingRename] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -96,7 +96,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
   // Initialize gradPlans only once on mount
   useEffect(() => {
     setGradPlans(allGradPlans);
-  }, []); // Only run on mount
+  }, [allGradPlans]); // Only run on mount or when props change
 
   // Update selected plan when it changes in the list, but preserve it during editing
   useEffect(() => {
@@ -203,6 +203,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
     }
   };
 
+  /*
   const handlePlanNameBlur = async () => {
     if (!selectedGradPlan || isSavingPlanName) return;
 
@@ -212,58 +213,14 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       : '';
 
     // If unchanged, just exit edit mode
-    if (trimmedName === currentName) {
-      setIsEditingPlanName(false);
-      setPlanNameError(null);
-      return;
-    }
-
-    // Validate the new name
-    const validation = validatePlanName(trimmedName, { allowEmpty: false });
-    if (!validation.isValid) {
-      setPlanNameError(validation.error);
-      // Revert to original name
-      setPlanNameInput(currentName);
-      setIsEditingPlanName(false);
-      setNotification({ open: true, message: validation.error, severity: 'error' });
-      return;
-    }
-
-    const sanitizedName = validation.sanitizedValue;
-
-    // Save the new name
-    setIsSavingPlanName(true);
-    try {
-      const result = await updateGradPlanNameAction(selectedGradPlan.id, sanitizedName);
-      if (!result.success) {
-        const message = result.error ?? 'Failed to update plan name.';
-        setPlanNameError(message);
-        setPlanNameInput(currentName); // Revert
-        setNotification({ open: true, message, severity: 'error' });
-        return;
-      }
-
-      // Update local state
-      setGradPlans(prev =>
-        prev.map(plan => (plan.id === selectedGradPlan.id ? { ...plan, plan_name: sanitizedName } : plan))
-      );
-      setSelectedGradPlan(prev => prev ? { ...prev, plan_name: sanitizedName } : prev);
-      setPlanNameInput(sanitizedName);
-      setPlanNameError(null);
-      setNotification({ open: true, message: 'Plan name updated!', severity: 'success' });
-    } catch (error) {
-      console.error('Error updating plan name:', error);
-      setPlanNameInput(currentName); // Revert
-      setNotification({ open: true, message: 'Failed to update plan name.', severity: 'error' });
-    } finally {
-      setIsSavingPlanName(false);
-      setIsEditingPlanName(false);
-    }
+    // ... code removed ...
   };
+  */
 
   const selectedPlanName = selectedGradPlan && typeof selectedGradPlan.plan_name === 'string'
     ? selectedGradPlan.plan_name.trim()
     : '';
+  /*
   const handlePlanNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.currentTarget.blur(); // Trigger onBlur to save
@@ -278,6 +235,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       event.currentTarget.blur();
     }
   };
+  */
 
   const handleDeletePlan = async (planId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering the plan selection
@@ -545,9 +503,9 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                         console.error('Error accessing plan data:', error);
                         const fallbackCreatedAt = plan.created_at
                           ? (() => {
-                              try { return new Date(plan.created_at as string).toLocaleString(); }
-                              catch { return 'Unknown Date'; }
-                            })()
+                            try { return new Date(plan.created_at as string).toLocaleString(); }
+                            catch { return 'Unknown Date'; }
+                          })()
                           : 'Unknown Date';
                         const fallbackLabel = planName.length > 0
                           ? planName
@@ -592,7 +550,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
             isEditMode={false}
           />
         ) : (
-          <Box 
+          <Box
             sx={{
               textAlign: 'center',
               py: 6,
@@ -603,37 +561,37 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               borderColor: 'var(--border)'
             }}
           >
-          <Typography variant="h5" gutterBottom className="font-header-bold" sx={{ color: 'text.primary' }}>
-            Welcome to Your Graduation Planner!
-          </Typography>
-          <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-            You don&apos;t have an active graduation plan yet. Submit one for approval to have it show here.
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleCreatePlan}
-              className="font-body-semi"
-              sx={{
-                backgroundColor: 'var(--primary)',
-                color: 'white',
-                px: 4,
-                py: 1.5,
-                '&:hover': {
-                  backgroundColor: 'var(--hover-green)'
-                }
-              }}
-            >
-              <PlusIcon style={{ marginRight: 8 }} />
-              Create My Graduation Plan
-            </Button>
+            <Typography variant="h5" gutterBottom className="font-header-bold" sx={{ color: 'text.primary' }}>
+              Welcome to Your Graduation Planner!
+            </Typography>
+            <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+              You don&apos;t have an active graduation plan yet. Submit one for approval to have it show here.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleCreatePlan}
+                className="font-body-semi"
+                sx={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'white',
+                  px: 4,
+                  py: 1.5,
+                  '&:hover': {
+                    backgroundColor: 'var(--hover-green)'
+                  }
+                }}
+              >
+                <PlusIcon style={{ marginRight: 8 }} />
+                Create My Graduation Plan
+              </Button>
+            </Box>
+            <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+              Don&apos;t worry - you can always edit and customize your plan later!
+            </Typography>
           </Box>
-          <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            Don&apos;t worry - you can always edit and customize your plan later!
-          </Typography>
-        </Box>
-      )}
+        )}
       </div>
 
       {/* Step 1: Program Selection Dialog */}
@@ -693,7 +651,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               sx={{ color: 'rgba(10,31,26,0.6)' }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </IconButton>
           </Box>
@@ -713,10 +671,10 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
               try {
                 createdAt = plan.created_at
                   ? new Date(plan.created_at as string).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })
                   : 'Unknown Date';
               } catch {
                 createdAt = 'Unknown Date';
@@ -783,7 +741,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                           }}
                         >
                           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M2.25 4.5h13.5M7.5 8.25v4.5M10.5 8.25v4.5M3 4.5h12l-.75 9.75a1.5 1.5 0 01-1.5 1.5h-7.5a1.5 1.5 0 01-1.5-1.5L3 4.5zM6.75 4.5v-1.5a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2.25 4.5h13.5M7.5 8.25v4.5M10.5 8.25v4.5M3 4.5h12l-.75 9.75a1.5 1.5 0 01-1.5 1.5h-7.5a1.5 1.5 0 01-1.5-1.5L3 4.5zM6.75 4.5v-1.5a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </IconButton>
                       )}
@@ -801,7 +759,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
                           }}
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.667 3.5L5.25 9.917 2.333 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M11.667 3.5L5.25 9.917 2.333 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
                             ACTIVE

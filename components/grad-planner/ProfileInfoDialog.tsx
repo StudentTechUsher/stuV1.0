@@ -206,7 +206,7 @@ export default function ProfileInfoDialog({
             sx={{ color: 'rgba(10,31,26,0.6)' }}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </IconButton>
         </Box>
@@ -295,7 +295,9 @@ export default function ProfileInfoDialog({
                     Uploading your transcript helps us provide better course recommendations. If you don&apos;t have one yet, you can skip this step.
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
+                    <p className="text-sm text-yellow-800">
+                      We&apos;ll use this to optimize your electives.
+                    </p>            <Button
                       variant="outlined"
                       size="small"
                       startIcon={<Upload size={14} />}
@@ -490,7 +492,7 @@ export default function ProfileInfoDialog({
                 sx={{ color: 'rgba(10,31,26,0.6)' }}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </IconButton>
             </Box>

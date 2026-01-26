@@ -19,8 +19,8 @@ import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
-import TextField from '@mui/material/TextField';
-import Autocomplete from '@mui/material/Autocomplete';
+// import TextField from '@mui/material/TextField';
+// import Autocomplete from '@mui/material/Autocomplete';
 import { StuLoader } from '@/components/ui/StuLoader';
 import { Sparkles } from 'lucide-react';
 import { searchCourseOfferings, type CourseOffering } from '@/lib/services/courseOfferingService';
@@ -29,7 +29,7 @@ import CourseSearch from '@/components/grad-plan/CourseSearch';
 import type { ProgramRow } from '@/types/program';
 import type { OrganizePromptInput } from '@/lib/validation/schemas';
 import { fetchUserCoursesAction } from '@/lib/services/server-actions';
-import { decodeAccessIdClient } from '@/lib/utils/access-id';
+// import { decodeAccessIdClient } from '@/lib/utils/access-id';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import {
   parseRequirementsFromGenEd,
@@ -132,7 +132,7 @@ export default function CreateGradPlanDialog({
   planMode: initialPlanMode,
   universityId,
   userId,
-  onPlanCreated,
+  onPlanCreated: _onPlanCreated,
   prompt,
   initialPlanName,
   isGraduateStudent = false,
@@ -157,7 +157,7 @@ export default function CreateGradPlanDialog({
   // State: Use selected programs from props
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds), [selectedProgramIds]);
   // State: plan creation
-  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+  const [isCreatingPlan, _setIsCreatingPlan] = useState(false);
   const [planCreationError, setPlanCreationError] = useState<string | null>(null);
   const [planName, setPlanName] = useState(initialPlanName ?? '');
   // Snackbar for success/error feedback
@@ -179,75 +179,75 @@ export default function CreateGradPlanDialog({
     }
   }, [open, initialPlanName]);
 
-// --- Fetch program data dynamically when dialog opens ---
-useEffect(() => {
-  async function fetchProgramData() {
-    if (!open || (selectedProgramIds.length === 0 && genEdProgramIds.length === 0)) return;
+  // --- Fetch program data dynamically when dialog opens ---
+  useEffect(() => {
+    async function fetchProgramData() {
+      if (!open || (selectedProgramIds.length === 0 && genEdProgramIds.length === 0)) return;
 
-    setLoadingProgramData(true);
-    setDataLoadError(null);
+      setLoadingProgramData(true);
+      setDataLoadError(null);
 
-    try {
-      // Fetch selected programs (majors + minors OR graduate programs) with full requirements
-      if (selectedProgramIds.length > 0) {
-        const programsRes = await fetch(`/api/programs/batch?ids=${selectedProgramIds.join(',')}&universityId=${universityId}`);
-        if (!programsRes.ok) throw new Error('Failed to fetch program data');
-        const programsJson = await programsRes.json();
-        setProgramsData(programsJson);
+      try {
+        // Fetch selected programs (majors + minors OR graduate programs) with full requirements
+        if (selectedProgramIds.length > 0) {
+          const programsRes = await fetch(`/api/programs/batch?ids=${selectedProgramIds.join(',')}&universityId=${universityId}`);
+          if (!programsRes.ok) throw new Error('Failed to fetch program data');
+          const programsJson = await programsRes.json();
+          setProgramsData(programsJson);
+        }
+
+        // Fetch GenEd programs with full requirements (skip for graduate students)
+        if (!isGraduateStudent && genEdProgramIds.length > 0) {
+          const genEdRes = await fetch(`/api/programs/batch?ids=${genEdProgramIds.join(',')}&universityId=${universityId}`);
+          if (!genEdRes.ok) throw new Error('Failed to fetch GenEd data');
+          const genEdJson = await genEdRes.json();
+          setGenEdData(genEdJson);
+        }
+
+      } catch (error) {
+        console.error('Error fetching program data:', error);
+        setDataLoadError('Failed to load program data. Please try again.');
+      } finally {
+        setLoadingProgramData(false);
       }
-
-      // Fetch GenEd programs with full requirements (skip for graduate students)
-      if (!isGraduateStudent && genEdProgramIds.length > 0) {
-        const genEdRes = await fetch(`/api/programs/batch?ids=${genEdProgramIds.join(',')}&universityId=${universityId}`);
-        if (!genEdRes.ok) throw new Error('Failed to fetch GenEd data');
-        const genEdJson = await genEdRes.json();
-        setGenEdData(genEdJson);
-      }
-
-    } catch (error) {
-      console.error('Error fetching program data:', error);
-      setDataLoadError('Failed to load program data. Please try again.');
-    } finally {
-      setLoadingProgramData(false);
     }
-  }
 
-  fetchProgramData();
-}, [open, selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
+    fetchProgramData();
+  }, [open, selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
 
-// --- User-added elective courses & GenEd strategy ---
-interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
-const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
-const [electiveError, setElectiveError] = useState<string | null>(null);
+  // --- User-added elective courses & GenEd strategy ---
+  interface UserElectiveCourse { id: string; code: string; title: string; credits: number; }
+  const [userElectives, setUserElectives] = useState<UserElectiveCourse[]>([]);
+  const [electiveError, setElectiveError] = useState<string | null>(null);
 
-// GenEd sequencing strategy: use passed-in value
-const genEdStrategy = initialGenEdStrategy;
+  // GenEd sequencing strategy: use passed-in value
+  const genEdStrategy = initialGenEdStrategy;
 
-const handleAddElective = (selectedCourse: CourseOffering | null) => {
-  if (!selectedCourse) return;
+  const handleAddElective = (selectedCourse: CourseOffering | null) => {
+    if (!selectedCourse) return;
 
-  const code = selectedCourse.course_code.trim().toUpperCase();
-  const title = selectedCourse.title.trim();
-  const credits = selectedCourse.credits_decimal || 3.0; // Default to 3.0 if null
+    const code = selectedCourse.course_code.trim().toUpperCase();
+    const title = selectedCourse.title.trim();
+    const credits = selectedCourse.credits_decimal || 3.0; // Default to 3.0 if null
 
-  if (userElectives.some(e => e.code === code)) {
-    setElectiveError('This course has already been added.');
-    return;
-  }
+    if (userElectives.some(e => e.code === code)) {
+      setElectiveError('This course has already been added.');
+      return;
+    }
 
-  const newCourse: UserElectiveCourse = {
-    id: `${selectedCourse.offering_id}`,
-    code,
-    title,
-    credits
+    const newCourse: UserElectiveCourse = {
+      id: `${selectedCourse.offering_id}`,
+      code,
+      title,
+      credits
+    };
+    setUserElectives(prev => [...prev, newCourse]);
+    setElectiveError(null);
   };
-  setUserElectives(prev => [...prev, newCourse]);
-  setElectiveError(null);
-};
 
-const handleRemoveElective = (id: string) => {
-  setUserElectives(prev => prev.filter(c => c.id !== id));
-};
+  const handleRemoveElective = (id: string) => {
+    setUserElectives(prev => prev.filter(c => c.id !== id));
+  };
 
   // memoized parsed data using extracted helpers
   const requirements = useMemo(() => parseRequirementsFromGenEd(genEdData), [genEdData]);
@@ -299,7 +299,7 @@ const handleRemoveElective = (id: string) => {
         if (req.courses) {
           const dropdownCount = getProgramDropdownCount(req);
           const requirementKey = getRequirementKey(programId, req);
-          
+
           // Just ensure slots exist (auto-population handled by separate effect)
           ensureProgramSlots(requirementKey, dropdownCount);
         }
@@ -327,11 +327,11 @@ const handleRemoveElective = (id: string) => {
           setSelectedCourses(prev => {
             const existing = prev[req.subtitle] ?? [];
             const hasEmptySlots = existing.length < dropdownCount || existing.some(course => !course || course.trim() === '');
-            
+
             if (hasEmptySlots) {
               const next = [...existing];
               while (next.length < dropdownCount) next.push('');
-              
+
               courses.forEach((course, index) => {
                 if (index < dropdownCount && (!next[index] || next[index].trim() === '')) {
                   next[index] = course.code;
@@ -484,7 +484,7 @@ const handleRemoveElective = (id: string) => {
     const getCourseDetails = (courseCode: string, courseList: (CourseBlock | Course)[]) => {
       const course = courseList.find(c => c.code === courseCode);
       if (!course) return { code: courseCode, title: 'Unknown', credits: 'Unknown' };
-      
+
       let creditsValue: string | number = 'Unknown';
       if (course.credits) {
         if (typeof course.credits === 'object') {
@@ -499,7 +499,7 @@ const handleRemoveElective = (id: string) => {
           creditsValue = course.credits;
         }
       }
-      
+
       return {
         code: course.code,
         title: course.title,
@@ -529,7 +529,7 @@ const handleRemoveElective = (id: string) => {
       const filteredSelected = selected.filter(course => course && course.trim() !== '');
       if (filteredSelected.length > 0) {
         const courseList = requirementCoursesMap[req.subtitle] || [];
-        selectedClasses.generalEducation[req.subtitle] = filteredSelected.map(courseCode => 
+        selectedClasses.generalEducation[req.subtitle] = filteredSelected.map(courseCode =>
           getCourseDetails(courseCode, courseList)
         );
       }
@@ -549,16 +549,16 @@ const handleRemoveElective = (id: string) => {
       };
 
       programRequirements.forEach(req => {
-        
+
         // Main requirement courses
         if (req.courses && req.courses.length > 0) {
           const selected = selectedProgramCourses[`${programId}-req-${req.requirementId}`] || [];
           const filteredSelected = selected.filter(course => course && course.trim() !== '');
-          
+
           if (filteredSelected.length > 0) {
             selectedClasses.programs[programId].requirements[`requirement-${req.requirementId}`] = {
               description: req.description,
-              courses: filteredSelected.map(courseCode => 
+              courses: filteredSelected.map(courseCode =>
                 getCourseDetails(courseCode, req.courses || [])
               )
             };
@@ -570,11 +570,11 @@ const handleRemoveElective = (id: string) => {
           req.subRequirements.forEach(subReq => {
             const selected = selectedProgramCourses[`${programId}-subreq-${subReq.requirementId}`] || [];
             const filteredSelected = selected.filter(course => course && course.trim() !== '');
-            
+
             if (filteredSelected.length > 0) {
               selectedClasses.programs[programId].requirements[`subrequirement-${subReq.requirementId}`] = {
                 description: subReq.description,
-                courses: filteredSelected.map(courseCode => 
+                courses: filteredSelected.map(courseCode =>
                   getCourseDetails(courseCode, subReq.courses)
                 )
               };
@@ -583,7 +583,7 @@ const handleRemoveElective = (id: string) => {
         }
       });
     });
-    
+
     // Append user-added electives (treated as fulfilling generic elective requirements)
     if (userElectives.length > 0) {
       selectedClasses.userAddedElectives = userElectives.map(e => ({ code: e.code, title: e.title, credits: e.credits }));
@@ -636,8 +636,8 @@ const handleRemoveElective = (id: string) => {
     const strategyText = !isGraduateStudent && genEdStrategy === 'early'
       ? 'Prioritize scheduling most general education (GenEd) requirements in the earliest terms, front-loading them while keeping total credits per term reasonable.'
       : !isGraduateStudent
-      ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
-      : '';
+        ? 'Balance general education (GenEd) requirements across the full academic plan, avoiding heavy clustering early unless required by sequencing.'
+        : '';
 
     // Replace any mentions of "120 credits" in the prompt with the calculated target
     const promptWithCredits = prompt.replace(/120\s*credits?/gi, `${effectiveTargetCredits} credits`);
@@ -754,11 +754,11 @@ const handleRemoveElective = (id: string) => {
       takenCourses,
       recommendedElectives: recommendedElectives && recommendedElectives.length > 0
         ? recommendedElectives.map(rec => ({
-            code: rec.courseCode,
-            title: rec.courseTitle,
-            score: rec.score,
-            matchReasons: rec.matchReasons || []
-          }))
+          code: rec.courseCode,
+          title: rec.courseTitle,
+          score: rec.score,
+          matchReasons: rec.matchReasons || []
+        }))
         : []
     };
 
@@ -907,18 +907,18 @@ const handleRemoveElective = (id: string) => {
   }, [isCreatingPlan]);
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleDialogClose} 
-      maxWidth="sm" 
+    <Dialog
+      open={open}
+      onClose={handleDialogClose}
+      maxWidth="sm"
       fullWidth
       disableEscapeKeyDown={isCreatingPlan}
     >
       <DialogTitle className="font-header-bold" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         Create New Grad Plan
-        <IconButton 
-          onClick={handleManualClose} 
-          sx={{ 
+        <IconButton
+          onClick={handleManualClose}
+          sx={{
             color: 'text.secondary',
             opacity: isCreatingPlan ? 0.5 : 1,
             cursor: isCreatingPlan ? 'not-allowed' : 'pointer'
@@ -948,370 +948,370 @@ const handleRemoveElective = (id: string) => {
         {/* Show content only when data is loaded */}
         {!loadingProgramData && !dataLoadError && (
           <>
-        {/* Informational note for AUTO mode */}
-        {effectiveMode === 'AUTO' && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Courses will be auto-selected by STU based on your selected programs and preferences. You can edit and swap courses after plan creation.
-          </Alert>
-        )}
-        
-        {/* Loading overlay during AI processing */}
-        {isCreatingPlan && (
-          <Box sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'rgba(255, 255, 255, 0.95)',
-            zIndex: 1000,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 2,
-            p: 4
-          }}>
-            <StuLoader variant="page" text={`${loadingMessage.title} — ${loadingMessage.subtitle}`} />
-            <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary', mt: 2 }}>
-              This may take a moment. Please don&apos;t close this window.
-            </Typography>
-          </Box>
-        )}
-        
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Available Programs */}
-          <Box>
-            {programsData?.length ? (
-              <Box>
-                {/* Group programs by type */}
-                {(() => {
-                  const groupedPrograms = programsData.reduce((acc, program) => {
-                    const type = program.program_type || 'Other';
-                    if (!acc[type]) acc[type] = [];
-                    acc[type].push(program);
-                    return acc;
-                  }, {} as Record<string, typeof programsData>);
-
-                  const typeOrder = ['major', 'minor', 'emphasis'];
-                  const orderedTypes = [
-                    ...typeOrder.filter(type => groupedPrograms[type]),
-                    ...Object.keys(groupedPrograms).filter(type => !typeOrder.includes(type.toLowerCase()))
-                  ];
-
-                  return orderedTypes.map((programType) => (
-                    <Box key={programType} sx={{ mb: 3 }}>
-                      <Typography
-                        variant="subtitle1"
-                        className="font-header-bold"
-                        sx={{
-                          mb: 1,
-                          textTransform: 'capitalize',
-                          color: 'var(--primary)'
-                        }}
-                      >
-                        {programType}s ({groupedPrograms[programType].length})
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                        {groupedPrograms[programType].map((program) => (
-                          <Chip
-                            key={program.id}
-                            label={`${program.name}${program.version ? ` (${program.version})` : ''}`}
-                            sx={{
-                              backgroundColor: selectedPrograms.has(program.id) ? 'var(--primary)' : 'transparent',
-                              color: selectedPrograms.has(program.id) ? 'white' : 'text.primary',
-                              border: selectedPrograms.has(program.id) ? '1px solid var(--primary)' : '1px solid var(--border)',
-                            }}
-                            className="font-body"
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  ));
-                })()}
-              </Box>
-            ) : (
-              <Typography className="font-body">No programs available</Typography>
+            {/* Informational note for AUTO mode */}
+            {effectiveMode === 'AUTO' && (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Courses will be auto-selected by STU based on your selected programs and preferences. You can edit and swap courses after plan creation.
+              </Alert>
             )}
-          </Box>
 
-          {/* General Education Requirements (Undergraduate Only) */}
-          {!isGraduateStudent && effectiveMode === 'MANUAL' && (
-            <Box>
-              <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
+            {/* Loading overlay during AI processing */}
+            {isCreatingPlan && (
+              <Box sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 2,
+                p: 4
+              }}>
+                <StuLoader variant="page" text={`${loadingMessage.title} — ${loadingMessage.subtitle}`} />
+                <Typography variant="body2" className="font-body" sx={{ textAlign: 'center', color: 'text.secondary', mt: 2 }}>
+                  This may take a moment. Please don&apos;t close this window.
+                </Typography>
+              </Box>
+            )}
 
-              {requirements && requirements.length ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  {requirements.map((req, idx) => {
-                    const dropdownCount = getDropdownCount(req);
-                    const courses = requirementCoursesMap[req.subtitle] || [];
-                    const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Available Programs */}
+              <Box>
+                {programsData?.length ? (
+                  <Box>
+                    {/* Group programs by type */}
+                    {(() => {
+                      const groupedPrograms = programsData.reduce((acc, program) => {
+                        const type = program.program_type || 'Other';
+                        if (!acc[type]) acc[type] = [];
+                        acc[type].push(program);
+                        return acc;
+                      }, {} as Record<string, typeof programsData>);
+
+                      const typeOrder = ['major', 'minor', 'emphasis'];
+                      const orderedTypes = [
+                        ...typeOrder.filter(type => groupedPrograms[type]),
+                        ...Object.keys(groupedPrograms).filter(type => !typeOrder.includes(type.toLowerCase()))
+                      ];
+
+                      return orderedTypes.map((programType) => (
+                        <Box key={programType} sx={{ mb: 3 }}>
+                          <Typography
+                            variant="subtitle1"
+                            className="font-header-bold"
+                            sx={{
+                              mb: 1,
+                              textTransform: 'capitalize',
+                              color: 'var(--primary)'
+                            }}
+                          >
+                            {programType}s ({groupedPrograms[programType].length})
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                            {groupedPrograms[programType].map((program) => (
+                              <Chip
+                                key={program.id}
+                                label={`${program.name}${program.version ? ` (${program.version})` : ''}`}
+                                sx={{
+                                  backgroundColor: selectedPrograms.has(program.id) ? 'var(--primary)' : 'transparent',
+                                  color: selectedPrograms.has(program.id) ? 'white' : 'text.primary',
+                                  border: selectedPrograms.has(program.id) ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                }}
+                                className="font-body"
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      ));
+                    })()}
+                  </Box>
+                ) : (
+                  <Typography className="font-body">No programs available</Typography>
+                )}
+              </Box>
+
+              {/* General Education Requirements (Undergraduate Only) */}
+              {!isGraduateStudent && effectiveMode === 'MANUAL' && (
+                <Box>
+                  <Typography variant="h6" className="font-header-bold" sx={{ mb: 2 }}>General Education Requirements:</Typography>
+
+                  {requirements && requirements.length ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      {requirements.map((req, idx) => {
+                        const dropdownCount = getDropdownCount(req);
+                        const courses = requirementCoursesMap[req.subtitle] || [];
+                        const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+
+                        return (
+                          <Box key={`${req.subtitle}-${idx}`} sx={{ py: 2 }}>
+                            <Typography variant="subtitle1" className="font-header" sx={{ mb: 1 }}>
+                              {req.subtitle}
+                              {isAutoSelected && (
+                                <Chip
+                                  label="Auto-selected"
+                                  size="small"
+                                  className="font-body"
+                                  sx={{
+                                    ml: 1,
+                                    backgroundColor: 'var(--primary)',
+                                    color: 'white'
+                                  }}
+                                />
+                              )}
+                            </Typography>
+                            {isAutoSelected && (
+                              <Typography variant="body2" className="font-body" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                                All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
+                              </Typography>
+                            )}
+
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {Array.from({ length: dropdownCount }).map((_, slot) => (
+                                <FormControl key={`${req.subtitle}-slot-${slot}`} fullWidth>
+                                  <InputLabel className="font-body">
+                                    {dropdownCount > 1
+                                      ? `${req.subtitle} — Select course #${slot + 1}`
+                                      : req.subtitle}
+                                  </InputLabel>
+                                  <Select
+                                    value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
+                                    label={
+                                      dropdownCount > 1
+                                        ? `${req.subtitle} — Select course #${slot + 1}`
+                                        : req.subtitle
+                                    }
+                                    disabled={isAutoSelected}
+                                    onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
+                                  >
+                                    <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
+                                    {courses && Array.isArray(courses) ? courses
+                                      .filter(c => c.status !== 'retired' && c.credits != null)
+                                      .map((c) => (
+                                        <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code} className="font-body">
+                                          {c.code} — {c.title} ({creditText(c.credits)})
+                                        </MenuItem>
+                                      )) : null}
+                                  </Select>
+                                </FormControl>
+                              ))}
+                            </Box>
+
+                            {/* Divider between requirement sections */}
+                            {idx < requirements.length - 1 && <Divider sx={{ mt: 2 }} />}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  ) : (
+                    <Typography className="font-body">No general education requirements found</Typography>
+                  )}
+                </Box>
+              )}
+
+              {/* Selected Program Requirements */}
+              {selectedPrograms && selectedPrograms.size > 0 && effectiveMode === 'MANUAL' && (
+                <>
+                  {Array.from(selectedPrograms).map((programId) => {
+                    const program = programsData?.find(p => p.id === programId);
+                    if (!program) return null;
 
                     return (
-                      <Box key={`${req.subtitle}-${idx}`} sx={{ py: 2 }}>
-                        <Typography variant="subtitle1" className="font-header" sx={{ mb: 1 }}>
-                          {req.subtitle}
-                          {isAutoSelected && (
-                            <Chip
-                              label="Auto-selected"
-                              size="small"
-                              className="font-body"
-                              sx={{
-                                ml: 1,
-                                backgroundColor: 'var(--primary)',
-                                color: 'white'
-                              }}
-                            />
-                          )}
+                      <Box key={programId}>
+                        <Typography variant="h6" sx={{ mb: 2, color: 'success.main' }}>
+                          {program.name} Requirements:
                         </Typography>
-                        {isAutoSelected && (
-                          <Typography variant="body2" className="font-body" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
-                            All available courses for this requirement have been automatically selected ({courses.length} course{courses.length === 1 ? '' : 's'}).
-                          </Typography>
-                        )}
 
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          {Array.from({ length: dropdownCount }).map((_, slot) => (
-                            <FormControl key={`${req.subtitle}-slot-${slot}`} fullWidth>
-                              <InputLabel className="font-body">
-                                {dropdownCount > 1
-                                  ? `${req.subtitle} — Select course #${slot + 1}`
-                                  : req.subtitle}
-                              </InputLabel>
-                              <Select
-                                value={(selectedCourses[req.subtitle]?.[slot] ?? '')}
-                                label={
-                                  dropdownCount > 1
-                                    ? `${req.subtitle} — Select course #${slot + 1}`
-                                    : req.subtitle
-                                }
-                                disabled={isAutoSelected}
-                                onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
-                              >
-                                <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
-                                {courses && Array.isArray(courses) ? courses
-                                  .filter(c => c.status !== 'retired' && c.credits != null)
-                                  .map((c) => (
-                                  <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}`} value={c.code} className="font-body">
-                                    {c.code} — {c.title} ({creditText(c.credits)})
-                                  </MenuItem>
-                                )) : null}
-                              </Select>
-                            </FormControl>
-                          ))}
-                        </Box>
+                        {programRequirements && programRequirements.length ? (
+                          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            {getFlattenedRequirements(programRequirements, programId, getRequirementKey).map((item, idx) => {
+                              const { requirement, isSubRequirement, key } = item;
+                              const dropdownCount = getProgramDropdownCount(requirement);
+                              const validCourses = getValidCourses(requirement);
+                              const isAutoSelected = shouldAutoSelect(requirement, isSubRequirement);
 
-                        {/* Divider between requirement sections */}
-                        {idx < requirements.length - 1 && <Divider sx={{ mt: 2 }} />}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              ) : (
-                <Typography className="font-body">No general education requirements found</Typography>
-              )}
-            </Box>
-          )}
+                              return (
+                                <Box key={`${key}-${idx}`} sx={{ py: 2, ...(isSubRequirement && { ml: 2 }) }}>
+                                  <Typography
+                                    variant={isSubRequirement ? "body1" : "subtitle1"}
+                                    sx={{
+                                      mb: 1,
+                                      fontWeight: isSubRequirement ? 'normal' : 'bold',
+                                      fontStyle: isSubRequirement ? 'italic' : 'normal'
+                                    }}
+                                  >
+                                    {isSubRequirement ? 'Sub-requirement' : 'Requirement'} {requirement.requirementId}: {requirement.description}
+                                    {isAutoSelected && (
+                                      <Chip
+                                        label="Auto-selected"
+                                        size="small"
+                                        color="success"
+                                        sx={{ ml: 1 }}
+                                      />
+                                    )}
+                                  </Typography>
 
-          {/* Selected Program Requirements */}
-          {selectedPrograms && selectedPrograms.size > 0 && effectiveMode === 'MANUAL' && (
-            <>
-              {Array.from(selectedPrograms).map((programId) => {
-                const program = programsData?.find(p => p.id === programId);
-                if (!program) return null;
+                                  {isAutoSelected && (
+                                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
+                                      Courses for this {isSubRequirement ? 'sub-requirement' : 'requirement'} have been automatically selected ({Math.min(dropdownCount, validCourses.length)} of {validCourses.length} course{validCourses.length === 1 ? '' : 's'}).
+                                    </Typography>
+                                  )}
 
-                return (
-                  <Box key={programId}>
-                    <Typography variant="h6" sx={{ mb: 2, color: 'success.main' }}>
-                      {program.name} Requirements:
-                    </Typography>
+                                  {/* Manual selection message for sub-requirements */}
+                                  {isSubRequirement && !isAutoSelected && validCourses.length > 0 && (
+                                    <Typography variant="body2" sx={{ mb: 2, color: 'info.main', fontStyle: 'italic' }}>
+                                      Please manually select {dropdownCount} course{dropdownCount === 1 ? '' : 's'} from {validCourses.length} available option{validCourses.length === 1 ? '' : 's'} below.
+                                    </Typography>
+                                  )}
 
-                    {programRequirements && programRequirements.length ? (
-                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        {getFlattenedRequirements(programRequirements, programId, getRequirementKey).map((item, idx) => {
-                          const { requirement, isSubRequirement, key } = item;
-                          const dropdownCount = getProgramDropdownCount(requirement);
-                          const validCourses = getValidCourses(requirement);
-                          const isAutoSelected = shouldAutoSelect(requirement, isSubRequirement);
+                                  {'notes' in requirement && requirement.notes && (
+                                    <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: 'text.secondary' }}>
+                                      Note: {requirement.notes}
+                                    </Typography>
+                                  )}
 
-                          return (
-                            <Box key={`${key}-${idx}`} sx={{ py: 2, ...(isSubRequirement && { ml: 2 }) }}>
-                              <Typography 
-                                variant={isSubRequirement ? "body1" : "subtitle1"} 
-                                sx={{ 
-                                  mb: 1, 
-                                  fontWeight: isSubRequirement ? 'normal' : 'bold',
-                                  fontStyle: isSubRequirement ? 'italic' : 'normal'
-                                }}
-                              >
-                                {isSubRequirement ? 'Sub-requirement' : 'Requirement'} {requirement.requirementId}: {requirement.description}
-                                {isAutoSelected && (
-                                  <Chip 
-                                    label="Auto-selected" 
-                                    size="small" 
-                                    color="success" 
-                                    sx={{ ml: 1 }}
-                                  />
-                                )}
-                              </Typography>
-                              
-                              {isAutoSelected && (
-                                <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
-                                  Courses for this {isSubRequirement ? 'sub-requirement' : 'requirement'} have been automatically selected ({Math.min(dropdownCount, validCourses.length)} of {validCourses.length} course{validCourses.length === 1 ? '' : 's'}).
-                                </Typography>
-                              )}
+                                  {'otherRequirement' in requirement && requirement.otherRequirement && (
+                                    <Typography variant="body2" sx={{ mb: 2, color: 'warning.main' }}>
+                                      Additional Requirement: {requirement.otherRequirement}
+                                    </Typography>
+                                  )}
 
-                              {/* Manual selection message for sub-requirements */}
-                              {isSubRequirement && !isAutoSelected && validCourses.length > 0 && (
-                                <Typography variant="body2" sx={{ mb: 2, color: 'info.main', fontStyle: 'italic' }}>
-                                  Please manually select {dropdownCount} course{dropdownCount === 1 ? '' : 's'} from {validCourses.length} available option{validCourses.length === 1 ? '' : 's'} below.
-                                </Typography>
-                              )}
-                              
-                              {'notes' in requirement && requirement.notes && (
-                                <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: 'text.secondary' }}>
-                                  Note: {requirement.notes}
-                                </Typography>
-                              )}
-
-                              {'otherRequirement' in requirement && requirement.otherRequirement && (
-                                <Typography variant="body2" sx={{ mb: 2, color: 'warning.main' }}>
-                                  Additional Requirement: {requirement.otherRequirement}
-                                </Typography>
-                              )}
-
-                              {'steps' in requirement && requirement.steps && Array.isArray(requirement.steps) && (
-                                <Box sx={{ mb: 2 }}>
-                                  <Typography variant="body2" sx={{ mb: 1 }}>Steps:</Typography>
-                                  <Box component="ul" sx={{ pl: 2 }}>
-                                    {requirement.steps.map((step) => (
-                                      <Box component="li" key={step} sx={{ mb: 0.5 }}>
-                                        <Typography variant="body2">{step}</Typography>
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                </Box>
-                              )}
-
-                              {/* Course selection dropdowns */}
-                              {requirement.courses && requirement.courses.length > 0 && (
-                                <Box sx={{ mb: 2 }}>
-                                  <Typography variant="body2" sx={{ mb: 1 }}>Select courses:</Typography>
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                    {Array.from({ length: dropdownCount }).map((_, slot) => (
-                                      <FormControl key={`${key}-slot-${slot}`} fullWidth>
-                                        <InputLabel>
-                                          {dropdownCount > 1
-                                            ? `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId} — Course #${slot + 1}`
-                                            : `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId}`}
-                                        </InputLabel>
-                                        <Select
-                                          value={(() => {
-                                            const val = selectedProgramCourses[key]?.[slot] ?? '';
-                                            return val;
-                                          })()}
-                                          label={
-                                            dropdownCount > 1
-                                              ? `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId} — Course #${slot + 1}`
-                                              : `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId}`
-                                          }
-                                          disabled={isAutoSelected}
-                                          onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
-                                        >
-                                          <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
-                                          {validCourses.map((course, courseIdx) => (
-                                            <MenuItem key={`${key}-slot-${slot}-${course.code}-${courseIdx}`} value={course.code}>
-                                              {course.code} — {course.title} ({course.credits} credits)
-                                            </MenuItem>
-                                          ))}
-                                        </Select>
-                                      </FormControl>
+                                  {'steps' in requirement && requirement.steps && Array.isArray(requirement.steps) && (
+                                    <Box sx={{ mb: 2 }}>
+                                      <Typography variant="body2" sx={{ mb: 1 }}>Steps:</Typography>
+                                      <Box component="ul" sx={{ pl: 2 }}>
+                                        {requirement.steps.map((step) => (
+                                          <Box component="li" key={step} sx={{ mb: 0.5 }}>
+                                            <Typography variant="body2">{step}</Typography>
+                                          </Box>
                                         ))}
                                       </Box>
                                     </Box>
                                   )}
 
-                              {/* Divider between requirements */}
-                              {idx < getFlattenedRequirements(programRequirements, programId, getRequirementKey).length - 1 && <Divider sx={{ mt: 2 }} />}
-                            </Box>
-                          );
-                        })}
+                                  {/* Course selection dropdowns */}
+                                  {requirement.courses && requirement.courses.length > 0 && (
+                                    <Box sx={{ mb: 2 }}>
+                                      <Typography variant="body2" sx={{ mb: 1 }}>Select courses:</Typography>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {Array.from({ length: dropdownCount }).map((_, slot) => (
+                                          <FormControl key={`${key}-slot-${slot}`} fullWidth>
+                                            <InputLabel>
+                                              {dropdownCount > 1
+                                                ? `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId} — Course #${slot + 1}`
+                                                : `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId}`}
+                                            </InputLabel>
+                                            <Select
+                                              value={(() => {
+                                                const val = selectedProgramCourses[key]?.[slot] ?? '';
+                                                return val;
+                                              })()}
+                                              label={
+                                                dropdownCount > 1
+                                                  ? `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId} — Course #${slot + 1}`
+                                                  : `${isSubRequirement ? 'Sub-req' : 'Requirement'} ${requirement.requirementId}`
+                                              }
+                                              disabled={isAutoSelected}
+                                              onChange={(e) => handleProgramCourseSelection(key, slot, e.target.value)}
+                                            >
+                                              <MenuItem value="" className="font-body"><em>Select a course</em></MenuItem>
+                                              {validCourses.map((course, courseIdx) => (
+                                                <MenuItem key={`${key}-slot-${slot}-${course.code}-${courseIdx}`} value={course.code}>
+                                                  {course.code} — {course.title} ({course.credits} credits)
+                                                </MenuItem>
+                                              ))}
+                                            </Select>
+                                          </FormControl>
+                                        ))}
+                                      </Box>
+                                    </Box>
+                                  )}
+
+                                  {/* Divider between requirements */}
+                                  {idx < getFlattenedRequirements(programRequirements, programId, getRequirementKey).length - 1 && <Divider sx={{ mt: 2 }} />}
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        ) : (
+                          <Typography>No program requirements found for {program.name}</Typography>
+                        )}
                       </Box>
-                    ) : (
-                      <Typography>No program requirements found for {program.name}</Typography>
-                    )}
-                  </Box>
-                );
-              })}
-            </>
-          )}
+                    );
+                  })}
+                </>
+              )}
 
-          {/* User Added Elective Courses Section */}
-          <Box sx={{ mt: 4 }}>
-            <Divider sx={{ mb: 3 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="h6">
-                Additional Elective Courses
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<Sparkles size={14} />}
-                onClick={() => {
-                  // TODO: Implement elective finder
-                  console.log('Help me find good options clicked');
-                }}
-                sx={{
-                  fontSize: '0.75rem',
-                  py: 0.25,
-                  px: 1,
-                  borderColor: 'var(--primary)',
-                  color: 'var(--primary)',
-                  textTransform: 'none',
-                  '&:hover': {
-                    borderColor: 'var(--hover-green)',
-                    backgroundColor: 'var(--primary-15)',
-                  },
-                }}
-              >
-                Help me find good options
-              </Button>
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              If you want to include extra elective courses not covered above, add them here. These will be included in the AI planning step.
-            </Typography>
-            {userElectives.length > 0 && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {userElectives.map(course => (
-                  <Chip
-                    key={course.id}
-                    label={`${course.code} – ${course.title} (${course.credits})`}
-                    onDelete={() => handleRemoveElective(course.id)}
-                    color="info"
+              {/* User Added Elective Courses Section */}
+              <Box sx={{ mt: 4 }}>
+                <Divider sx={{ mb: 3 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6">
+                    Additional Elective Courses
+                  </Typography>
+                  <Button
                     variant="outlined"
-                    sx={{
-                      '& .MuiChip-label': { fontSize: '0.7rem' }
+                    size="small"
+                    startIcon={<Sparkles size={14} />}
+                    onClick={() => {
+                      // TODO: Implement elective finder
+                      console.log('Help me find good options clicked');
                     }}
-                  />
-                ))}
+                    sx={{
+                      fontSize: '0.75rem',
+                      py: 0.25,
+                      px: 1,
+                      borderColor: 'var(--primary)',
+                      color: 'var(--primary)',
+                      textTransform: 'none',
+                      '&:hover': {
+                        borderColor: 'var(--hover-green)',
+                        backgroundColor: 'var(--primary-15)',
+                      },
+                    }}
+                  >
+                    Help me find good options
+                  </Button>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  If you want to include extra elective courses not covered above, add them here. These will be included in the AI planning step.
+                </Typography>
+                {userElectives.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    {userElectives.map(course => (
+                      <Chip
+                        key={course.id}
+                        label={`${course.code} – ${course.title} (${course.credits})`}
+                        onDelete={() => handleRemoveElective(course.id)}
+                        color="info"
+                        variant="outlined"
+                        sx={{
+                          '& .MuiChip-label': { fontSize: '0.7rem' }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+                <CourseSearch
+                  universityId={universityId}
+                  onSelect={handleAddElective}
+                  placeholder="Search for a course by code or name..."
+                  size="small"
+                  fullWidth
+                />
+                {electiveError && (
+                  <Alert severity="warning" onClose={() => setElectiveError(null)} sx={{ mb: 2 }}>
+                    {electiveError}
+                  </Alert>
+                )}
               </Box>
-            )}
-            <CourseSearch
-              universityId={universityId}
-              onSelect={handleAddElective}
-              placeholder="Search for a course by code or name..."
-              size="small"
-              fullWidth
-            />
-            {electiveError && (
-              <Alert severity="warning" onClose={() => setElectiveError(null)} sx={{ mb: 2 }}>
-                {electiveError}
-              </Alert>
-            )}
-          </Box>
-        </Box>
+            </Box>
 
-        {/* JSON Preview Section
+            {/* JSON Preview Section
         {areAllDropdownsFilled && generateSelectedClassesJson && (
           <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
             <Accordion>

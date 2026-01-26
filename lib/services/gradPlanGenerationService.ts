@@ -132,7 +132,7 @@ export function calculateSemesterDistribution(
   const loadRanges = getStrategyLoadRanges(strategy);
 
   // Calculate average credits per term
-  const avgCreditsPerTerm = totalCredits / termSequence.length;
+  // const avgCreditsPerTerm = totalCredits / termSequence.length;
 
   // Distribute credits across terms
   const allocations: SemesterAllocation[] = [];
@@ -250,9 +250,9 @@ export function estimateCompletionTerm(
     const isPrimary = academicTerms.terms.primary.some(
       t => t.id.toLowerCase() === termId.toLowerCase()
     );
-    const isSecondary = academicTerms.terms.secondary.some(
-      t => t.id.toLowerCase() === termId.toLowerCase()
-    );
+    // const isSecondary = academicTerms.terms.secondary.some(
+    //   t => t.id.toLowerCase() === termId.toLowerCase()
+    // );
 
     // Skip terms not in the selected terms list
     const isTermSelected = normalizedSelectedTermIds.some(
@@ -355,9 +355,9 @@ export function generateTermSequence(
     const isPrimary = academicTerms.terms.primary.some(
       t => t.id.toLowerCase() === termId.toLowerCase()
     );
-    const isSecondary = academicTerms.terms.secondary.some(
-      t => t.id.toLowerCase() === termId.toLowerCase()
-    );
+    // const isSecondary = academicTerms.terms.secondary.some(
+    //   t => t.id.toLowerCase() === termId.toLowerCase()
+    // );
 
     // Skip terms not in the selected terms list
     const isTermSelected = selectedTermIds.some(

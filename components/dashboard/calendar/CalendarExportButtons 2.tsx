@@ -124,7 +124,7 @@ export function CalendarExportButtons({
       const calendarStartY = 30;
       const calendarX = (pageWidth - finalImgWidth) / 2;
       doc.addImage(calendarDataUrl, 'PNG', calendarX, calendarStartY, finalImgWidth, finalImgHeight);
-      let tableStartY = calendarStartY + finalImgHeight + 10;
+      const tableStartY = calendarStartY + finalImgHeight + 10;
 
       // Course Schedule Table Header
       doc.setFontSize(12);

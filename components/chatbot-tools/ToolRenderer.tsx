@@ -234,6 +234,7 @@ export default function ToolRenderer({
           totalCredits={toolData.totalCredits}
           studentData={toolData.studentData}
           hasTranscript={toolData.hasTranscript}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           academicTerms={toolData.academicTerms as any}
           onComplete={(data) => onToolComplete(data)}
         />
@@ -242,6 +243,7 @@ export default function ToolRenderer({
     case 'milestones_and_constraints':
       return (
         <MilestonesAndConstraintsStep
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           distribution={toolData.distribution as any}
           onComplete={(data) => onToolComplete(data)}
         />

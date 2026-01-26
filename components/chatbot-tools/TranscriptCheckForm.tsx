@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, Check, X } from 'lucide-react';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
@@ -40,7 +40,6 @@ interface TranscriptCheckFormProps {
 export default function TranscriptCheckForm({
   hasCourses,
   onSubmit,
-  academicTerms,
 }: Readonly<TranscriptCheckFormProps>) {
   const { user } = useAuth();
   const [showUpload, setShowUpload] = useState(false);
@@ -293,11 +292,11 @@ export default function TranscriptCheckForm({
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">•</span>
-                See which courses you've already completed
+                See which courses you&apos;ve already completed
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">•</span>
-                Avoid recommending courses you've taken
+                Avoid recommending courses you&apos;ve taken
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">•</span>
