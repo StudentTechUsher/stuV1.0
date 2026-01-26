@@ -324,7 +324,22 @@ export function getConversationProgress(state: ConversationState): ConversationP
       completed: true,
     });
 
-    if (state.collectedData.creditDistributionStrategy.includeSecondaryCourses) {
+    // Show selected terms if available
+    const selectedTermIds = state.collectedData.creditDistributionStrategy.selectedTermIds;
+    if (selectedTermIds && selectedTermIds.length > 0) {
+      // Format term IDs to readable labels (capitalize)
+      const termLabels = selectedTermIds.map(termId =>
+        termId.charAt(0).toUpperCase() + termId.slice(1)
+      ).join(', ');
+
+      collectedFields.push({
+        field: 'selectedTerms',
+        label: 'Terms Included in Plan',
+        value: termLabels,
+        completed: true,
+      });
+    } else if (state.collectedData.creditDistributionStrategy.includeSecondaryCourses) {
+      // Fallback for old data without selectedTermIds
       collectedFields.push({
         field: 'secondaryTerms',
         label: 'Spring & Summer Terms',
