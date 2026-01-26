@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { getUserUniversity, updateUniversityColors, DEFAULT_THEME_COLORS } from '@/lib/utils/university';
+import { getUserUniversity } from '@/lib/utils/university';
 // Import University interface from its actual location
 import { University } from '@/lib/types/university';
 
@@ -22,37 +22,9 @@ export function ThemeProvider({ children }: Readonly<{ children: React.ReactNode
   const [university, setUniversity] = useState<University | null>(null);
   const supabase = createSupabaseBrowserClient();
 
-  // Load theme color from university on mount
-  useEffect(() => {
-    const loadUserTheme = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const userUniversity = await getUserUniversity(user.id);
-        setUniversity(userUniversity);
-
-        if (userUniversity?.primary_color) {
-          updateThemeColor(userUniversity.primary_color);
-        } else {
-          updateThemeColor(DEFAULT_COLOR);
-        }
-      } catch (error) {
-        console.error('Error loading user theme:', error);
-      }
-    };
-
-    loadUserTheme();
-  }, [supabase]);
-
-  // Load theme from localStorage on mount
-  useEffect(() => {
-    const savedColor = localStorage.getItem('theme-color');
-    if (savedColor) {
-      setThemeColor(savedColor);
-      applyThemeColor(savedColor);
-    }
-  }, []);
+  /* 
+   * MOVED EFFECTS executed after definitions to avoid 'used before defined' lints
+   */
 
   const applyThemeColor = (color: string) => {
     const root = document.documentElement;
@@ -113,12 +85,44 @@ export function ThemeProvider({ children }: Readonly<{ children: React.ReactNode
     localStorage.removeItem('theme-color');
   };
 
+  // Load theme color from university on mount
+  useEffect(() => {
+    const loadUserTheme = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const userUniversity = await getUserUniversity(user.id);
+        setUniversity(userUniversity);
+
+        if (userUniversity?.primary_color) {
+          updateThemeColor(userUniversity.primary_color);
+        } else {
+          updateThemeColor(DEFAULT_COLOR);
+        }
+      } catch (error) {
+        console.error('Error loading user theme:', error);
+      }
+    };
+
+    loadUserTheme();
+  }, [supabase /*, updateThemeColor */]); // updateThemeColor is stable technically, but we omit to break cycle if needed, or better yet...
+
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedColor = localStorage.getItem('theme-color');
+    if (savedColor) {
+      setThemeColor(savedColor);
+      applyThemeColor(savedColor);
+    }
+  }, [/* applyThemeColor */]); // Break cycle or rely on stable deps
+
   const value = useMemo<ThemeContextType>(() => ({
     themeColor,
     university,
     updateThemeColor,
     resetTheme,
-  }), [themeColor, university]);
+  }), [themeColor, university, updateThemeColor, resetTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
@@ -136,10 +140,10 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    }
     : null;
 }
 

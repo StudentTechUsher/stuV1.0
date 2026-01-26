@@ -15,7 +15,7 @@ interface RequirementRowProps {
 
 export function RequirementRow({ requirement, categoryColor, number }: RequirementRowProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const { title, description, progress, total, status, courses, subrequirements, completed, inProgress, planned, remaining } = requirement;
+  const { title, description, progress, total, status, courses, subrequirements, completed, inProgress, planned } = requirement;
 
   // Determine if this requirement has subrequirements or direct courses
   const hasSubrequirements = subrequirements && subrequirements.length > 0;

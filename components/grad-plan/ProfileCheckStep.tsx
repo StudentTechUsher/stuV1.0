@@ -16,7 +16,6 @@ import {
   CardContent,
   Alert,
   CircularProgress,
-  Chip,
   TextField,
   MenuItem,
   FormControl,
@@ -270,7 +269,7 @@ export function ProfileCheckStep({
                           Undergraduate
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          Pursuing a bachelor's degree
+                          Pursuing a bachelor&apos;s degree
                         </Typography>
                       </Box>
                     </Box>
@@ -314,7 +313,7 @@ export function ProfileCheckStep({
                           Graduate
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          Pursuing a master's or doctoral degree
+                          Pursuing a master&apos;s or doctoral degree
                         </Typography>
                       </Box>
                     </Box>

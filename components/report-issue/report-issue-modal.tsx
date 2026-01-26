@@ -175,7 +175,7 @@ export function ReportIssueModal({ isOpen, onClose }: ReportIssueModalProps) {
 
               <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
                 <p className="text-xs font-body text-[var(--muted-foreground)]">
-                  We'll include your current page and session info to help debug.
+                  We&apos;ll include your current page and session info to help debug.
                 </p>
                 <div className="flex gap-3">
                   <button

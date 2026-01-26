@@ -76,12 +76,6 @@ export function SandboxCanvas({
               semester={semester}
               courses={semesterCoursesMap[semester.id] || []}
               isEditMode={true}
-              onCoursesChange={(updatedCourses) => {
-                const updated = semesters.map((s) =>
-                  s.id === semester.id ? { ...s, courses: updatedCourses } : s
-                );
-                onSemesterChange(updated);
-              }}
               onTermChange={(newTerm) => {
                 const updated = semesters.map((s) =>
                   s.id === semester.id ? { ...s, term: newTerm } : s

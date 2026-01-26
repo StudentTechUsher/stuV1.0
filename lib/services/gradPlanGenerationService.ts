@@ -22,7 +22,8 @@ export interface AcademicTermsConfig {
 export interface CreditDistributionInput {
   totalCredits: number;
   strategy: 'fast_track' | 'balanced' | 'explore';
-  includeSecondaryCourses: boolean;
+  includeSecondaryCourses?: boolean; // Deprecated: use selectedTermIds instead
+  selectedTermIds?: string[]; // Term IDs to include (e.g., ["fall", "winter", "spring"])
   academicTerms: AcademicTermsConfig;
   admissionYear: number;
   admissionTerm: string;
@@ -32,7 +33,8 @@ export interface CreditDistributionInput {
 export interface CompletionEstimateInput {
   totalCredits: number;
   strategy: 'fast_track' | 'balanced' | 'explore';
-  includeSecondaryCourses: boolean;
+  includeSecondaryCourses?: boolean; // Deprecated: use selectedTermIds instead
+  selectedTermIds?: string[]; // Term IDs to include (e.g., ["fall", "winter", "spring"])
   academicTerms: AcademicTermsConfig;
   admissionYear: number;
   admissionTerm: string;
@@ -99,11 +101,19 @@ export function calculateSemesterDistribution(
     totalCredits,
     strategy,
     includeSecondaryCourses,
+    selectedTermIds,
     academicTerms,
     admissionYear,
     admissionTerm,
     graduationDate,
   } = input;
+
+  // Normalize selected terms (support both old and new API)
+  const normalizedSelectedTermIds = selectedTermIds || (
+    includeSecondaryCourses
+      ? [...academicTerms.terms.primary.map(t => t.id), ...academicTerms.terms.secondary.map(t => t.id)]
+      : academicTerms.terms.primary.map(t => t.id)
+  );
 
   // Generate term sequence from admission to graduation
   const termSequence = generateTermSequence(
@@ -111,7 +121,7 @@ export function calculateSemesterDistribution(
     admissionTerm,
     graduationDate,
     academicTerms,
-    includeSecondaryCourses
+    normalizedSelectedTermIds
   );
 
   if (termSequence.length === 0) {
@@ -122,7 +132,7 @@ export function calculateSemesterDistribution(
   const loadRanges = getStrategyLoadRanges(strategy);
 
   // Calculate average credits per term
-  const avgCreditsPerTerm = totalCredits / termSequence.length;
+  // const avgCreditsPerTerm = totalCredits / termSequence.length;
 
   // Distribute credits across terms
   const allocations: SemesterAllocation[] = [];
@@ -193,10 +203,18 @@ export function estimateCompletionTerm(
     totalCredits,
     strategy,
     includeSecondaryCourses,
+    selectedTermIds,
     academicTerms,
     admissionYear,
     admissionTerm,
   } = input;
+
+  // Normalize selected terms (support both old and new API)
+  const normalizedSelectedTermIds = selectedTermIds || (
+    includeSecondaryCourses
+      ? [...academicTerms.terms.primary.map(t => t.id), ...academicTerms.terms.secondary.map(t => t.id)]
+      : academicTerms.terms.primary.map(t => t.id)
+  );
 
   if (totalCredits <= 0) {
     throw new CreditDistributionError('Total credits must be greater than 0');
@@ -232,11 +250,15 @@ export function estimateCompletionTerm(
     const isPrimary = academicTerms.terms.primary.some(
       t => t.id.toLowerCase() === termId.toLowerCase()
     );
-    const isSecondary = academicTerms.terms.secondary.some(
-      t => t.id.toLowerCase() === termId.toLowerCase()
-    );
+    // const isSecondary = academicTerms.terms.secondary.some(
+    //   t => t.id.toLowerCase() === termId.toLowerCase()
+    // );
 
-    if (isSecondary && !includeSecondaryCourses) {
+    // Skip terms not in the selected terms list
+    const isTermSelected = normalizedSelectedTermIds.some(
+      selectedId => selectedId.toLowerCase() === termId.toLowerCase()
+    );
+    if (!isTermSelected) {
       currentTermIndex = (currentTermIndex + 1) % academicTerms.ordering.length;
       if (currentTermIndex === 0 || termId === getAcademicYearEndTerm(academicTerms)) {
         currentYear++;
@@ -307,7 +329,7 @@ export function generateTermSequence(
   startTerm: string,
   endDate: Date,
   academicTerms: AcademicTermsConfig,
-  includeSecondary: boolean
+  selectedTermIds: string[]
 ): Array<{ term: string; year: number; type: 'primary' | 'secondary' }> {
   const sequence: Array<{ term: string; year: number; type: 'primary' | 'secondary' }> = [];
 
@@ -333,12 +355,15 @@ export function generateTermSequence(
     const isPrimary = academicTerms.terms.primary.some(
       t => t.id.toLowerCase() === termId.toLowerCase()
     );
-    const isSecondary = academicTerms.terms.secondary.some(
-      t => t.id.toLowerCase() === termId.toLowerCase()
-    );
+    // const isSecondary = academicTerms.terms.secondary.some(
+    //   t => t.id.toLowerCase() === termId.toLowerCase()
+    // );
 
-    // Skip secondary terms if not including them
-    if (isSecondary && !includeSecondary) {
+    // Skip terms not in the selected terms list
+    const isTermSelected = selectedTermIds.some(
+      selectedId => selectedId.toLowerCase() === termId.toLowerCase()
+    );
+    if (!isTermSelected) {
       // Move to next term
       currentTermIndex = (currentTermIndex + 1) % academicTerms.ordering.length;
       if (currentTermIndex === 0 || termId === getAcademicYearEndTerm(academicTerms)) {

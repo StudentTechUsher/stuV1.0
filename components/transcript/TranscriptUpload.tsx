@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { StuLoader } from "@/components/ui/StuLoader";
 
 type UploadStatus = "idle" | "extracting" | "extracted" | "failed";
@@ -10,17 +10,16 @@ interface TranscriptUploadProps {
   onParsingComplete?: () => void | Promise<void>;
 }
 
-export default function TranscriptUpload({ onTextExtracted, onParsingComplete }: Readonly<TranscriptUploadProps>) {
+export default function TranscriptUpload({ onParsingComplete }: Readonly<TranscriptUploadProps>) {
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [aiParseError, setAiParseError] = useState<string | null>(null);
-  const [isAiParsing, setIsAiParsing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const [isAiParsing, setIsAiParsing] = useState(false);
   const [parsingMessageIndex, setParsingMessageIndex] = useState(0);
   // PDF upload is currently disabled - defaulting to text paste mode
-  const [uploadMode, setUploadMode] = useState<'pdf' | 'text'>('text');
+  const [_uploadMode, _setUploadMode] = useState<'pdf' | 'text'>('text');
   const [pastedText, setPastedText] = useState<string>('');
 
   const parsingMessages = [
@@ -43,13 +42,13 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
     return () => clearInterval(interval);
   }, [status, parsingMessages.length]);
 
-  const handleFileUpload = async (file: File) => {
+  const _handleFileUpload = async (file: File) => {
     setStatus("extracting");
     setError(null);
     setFileName(file.name);
     setSuccessMessage(null);
     setAiParseError(null);
-    setIsAiParsing(true); // Start as parsing immediately
+    // setIsAiParsing(true); // Start as parsing immediately
 
     try {
       // Store the PDF file locally as a data URL for viewing later
@@ -117,14 +116,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
       setAiParseError(`Failed to parse transcript: ${errorMessage}`);
       setStatus("failed");
     } finally {
-      setIsAiParsing(false);
-    }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      void handleFileUpload(file);
+      // setIsAiParsing(false);
     }
   };
 
@@ -139,7 +131,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
     setFileName('Pasted Text');
     setSuccessMessage(null);
     setAiParseError(null);
-    setIsAiParsing(true);
+    // setIsAiParsing(true);
 
     try {
       // Send text directly to the API
@@ -191,7 +183,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
       setAiParseError(`Failed to parse transcript: ${errorMessage}`);
       setStatus("failed");
     } finally {
-      setIsAiParsing(false);
+      // setIsAiParsing(false);
     }
   };
 
@@ -242,7 +234,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    d="M7 16a4 4 0 01-.88-7.903A5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                   />
                 </svg>
                 <p className="text-sm mb-1">Drag &amp; drop or click to upload your transcript PDF</p>
@@ -257,24 +249,24 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
               />
             </>
           ) : ( */}
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">
-                Copy relevant text from your transcript and paste it below
-              </p>
-              <textarea
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                placeholder="Paste your transcript text here..."
-                className="w-full h-64 p-4 rounded-lg border border-border bg-background text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <button
-                onClick={handleTextPaste}
-                disabled={!pastedText || pastedText.trim().length < 100}
-                className="w-full py-3 px-4 rounded-lg bg-primary text-zinc-900 font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Parse Transcript
-              </button>
-            </div>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground text-center">
+              Copy relevant text from your transcript and paste it below
+            </p>
+            <textarea
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              placeholder="Paste your transcript text here..."
+              className="w-full h-64 p-4 rounded-lg border border-border bg-background text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              onClick={handleTextPaste}
+              disabled={!pastedText || pastedText.trim().length < 100}
+              className="w-full py-3 px-4 rounded-lg bg-primary text-zinc-900 font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              Parse Transcript
+            </button>
+          </div>
           {/* )} */}
         </>
       ) : (
@@ -306,7 +298,7 @@ export default function TranscriptUpload({ onTextExtracted, onParsingComplete }:
                       setFileName(null);
                       setSuccessMessage(null);
                       setAiParseError(null);
-                      setIsAiParsing(false);
+                      // setIsAiParsing(false);
                     }}
                     className="text-sm text-primary hover:underline"
                   >

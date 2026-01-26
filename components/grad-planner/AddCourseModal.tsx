@@ -45,30 +45,10 @@ export function AddCourseModal({
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load departments when modal opens
-  useEffect(() => {
-    if (open) {
-      loadDepartments();
-    } else {
-      // Reset state when modal closes
-      setSelectedDepartment('');
-      setCourses([]);
-      setSelectedCourse(null);
-      setError(null);
-    }
-  }, [open]);
 
-  // Load courses when department changes
-  useEffect(() => {
-    if (selectedDepartment) {
-      loadCourses(selectedDepartment);
-    } else {
-      setCourses([]);
-      setSelectedCourse(null);
-    }
-  }, [selectedDepartment]);
 
-  const loadDepartments = async () => {
+
+  const loadDepartments = React.useCallback(async () => {
     setLoadingDepartments(true);
     setError(null);
     try {
@@ -84,9 +64,10 @@ export function AddCourseModal({
     } finally {
       setLoadingDepartments(false);
     }
-  };
+  }, [universityId]);
 
-  const loadCourses = async (departmentCode: string) => {
+
+  const loadCourses = React.useCallback(async (departmentCode: string) => {
     setLoadingCourses(true);
     setError(null);
     try {
@@ -102,7 +83,30 @@ export function AddCourseModal({
     } finally {
       setLoadingCourses(false);
     }
-  };
+  }, [universityId]);
+
+  // Load departments when modal opens
+  useEffect(() => {
+    if (open) {
+      loadDepartments();
+    } else {
+      // Reset state when modal closes
+      setSelectedDepartment('');
+      setCourses([]);
+      setSelectedCourse(null);
+      setError(null);
+    }
+  }, [open, loadDepartments]);
+
+  // Load courses when department changes
+  useEffect(() => {
+    if (selectedDepartment) {
+      loadCourses(selectedDepartment);
+    } else {
+      setCourses([]);
+      setSelectedCourse(null);
+    }
+  }, [selectedDepartment, loadCourses]);
 
   const handleAddCourse = () => {
     if (selectedCourse) {

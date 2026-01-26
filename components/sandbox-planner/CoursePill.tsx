@@ -6,7 +6,7 @@ import { Course } from './types';
 
 export interface CoursePillProps {
   course: Course;
-  isDragging?: boolean;
+
   onClick: () => void;
 }
 
@@ -14,7 +14,7 @@ export interface CoursePillProps {
  * CoursePill: Draggable course card for left panel
  * Shows code, title, credits, and requirement tag
  */
-export function CoursePill({ course, isDragging, onClick }: CoursePillProps) {
+export function CoursePill({ course, onClick }: CoursePillProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging: isBeingDragged } =
     useDraggable({
       id: `course-pill-${course.id}`,
@@ -23,8 +23,8 @@ export function CoursePill({ course, isDragging, onClick }: CoursePillProps) {
 
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    }
     : undefined;
 
   const requirementColor = getRequirementColor(course.requirement);
@@ -36,9 +36,8 @@ export function CoursePill({ course, isDragging, onClick }: CoursePillProps) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className={`p-3 rounded-lg bg-white border border-muted-foreground/10 cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${
-        isBeingDragged ? 'opacity-50 scale-95' : ''
-      }`}
+      className={`p-3 rounded-lg bg-white border border-muted-foreground/10 cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${isBeingDragged ? 'opacity-50 scale-95' : ''
+        }`}
       role="button"
       tabIndex={0}
     >

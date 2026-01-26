@@ -87,7 +87,7 @@ export function SpaceView({ plan, isEditMode = false, modifiedTerms, onEditEvent
     });
 
     return rows;
-  }, [sortedTermsWithIndices, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent, onAddCourse, onSubstituteCourse]);
+  }, [sortedTermsWithIndices, plan.events, isEditMode, modifiedTerms, onEditEvent, onDeleteEvent, onAddCourse, onSubstituteCourse, gradPlanId]);
 
   return (
     <div className="space-y-3">

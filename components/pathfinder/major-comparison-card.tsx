@@ -1,9 +1,18 @@
 "use client";
 
 import * as React from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { MajorComparisonResult, CourseWithAnnotation } from '@/lib/services/majorComparisonService';
 import type { RequirementAuditResult } from '@/lib/services/degreeAuditService';
-import type { Course as RequirementCourse } from '@/types/programRequirements';
+import {
+  SegmentedProgressBar,
+  InlineProgressBar,
+  StatusLegend,
+  PathfinderCourseItem,
+  PATHFINDER_COLORS,
+  getCompletedColor,
+  getInProgressColor,
+} from './pathfinder-progress-ui';
 
 interface MajorComparisonCardProps {
   comparison: MajorComparisonResult;
@@ -15,30 +24,37 @@ interface SectionProps {
   onToggle: () => void;
   children: React.ReactNode;
   count?: number;
+  categoryColor: string;
 }
 
-function Section({ title, expanded, onToggle, children, count }: Readonly<SectionProps>) {
+function Section({ title, expanded, onToggle, children, count, categoryColor }: Readonly<SectionProps>) {
   return (
-    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+    <div className="border border-[color-mix(in_srgb,var(--border)_60%,transparent)] rounded-xl overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-left transition-colors"
+        className="w-full flex items-center justify-between p-3 hover:bg-[color-mix(in_srgb,var(--muted)_15%,transparent)] text-left transition-colors"
         type="button"
       >
-        <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
+        <span className="text-sm font-bold text-[var(--foreground)]">
           {title}
           {count !== undefined && (
-            <span className="ml-2 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+            <span
+              className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${categoryColor} 20%, transparent)`,
+                color: 'var(--foreground)',
+              }}
+            >
               {count}
             </span>
           )}
         </span>
-        <span className="text-gray-500 dark:text-gray-400 text-sm">
-          {expanded ? '▼' : '▶'}
+        <span className="text-[var(--muted-foreground)]">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </span>
       </button>
       {expanded && (
-        <div className="p-3 border-t border-gray-200 dark:border-gray-600 bg-white/30 dark:bg-gray-700/30 max-h-96 overflow-y-auto custom-scroll">
+        <div className="p-3 border-t border-[color-mix(in_srgb,var(--border)_60%,transparent)] bg-[color-mix(in_srgb,var(--muted)_8%,transparent)] max-h-80 overflow-y-auto custom-scroll">
           {children}
         </div>
       )}
@@ -49,148 +65,181 @@ function Section({ title, expanded, onToggle, children, count }: Readonly<Sectio
 interface RequirementNodeProps {
   result: RequirementAuditResult;
   coursesThatCount: CourseWithAnnotation[];
+  categoryColor: string;
   level?: number;
+  parentNumber?: string;
+  index?: number;
 }
 
-function RequirementNode({ result, coursesThatCount, level = 0 }: Readonly<RequirementNodeProps>) {
+function RequirementNode({
+  result,
+  coursesThatCount,
+  categoryColor,
+  level = 0,
+  parentNumber = '',
+  index = 0,
+}: Readonly<RequirementNodeProps>) {
   const [expanded, setExpanded] = React.useState(level === 0);
 
+  // Generate requirement number (1, 1.1, 1.2, etc.)
+  const reqNumber = parentNumber ? `${parentNumber}.${index + 1}` : `${index + 1}`;
+
   // Find courses that apply to this requirement
-  const appliedCoursesForReq = coursesThatCount.filter(c =>
+  const appliedCoursesForReq = coursesThatCount.filter((c) =>
     c.satisfiesRequirements.includes(String(result.requirementId))
   );
-
-  // Determine satisfaction status
-  const icon = result.satisfied ? '✓' : (result.satisfiedCount && result.totalCount && result.satisfiedCount > 0) ? '◐' : '○';
-  const statusColor = result.satisfied
-    ? 'text-emerald-600 dark:text-emerald-400'
-    : (result.satisfiedCount && result.totalCount && result.satisfiedCount > 0)
-    ? 'text-yellow-600 dark:text-yellow-400'
-    : 'text-gray-400 dark:text-gray-500';
 
   // Get missing courses for this requirement
   const missingCourses = React.useMemo(() => {
     if (!result.requiredCourses || result.type === 'noteOnly') return [];
-
-    // Find courses that are required but not yet completed
-    const appliedCodes = new Set(result.appliedCourses.map(c => c.replace(/[\s-]/g, '').toUpperCase()));
-
-    return result.requiredCourses.filter(reqCourse => {
+    const appliedCodes = new Set(
+      result.appliedCourses.map((c) => c.replace(/[\s-]/g, '').toUpperCase())
+    );
+    return result.requiredCourses.filter((reqCourse) => {
       const normalized = reqCourse.code.replace(/[\s-]/g, '').toUpperCase();
       return !appliedCodes.has(normalized);
     });
   }, [result]);
 
-  const hasContent = (result.subResults && result.subResults.length > 0) ||
-                     appliedCoursesForReq.length > 0 ||
-                     missingCourses.length > 0;
+  const hasContent =
+    (result.subResults && result.subResults.length > 0) ||
+    appliedCoursesForReq.length > 0 ||
+    missingCourses.length > 0;
 
-  // Format the progress display based on requirement type
+  // Determine status
+  const isCompleted = result.satisfied;
+  const isInProgress =
+    !isCompleted &&
+    result.satisfiedCount !== undefined &&
+    result.totalCount !== undefined &&
+    result.satisfiedCount > 0;
+
+  // Calculate progress values
+  const completed = result.satisfiedCount ?? (result.satisfied ? 1 : 0);
+  const total = result.totalCount ?? 1;
+
+  // Badge styling
+  const getBadgeBackground = () => {
+    if (isCompleted) return getCompletedColor(categoryColor);
+    if (isInProgress) return getInProgressColor(categoryColor);
+    return 'white';
+  };
+
+  const badgeClassName =
+    !isCompleted && !isInProgress
+      ? 'text-black dark:text-white border-2 border-zinc-400 dark:border-zinc-500 bg-white dark:bg-zinc-800'
+      : 'text-black border-2 border-transparent';
+
+  // Format the progress display
   const progressDisplay = React.useMemo(() => {
-    if (result.type === 'creditBucket' && result.earnedCredits !== undefined && result.requiredCredits !== undefined) {
-      return `${result.earnedCredits}/${result.requiredCredits} hours`;
+    if (
+      result.type === 'creditBucket' &&
+      result.earnedCredits !== undefined &&
+      result.requiredCredits !== undefined
+    ) {
+      return `${result.earnedCredits}/${result.requiredCredits} hrs`;
     } else if (result.satisfiedCount !== undefined && result.totalCount !== undefined) {
       return `${result.satisfiedCount}/${result.totalCount}`;
-    } else if (result.type === 'chooseNOf' && result.satisfiedCount !== undefined && result.requiredCount !== undefined) {
+    } else if (
+      result.type === 'chooseNOf' &&
+      result.satisfiedCount !== undefined &&
+      result.requiredCount !== undefined
+    ) {
       return `${result.satisfiedCount}/${result.requiredCount}`;
     }
     return null;
   }, [result]);
 
   return (
-    <div className={`${level > 0 ? 'ml-4 border-l-2 border-gray-200 dark:border-gray-600 pl-3 mt-2' : 'mt-2'}`}>
-      <div>
-        <button
-          onClick={() => hasContent && setExpanded(!expanded)}
-          className={`w-full text-left text-sm py-2 px-2 ${hasContent ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-md' : ''} transition-colors`}
-          type="button"
-        >
-          <div className="flex items-center gap-2">
-            <span className={`${statusColor} font-bold text-base`}>{icon}</span>
-            <span className="text-gray-400 dark:text-gray-500 text-[11px] font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-              #{result.requirementId}
-            </span>
-            <span className="font-semibold text-gray-800 dark:text-gray-100 flex-1">
-              {result.description}
-            </span>
-            {progressDisplay && (
-              <span className="text-gray-600 dark:text-gray-400 text-xs font-medium bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded">
-                {progressDisplay}
-              </span>
-            )}
-            {hasContent && (
-              <span className="text-gray-400 text-sm">{expanded ? '▼' : '▶'}</span>
-            )}
+    <div
+      className={`${
+        level > 0
+          ? 'ml-4 border-l-2 border-[color-mix(in_srgb,var(--border)_50%,transparent)] pl-3 mt-2'
+          : 'border-b border-[color-mix(in_srgb,var(--border)_30%,transparent)] last:border-b-0'
+      }`}
+    >
+      <button
+        onClick={() => hasContent && setExpanded(!expanded)}
+        className={`w-full text-left py-2 px-1 ${
+          hasContent
+            ? 'hover:bg-[color-mix(in_srgb,var(--muted)_12%,transparent)] rounded-lg cursor-pointer'
+            : ''
+        } transition-colors`}
+        type="button"
+        disabled={!hasContent}
+      >
+        <div className="flex items-center gap-2">
+          {/* Number badge */}
+          <div
+            className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${badgeClassName}`}
+            style={
+              isCompleted || isInProgress ? { backgroundColor: getBadgeBackground() } : undefined
+            }
+          >
+            {reqNumber}
           </div>
-        </button>
 
-        {expanded && hasContent && (
-          <div className="mt-2 space-y-1.5 ml-2">
-            {/* Show applied courses (completed) */}
-            {appliedCoursesForReq.map((item, idx) => (
-              <div
-                key={`completed-${idx}`}
-                className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30"
-              >
-                <span className="text-emerald-600 dark:text-emerald-400 text-base font-bold">✓</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-300 text-sm">
-                      {item.course.subject} {item.course.number}
-                    </span>
-                    {item.isDoubleCount && (
-                      <span
-                        className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-200 px-2 py-0.5 text-[10px] font-medium"
-                        title={`Also satisfies: ${item.doubleCountsWith.filter(p => p !== item.course.subject).join(', ')}`}
-                      >
-                        🔄 Double Count
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-gray-600 dark:text-gray-400 text-xs mt-0.5 line-clamp-1">
-                    {item.course.title}
-                  </div>
-                </div>
-              </div>
-            ))}
+          {/* Description */}
+          <span className="font-semibold text-sm text-[var(--foreground)] flex-1 line-clamp-2">
+            {result.description}
+          </span>
 
-            {/* Show missing courses (not yet completed) */}
-            {missingCourses.map((course, idx) => (
-              <div
-                key={`missing-${idx}`}
-                className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
-              >
-                <span className="text-gray-400 dark:text-gray-500 text-base">○</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
-                      {course.code}
-                    </span>
-                    {course.credits && (
-                      <span className="text-gray-500 dark:text-gray-400 text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                        {course.credits} cr
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5 line-clamp-1">
-                    {course.title}
-                  </div>
-                </div>
-              </div>
-            ))}
+          {/* Progress indicator */}
+          {progressDisplay && (
+            <span className="text-xs font-medium text-[var(--muted-foreground)] bg-[color-mix(in_srgb,var(--muted)_30%,transparent)] px-2 py-1 rounded-lg shrink-0">
+              {progressDisplay}
+            </span>
+          )}
 
-            {/* Recursively show subrequirements */}
-            {result.subResults?.map((subResult, idx) => (
-              <RequirementNode
-                key={idx}
-                result={subResult}
-                coursesThatCount={coursesThatCount}
-                level={level + 1}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          {hasContent && (
+            <span className="text-[var(--muted-foreground)] shrink-0">
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </span>
+          )}
+        </div>
+      </button>
+
+      {expanded && hasContent && (
+        <div className="mt-2 space-y-1.5 ml-2 pb-2">
+          {/* Show applied courses (completed) */}
+          {appliedCoursesForReq.map((item, idx) => (
+            <PathfinderCourseItem
+              key={`completed-${idx}`}
+              code={`${item.course.subject} ${item.course.number}`}
+              title={item.course.title}
+              credits={item.course.credits ?? undefined}
+              status="completed"
+              categoryColor={categoryColor}
+              annotation={item.isDoubleCount ? 'Double Count' : undefined}
+            />
+          ))}
+
+          {/* Show missing courses (not yet completed) */}
+          {missingCourses.map((course, idx) => (
+            <PathfinderCourseItem
+              key={`missing-${idx}`}
+              code={course.code}
+              title={course.title}
+              credits={course.credits}
+              status="remaining"
+              categoryColor={categoryColor}
+            />
+          ))}
+
+          {/* Recursively show subrequirements */}
+          {result.subResults?.map((subResult, idx) => (
+            <RequirementNode
+              key={idx}
+              result={subResult}
+              coursesThatCount={coursesThatCount}
+              categoryColor={categoryColor}
+              level={level + 1}
+              parentNumber={reqNumber}
+              index={idx}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -198,54 +247,105 @@ function RequirementNode({ result, coursesThatCount, level = 0 }: Readonly<Requi
 export function MajorComparisonCard({ comparison }: Readonly<MajorComparisonCardProps>) {
   const [expandedSections, setExpandedSections] = React.useState({
     coursesThatCount: true,
-    notUsed: false
+    notUsed: false,
   });
+  const [showAllNotUsedCourses, setShowAllNotUsedCourses] = React.useState(false);
+  const [showTooltip, setShowTooltip] = React.useState(false);
 
   const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
+  const categoryColor = PATHFINDER_COLORS.comparison;
+
+  // Calculate status counts from requirements
+  const satisfiedCount = comparison.requirementsSatisfied;
+  const totalCount = comparison.totalRequirements;
+  const remainingCount = totalCount - satisfiedCount;
+
   return (
-    <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-white/70 dark:bg-gray-800/70 backdrop-blur shadow-sm overflow-hidden flex flex-col h-full print:break-inside-avoid print:bg-white">
+    <div
+      className="rounded-2xl shadow-sm overflow-hidden flex flex-col h-full print:break-inside-avoid border border-[color-mix(in_srgb,var(--border)_60%,transparent)]"
+      style={{
+        backgroundColor: 'var(--background)',
+        borderLeftWidth: '4px',
+        borderLeftColor: categoryColor,
+      }}
+    >
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-800 p-4">
-        <h3 className="text-sm font-semibold mb-3 line-clamp-2 min-h-[2.5rem] text-white">
-          {comparison.program.name}
-        </h3>
-        <div className="text-center">
-          <div className="text-4xl font-bold mb-1 text-white">
-            {comparison.percentComplete}%
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-black text-[var(--foreground)] line-clamp-2">
+              {comparison.program.name}
+            </h3>
+            <p className="text-xs text-[var(--muted-foreground)] mt-1">
+              {comparison.program.target_total_credits ? `${comparison.program.target_total_credits} credits required` : 'Credits required'}
+            </p>
           </div>
-          <div className="text-xs text-white opacity-90">Complete</div>
+          <span className="text-xs font-semibold text-[var(--muted-foreground)] shrink-0">
+            <span className="font-black">{totalCount}</span> REQUIREMENTS
+          </span>
         </div>
-        <div className="mt-3 text-center text-xs bg-white/20 dark:bg-white/10 rounded py-1 text-white">
-          {comparison.requirementsSatisfied}/{comparison.totalRequirements} Requirements ✓
+
+        {/* Main Progress Bar with Tooltip */}
+        <div
+          className="relative"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <SegmentedProgressBar
+            total={totalCount}
+            completed={satisfiedCount}
+            categoryColor={categoryColor}
+            heightClass="h-12"
+            showPercentText={true}
+            compact={true}
+          />
+          {showTooltip && comparison.program.target_total_credits && (
+            <div className="absolute z-10 mt-2 left-1/2 -translate-x-1/2 bg-[var(--foreground)] text-[var(--background)] text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+              {comparison.percentComplete}% of requirements met
+            </div>
+          )}
+        </div>
+
+        {/* Status Legend */}
+        <div className="mt-4">
+          <StatusLegend
+            completed={satisfiedCount}
+            remaining={remainingCount}
+            categoryColor={categoryColor}
+            compact={true}
+          />
         </div>
       </div>
 
       {/* Sections */}
-      <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scroll dark:bg-gray-800/50">
+      <div className="px-5 pb-5 space-y-3 flex-1 overflow-y-auto custom-scroll">
         {/* Requirements Breakdown */}
         <Section
-          title="Requirements Breakdown"
-          count={comparison.requirementsSatisfied}
+          title="Requirements"
+          count={satisfiedCount}
           expanded={expandedSections.coursesThatCount}
           onToggle={() => toggleSection('coursesThatCount')}
+          categoryColor={categoryColor}
         >
           {comparison.auditDetails.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+            <p className="text-sm text-[var(--muted-foreground)] text-center py-4">
               No requirements found
             </p>
           ) : (
-            <div className="space-y-0.5">
+            <div>
               {comparison.auditDetails.map((result, idx) => (
                 <RequirementNode
                   key={idx}
                   result={result}
                   coursesThatCount={comparison.coursesThatCount}
+                  categoryColor={categoryColor}
+                  index={idx}
                 />
               ))}
             </div>
@@ -258,28 +358,35 @@ export function MajorComparisonCard({ comparison }: Readonly<MajorComparisonCard
           count={comparison.notUsed.length}
           expanded={expandedSections.notUsed}
           onToggle={() => toggleSection('notUsed')}
+          categoryColor={categoryColor}
         >
           {comparison.notUsed.length === 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+            <p className="text-xs text-[var(--muted-foreground)] text-center py-2">
               All completed courses apply
             </p>
           ) : (
-            <div className="space-y-1">
-              {comparison.notUsed.slice(0, 10).map((course, idx) => (
-                <div key={idx} className="text-xs text-gray-600 dark:text-gray-300">
-                  <span className="font-medium">
+            <div className="space-y-1.5">
+              {(showAllNotUsedCourses ? comparison.notUsed : comparison.notUsed.slice(0, 15)).map((course, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] border border-[color-mix(in_srgb,var(--border)_40%,transparent)]"
+                >
+                  <span className="text-xs font-semibold text-[var(--foreground)]">
                     {course.subject} {course.number}
                   </span>
-                  {' - '}
-                  <span className="line-clamp-1 inline">
+                  <span className="text-xs text-[var(--muted-foreground)] truncate flex-1">
                     {course.title}
                   </span>
                 </div>
               ))}
-              {comparison.notUsed.length > 10 && (
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
-                  ... and {comparison.notUsed.length - 10} more
-                </p>
+              {!showAllNotUsedCourses && comparison.notUsed.length > 15 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllNotUsedCourses(true)}
+                  className="w-full text-[10px] text-[var(--foreground)] font-semibold hover:text-[var(--primary)] transition-colors italic text-center pt-1"
+                >
+                  + {comparison.notUsed.length - 15} more courses
+                </button>
               )}
             </div>
           )}

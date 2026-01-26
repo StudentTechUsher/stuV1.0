@@ -186,6 +186,8 @@ export default function LinkedInShareButton({
                 {/* Go to LinkedIn Button */}
                 <button
                   onClick={handleGoToLinkedIn}
+                  title="Share on LinkedIn"
+                  aria-label="Share on LinkedIn"
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0077B5] px-4 py-3 font-body-semi text-sm text-white shadow-sm transition-all duration-200 hover:bg-[#006399] hover:shadow-md"
                 >
                   <Linkedin size={18} />

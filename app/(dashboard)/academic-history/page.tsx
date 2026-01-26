@@ -1124,9 +1124,9 @@ export default function AcademicHistoryPage() {
                           <Info size={14} className="text-[var(--muted-foreground)]" />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
+                  <TooltipContent className="max-w-xs">
                         <p className="text-xs">
-                          Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use "Change Requirements" to manually adjust if needed.
+                          Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use &quot;Change Requirements&quot; to manually adjust if needed.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -1144,7 +1144,7 @@ export default function AcademicHistoryPage() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-xs">
-                          Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use "Change Requirements" to manually assign if needed.
+                          Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use &quot;Change Requirements&quot; to manually assign if needed.
                         </p>
                       </TooltipContent>
                     </Tooltip>

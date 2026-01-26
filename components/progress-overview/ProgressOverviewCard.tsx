@@ -7,8 +7,8 @@ import { getCompletedColor, getInProgressColor, getPlannedColor, getPlannedColor
 
 export function ProgressOverviewCard({
   category,
-  isExpandable = true,
-  defaultExpanded = true,
+  isExpandable: _isExpandable = true,
+  defaultExpanded: _defaultExpanded = true,
   compact = false,
 }: ProgressOverviewCardProps) {
 

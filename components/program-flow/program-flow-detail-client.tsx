@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ProgramRow } from '@/types/program';
 import type { ProgramRequirement, Course, ProgramRequirementsStructure } from '@/types/programRequirements';
@@ -129,7 +129,7 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
           courseTitle: pc.course.title,
           position: { x: pc.x, y: pc.y },
           isRequired: pc.isRequired,
-          requirementDesc: pc.requirementDesc
+          requirementDesc: pc.requirementDesc || ''
         })),
         connections: connections.map(conn => ({
           id: conn.id,
@@ -326,11 +326,10 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
             <button
               type="button"
               onClick={() => setViewMode('courseFlow')}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${
-                viewMode === 'courseFlow'
-                  ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
-                  : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
-              }`}
+              className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${viewMode === 'courseFlow'
+                ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
+                : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
+                }`}
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -340,11 +339,10 @@ export default function ProgramFlowDetailClient({ program }: Readonly<ProgramFlo
             <button
               type="button"
               onClick={() => setViewMode('classic')}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${
-                viewMode === 'classic'
-                  ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
-                  : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
-              }`}
+              className={`flex items-center gap-2 rounded-md px-4 py-2 font-body-semi text-sm font-semibold transition-all duration-200 ${viewMode === 'classic'
+                ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--hover-green)] text-white shadow-sm'
+                : 'text-[var(--muted-foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
+                }`}
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -572,7 +570,7 @@ function CourseFlowView({
     setDragConnectionEnd({ x, y });
   };
 
-  const handleConnectionDragMove = (e: MouseEvent) => {
+  const handleConnectionDragMove = useCallback((e: MouseEvent) => {
     if (!isDraggingConnection || !canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -580,7 +578,7 @@ function CourseFlowView({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     });
-  };
+  }, [isDraggingConnection]);
 
   const handleConnectionDragEnd = (targetCourseId?: string, targetSide?: 'top' | 'right' | 'bottom' | 'left', targetNodeId?: string) => {
     if (isDraggingConnection && dragConnectionStart && canvasRef.current) {
@@ -717,18 +715,18 @@ function CourseFlowView({
     });
   };
 
-  const handleModalMouseMove = (e: MouseEvent) => {
+  const handleModalMouseMove = useCallback((e: MouseEvent) => {
     if (!isDraggingModal) return;
 
     setModalPosition({
       x: e.clientX - modalDragOffset.x,
       y: e.clientY - modalDragOffset.y
     });
-  };
+  }, [isDraggingModal, modalDragOffset]);
 
-  const handleModalMouseUp = () => {
+  const handleModalMouseUp = useCallback(() => {
     setIsDraggingModal(false);
-  };
+  }, []);
 
   const handleUpdateNodePosition = (nodeId: string, x: number, y: number) => {
     setConnectionNodes(prev =>
@@ -786,8 +784,12 @@ function CourseFlowView({
       return () => {
         document.removeEventListener('mousemove', handleConnectionDragMove);
       };
+      document.addEventListener('mousemove', handleConnectionDragMove);
+      return () => {
+        document.removeEventListener('mousemove', handleConnectionDragMove);
+      };
     }
-  }, [isDraggingConnection]);
+  }, [isDraggingConnection, handleConnectionDragMove]);
 
   // Mouse move listener for modal dragging
   useEffect(() => {
@@ -799,7 +801,7 @@ function CourseFlowView({
         document.removeEventListener('mouseup', handleModalMouseUp);
       };
     }
-  }, [isDraggingModal, modalDragOffset]);
+  }, [isDraggingModal, handleModalMouseMove, handleModalMouseUp]);
 
   // Keyboard listener for deleting selected connection or node
   useEffect(() => {
@@ -1022,13 +1024,12 @@ function CourseFlowView({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative flex-1 rounded-lg border-2 transition-all duration-200 ${
-              isDraggingOver
-                ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                : placedCourses.length > 0
+            className={`relative flex-1 rounded-lg border-2 transition-all duration-200 ${isDraggingOver
+              ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+              : placedCourses.length > 0
                 ? 'border-[var(--border)] bg-[var(--background)]'
                 : 'border-dashed border-[var(--border)] bg-white'
-            }`}
+              }`}
           >
             {/* SVG layer for connections */}
             <svg className="absolute inset-0 h-full w-full" style={{ zIndex: 0 }}>
@@ -1184,9 +1185,8 @@ function CourseFlowView({
             {pendingConnection && modalPosition && (
               <div
                 onMouseDown={handleModalMouseDown}
-                className={`absolute rounded-lg border-2 border-[var(--border)] bg-white p-4 shadow-2xl overflow-y-auto ${
-                  isDraggingModal ? 'cursor-grabbing' : 'cursor-grab'
-                }`}
+                className={`absolute rounded-lg border-2 border-[var(--border)] bg-white p-4 shadow-2xl overflow-y-auto ${isDraggingModal ? 'cursor-grabbing' : 'cursor-grab'
+                  }`}
                 style={{
                   left: `${modalPosition.x}px`,
                   top: `${modalPosition.y}px`,
@@ -1417,23 +1417,23 @@ function DraggableCourseCard({ course, isRequired, requirementDesc }: { course: 
   // Red for required (no choice), friendly green for elective (has choice)
   const cardStyles = isRequired
     ? {
-        bg: 'bg-[#fee2e2]',
-        border: 'border-[#ef4444]',
-        titleText: 'text-[#991b1b]',
-        bodyText: 'text-[#7f1d1d]',
-        badge: 'bg-[#ef4444] text-white',
-        infoBg: 'bg-[#fecaca]',
-        infoText: 'text-[#7f1d1d]'
-      }
+      bg: 'bg-[#fee2e2]',
+      border: 'border-[#ef4444]',
+      titleText: 'text-[#991b1b]',
+      bodyText: 'text-[#7f1d1d]',
+      badge: 'bg-[#ef4444] text-white',
+      infoBg: 'bg-[#fecaca]',
+      infoText: 'text-[#7f1d1d]'
+    }
     : {
-        bg: 'bg-[#d1fae5]',
-        border: 'border-[#10b981]',
-        titleText: 'text-[#065f46]',
-        bodyText: 'text-[#064e3b]',
-        badge: 'bg-[#10b981] text-white',
-        infoBg: 'bg-[#a7f3d0]',
-        infoText: 'text-[#064e3b]'
-      };
+      bg: 'bg-[#d1fae5]',
+      border: 'border-[#10b981]',
+      titleText: 'text-[#065f46]',
+      bodyText: 'text-[#064e3b]',
+      badge: 'bg-[#10b981] text-white',
+      infoBg: 'bg-[#a7f3d0]',
+      infoText: 'text-[#064e3b]'
+    };
 
   return (
     <div
@@ -1505,17 +1505,17 @@ function PlacedCourseCard({
 
   const cardStyles = isRequired
     ? {
-        bg: 'bg-[#fee2e2]',
-        border: 'border-[#ef4444]',
-        titleText: 'text-[#991b1b]',
-        badge: 'bg-[#ef4444] text-white',
-      }
+      bg: 'bg-[#fee2e2]',
+      border: 'border-[#ef4444]',
+      titleText: 'text-[#991b1b]',
+      badge: 'bg-[#ef4444] text-white',
+    }
     : {
-        bg: 'bg-[#d1fae5]',
-        border: 'border-[#10b981]',
-        titleText: 'text-[#065f46]',
-        badge: 'bg-[#10b981] text-white',
-      };
+      bg: 'bg-[#d1fae5]',
+      border: 'border-[#10b981]',
+      titleText: 'text-[#065f46]',
+      badge: 'bg-[#10b981] text-white',
+    };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Don't start drag if clicking the remove button or connection dots
@@ -1604,9 +1604,8 @@ function PlacedCourseCard({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className={`absolute overflow-visible rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} p-3 shadow-md transition-shadow ${
-        isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab hover:shadow-lg'
-      }`}
+      className={`absolute overflow-visible rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} p-3 shadow-md transition-shadow ${isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab hover:shadow-lg'
+        }`}
       style={{ left: `${x}px`, top: `${y}px`, width: '200px', userSelect: 'none', zIndex: 1 }}
     >
       <button
@@ -1816,10 +1815,10 @@ function EitherOrButton({
 // Connection Node Card Component
 function ConnectionNodeCard({
   node,
-  onRemove,
+  // onRemove, // Unused
   onUpdatePosition,
   onUpdateRequiredCount,
-  onConnectionDragStart,
+  // onConnectionDragStart, // Unused
   onConnectionDragEnd,
   onNodeClick,
   isSelected,
@@ -1899,11 +1898,9 @@ function ConnectionNodeCard({
       onMouseDown={handleMouseDown}
       onMouseUp={handleNodeConnectionEnd}
       onClick={() => onNodeClick(node.id)}
-      className={`absolute flex h-10 w-10 items-center justify-center rounded-full border-4 bg-white shadow-lg ${
-        isSelected ? 'border-[#10b981]' : 'border-emerald-600'
-      } ${
-        isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab hover:shadow-xl'
-      }`}
+      className={`absolute flex h-10 w-10 items-center justify-center rounded-full border-4 bg-white shadow-lg ${isSelected ? 'border-[#10b981]' : 'border-emerald-600'
+        } ${isDragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab hover:shadow-xl'
+        }`}
       style={{ left: `${node.x - 20}px`, top: `${node.y - 20}px`, zIndex: 100 }}
     >
 
@@ -2214,30 +2211,29 @@ function ClassicCourseCard({
 }) {
   const cardStyles = isRequired
     ? {
-        bg: 'bg-[#fee2e2]',
-        border: 'border-[#ef4444]',
-        titleText: 'text-[#991b1b]',
-        bodyText: 'text-[#7f1d1d]',
-        badge: 'bg-[#ef4444] text-white',
-        infoBg: 'bg-[#fecaca]',
-        infoText: 'text-[#7f1d1d]'
-      }
+      bg: 'bg-[#fee2e2]',
+      border: 'border-[#ef4444]',
+      titleText: 'text-[#991b1b]',
+      bodyText: 'text-[#7f1d1d]',
+      badge: 'bg-[#ef4444] text-white',
+      infoBg: 'bg-[#fecaca]',
+      infoText: 'text-[#7f1d1d]'
+    }
     : {
-        bg: 'bg-[#d1fae5]',
-        border: 'border-[#10b981]',
-        titleText: 'text-[#065f46]',
-        bodyText: 'text-[#064e3b]',
-        badge: 'bg-[#10b981] text-white',
-        infoBg: 'bg-[#a7f3d0]',
-        infoText: 'text-[#064e3b]'
-      };
+      bg: 'bg-[#d1fae5]',
+      border: 'border-[#10b981]',
+      titleText: 'text-[#065f46]',
+      bodyText: 'text-[#064e3b]',
+      badge: 'bg-[#10b981] text-white',
+      infoBg: 'bg-[#a7f3d0]',
+      infoText: 'text-[#064e3b]'
+    };
 
   return (
     <div
       onClick={onClick}
-      className={`overflow-hidden rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer ${
-        isSelected ? 'ring-4 ring-blue-500 ring-opacity-50' : ''
-      }`}
+      className={`overflow-hidden rounded-lg border-2 ${cardStyles.border} ${cardStyles.bg} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer ${isSelected ? 'ring-4 ring-blue-500 ring-opacity-50' : ''
+        }`}
     >
       <div className="p-4">
         <div className="mb-2 flex items-start justify-between gap-2">

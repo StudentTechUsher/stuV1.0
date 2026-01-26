@@ -142,11 +142,10 @@ export function GenEdSelector({
                 key={program.id}
                 type="button"
                 onClick={() => handleProgramToggle(program)}
-                className={`flex flex-col rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
-                  isSelected
+                className={`flex flex-col rounded-xl border px-4 py-3 text-left transition-all duration-200 ${isSelected
                     ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-md'
                     : 'border-[var(--border)] bg-[var(--card)] hover:-translate-y-0.5 hover:shadow-sm'
-                }`}
+                  }`}
               >
                 <span className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
                   {program.name}
@@ -180,7 +179,7 @@ export function GenEdSelector({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="text-xs">
-                  Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use "Change Requirements" to manually adjust if needed.
+                  Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use &quot;Change Requirements&quot; to manually adjust if needed.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -198,7 +197,7 @@ export function GenEdSelector({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="text-xs">
-                  Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use "Change Requirements" to manually assign if needed.
+                  Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use &quot;Change Requirements&quot; to manually assign if needed.
                 </p>
               </TooltipContent>
             </Tooltip>

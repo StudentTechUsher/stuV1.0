@@ -61,6 +61,7 @@ export interface Milestone {
 export interface CreditDistributionStrategy {
   type: 'fast_track' | 'balanced' | 'explore';
   includeSecondaryCourses: boolean;
+  selectedTermIds?: string[]; // Term IDs selected by user (e.g., ["fall", "winter", "spring"])
   suggestedDistribution: SemesterAllocation[];
 }
 

@@ -24,7 +24,11 @@ export default function ChipsField({
       if (disabled) return;
       onChange(((prev: Iterable<unknown> | null | undefined) => {
         const set = new Set(prev);
-        set.has(val) ? set.delete(val) : set.add(val);
+        if (set.has(val)) {
+          set.delete(val);
+        } else {
+          set.add(val);
+        }
         return Array.from(set);
       }) as unknown as number[]);
     },
@@ -69,7 +73,7 @@ export default function ChipsField({
               clickable
               color="default"
               variant={selected ? "filled" : "outlined"}
-              sx={{ 
+              sx={{
                 mb: 1,
                 ...(selected && {
                   backgroundColor: '#16a34a', // green-600

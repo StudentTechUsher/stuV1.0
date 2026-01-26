@@ -321,7 +321,6 @@ function getNextEligibleTerm(
   if (ordering.length === 0) return null;
 
   const now = new Date();
-  const baseYear = currentYear ?? now.getFullYear();
   const baseMonth = now.getMonth();
 
   let startIndex = currentIndex;

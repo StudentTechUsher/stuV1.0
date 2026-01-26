@@ -25,7 +25,7 @@ export function SummaryStatsRow({
   gpa,
   estimatedGraduation,
   onEditGraduation,
-  hasTranscript,
+  hasTranscript: _hasTranscript,
 }: SummaryStatsRowProps) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
