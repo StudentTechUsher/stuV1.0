@@ -4,9 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -58,6 +58,17 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
+    },
+
+    // Unauthenticated project for testing auth flows
+    {
+      name: 'chromium-unauth',
+      testMatch: /.*auth\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        // No storage state - starts unauthenticated
+      },
+      dependencies: ['setup'], // Still depends on setup to ensure test user exists
     },
 
     {

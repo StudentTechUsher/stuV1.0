@@ -22,6 +22,9 @@ export async function login(
   // Wait for the page to load
   await page.waitForLoadState('networkidle');
 
+  // Show password authentication form
+  await showPasswordAuth(page);
+
   // Fill in credentials
   await page.fill(SELECTORS.emailInput, email);
   await page.fill(SELECTORS.passwordInput, password);
@@ -29,8 +32,17 @@ export async function login(
   // Submit the form
   await page.click(SELECTORS.loginButton);
 
-  // Wait for navigation to complete
-  await page.waitForURL((url) => !url.pathname.includes('/auth/signin'));
+  // Wait for navigation to complete - wait for dashboard or any non-login/non-auth page
+  await page.waitForURL(
+    (url) => {
+      const path = url.pathname;
+      return !path.includes('/login') && !path.includes('/auth/signin');
+    },
+    { timeout: 15000 }
+  );
+
+  // Wait for page to be fully loaded after redirect
+  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -147,9 +159,26 @@ export async function waitForAuthRedirect(
  */
 export async function ensureOnLoginPage(page: Page): Promise<void> {
   const currentUrl = page.url();
-  if (!currentUrl.includes('/auth/signin')) {
+  if (!currentUrl.includes('/login')) {
     await page.goto(TEST_URLS.login);
     await page.waitForLoadState('networkidle');
+  }
+}
+
+/**
+ * Shows the password authentication form on login page
+ * @param page - Playwright page object
+ */
+export async function showPasswordAuth(page: Page): Promise<void> {
+  // Check if password field is already visible
+  const passwordField = page.locator(SELECTORS.passwordInput);
+  const isVisible = await passwordField.isVisible().catch(() => false);
+
+  if (!isVisible) {
+    // Click the "Sign in with password" toggle
+    await page.click('button:has-text("Sign in with password")');
+    // Wait for password field to appear
+    await page.waitForSelector(SELECTORS.passwordInput, { state: 'visible' });
   }
 }
 

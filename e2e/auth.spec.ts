@@ -4,6 +4,7 @@ import {
   logout,
   isAuthenticated,
   ensureOnLoginPage,
+  showPasswordAuth,
   verifyAuthError,
 } from './fixtures/auth';
 import { TEST_USER, TEST_URLS, SELECTORS } from './fixtures/test-data';
@@ -19,16 +20,22 @@ test.describe('Authentication Flows', () => {
       // Perform login
       await login(page, TEST_USER.email, TEST_USER.password);
 
-      // Verify user is authenticated and redirected
-      const authenticated = await isAuthenticated(page);
-      expect(authenticated).toBe(true);
-
       // Verify we're no longer on the login page
-      expect(page.url()).not.toContain('/auth/signin');
+      expect(page.url()).not.toContain('/login');
+
+      // Verify we're on an authenticated route (dashboard, profile, etc.)
+      const url = page.url();
+      const isOnAuthenticatedRoute =
+        url.includes('/dashboard') ||
+        url.includes('/profile') ||
+        url.includes('/grad-plan') ||
+        url.includes('/transcript');
+      expect(isOnAuthenticatedRoute).toBe(true);
     });
 
     test('should show error with invalid email', async ({ page }) => {
       await ensureOnLoginPage(page);
+      await showPasswordAuth(page);
 
       // Attempt login with invalid email
       await page.fill(SELECTORS.emailInput, 'invalid@example.com');
@@ -45,6 +52,7 @@ test.describe('Authentication Flows', () => {
 
     test('should show error with invalid password', async ({ page }) => {
       await ensureOnLoginPage(page);
+      await showPasswordAuth(page);
 
       // Attempt login with invalid password
       await page.fill(SELECTORS.emailInput, TEST_USER.email);
@@ -96,7 +104,7 @@ test.describe('Authentication Flows', () => {
       // Verify we're logged out (either on login page or home)
       const currentUrl = page.url();
       const isLoggedOut =
-        currentUrl.includes('/auth/signin') || currentUrl === TEST_URLS.home;
+        currentUrl.includes('/login') || currentUrl === TEST_URLS.home;
       expect(isLoggedOut).toBe(true);
     });
   });
@@ -133,11 +141,11 @@ test.describe('Authentication Flows', () => {
       await page.goto(TEST_URLS.gradPlan);
 
       // Should be redirected to login
-      await page.waitForURL((url) => url.pathname.includes('/auth/signin'), {
+      await page.waitForURL((url) => url.pathname.includes('/login'), {
         timeout: 10000,
       });
 
-      expect(page.url()).toContain('/auth/signin');
+      expect(page.url()).toContain('/login');
     });
   });
 
@@ -149,7 +157,7 @@ test.describe('Authentication Flows', () => {
       // Implement when OAuth is fully configured
 
       // Navigate to OAuth login
-      await page.goto('/auth/signin');
+      await page.goto('/login');
 
       // Click OAuth provider button (e.g., Google)
       // await page.click('[data-testid="oauth-google"]');
@@ -165,6 +173,7 @@ test.describe('Authentication Flows', () => {
       await page.context().setOffline(true);
 
       await ensureOnLoginPage(page);
+      await showPasswordAuth(page);
 
       // Try to login
       await page.fill(SELECTORS.emailInput, TEST_USER.email);
@@ -180,6 +189,7 @@ test.describe('Authentication Flows', () => {
 
     test('should handle empty credentials', async ({ page }) => {
       await ensureOnLoginPage(page);
+      await showPasswordAuth(page);
 
       // Try to login with empty credentials
       await page.fill(SELECTORS.emailInput, '');
@@ -188,7 +198,7 @@ test.describe('Authentication Flows', () => {
 
       // Verify form validation prevents submission
       // Should still be on login page
-      expect(page.url()).toContain('/auth/signin');
+      expect(page.url()).toContain('/login');
     });
   });
 });

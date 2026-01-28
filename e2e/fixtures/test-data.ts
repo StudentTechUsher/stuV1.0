@@ -21,8 +21,8 @@ export const TEST_USER = {
  */
 export const TEST_URLS = {
   home: '/',
-  login: '/auth/signin',
-  signup: '/auth/signup',
+  login: '/login',
+  signup: '/signup',
   gradPlan: '/grad-plan',
   transcript: '/transcript',
   profile: '/profile',
