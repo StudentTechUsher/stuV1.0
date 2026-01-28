@@ -169,6 +169,7 @@ jobs:
   build:
     name: Build Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -200,10 +201,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build application
-        run: pnpm build
+        run: pnpm build:ci
         env:
           # Prevent build from failing due to missing env vars
           SKIP_ENV_VALIDATION: true
+          # Required Supabase environment variables for build
+          # Note: These can be placeholder values since they're only needed for the build to complete
+          # The actual runtime values are configured in your deployment environment
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   # Summary job that requires critical checks to pass
   ci-success:
