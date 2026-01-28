@@ -88,11 +88,10 @@ export default function ProgramSuggestionsDisplay({
           return (
             <div
               key={program.program_name}
-              className={`p-5 border rounded-lg transition-all cursor-pointer ${
-                isSelected
-                  ? 'border-[var(--primary)] bg-[var(--primary-10)] shadow-md'
-                  : 'border-gray-200 hover:border-[var(--primary)] hover:shadow-sm'
-              }`}
+              className={`p-5 border rounded-lg transition-all cursor-pointer ${isSelected
+                ? 'border-[var(--primary)] bg-[var(--primary-10)] shadow-md'
+                : 'border-gray-200 hover:border-[var(--primary)] hover:shadow-sm'
+                }`}
               onClick={() => !isSubmitted && handleToggleSelect(program)}
             >
               {/* Program Header */}
@@ -111,9 +110,9 @@ export default function ProgramSuggestionsDisplay({
                       {program.program_type.charAt(0).toUpperCase() + program.program_type.slice(1)}
                     </span>
                     {program.estimated_credits && (
-                      <span className="text-xs text-muted-foreground">
-                        ~{program.estimated_credits} credits
-                      </span>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Based on your interests in {program.reason || 'this field'}.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -171,11 +170,10 @@ export default function ProgramSuggestionsDisplay({
               )}
 
               {/* Selection Indicator */}
-              <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-md border-2 ${
-                isSelected
-                  ? 'bg-green-50 border-green-500 text-green-700'
-                  : 'bg-gray-50 border-zinc-300 dark:border-zinc-600 text-gray-600'
-              }`}>
+              <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-md border-2 ${isSelected
+                ? 'bg-green-50 border-green-500 text-green-700'
+                : 'bg-gray-50 border-zinc-300 dark:border-zinc-600 text-gray-600'
+                }`}>
                 {isSelected ? (
                   <>
                     <Check size={18} className="font-bold" />

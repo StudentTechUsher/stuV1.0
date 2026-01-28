@@ -89,7 +89,7 @@ export default function PlanHeader({
   const [showProgramSelection, setShowProgramSelection] = useState(false);
   const [showCourseSelection, setShowCourseSelection] = useState(false);
   const [programSelections, setProgramSelections] = useState<ProgramSelections | null>(null);
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  // const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
   const [notification, setNotification] = useState<{
     open: boolean;
@@ -149,7 +149,7 @@ export default function PlanHeader({
 
 
   const handleProfileInfoNext = useCallback((data: ProfileData) => {
-    setProfileData(data);
+    // setProfileData(data);
 
     // Update parent component's studentProfile state
     onProfileUpdate?.({
@@ -164,7 +164,7 @@ export default function PlanHeader({
 
   const handleProfileInfoClose = useCallback(() => {
     setShowProfileInfo(false);
-    setProfileData(null);
+    // setProfileData(null);
   }, []);
 
   const handleProgramSelectionNext = useCallback((selections: ProgramSelections) => {
@@ -506,12 +506,12 @@ export default function PlanHeader({
                       console.error('Error accessing plan data:', error);
                       const fallbackCreatedAt = plan.created_at
                         ? (() => {
-                            try {
-                              return new Date(plan.created_at as string).toLocaleString();
-                            } catch {
-                              return 'Unknown Date';
-                            }
-                          })()
+                          try {
+                            return new Date(plan.created_at as string).toLocaleString();
+                          } catch {
+                            return 'Unknown Date';
+                          }
+                        })()
                         : 'Unknown Date';
                       const fallbackLabel =
                         planName.length > 0
@@ -613,7 +613,7 @@ export default function PlanHeader({
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
-            Are you sure you want to delete "{deleteDialog.planName}"? This action cannot be undone.
+            Are you sure you want to delete &quot;{deleteDialog.planName}&quot;? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

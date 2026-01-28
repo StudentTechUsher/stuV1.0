@@ -54,22 +54,24 @@ interface GraduationPlannerProps {
   onEventsChange?: (events: Event[]) => void;
   onOpenEventDialog?: (opener: (event?: Event) => void) => void;
   gradPlanId?: string;
+  onMoveCourseBlocked?: (course: Course) => void;
 }
 
 export default function GraduationPlanner({
   plan,
   isEditMode = false,
   onPlanUpdate,
-  onSave,
+  onSave: _onSave,
   initialSpaceView = true,
-  editorRole = 'student',
+  editorRole: _editorRole = 'student',
   studentProfile,
   universityId,
-  advisorChanges,
+  advisorChanges: _advisorChanges,
   externalEvents,
   onEventsChange,
   onOpenEventDialog: externalOnOpenEventDialog,
-  gradPlanId
+  gradPlanId,
+  onMoveCourseBlocked
 }: Readonly<GraduationPlannerProps>) {
   // Use universityId from prop or fallback to studentProfile
   const effectiveUniversityId = universityId ?? studentProfile?.university_id ?? 1;
@@ -306,6 +308,12 @@ export default function GraduationPlanner({
     const toTermIndex = toTermNumber - 1;
     if (fromTermIndex === toTermIndex) {
       return; // No move needed
+    }
+
+    const courseToMove = editablePlanData[fromTermIndex]?.courses?.[courseIndex];
+    if (courseToMove && String(courseToMove.isCompleted) === 'true') {
+      onMoveCourseBlocked?.(courseToMove);
+      return;
     }
 
     setEditablePlanData(prevData => {

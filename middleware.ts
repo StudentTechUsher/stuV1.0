@@ -27,7 +27,7 @@ function handleAuthRedirects(
   request: NextRequest,
   session: unknown
 ): NextResponse | null {
-  const pathname = request.nextUrl.pathname
+  const pathname = request.nextUrl.pathname;
 
   // Public paths that don't require authentication
   const publicPaths = [
@@ -44,8 +44,8 @@ function handleAuthRedirects(
   ]
 
   const isPublicPath = publicPaths.includes(pathname) ||
-                       pathname.startsWith('/auth/') ||
-                       pathname.startsWith('/api/')
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/api/')
 
   // If not a public path and no session, redirect to login
   if (!isPublicPath && !session) {
@@ -68,7 +68,7 @@ function handleAuthRedirects(
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
-  const pathname = request.nextUrl.pathname
+  const _pathname = request.nextUrl.pathname
 
   // Parse and set subdomain
   const host = request.headers.get('host')

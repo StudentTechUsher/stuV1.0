@@ -16,10 +16,16 @@ function LoginContent() {
   const nextParam = searchParams.get('next') ?? searchParams.get('redirect');
   const next = nextParam && nextParam.trim().length > 0 ? nextParam : '/dashboard';
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [showPasswordAuth, setShowPasswordAuth] = useState(false);
+
+  // Only allow password auth in development (for e2e testing)
+  const isDevelopment = process.env.NEXT_PUBLIC_ENV === 'development';
 
   const redirectTo =
     typeof window !== 'undefined'
@@ -46,6 +52,35 @@ function LoginContent() {
       setEmail('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send magic link');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    setError('');
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Wait for session to be established
+      if (data.session) {
+        // Small delay to ensure session is saved
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Redirect on success
+        window.location.href = next;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in');
     } finally {
       setLoading(false);
     }
@@ -91,8 +126,8 @@ function LoginContent() {
             welcome to stu.
           </h2>
 
-        {/* Email Input for Magic Link */}
-        <form onSubmit={handleMagicLink}>
+        {/* Email/Password or Magic Link Form */}
+        <form onSubmit={showPasswordAuth ? handlePasswordLogin : handleMagicLink}>
           <div className="relative mb-6">
             <input
               type="email"
@@ -119,6 +154,35 @@ function LoginContent() {
             </label>
           </div>
 
+          {/* Password Input (shown when password auth is enabled) */}
+          {showPasswordAuth && (
+            <div className="relative mb-6">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                required
+                disabled={loading}
+                className={`w-full px-4 pt-6 pb-2 text-foreground bg-transparent border-2 rounded-md
+                  ${passwordFocused || password ? 'border-[var(--hover-green)]' : 'border-[var(--primary)]'}
+                  focus:outline-none focus:border-[var(--hover-green)] transition-all font-body
+                  disabled:opacity-50 disabled:cursor-not-allowed`}
+              />
+              <label
+                className={`absolute left-4 transition-all duration-200 pointer-events-none px-1 font-body bg-muted
+                  ${
+                    passwordFocused || password
+                      ? '-top-2 text-xs text-[var(--hover-green)]'
+                      : 'top-1/2 -translate-y-1/2 text-base text-muted-foreground'
+                  }`}
+              >
+                Password
+              </label>
+            </div>
+          )}
+
           {/* Success/Error Messages */}
           {message && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
@@ -126,18 +190,29 @@ function LoginContent() {
             </div>
           )}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md" role="alert">
               <p className="text-sm text-red-800 font-body">{error}</p>
             </div>
           )}
 
           <button
             type="submit"
-            disabled={loading || !email}
+            disabled={loading || !email || (showPasswordAuth && !password)}
             className="w-full bg-[var(--primary)] hover:bg-[var(--hover-green)] text-primary-foreground py-3 px-4 rounded-lg font-medium transition-colors mb-4 font-body-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Sending...' : 'Continue'}
+            {loading ? (showPasswordAuth ? 'Signing in...' : 'Sending...') : (showPasswordAuth ? 'Sign In' : 'Continue')}
           </button>
+
+          {/* Toggle between Magic Link and Password (dev only for e2e testing) */}
+          {isDevelopment && (
+            <button
+              type="button"
+              onClick={() => setShowPasswordAuth(!showPasswordAuth)}
+              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
+            >
+              {showPasswordAuth ? 'Use magic link instead' : 'Sign in with password'}
+            </button>
+          )}
         </form>
 
         <div className="relative mb-6">

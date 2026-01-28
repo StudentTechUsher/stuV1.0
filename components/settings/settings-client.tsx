@@ -29,7 +29,7 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
   const [currentRole, setCurrentRole] = useState<string>('3');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [user, setUser] = useState<User | null>(passedUser || null);
-  const [profile, setProfile] = useState<Profile | null>(passedProfile || null);
+  const [_profile, setProfile] = useState<Profile | null>(passedProfile || null);
   const [isLoading, setIsLoading] = useState(!passedUser || !passedProfile);
 
   const router = useRouter();
@@ -150,7 +150,7 @@ export default function SettingsClient({ user: passedUser, profile: passedProfil
       {/* Role Settings - Modern card with clean design */}
       <Card className="p-0 border-0 rounded-[7px] overflow-hidden shadow-[0_52px_140px_-90px_rgba(10,31,26,0.58)] bg-white">
         {/* Premium black header */}
-         <div className="bg-[#0A0A0A] w-full p-6">
+        <div className="bg-[#0A0A0A] w-full p-6">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--primary)] shadow-lg">
               <Shield className="h-6 w-6 text-black" strokeWidth={2.5} />

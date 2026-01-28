@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { EventType } from '@/components/grad-planner/types';
+// import { EventType } from '@/components/grad-planner/types';
 
 // Milestone timing options
 export const MilestoneTimingSchema = z.enum([

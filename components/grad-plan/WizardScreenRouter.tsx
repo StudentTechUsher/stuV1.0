@@ -3,11 +3,7 @@
 import React from 'react';
 import { ConversationStep } from '@/lib/chatbot/grad-plan/types';
 import NameScreen from './screens/NameScreen';
-import GraduationDateScreen from './screens/GraduationDateScreen';
-import GraduationSemesterScreen from './screens/GraduationSemesterScreen';
-import CareerGoalsScreen from './screens/CareerGoalsScreen';
 import TranscriptScreen from './screens/TranscriptScreen';
-import StudentTypeScreen from './screens/StudentTypeScreen';
 
 interface WizardScreenRouterProps {
   currentStep: ConversationStep;
@@ -31,25 +27,7 @@ export default function WizardScreenRouter({
   onStepBack,
   isLoading = false,
 }: Readonly<WizardScreenRouterProps>) {
-  // Helper function to get screen step number for progress tracking
-  const getScreenStepNumber = (): number => {
-    switch (currentStep) {
-      case ConversationStep.PROFILE_CHECK:
-        return 1; // Will be further subdivided based on which profile field we're on
-      case ConversationStep.TRANSCRIPT_CHECK:
-        return 5;
-      case ConversationStep.PROGRAM_SELECTION:
-        return 7;
-      case ConversationStep.COURSE_SELECTION:
-        return 8;
-      case ConversationStep.MILESTONES_AND_CONSTRAINTS:
-        return 9;
-      case ConversationStep.GENERATING_PLAN:
-        return 10;
-      default:
-        return 1;
-    }
-  };
+
 
   // For now, render screens based on current step
   // Note: Profile setup will be subdivided into multiple screens

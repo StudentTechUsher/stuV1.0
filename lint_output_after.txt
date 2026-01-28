@@ -1,0 +1,174 @@
+
+> stuv1.0@0.1.0 lint /Users/vinjones/stuV1.0
+> eslint
+
+
+/Users/vinjones/stuV1.0/components/chatbot-tools/ProgramSuggestionsDisplay.tsx
+  221:108  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/chatbot-tools/TranscriptReviewDisplay.tsx
+   94:12   warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  203:146  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  203:170  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-plan/screens/CourseSelectionScreen.tsx
+  130:44  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  148:44  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  435:19  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-plan/screens/GeneratingPlanScreen.tsx
+  105:46  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-plan/screens/ProgramSelectionScreen.tsx
+  254:73  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  413:71  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-plan/screens/TranscriptScreen.tsx
+  93:117  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-planner-redesign/RedesignedPlanView.tsx
+  15:58  warning  'Term' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/grad-planner/CourseHoverCard.tsx
+  30:3  warning  'onClose' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/grad-planner/ElectiveCoursesDialog.tsx
+  194:9   warning  'isLoading' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  221:39  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                       react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-planner/ProfileInfoDialog.tsx
+  214:14  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-planner/grad-plan-client.tsx
+  26:10  warning  'validatePlanName' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+  81:10  warning  'planNameInput' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  82:10  warning  'planNameError' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  82:25  warning  'setPlanNameError' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  83:10  warning  'isSavingPlanName' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  83:28  warning  'setIsSavingPlanName' is assigned a value but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  84:10  warning  'isEditingPlanName' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  84:29  warning  'setIsEditingPlanName' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/grad-planner/wizard/steps/ElectivesStep.tsx
+  152:43  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:57  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/grad-planner/wizard/steps/ProgramStep.tsx
+  6:27  warning  'useMemo' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/grad-planner/wizard/steps/ReviewStep.tsx
+  183:66  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  184:41  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/inbox/inbox-client.tsx
+  8:2  warning  'deleteNotificationAction' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/layout/dashboard-layout.tsx
+  43:44  warning  'index' is defined but never used. Allowed unused args must match /^_/u       @typescript-eslint/no-unused-vars
+  43:59  warning  'totalItems' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/layout/sidebar.tsx
+  110:19  warning  'setMode' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  376:48  warning  'isDark' is defined but never used. Allowed unused args must match /^_/u            @typescript-eslint/no-unused-vars
+  566:51  warning  'isDark' is defined but never used. Allowed unused args must match /^_/u            @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/maintain-programs/edit-program-page.tsx
+  17:3  warning  'Divider' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/maintain-programs/new-program-form.tsx
+  376:25  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  376:41  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/maintain-programs/program-editor.tsx
+   23:3   warning  'IconButton' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  362:52  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`               react/no-unescaped-entities
+  362:68  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`               react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/maintain-programs/programs-table.tsx
+  201:69  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  201:93  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/maintain-programs/requirement-card.tsx
+  34:3  warning  'REQUIREMENT_TYPE_OPTIONS' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/maintain-programs/requirement-editor.tsx
+  34:14  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/maintain-programs/requirement-form.tsx
+  227:16  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  245:16  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/maintain-programs/requirement-view.tsx
+  151:9  warning  The 'directCourses' conditional could make the dependencies of useMemo Hook (at line 165) change on every render. To fix this, wrap the initialization of 'directCourses' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/vinjones/stuV1.0/components/maintain-programs/requirements-author.tsx
+  12:3  warning  'Divider' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  17:3  warning  'Tabs' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  18:3  warning  'Tab' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/maintain-programs/student-requirements-view.tsx
+   20:3   warning  'Badge' is defined but never used. Allowed unused vars must match /^_/u                                                   @typescript-eslint/no-unused-vars
+   26:8   warning  'WarningIcon' is defined but never used. Allowed unused vars must match /^_/u                                             @typescript-eslint/no-unused-vars
+  124:48  warning  'req' is defined but never used. Allowed unused args must match /^_/u                                                     @typescript-eslint/no-unused-vars
+  390:6   warning  React Hook React.useMemo has a missing dependency: 'calculateProgress'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/vinjones/stuV1.0/components/onboarding/onboarding-modal.tsx
+  142:16  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  194:17  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/pathfinder/major-comparison-card.tsx
+    9:3  warning  'InlineProgressBar' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  118:9  warning  'completed' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  119:9  warning  'total' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/pathfinder/pathfinder-progress-ui.tsx
+   36:11  warning  'ProgressBarSegment' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  528:3   warning  'percentComplete' is defined but never used. Allowed unused args must match /^_/u     @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/components/profile/AcademicPlanningSettingsForm.tsx
+  264:40  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  278:38  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/profile/LinkedInShareButton.tsx
+  164:41  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  164:51  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  170:41  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  170:53  warning  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/components/program-flow/program-flow-detail-client.tsx
+   826:6  warning  React Hook useEffect has missing dependencies: 'handleDeleteConnection' and 'handleDeleteNode'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  1602:6  warning  React Hook useEffect has a missing dependency: 'handleMouseMove'. Either include it or remove the dependency array                                  react-hooks/exhaustive-deps
+  1894:6  warning  React Hook useEffect has a missing dependency: 'handleMouseMove'. Either include it or remove the dependency array                                  react-hooks/exhaustive-deps
+
+/Users/vinjones/stuV1.0/components/report-issue/report-issue-modal.tsx
+  132:48  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/vinjones/stuV1.0/contexts/theme-context.tsx
+   77:9  warning  The 'updateThemeColor' function makes the dependencies of useMemo Hook (at line 125) change on every render. To fix this, wrap the definition of 'updateThemeColor' in its own useCallback() Hook                             react-hooks/exhaustive-deps
+   83:9  warning  The 'resetTheme' function makes the dependencies of useMemo Hook (at line 125) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'resetTheme' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  109:6  warning  React Hook useEffect has a missing dependency: 'updateThemeColor'. Either include it or remove the dependency array                                                                                                           react-hooks/exhaustive-deps
+  118:6  warning  React Hook useEffect has a missing dependency: 'applyThemeColor'. Either include it or remove the dependency array                                                                                                            react-hooks/exhaustive-deps
+
+/Users/vinjones/stuV1.0/contexts/university-theme-context.tsx
+  233:6  warning  React Hook useEffect has a missing dependency: 'applyUniversityTheme'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/vinjones/stuV1.0/e2e/auth.spec.ts
+  8:3  warning  'verifyAuthError' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/e2e/grad-plan-creation.spec.ts
+  2:10  warning  'TEST_URLS' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/e2e/transcript.spec.ts
+  108:15  warning  'errorMessage' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  132:58  warning  'page' is defined but never used. Allowed unused args must match /^_/u                   @typescript-eslint/no-unused-vars
+  224:58  warning  'page' is defined but never used. Allowed unused args must match /^_/u                   @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/lib/hooks/usePostHogIdentify.ts
+  7:11  warning  'UserProfile' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/vinjones/stuV1.0/lib/mocks/withdrawalSeed 2.ts
+   15:3   warning  'OrgScope' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  238:38  warning  'termName' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 85 problems (0 errors, 85 warnings)
+

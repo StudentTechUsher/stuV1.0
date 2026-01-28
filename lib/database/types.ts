@@ -7,10 +7,10 @@
  */
 
 // Generic table row type
-export type Tables<T extends string> = Record<string, unknown>;
+export type Tables<_T extends string> = Record<string, unknown>;
 
 // Generic table insert type
-export type TablesInsert<T extends string> = Record<string, unknown>;
+export type TablesInsert<_T extends string> = Record<string, unknown>;
 
 // Generic enums type
-export type Enums<T extends string> = string;
+export type Enums<_T extends string> = string;

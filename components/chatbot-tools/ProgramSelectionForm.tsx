@@ -429,7 +429,7 @@ export default function ProgramSelectionForm({
                 renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
                   value.map((option: ProgramOption, index: number) => {
                     // Extract key from getTagProps to avoid spreading it (React warning)
-                    const { key, ...chipProps } = getTagProps({ index });
+                    const { key: _key, ...chipProps } = getTagProps({ index });
                     return (
                       <Chip
                         key={option.id}
@@ -505,7 +505,7 @@ export default function ProgramSelectionForm({
                 renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
                   value.map((option: ProgramOption, index: number) => {
                     // Extract key from getTagProps to avoid spreading it (React warning)
-                    const { key, ...chipProps } = getTagProps({ index });
+                    const { key: _key, ...chipProps } = getTagProps({ index });
                     return (
                       <Chip
                         key={option.id}
@@ -538,7 +538,7 @@ export default function ProgramSelectionForm({
                 )}
                 renderTags={(value: string[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
                   value.map((option: string, index: number) => {
-                    const { key, ...chipProps } = getTagProps({ index });
+                    const { key: _key, ...chipProps } = getTagProps({ index });
                     return (
                       <Chip
                         key={option}
@@ -569,11 +569,10 @@ export default function ProgramSelectionForm({
                         <div
                           key={genEd.id}
                           onClick={() => setSelectedGenEd(genEd)}
-                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            isSelected
-                              ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                              : 'border-border hover:border-[var(--primary)]/50 hover:bg-muted/50'
-                          }`}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${isSelected
+                            ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                            : 'border-border hover:border-[var(--primary)]/50 hover:bg-muted/50'
+                            }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
@@ -696,7 +695,7 @@ export default function ProgramSelectionForm({
               renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
                 value.map((option: ProgramOption, index: number) => {
                   // Extract key from getTagProps to avoid spreading it (React warning)
-                  const { key, ...chipProps } = getTagProps({ index });
+                  const { key: _key, ...chipProps } = getTagProps({ index });
                   return (
                     <Chip
                       key={option.id}

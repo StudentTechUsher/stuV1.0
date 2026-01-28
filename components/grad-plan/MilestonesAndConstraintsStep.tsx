@@ -15,13 +15,10 @@ import {
   Button,
   TextField,
   Divider,
-  Chip,
   IconButton,
 } from '@mui/material';
 import {
   Briefcase,
-  Plus,
-  GraduationCap,
   Globe,
   FlaskConical,
   Coffee,
@@ -54,12 +51,12 @@ const MILESTONE_TYPES: Array<{
   icon: React.ElementType;
   color: string;
 }> = [
-  { id: 'internship', label: 'Internship', icon: Briefcase, color: '#3B82F6' },
-  { id: 'study_abroad', label: 'Study Abroad', icon: Globe, color: '#8B5CF6' },
-  { id: 'research', label: 'Research Project', icon: FlaskConical, color: '#EC4899' },
-  { id: 'study_break', label: 'Study Break', icon: Coffee, color: '#F59E0B' },
-  { id: 'custom', label: 'Custom', icon: Sparkles, color: '#10B981' },
-];
+    { id: 'internship', label: 'Internship', icon: Briefcase, color: '#3B82F6' },
+    { id: 'study_abroad', label: 'Study Abroad', icon: Globe, color: '#8B5CF6' },
+    { id: 'research', label: 'Research Project', icon: FlaskConical, color: '#EC4899' },
+    { id: 'study_break', label: 'Study Break', icon: Coffee, color: '#F59E0B' },
+    { id: 'custom', label: 'Custom', icon: Sparkles, color: '#10B981' },
+  ];
 
 const WORK_STATUS_OPTIONS: Array<{
   id: 'not_working' | 'part_time' | 'full_time' | 'variable';
@@ -68,35 +65,35 @@ const WORK_STATUS_OPTIONS: Array<{
   description: string;
   color: string;
 }> = [
-  {
-    id: 'not_working',
-    label: 'Not Working',
-    icon: UserX,
-    description: 'Focusing full-time on studies',
-    color: '#6B7280',
-  },
-  {
-    id: 'part_time',
-    label: 'Part-time Work',
-    icon: Clock,
-    description: 'Working 10-20 hours per week',
-    color: '#3B82F6',
-  },
-  {
-    id: 'full_time',
-    label: 'Full-time Work',
-    icon: Briefcase,
-    description: 'Working 30+ hours per week',
-    color: '#EF4444',
-  },
-  {
-    id: 'variable',
-    label: 'Variable',
-    icon: Calendar,
-    description: 'Work schedule varies by semester',
-    color: '#8B5CF6',
-  },
-];
+    {
+      id: 'not_working',
+      label: 'Not Working',
+      icon: UserX,
+      description: 'Focusing full-time on studies',
+      color: '#6B7280',
+    },
+    {
+      id: 'part_time',
+      label: 'Part-time Work',
+      icon: Clock,
+      description: 'Working 10-20 hours per week',
+      color: '#3B82F6',
+    },
+    {
+      id: 'full_time',
+      label: 'Full-time Work',
+      icon: Briefcase,
+      description: 'Working 30+ hours per week',
+      color: '#EF4444',
+    },
+    {
+      id: 'variable',
+      label: 'Variable',
+      icon: Calendar,
+      description: 'Work schedule varies by semester',
+      color: '#8B5CF6',
+    },
+  ];
 
 export function MilestonesAndConstraintsStep({
   distribution,

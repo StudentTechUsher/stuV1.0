@@ -9,9 +9,9 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
+
 import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
+
 import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -20,7 +20,7 @@ import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import { BookOpen, Plus, X, Repeat, Zap, Scale, Sparkles, Info, Search } from 'lucide-react';
+import { BookOpen, X, Repeat, Zap, Scale, Sparkles, Info, Search } from 'lucide-react';
 import {
   CourseSelectionInput,
   CourseEntry,
@@ -228,7 +228,9 @@ export default function CourseSelectionForm({
   // Helper function to process courses for recommendations
   const processCourses = useCallback((courses: unknown[]) => {
     return courses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((c: any) => c.status !== 'retired' && c.credits != null && c.title && c.code)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((c: any) => ({
         id: c.code,
         code: c.code,
@@ -357,14 +359,10 @@ export default function CourseSelectionForm({
 
     // Perform auto-matching
     const matches = autoMatchTranscriptCourses(transcriptCourses, allRequirements);
-    console.log('[Auto-Match Debug] Transcript courses:', transcriptCourses);
-    console.log('[Auto-Match Debug] All requirements:', allRequirements);
-    console.log('[Auto-Match Debug] Matches found:', matches);
     setAutoMatches(matches);
 
     // Apply auto-matches to selected courses
     const groupedMatches = groupMatchesByRequirement(matches);
-    console.log('[Auto-Match Debug] Grouped matches:', groupedMatches);
 
     // Build a map of requirement keys to their subtitles/descriptions for GenEd requirements
     const genEdKeyToSubtitle = new Map<string, string>();
@@ -440,6 +438,68 @@ export default function CourseSelectionForm({
     return map;
   }, [programsData, selectedPrograms]);
 
+  // Auto-collapse completed or auto-selected sections when auto-matching completes
+  useEffect(() => {
+    if (completedRequirementKeys.size === 0 && autoMatchedKeys.size === 0 && requirements.length === 0) return;
+
+    setExpandedSections(prev => {
+      const updated = { ...prev };
+
+      // Collapse gen-ed requirements that are completed
+      completedRequirementKeys.forEach(subtitle => {
+        const sectionKey = `gen-ed-${subtitle}`;
+        // Only auto-collapse if user hasn't manually toggled this section
+        if (!(sectionKey in prev)) {
+          updated[sectionKey] = false;
+        }
+      });
+
+      // Also collapse gen-ed requirements that are auto-selected (only one course option)
+      requirements.forEach(req => {
+        const dropdownCount = getDropdownCount(req);
+        const courses = collectCourses(req.blocks);
+        const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+
+        if (isAutoSelected) {
+          const sectionKey = `gen-ed-${req.subtitle}`;
+          // Only auto-collapse if user hasn't manually toggled this section
+          if (!(sectionKey in prev)) {
+            updated[sectionKey] = false;
+          }
+        }
+      });
+
+      // Collapse program requirements that are completed or auto-matched
+      autoMatchedKeys.forEach(requirementKey => {
+        if (!requirementKey.startsWith('genEd_')) {
+          const sectionKey = `prog-req-${requirementKey}`;
+          // Only auto-collapse if user hasn't manually toggled this section
+          if (!(sectionKey in prev)) {
+            updated[sectionKey] = false;
+          }
+        }
+      });
+
+      // Also collapse program requirements that are auto-selected
+      Object.entries(programRequirementsMap).forEach(([programId, reqs]) => {
+        reqs.forEach(req => {
+          const isAutoSelected = shouldAutoSelect(req, false);
+
+          if (isAutoSelected) {
+            const requirementKey = getRequirementKey(programId, req);
+            const sectionKey = `prog-req-${requirementKey}`;
+            // Only auto-collapse if user hasn't manually toggled this section
+            if (!(sectionKey in prev)) {
+              updated[sectionKey] = false;
+            }
+          }
+        });
+      });
+
+      return updated;
+    });
+  }, [completedRequirementKeys, autoMatchedKeys, requirements, programRequirementsMap]);
+
   // Course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
     const map: Record<string, CourseBlock[]> = {};
@@ -451,8 +511,9 @@ export default function CourseSelectionForm({
 
   // Memoized recommendations for general education requirements
   const genEdRecommendationsMap = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const map: Record<string, any[]> = {};
-    
+
     // Only compute if we have recommendation context
     if (!careerGoals && !studentInterests) {
       return map;
@@ -460,7 +521,7 @@ export default function CourseSelectionForm({
 
     for (const req of requirements) {
       const courses = requirementCoursesMap[req.subtitle] || [];
-      
+
       // Only show recommendations if there are more than 3 courses
       if (courses.length <= 3) {
         map[req.subtitle] = [];
@@ -470,14 +531,15 @@ export default function CourseSelectionForm({
       const courseData = processCourses(courses);
       map[req.subtitle] = recommendCourses(courseData, recommendationContext);
     }
-    
+
     return map;
   }, [requirements, requirementCoursesMap, careerGoals, studentInterests, processCourses, recommendationContext]);
 
   // Memoized recommendations for program requirements
   const programRecommendationsMap = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const map: Record<string, any[]> = {};
-    
+
     // Only compute if we have recommendation context
     if (!careerGoals && !studentInterests) {
       return map;
@@ -487,9 +549,9 @@ export default function CourseSelectionForm({
       const programReqs = programRequirementsMap[programId] || [];
       programReqs.forEach(req => {
         if (!req.courses || req.courses.length === 0) return;
-        
+
         const validCourses = getValidCourses(req);
-        
+
         // Only show recommendations if there are more than 3 courses
         if (validCourses.length <= 3) {
           const requirementKey = getRequirementKey(programId, req);
@@ -502,7 +564,7 @@ export default function CourseSelectionForm({
         map[requirementKey] = recommendCourses(courseData, recommendationContext);
       });
     });
-    
+
     return map;
   }, [selectedPrograms, programRequirementsMap, careerGoals, studentInterests, processCourses, recommendationContext]);
 
@@ -816,7 +878,7 @@ export default function CourseSelectionForm({
     }, 600); // Run after auto-populate effects
 
     return () => clearTimeout(timer);
-  }, [transcriptCourses, requirements, requirementCoursesMap, selectedPrograms, programRequirementsMap]);
+  }, [transcriptCourses, requirements, requirementCoursesMap, selectedPrograms, programRequirementsMap, hasTranscript]);
 
   const handleCourseSelection = (subtitle: string, slotIndex: number, courseCode: string) => {
     setSelectedCourses(prev => {
@@ -1412,11 +1474,10 @@ export default function CourseSelectionForm({
           <button
             type="button"
             onClick={() => setSelectionMethod('ai')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectionMethod === 'ai'
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${selectionMethod === 'ai'
+              ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+              }`}
           >
             <Sparkles size={16} />
             I want AI to choose for me
@@ -1424,11 +1485,10 @@ export default function CourseSelectionForm({
           <button
             type="button"
             onClick={() => setSelectionMethod('manual')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectionMethod === 'manual'
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${selectionMethod === 'manual'
+              ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+              }`}
           >
             <BookOpen size={16} />
             I want to choose for myself
@@ -1441,7 +1501,7 @@ export default function CourseSelectionForm({
               title="Dev only: Auto-fill with middle course options"
             >
               <Zap size={16} />
-              I'm feeling lucky
+              I&apos;m feeling lucky
             </button>
           )}
         </div>
@@ -1454,11 +1514,10 @@ export default function CourseSelectionForm({
             <button
               type="button"
               onClick={() => setGenEdDistribution('early')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                genEdDistribution === 'early'
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${genEdDistribution === 'early'
+                ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                }`}
             >
               <Zap size={16} />
               I want to get Gen Eds done early
@@ -1466,11 +1525,10 @@ export default function CourseSelectionForm({
             <button
               type="button"
               onClick={() => setGenEdDistribution('balanced')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                genEdDistribution === 'balanced'
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${genEdDistribution === 'balanced'
+                ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                }`}
             >
               <Scale size={16} />
               I want to balance Gen Eds throughout
@@ -1503,7 +1561,7 @@ export default function CourseSelectionForm({
               <div>
                 <strong>AI Course Selection Enabled</strong>
                 <p className="mt-1 text-sm">
-                  Our AI will select the best courses for your graduation plan based on your programs, preferences, and academic goals. You can still add any elective courses you'd like to include below.
+                  Our AI will select the best courses for your graduation plan based on your programs, preferences, and academic goals. You can still add any elective courses you&apos;d like to include below.
                 </p>
               </div>
             </div>
@@ -1626,11 +1684,18 @@ export default function CourseSelectionForm({
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
 
                 // Check if this requirement has a completed course from transcript
-                const hasCompletedCourse = completedRequirementKeys.has(req.subtitle);
+                // Either from auto-matching OR if any selected course is completed
+                const hasCompletedFromAutoMatch = completedRequirementKeys.has(req.subtitle);
+                const selectedCoursesForReq = selectedCourses[req.subtitle] || [];
+                const hasCompletedSelected = selectedCoursesForReq.some((courseCode: string) =>
+                  courseCode && completedCourses.has(courseCode)
+                );
+                const hasCompletedCourse = hasCompletedFromAutoMatch || hasCompletedSelected;
 
                 const sectionKey = `gen-ed-${req.subtitle}`;
-                // Always expand by default to show what course is required
-                const isExpanded = expandedSections[sectionKey] ?? true;
+                // Auto-collapse completed or auto-selected requirements
+                const isExpanded = expandedSections[sectionKey] ?? !(isAutoSelected || hasCompletedCourse);
+
                 const recommendations = genEdRecommendationsMap[req.subtitle] || [];
 
                 // Get color for this requirement
@@ -1708,9 +1773,9 @@ export default function CourseSelectionForm({
                           const isAutoMatched = selectedCourse && possibleKeys.some(key => autoMatchedKeys.has(key));
                           const matchInfo = isAutoMatched
                             ? autoMatches.find(m =>
-                                possibleKeys.includes(m.requirementKey) &&
-                                m.matchedCourseCode === selectedCourse
-                              )
+                              possibleKeys.includes(m.requirementKey) &&
+                              m.matchedCourseCode === selectedCourse
+                            )
                             : null;
 
                           // Get all selected courses for this requirement except current slot
@@ -1754,104 +1819,104 @@ export default function CourseSelectionForm({
                                     disabled={isAutoSelected}
                                     onChange={(e) => handleCourseSelection(req.subtitle, slot, e.target.value)}
                                   >
-                                <MenuItem value=""><em>Select a course</em></MenuItem>
-                                <MenuItem
-                                  value={`PLACEHOLDER: ${req.subtitle}`}
-                                  sx={{
-                                    fontStyle: 'italic',
-                                    color: '#6b7280',
-                                  }}
-                                >
-                                  I just need a placeholder for now
-                                </MenuItem>
-                                {courses.length > 3 && (
-                                  <MenuItem
-                                    value=""
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenPreferenceDialog(req.subtitle, slot, true, courses);
-                                    }}
-                                    sx={{
-                                      backgroundColor: '#fef3c7',
-                                      borderBottom: '2px solid #fbbf24',
-                                      fontWeight: 'bold',
-                                      color: '#92400e',
-                                      '&:hover': {
-                                        backgroundColor: '#fde68a',
-                                      },
-                                    }}
-                                  >
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Sparkles size={16} />
-                                      <span>Which one is right for me?</span>
-                                    </Box>
-                                  </MenuItem>
-                                )}
-                                {courses
-                                  .filter(c => c.status !== 'retired' && c.credits != null && c.code && c.title)
-                                  .sort((a, b) => a.code.localeCompare(b.code))
-                                  .filter(c => !otherSelectedCourses.includes(c.code))
-                                  .map((c, courseIdx) => {
-                                    const isCompleted = completedCourses.has(c.code);
-                                    // Get other programs/requirements this course fulfills
-                                    const otherFulfillments = (courseToProgramsMap.get(c.code) || [])
-                                      .filter(f => f.requirementDesc !== req.subtitle); // Exclude current requirement
-
-                                    return (
-                                      <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}-${courseIdx}`} value={c.code}>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                                            <span>{c.code} — {c.title} ({creditText(c.credits)})</span>
-                                            {isCompleted && (
-                                              <Chip
-                                                label="Completed"
-                                                size="small"
-                                                sx={{
-                                                  bgcolor: '#10b981',
-                                                  color: 'white',
-                                                  fontWeight: 'bold',
-                                                  fontSize: '0.7rem',
-                                                  height: '20px',
-                                                  ml: 'auto',
-                                                }}
-                                              />
-                                            )}
-                                            <IconButton
-                                              size="small"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleViewCourseDescription(c.code, courses);
-                                              }}
-                                              sx={{ ml: 'auto', p: 0.5 }}
-                                              title="View course description"
-                                            >
-                                              <Info size={16} />
-                                            </IconButton>
-                                          </Box>
-                                          {otherFulfillments.length > 0 && (
-                                            <Box sx={{ pl: 0.5 }}>
-                                              <span style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
-                                                Also fulfills: {otherFulfillments.map(f => f.programName).join(', ')}
-                                              </span>
-                                            </Box>
-                                          )}
+                                    <MenuItem value=""><em>Select a course</em></MenuItem>
+                                    <MenuItem
+                                      value={`PLACEHOLDER: ${req.subtitle}`}
+                                      sx={{
+                                        fontStyle: 'italic',
+                                        color: '#6b7280',
+                                      }}
+                                    >
+                                      I just need a placeholder for now
+                                    </MenuItem>
+                                    {courses.length > 3 && (
+                                      <MenuItem
+                                        value=""
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenPreferenceDialog(req.subtitle, slot, true, courses);
+                                        }}
+                                        sx={{
+                                          backgroundColor: '#fef3c7',
+                                          borderBottom: '2px solid #fbbf24',
+                                          fontWeight: 'bold',
+                                          color: '#92400e',
+                                          '&:hover': {
+                                            backgroundColor: '#fde68a',
+                                          },
+                                        }}
+                                      >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <Sparkles size={16} />
+                                          <span>Which one is right for me?</span>
                                         </Box>
                                       </MenuItem>
-                                    );
-                                  })}
-                              </Select>
-                            </FormControl>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenSubstitution(req.subtitle, slot, true)}
-                              disabled={isAutoSelected}
-                              className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Find a substitution course"
-                            >
-                              <Repeat size={20} />
-                            </button>
-                          </Box>
-                        </Box>
+                                    )}
+                                    {courses
+                                      .filter(c => c.status !== 'retired' && c.credits != null && c.code && c.title)
+                                      .sort((a, b) => a.code.localeCompare(b.code))
+                                      .filter(c => !otherSelectedCourses.includes(c.code))
+                                      .map((c, courseIdx) => {
+                                        const isCompleted = completedCourses.has(c.code);
+                                        // Get other programs/requirements this course fulfills
+                                        const otherFulfillments = (courseToProgramsMap.get(c.code) || [])
+                                          .filter(f => f.requirementDesc !== req.subtitle); // Exclude current requirement
+
+                                        return (
+                                          <MenuItem key={`${req.subtitle}-${idx}-slot-${slot}-${c.code}-${courseIdx}`} value={c.code}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                                <span>{c.code} — {c.title} ({creditText(c.credits)})</span>
+                                                {isCompleted && (
+                                                  <Chip
+                                                    label="Completed"
+                                                    size="small"
+                                                    sx={{
+                                                      bgcolor: '#10b981',
+                                                      color: 'white',
+                                                      fontWeight: 'bold',
+                                                      fontSize: '0.7rem',
+                                                      height: '20px',
+                                                      ml: 'auto',
+                                                    }}
+                                                  />
+                                                )}
+                                                <IconButton
+                                                  size="small"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewCourseDescription(c.code, courses);
+                                                  }}
+                                                  sx={{ ml: 'auto', p: 0.5 }}
+                                                  title="View course description"
+                                                >
+                                                  <Info size={16} />
+                                                </IconButton>
+                                              </Box>
+                                              {otherFulfillments.length > 0 && (
+                                                <Box sx={{ pl: 0.5 }}>
+                                                  <span style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
+                                                    Also fulfills: {otherFulfillments.map(f => f.programName).join(', ')}
+                                                  </span>
+                                                </Box>
+                                              )}
+                                            </Box>
+                                          </MenuItem>
+                                        );
+                                      })}
+                                  </Select>
+                                </FormControl>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenSubstitution(req.subtitle, slot, true)}
+                                  disabled={isAutoSelected}
+                                  className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Find a substitution course"
+                                >
+                                  <Repeat size={20} />
+                                </button>
+                              </Box>
+                            </Box>
                           );
                         })}
                       </>
@@ -1907,8 +1972,8 @@ export default function CourseSelectionForm({
                   const hasCompletedCourse = autoMatchedKeys.has(requirementKey) && completedRequirementKeys.has(requirementKey);
 
                   const sectionKey = `prog-req-${requirementKey}`;
-                  // Always expand by default to show what course is required
-                  const isExpanded = expandedSections[sectionKey] ?? true;
+                  // Auto-collapse completed or auto-selected requirements
+                  const isExpanded = expandedSections[sectionKey] ?? !(isAutoSelected || hasCompletedCourse);
                   const progRecommendations = programRecommendationsMap[requirementKey] || [];
 
                   // Get color for this requirement
@@ -1973,9 +2038,9 @@ export default function CourseSelectionForm({
                             const isAutoMatched = selectedCourse && autoMatchedKeys.has(requirementKey);
                             const matchInfo = isAutoMatched
                               ? autoMatches.find(m =>
-                                  m.requirementKey === requirementKey &&
-                                  m.matchedCourseCode === selectedCourse
-                                )
+                                m.requirementKey === requirementKey &&
+                                m.matchedCourseCode === selectedCourse
+                              )
                               : null;
 
                             // Get all selected courses for this requirement except current slot
@@ -2019,103 +2084,103 @@ export default function CourseSelectionForm({
                                       disabled={isAutoSelected}
                                       onChange={(e) => handleProgramCourseSelection(requirementKey, slot, e.target.value)}
                                     >
-                                  <MenuItem value=""><em>Select a course</em></MenuItem>
-                                  <MenuItem
-                                    value={`PLACEHOLDER: ${req.description}`}
-                                    sx={{
-                                      fontStyle: 'italic',
-                                      color: '#6b7280',
-                                    }}
-                                  >
-                                    I just need a placeholder for now
-                                  </MenuItem>
-                                  {validCourses.length > 3 && (
-                                    <MenuItem
-                                      value=""
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenPreferenceDialog(requirementKey, slot, false, validCourses);
-                                      }}
-                                      sx={{
-                                        backgroundColor: '#fef3c7',
-                                        borderBottom: '2px solid #fbbf24',
-                                        fontWeight: 'bold',
-                                        color: '#92400e',
-                                        '&:hover': {
-                                          backgroundColor: '#fde68a',
-                                        },
-                                      }}
-                                    >
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Sparkles size={16} />
-                                        <span>Which one is right for me?</span>
-                                      </Box>
-                                    </MenuItem>
-                                  )}
-                                  {validCourses
-                                    .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
-                                    .filter(c => !otherSelectedCourses.includes(c.code || ''))
-                                    .map((c) => {
-                                    const isCompleted = c.code && completedCourses.has(c.code);
-                                    // Get other programs/requirements this course fulfills
-                                    const otherFulfillments = c.code ? (courseToProgramsMap.get(c.code) || [])
-                                      .filter(f => f.requirementDesc !== req.description) : []; // Exclude current requirement
-
-                                    return (
-                                      <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                                            <span>{c.code} — {c.title} ({c.credits} cr)</span>
-                                            {isCompleted && (
-                                              <Chip
-                                                label="Completed"
-                                                size="small"
-                                                sx={{
-                                                  bgcolor: '#10b981',
-                                                  color: 'white',
-                                                  fontWeight: 'bold',
-                                                  fontSize: '0.7rem',
-                                                  height: '20px',
-                                                  ml: 'auto',
-                                                }}
-                                              />
-                                            )}
-                                            <IconButton
-                                              size="small"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleViewCourseDescription(c.code || '', validCourses);
-                                              }}
-                                              sx={{ ml: 'auto', p: 0.5 }}
-                                              title="View course description"
-                                            >
-                                              <Info size={16} />
-                                            </IconButton>
-                                          </Box>
-                                          {otherFulfillments.length > 0 && (
-                                            <Box sx={{ pl: 0.5 }}>
-                                              <span style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
-                                                Also fulfills: {otherFulfillments.map(f => f.programName).join(', ')}
-                                              </span>
-                                            </Box>
-                                          )}
-                                        </Box>
+                                      <MenuItem value=""><em>Select a course</em></MenuItem>
+                                      <MenuItem
+                                        value={`PLACEHOLDER: ${req.description}`}
+                                        sx={{
+                                          fontStyle: 'italic',
+                                          color: '#6b7280',
+                                        }}
+                                      >
+                                        I just need a placeholder for now
                                       </MenuItem>
-                                    );
-                                  })}
-                                </Select>
-                              </FormControl>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenSubstitution(requirementKey, slot, false)}
-                                disabled={isAutoSelected}
-                                className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Find a substitution course"
-                              >
-                                <Repeat size={20} />
-                              </button>
-                            </Box>
-                          </Box>
+                                      {validCourses.length > 3 && (
+                                        <MenuItem
+                                          value=""
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenPreferenceDialog(requirementKey, slot, false, validCourses);
+                                          }}
+                                          sx={{
+                                            backgroundColor: '#fef3c7',
+                                            borderBottom: '2px solid #fbbf24',
+                                            fontWeight: 'bold',
+                                            color: '#92400e',
+                                            '&:hover': {
+                                              backgroundColor: '#fde68a',
+                                            },
+                                          }}
+                                        >
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Sparkles size={16} />
+                                            <span>Which one is right for me?</span>
+                                          </Box>
+                                        </MenuItem>
+                                      )}
+                                      {validCourses
+                                        .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+                                        .filter(c => !otherSelectedCourses.includes(c.code || ''))
+                                        .map((c) => {
+                                          const isCompleted = c.code && completedCourses.has(c.code);
+                                          // Get other programs/requirements this course fulfills
+                                          const otherFulfillments = c.code ? (courseToProgramsMap.get(c.code) || [])
+                                            .filter(f => f.requirementDesc !== req.description) : []; // Exclude current requirement
+
+                                          return (
+                                            <MenuItem key={`${requirementKey}-slot-${slot}-${c.code}`} value={c.code}>
+                                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                                  <span>{c.code} — {c.title} ({c.credits} cr)</span>
+                                                  {isCompleted && (
+                                                    <Chip
+                                                      label="Completed"
+                                                      size="small"
+                                                      sx={{
+                                                        bgcolor: '#10b981',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.7rem',
+                                                        height: '20px',
+                                                        ml: 'auto',
+                                                      }}
+                                                    />
+                                                  )}
+                                                  <IconButton
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleViewCourseDescription(c.code || '', validCourses);
+                                                    }}
+                                                    sx={{ ml: 'auto', p: 0.5 }}
+                                                    title="View course description"
+                                                  >
+                                                    <Info size={16} />
+                                                  </IconButton>
+                                                </Box>
+                                                {otherFulfillments.length > 0 && (
+                                                  <Box sx={{ pl: 0.5 }}>
+                                                    <span style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic' }}>
+                                                      Also fulfills: {otherFulfillments.map(f => f.programName).join(', ')}
+                                                    </span>
+                                                  </Box>
+                                                )}
+                                              </Box>
+                                            </MenuItem>
+                                          );
+                                        })}
+                                    </Select>
+                                  </FormControl>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenSubstitution(requirementKey, slot, false)}
+                                    disabled={isAutoSelected}
+                                    className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Find a substitution course"
+                                  >
+                                    <Repeat size={20} />
+                                  </button>
+                                </Box>
+                              </Box>
                             );
                           })}
                         </>
@@ -2151,7 +2216,7 @@ export default function CourseSelectionForm({
                     Additional Electives
                   </h4>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                    Search for any additional courses you'd like to add to your plan. These can be electives, exploratory courses, or anything not covered in your program requirements.
+                    Search for any additional courses you&apos;d like to add to your plan. These can be electives, exploratory courses, or anything not covered in your program requirements.
                   </p>
                   <CourseSearch
                     universityId={universityId}
@@ -2223,7 +2288,7 @@ export default function CourseSelectionForm({
                   Additional Electives
                 </h4>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                  Search for any additional courses you'd like to add to your plan. These can be electives, exploratory courses, or anything not covered in your program requirements.
+                  Search for any additional courses you&apos;d like to add to your plan. These can be electives, exploratory courses, or anything not covered in your program requirements.
                 </p>
                 <CourseSearch
                   universityId={universityId}
@@ -2355,7 +2420,7 @@ export default function CourseSelectionForm({
                 {!selectedPreference ? (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Select what matters most to you, and we'll recommend courses that match your preference:
+                      Select what matters most to you, and we&apos;ll recommend courses that match your preference:
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

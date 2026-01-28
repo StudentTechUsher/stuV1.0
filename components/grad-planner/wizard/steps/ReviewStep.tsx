@@ -130,10 +130,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               {state.studentType === 'undergraduate' && (
                 <div>
                   <p className="text-xs font-body text-muted-foreground">
-                    Gen Ed Strategy
+                    We&apos;ll try to fulfill these specific courses.
                   </p>
-                  <p className="font-body-semi text-sm text-foreground capitalize">
-                    {state.genEdStrategy || 'Not selected'}
+                  <p className="text-xs font-body text-muted-foreground">
+                    If we can&apos;t fit them all, we&apos;ll prioritize them as electives.
                   </p>
                 </div>
               )}

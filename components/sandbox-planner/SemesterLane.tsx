@@ -9,7 +9,7 @@ export interface SemesterLaneProps {
   semester: SemesterLaneType;
   courses: Course[];
   isEditMode?: boolean;
-  onCoursesChange: (courses: Course[]) => void;
+
   onTermChange: (newTerm: string) => void;
   onDeleteSemester: () => void;
   onCourseSelect: (course: Course) => void;
@@ -24,7 +24,7 @@ export function SemesterLane({
   semester,
   courses,
   isEditMode = true,
-  onCoursesChange,
+
   onTermChange,
   onDeleteSemester,
   onCourseSelect,
@@ -62,11 +62,10 @@ export function SemesterLane({
   return (
     <div
       ref={setNodeRef}
-      className={`h-full rounded-xl border-2 transition-all ${
-        isOver
+      className={`h-full rounded-xl border-2 transition-all ${isOver
           ? 'border-primary bg-primary/5'
           : 'border-muted-foreground/20 bg-muted/5'
-      }`}
+        }`}
     >
       {/* Header */}
       <div className="p-4 border-b border-muted-foreground/10">

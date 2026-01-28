@@ -31,15 +31,16 @@ import {
 import { getNextStep } from '@/lib/chatbot/grad-plan/conversationState';
 import { navigateToStep } from '@/lib/chatbot/grad-plan/stepNavigation';
 import { shouldRequestProfileUpdate } from '@/lib/chatbot/tools/profileUpdateTool';
-import { getStudentTypeConfirmationMessage } from '@/lib/chatbot/tools/studentTypeTool';
+// import { getStudentTypeConfirmationMessage } from '@/lib/chatbot/tools/studentTypeTool';
 import { getProgramSelectionConfirmationMessage, type ProgramSelectionInput } from '@/lib/chatbot/tools/programSelectionTool';
 import { getCourseSelectionConfirmationMessage, countTotalCourses, countTotalCredits, type CourseSelectionInput } from '@/lib/chatbot/tools/courseSelectionTool';
-import { getAdditionalConcernsConfirmationMessage, type AdditionalConcernsInput } from '@/lib/chatbot/tools/additionalConcernsTool';
-import { getMilestoneConfirmationMessage, type MilestoneInput } from '@/lib/chatbot/tools/milestoneTool';
+// import { getAdditionalConcernsConfirmationMessage, type AdditionalConcernsInput } from '@/lib/chatbot/tools/additionalConcernsTool';
+// import { getMilestoneConfirmationMessage, type MilestoneInput } from '@/lib/chatbot/tools/milestoneTool';
 import { CAREER_PATHFINDER_INITIAL_MESSAGE, getCareerSelectionConfirmationMessage, type CareerSuggestionsInput, CAREER_PATHFINDER_SYSTEM_PROMPT, careerSuggestionsToolDefinition } from '@/lib/chatbot/tools/careerSuggestionsTool';
 import { type ProgramSuggestionsInput, programSuggestionsToolDefinition, buildProgramPathfinderSystemPrompt, fetchAvailableProgramsForRAG } from '@/lib/chatbot/tools/programSuggestionsTool';
 import { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction, ensureStudentRecordAction } from '@/lib/services/server-actions';
+import { findMostRecentTerm } from '@/lib/utils/termCalculation';
 
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -109,6 +110,37 @@ export default function CreatePlanClient({
   const [planGenerationStage, setPlanGenerationStage] = useState<'generating' | 'validating'>('generating');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Helper function to get tool data for plan generation confirmation
+  const getGeneratePlanConfirmationToolData = async (): Promise<Record<string, unknown>> => {
+    const toolData: Record<string, unknown> = {
+      academicTerms,
+    };
+
+    // Fetch last completed term from user courses if they have a transcript
+    if (conversationState.collectedData.hasTranscript) {
+      try {
+        const coursesResult = await fetchUserCoursesAction(user.id);
+        if (coursesResult.success && coursesResult.courses && coursesResult.courses.length > 0) {
+          const terms = coursesResult.courses
+            .map(c => c.term)
+            .filter((term): term is string => !!term);
+
+          const lastTerm = findMostRecentTerm(terms);
+          if (lastTerm) {
+            toolData.lastCompletedTerm = lastTerm;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching courses for last term:', error);
+      }
+    }
+
+    // TODO: Add preferred start terms from student preferences if available
+    // This would come from student table or profile preferences
+
+    return toolData;
+  };
+
   // Initialize conversation on mount
   useEffect(() => {
     if (messages.length !== 0) return;
@@ -145,11 +177,10 @@ export default function CreatePlanClient({
       } else {
         // New user or user without active plan
         welcomeMessage = profileCheck.needsUpdate
-          ? `Hi! I'm here to help you create your graduation plan. **This is a quick process** - just a few steps to gather your information. Let's start by checking your profile.${
-              profileCheck.hasValues
-                ? ' I see you have some information already - please review and update if needed.'
-                : ''
-            }`
+          ? `Hi! I'm here to help you create your graduation plan. **This is a quick process** - just a few steps to gather your information. Let's start by checking your profile.${profileCheck.hasValues
+            ? ' I see you have some information already - please review and update if needed.'
+            : ''
+          }`
           : `Hi! I'm here to help you create your graduation plan. **This is a quick process** - just a few steps to gather your information. Let's start by checking your profile.`;
       }
 
@@ -179,7 +210,7 @@ export default function CreatePlanClient({
     return () => {
       isMounted = false;
     };
-  }, [messages.length, studentProfile, hasActivePlan, user.id, ensureStudentRecordAction, shouldRequestProfileUpdate]);
+  }, [messages.length, studentProfile, hasActivePlan, user.id]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -229,7 +260,7 @@ export default function CreatePlanClient({
     ]);
 
     // Show the appropriate tool for the target step after a brief delay
-    setTimeout(() => {
+    setTimeout(async () => {
       let toolMessage: Message | null = null;
 
       switch (targetStep) {
@@ -345,16 +376,18 @@ export default function CreatePlanClient({
           setActiveTool('milestones_and_constraints');
           break;
 
-        case ConversationStep.GENERATING_PLAN:
+        case ConversationStep.GENERATING_PLAN: {
+          const toolData = await getGeneratePlanConfirmationToolData();
           toolMessage = {
             role: 'tool',
             content: '',
             timestamp: new Date(),
             toolType: 'generate_plan_confirmation',
-            toolData: {},
+            toolData,
           };
           setActiveTool('generate_plan_confirmation');
           break;
+        }
 
         default:
           // For other steps, just show a message
@@ -430,8 +463,6 @@ export default function CreatePlanClient({
           hasTranscript: boolean;
           wantsToUpload: boolean;
           wantsToUpdate?: boolean;
-          startTerm?: string;
-          startYear?: number;
         };
 
         // Update conversation state
@@ -442,8 +473,6 @@ export default function CreatePlanClient({
               hasTranscript: transcriptData.hasTranscript,
               transcriptUploaded: transcriptData.wantsToUpload,
               needsTranscriptUpdate: transcriptData.wantsToUpdate || false,
-              planStartTerm: transcriptData.startTerm ?? null,
-              planStartYear: transcriptData.startYear ?? null,
             },
             completedStep: ConversationStep.TRANSCRIPT_CHECK,
           });
@@ -456,19 +485,13 @@ export default function CreatePlanClient({
 
         // Add appropriate message based on their choice
         let nextMessage: string;
-        const startLabel = transcriptData.startTerm && transcriptData.startYear
-          ? ` We'll start in ${transcriptData.startTerm} ${transcriptData.startYear}.`
-          : '';
 
         if (transcriptData.wantsToUpload) {
           nextMessage = 'Great! Your transcript has been reviewed and included in your context.';
         } else if (transcriptData.hasTranscript) {
           nextMessage = 'Perfect! We\'ll use the transcript you uploaded previously.';
         } else {
-          nextMessage = `Okay, we can proceed without a transcript.${startLabel}`;
-        }
-        if (transcriptData.hasTranscript || transcriptData.wantsToUpload) {
-          nextMessage += startLabel;
+          nextMessage = 'Okay, we can proceed without a transcript.';
         }
         nextMessage += ' Now, let\'s select your program(s).';
 
@@ -767,7 +790,8 @@ export default function CreatePlanClient({
         ]);
 
         // Move to GENERATING_PLAN step
-        setTimeout(() => {
+        setTimeout(async () => {
+          const toolData = await getGeneratePlanConfirmationToolData();
           setMessages(prev => [
             ...prev,
             {
@@ -780,7 +804,7 @@ export default function CreatePlanClient({
               content: '',
               timestamp: new Date(),
               toolType: 'generate_plan_confirmation',
-              toolData: {},
+              toolData,
             },
           ]);
           setActiveTool('generate_plan_confirmation');
@@ -790,7 +814,7 @@ export default function CreatePlanClient({
       } else if (toolType === 'generate_plan_confirmation') {
         setActiveTool(null);
         const confirmationData = result as
-          | { action: 'generate'; mode: 'automatic' | 'active_feedback' }
+          | { action: 'generate'; mode: 'automatic' | 'active_feedback'; startTerm: string; startYear: number }
           | { action: 'review' };
 
         if (confirmationData.action === 'review') {
@@ -808,13 +832,23 @@ export default function CreatePlanClient({
         }
 
         const generationMode = confirmationData.mode;
+        const startTerm = confirmationData.startTerm;
+        const startYear = confirmationData.startYear;
+
+        // Store start term/year in conversation state
+        setConversationState(prev => updateState(prev, {
+          data: {
+            planStartTerm: startTerm,
+            planStartYear: startYear,
+          },
+        }));
 
         if (generationMode === 'active_feedback') {
           setMessages(prev => [
             ...prev,
             {
               role: 'assistant',
-              content: 'Great choice! Here is a quick draft. Move courses earlier or later and I\'ll adjust the plan as you go.',
+              content: `Great choice! We'll start your plan in ${startTerm} ${startYear}. Here is a quick draft. Move courses earlier or later and I'll adjust the plan as you go.`,
               timestamp: new Date(),
             },
             {
@@ -836,6 +870,16 @@ export default function CreatePlanClient({
           setIsProcessing(false);
           return;
         }
+
+        // Automatic generation mode
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `Perfect! I'll generate your complete plan starting from ${startTerm} ${startYear}. This may take a moment...`,
+            timestamp: new Date(),
+          },
+        ]);
 
         startPlanGeneration();
 
@@ -1573,17 +1617,17 @@ One last question: On a scale of 1-10, how committed are you to this career path
         const userCoursesResult = await fetchUserCoursesAction(user.id);
         takenCourses = userCoursesResult.success && userCoursesResult.courses
           ? userCoursesResult.courses
-              .filter(course => course.code && course.title)
-              .map(course => ({
-                code: course.code,
-                title: course.title,
-                credits: course.credits || 3,
-                term: course.term || 'Unknown',
-                grade: course.grade || 'Completed',
-                status: 'Completed',
-                source: 'Institutional',
-                fulfills: [],
-              }))
+            .filter(course => course.code && course.title)
+            .map(course => ({
+              code: course.code,
+              title: course.title,
+              credits: course.credits || 3,
+              term: course.term || 'Unknown',
+              grade: course.grade || 'Completed',
+              status: 'Completed',
+              source: 'Institutional',
+              fulfills: [],
+            }))
           : [];
       }
 
@@ -1703,124 +1747,122 @@ One last question: On a scale of 1-10, how committed are you to this career path
                     return true;
                   })
                   .map((message, index) => {
-                  // Tool messages render as interactive components
-                  // Only show if it's the active tool (not completed)
-                  if (message.role === 'tool' && message.toolType) {
-                    // Only render if this is the active tool
-                    if (activeTool === message.toolType) {
-                      return (
-                        <div key={index} className="w-full">
-                          <ToolRenderer
-                            toolType={message.toolType}
-                            toolData={message.toolData || {}}
-                            onToolComplete={(result) => handleToolComplete(message.toolType!, result)}
-                            onToolSkip={handleToolSkip}
-                            onCareerPathfinderClick={handleCareerPathfinderClick}
-                            onProgramPathfinderClick={handleProgramPathfinderClick}
-                          />
-                        </div>
-                      );
-                    }
-                    // Don't render completed tools - they're shown in the sidebar
-                    return null;
-                  }
-
-                  // Regular user/assistant messages
-                  const isLastMessage = index === messages.length - 1;
-                  const hasQuickReplies = message.quickReplies && message.quickReplies.length > 0;
-
-                  // Find if this is the last user message
-                  const isLastUserMessage = message.role === 'user' && (() => {
-                    for (let i = messages.length - 1; i >= 0; i--) {
-                      if (messages[i].role === 'user') {
-                        return i === index;
-                      }
-                    }
-                    return false;
-                  })();
-
-                  // Find if this is the last assistant message
-                  const isLastAssistantMessage = message.role === 'assistant' && (() => {
-                    for (let i = messages.length - 1; i >= 0; i--) {
-                      if (messages[i].role === 'assistant') {
-                        return i === index;
-                      }
-                    }
-                    return false;
-                  })();
-
-                  // Check if this is the loading message for graduation plan generation
-                  const isGeneratingPlan = message.content?.includes('Perfect! Now let me generate your personalized graduation plan');
-
-                  return (
-                    <div key={index} ref={isLastUserMessage ? lastUserMessageRef : isLastAssistantMessage ? lastAssistantMessageRef : null}>
-                      <div
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        {isGeneratingPlan ? (
-                          // Show StuLoader for plan generation - centered in chat window
-                          <div className="w-full flex justify-center items-center py-8">
-                            <div className="flex flex-col items-center gap-3 text-center">
-                              <StuLoader
-                                variant="card"
-                                text={generationLoaderText}
-                                speed={2.5}
-                              />
-                              <p className="text-sm text-muted-foreground">
-                                Your grad plan is generating. It&apos;ll take a moment, so you can stay here or leave. You&apos;ll get an email when it&apos;s done!
-                              </p>
-                            </div>
+                    // Tool messages render as interactive components
+                    // Only show if it's the active tool (not completed)
+                    if (message.role === 'tool' && message.toolType) {
+                      // Only render if this is the active tool
+                      if (activeTool === message.toolType) {
+                        return (
+                          <div key={index} className="w-full">
+                            <ToolRenderer
+                              toolType={message.toolType}
+                              toolData={message.toolData || {}}
+                              onToolComplete={(result) => handleToolComplete(message.toolType!, result)}
+                              onToolSkip={handleToolSkip}
+                              onCareerPathfinderClick={handleCareerPathfinderClick}
+                              onProgramPathfinderClick={handleProgramPathfinderClick}
+                            />
                           </div>
-                        ) : (
-                          <div
-                            className={`max-w-[80%] px-3 py-2 rounded-2xl ${
-                              message.role === 'user'
+                        );
+                      }
+                      // Don't render completed tools - they're shown in the sidebar
+                      return null;
+                    }
+
+                    // Regular user/assistant messages
+                    const isLastMessage = index === messages.length - 1;
+                    const hasQuickReplies = message.quickReplies && message.quickReplies.length > 0;
+
+                    // Find if this is the last user message
+                    const isLastUserMessage = message.role === 'user' && (() => {
+                      for (let i = messages.length - 1; i >= 0; i--) {
+                        if (messages[i].role === 'user') {
+                          return i === index;
+                        }
+                      }
+                      return false;
+                    })();
+
+                    // Find if this is the last assistant message
+                    const isLastAssistantMessage = message.role === 'assistant' && (() => {
+                      for (let i = messages.length - 1; i >= 0; i--) {
+                        if (messages[i].role === 'assistant') {
+                          return i === index;
+                        }
+                      }
+                      return false;
+                    })();
+
+                    // Check if this is the loading message for graduation plan generation
+                    const isGeneratingPlan = message.content?.includes('Perfect! Now let me generate your personalized graduation plan');
+
+                    return (
+                      <div key={index} ref={isLastUserMessage ? lastUserMessageRef : isLastAssistantMessage ? lastAssistantMessageRef : null}>
+                        <div
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          {isGeneratingPlan ? (
+                            // Show StuLoader for plan generation - centered in chat window
+                            <div className="w-full flex justify-center items-center py-8">
+                              <div className="flex flex-col items-center gap-3 text-center">
+                                <StuLoader
+                                  variant="card"
+                                  text={generationLoaderText}
+                                  speed={2.5}
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                  Your grad plan is generating. It&apos;ll take a moment, so you can stay here or leave. You&apos;ll get an email when it&apos;s done!
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              className={`max-w-[80%] px-3 py-2 rounded-2xl ${message.role === 'user'
                                 ? 'bg-[#0a1f1a] text-white'
                                 : 'bg-white dark:bg-zinc-900 dark:text-white border border-border shadow-sm'
-                            }`}
-                          >
-                            {message.content && <MarkdownMessage content={message.content} />}
-                            <p
-                              className={`text-xs mt-1 ${
-                                message.role === 'user' ? 'text-white/60' : 'text-muted-foreground dark:text-white/60'
-                              }`}
+                                }`}
                             >
-                              {message.timestamp.toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </p>
+                              {message.content && <MarkdownMessage content={message.content} />}
+                              <p
+                                className={`text-xs mt-1 ${message.role === 'user' ? 'text-white/60' : 'text-muted-foreground dark:text-white/60'
+                                  }`}
+                              >
+                                {message.timestamp.toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Quick Reply Buttons - Only show on last message if not processing */}
+                        {hasQuickReplies && isLastMessage && !isProcessing && !activeTool && (
+                          <div className="flex justify-start mt-2">
+                            <div className="flex flex-wrap gap-2 max-w-[80%]">
+                              {message.quickReplies!.map((reply, replyIndex) => (
+                                <Button
+                                  key={replyIndex}
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => {
+                                    setInputMessage(reply);
+                                    // Auto-submit the quick reply
+                                    setTimeout(() => {
+                                      handleSendMessage(reply);
+                                    }, 100);
+                                  }}
+                                  className="text-sm py-2 px-3 h-auto"
+                                >
+                                  {reply}
+                                </Button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      {/* Quick Reply Buttons - Only show on last message if not processing */}
-                      {hasQuickReplies && isLastMessage && !isProcessing && !activeTool && (
-                        <div className="flex justify-start mt-2">
-                          <div className="flex flex-wrap gap-2 max-w-[80%]">
-                            {message.quickReplies!.map((reply, replyIndex) => (
-                              <Button
-                                key={replyIndex}
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => {
-                                  setInputMessage(reply);
-                                  // Auto-submit the quick reply
-                                  setTimeout(() => {
-                                    handleSendMessage(reply);
-                                  }, 100);
-                                }}
-                                className="text-sm py-2 px-3 h-auto"
-                              >
-                                {reply}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
                 {isProcessing && !messages.some(m => m.content?.includes('Perfect! Now let me generate your personalized graduation plan')) && (
                   <div className="flex justify-start">
                     <div className="bg-white dark:bg-zinc-900 dark:text-white border border-border shadow-sm px-3 py-2 rounded-2xl">

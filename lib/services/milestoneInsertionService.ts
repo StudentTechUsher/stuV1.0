@@ -47,14 +47,6 @@ export type PlanItem = TermInPlan | MilestoneInPlan;
 // Type Guards
 // ============================================================================
 
-function isTerm(item: PlanItem): item is TermInPlan {
-  return 'term' in item && 'courses' in item;
-}
-
-function isMilestone(item: PlanItem): item is MilestoneInPlan {
-  return 'afterTerm' in item && 'type' in item && !('courses' in item);
-}
-
 // ============================================================================
 // Core Functions
 // ============================================================================

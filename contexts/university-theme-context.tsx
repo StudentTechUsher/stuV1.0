@@ -27,53 +27,7 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
   const [loading, setLoading] = useState(true);
   const supabase = createSupabaseBrowserClient();
 
-  // Load university data from middleware headers or fetch by subdomain
-  useEffect(() => {
-    const loadUniversityData = async () => {
-      setLoading(true);
-
-      try {
-        // Try to get university from middleware headers first
-        const universityHeader = document?.querySelector('meta[name="x-university"]')?.getAttribute('content');
-
-        if (universityHeader) {
-          const universityData = JSON.parse(universityHeader);
-          setUniversity(universityData);
-          applyUniversityTheme(universityData);
-        } else {
-          // Fallback: parse subdomain and fetch university data
-          const host = window.location.host;
-          const subdomain = parseSubdomain(host);
-
-          const { data: universityData, error } = await supabase
-            .from('university')
-            .select('*')
-            .eq('subdomain', subdomain)
-            .maybeSingle();
-
-          if (error) {
-            console.error('Error loading university:', error?.message || error);
-            // Use default STU theme
-            applyTheme(DEFAULT_THEME);
-          } else if (universityData) {
-            setUniversity(universityData);
-            applyUniversityTheme(universityData);
-          } else {
-            // No university found, use default
-            setUniversity(null);
-            applyTheme(DEFAULT_THEME);
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing university data:', error);
-        applyTheme(DEFAULT_THEME);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUniversityData();
-  }, [supabase]);
+  /* Effects moved to bottom */
 
   const parseSubdomain = (host: string): string => {
     const sanitizedHost = host?.split(':')[0] ?? '';
@@ -180,7 +134,7 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
 
       console.log('Updating university', universityId, 'with colors:', themeUpdates);
 
-      const { error, data } = await supabase
+      const { error, data: _data } = await supabase
         .from('university')
         .update(themeUpdates)
         .eq('id', universityId)
@@ -230,6 +184,54 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
     }
   };
 
+  // Load university data from middleware headers or fetch by subdomain
+  useEffect(() => {
+    const loadUniversityData = async () => {
+      setLoading(true);
+
+      try {
+        // Try to get university from middleware headers first
+        const universityHeader = document?.querySelector('meta[name="x-university"]')?.getAttribute('content');
+
+        if (universityHeader) {
+          const universityData = JSON.parse(universityHeader);
+          setUniversity(universityData);
+          applyUniversityTheme(universityData);
+        } else {
+          // Fallback: parse subdomain and fetch university data
+          const host = window.location.host;
+          const subdomain = parseSubdomain(host);
+
+          const { data: universityData, error } = await supabase
+            .from('university')
+            .select('*')
+            .eq('subdomain', subdomain)
+            .maybeSingle();
+
+          if (error) {
+            console.error('Error loading university:', error?.message || error);
+            // Use default STU theme
+            applyTheme(DEFAULT_THEME);
+          } else if (universityData) {
+            setUniversity(universityData);
+            applyUniversityTheme(universityData);
+          } else {
+            // No university found, use default
+            setUniversity(null);
+            applyTheme(DEFAULT_THEME);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing university data:', error);
+        applyTheme(DEFAULT_THEME);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUniversityData();
+  }, [supabase /*, applyUniversityTheme */]); // Removed dep to avoid cycle/defined-before-use issues. Ideally use useCallback.
+
   const value: UniversityThemeContextType = {
     university,
     theme,
@@ -258,10 +260,10 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    }
     : null;
 }
 

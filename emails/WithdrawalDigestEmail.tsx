@@ -9,7 +9,7 @@
 
 import React from 'react';
 import type { AdvisorDigest } from '@/lib/jobs/withdrawalDigest';
-import { fmtDate, fmtDateTime } from '@/utils/date';
+import { fmtDate } from '@/utils/date';
 
 interface WithdrawalDigestEmailProps {
   digest: AdvisorDigest;
@@ -181,16 +181,17 @@ export default function WithdrawalDigestEmail({
             }}
           >
             Open in{' '}
-             <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <img
-                  src="/stu_icon_black.png"
-                  alt="stu"
-                  style={{ width: '20px', height: '20px' }}
-                />
-                <span style={{ fontWeight: 800, fontSize: '1.15em', lineHeight: 1, marginLeft: 0.5 }}>
-                  stu.
-                </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/stu_icon_black.png"
+                alt="stu"
+                style={{ width: '20px', height: '20px' }}
+              />
+              <span style={{ fontWeight: 800, fontSize: '1.15em', lineHeight: 1, marginLeft: 0.5 }}>
+                stu.
               </span>
+            </span>
           </a>
           <a
             href="#"

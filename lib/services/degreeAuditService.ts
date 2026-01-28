@@ -22,7 +22,6 @@ import type {
   NoteOnlyRequirement,
 } from '@/types/programRequirements';
 import { getCourses, getSubRequirements } from '@/types/programRequirements';
-import { matchCoursesToProgram } from './courseMatchingService';
 
 // ============================================================================
 // TYPES
@@ -546,7 +545,7 @@ function buildCourseToRequirementMap(
       const userCourse = userCourses.find(uc => {
         const ucCode = `${uc.subject} ${uc.number}`;
         return normalizeCourseCode(ucCode) === normalizeCourseCode(courseCode) ||
-               normalizeCourseCode(`${uc.subject}${uc.number}`) === normalizeCourseCode(courseCode);
+          normalizeCourseCode(`${uc.subject}${uc.number}`) === normalizeCourseCode(courseCode);
       });
 
       if (userCourse && userCourse.id) {
@@ -597,7 +596,7 @@ function extractAppliedCourseIds(
       const userCourse = userCourses.find(uc => {
         const ucCode = `${uc.subject} ${uc.number}`;
         const match = normalizeCourseCode(ucCode) === normalizeCourseCode(courseCode) ||
-               normalizeCourseCode(`${uc.subject}${uc.number}`) === normalizeCourseCode(courseCode);
+          normalizeCourseCode(`${uc.subject}${uc.number}`) === normalizeCourseCode(courseCode);
 
         if (match) {
           console.log(`    Found match: ${ucCode} (ID: ${uc.id}) matches ${courseCode}`);

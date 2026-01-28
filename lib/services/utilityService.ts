@@ -5,124 +5,7 @@
  */
 
 import { ColorExtractionError } from './errors/utilityErrors';
-import * as fs from 'fs';
-import * as path from 'path';
 
-/**
- * Extract dominant colors from a webpage screenshot using Playwright
- */
-async function extractColorsViaScreenshot(url: string): Promise<string[]> {
-  let browser: any = null;
-  let tmpFile: string | null = null;
-
-  try {
-    // Dynamically import playwright to avoid build issues
-    const playwright = await import('playwright');
-    const chromium = playwright.chromium;
-
-    browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-    const page = await context.newPage();
-
-    // Set timeout
-    page.setDefaultTimeout(15000);
-
-    await page.goto(url, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(1000); // Wait for animations to settle
-
-    // Take screenshot
-    tmpFile = path.join('/tmp', `screenshot-${Date.now()}.png`);
-    await page.screenshot({ path: tmpFile, fullPage: false });
-
-    await context.close();
-    await browser.close();
-
-    // Analyze screenshot pixels
-    const colors = await analyzeImageColors(tmpFile);
-
-    // Clean up temp file
-    if (tmpFile && fs.existsSync(tmpFile)) {
-      fs.unlinkSync(tmpFile);
-    }
-
-    return colors;
-  } catch (error) {
-    // Clean up on error
-    if (tmpFile && fs.existsSync(tmpFile)) {
-      fs.unlinkSync(tmpFile);
-    }
-    if (browser) {
-      await browser.close();
-    }
-    throw error;
-  }
-}
-
-/**
- * Analyze PNG image colors by reading raw pixel data
- */
-async function analyzeImageColors(imagePath: string): Promise<string[]> {
-  try {
-    // Use sharp for image analysis
-    const sharpModule = await import('sharp');
-    const sharp = sharpModule.default || sharpModule;
-
-    const metadata = await sharp(imagePath).metadata();
-
-    if (!metadata.width || !metadata.height) {
-      throw new Error('Could not get image dimensions');
-    }
-
-    // Resize for faster processing
-    const width = Math.min(metadata.width, 400);
-    const height = Math.min(metadata.height, 400);
-
-    const buffer = await sharp(imagePath)
-      .resize(width, height, { fit: 'cover' })
-      .raw()
-      .toBuffer();
-
-    // Count color frequencies
-    const colorFrequency = new Map<string, number>();
-
-    // Process every 3rd pixel for performance (RGB format, 3 bytes per pixel)
-    for (let i = 0; i < buffer.length; i += 9) { // Skip every 3 pixels
-      const r = buffer[i];
-      const g = buffer[i + 1];
-      const b = buffer[i + 2];
-
-      // Skip near-white and near-black pixels
-      const brightness = (r + g + b) / 3;
-      if (brightness > 240 || brightness < 20) continue;
-
-      // Skip gray colors
-      const maxDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-      if (maxDiff < 20) continue;
-
-      const hex = `#${[r, g, b]
-        .map(x => x.toString(16).padStart(2, '0'))
-        .join('')
-        .toUpperCase()}`;
-
-      colorFrequency.set(hex, (colorFrequency.get(hex) || 0) + 1);
-    }
-
-    if (colorFrequency.size === 0) {
-      throw new ColorExtractionError('No colors found in screenshot');
-    }
-
-    // Sort by frequency and return top colors
-    const topColors = Array.from(colorFrequency.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([color]) => color);
-
-    return topColors;
-  } catch (error) {
-    if (error instanceof ColorExtractionError) throw error;
-    throw new Error(`Failed to analyze image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
 
 /**
  * AUTHORIZATION: PUBLIC
@@ -145,18 +28,7 @@ export async function extractColorsFromUrl(url: string, numColors = 10) {
       throw new ColorExtractionError('Invalid URL format');
     }
 
-    // Try using Playwright for pixel-based color analysis first
-    try {
-      const colors = await extractColorsViaScreenshot(url);
-      if (colors.length > 0) {
-        return colors.slice(0, numColors);
-      }
-    } catch (screenshotError) {
-      console.warn('Screenshot-based color extraction failed, falling back to HTML parsing:', screenshotError);
-      // Fall through to HTML parsing
-    }
-
-    // Fallback: Fetch the webpage with better headers
+    // Fetch the webpage with better headers
     let response: Response;
     try {
       response = await fetch(url, {

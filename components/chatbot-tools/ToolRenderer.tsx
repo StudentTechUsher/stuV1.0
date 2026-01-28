@@ -68,6 +68,8 @@ interface ToolRendererProps {
     academicTermsConfig?: AcademicTermsConfig;
     workStatus?: string;
     milestones?: Array<{ id?: string; type?: string; title?: string; timing?: string; term?: string; year?: number }>;
+    lastCompletedTerm?: string | null;
+    preferredStartTerms?: string[];
   };
   onToolComplete: (result: unknown) => void;
   onToolSkip?: () => void;
@@ -163,6 +165,9 @@ export default function ToolRenderer({
     case 'generate_plan_confirmation':
       return (
         <GeneratePlanConfirmationForm
+          academicTerms={toolData.academicTerms}
+          lastCompletedTerm={toolData.lastCompletedTerm}
+          preferredStartTerms={toolData.preferredStartTerms}
           onSubmit={(data) => onToolComplete(data)}
         />
       );
@@ -229,6 +234,7 @@ export default function ToolRenderer({
           totalCredits={toolData.totalCredits}
           studentData={toolData.studentData}
           hasTranscript={toolData.hasTranscript}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           academicTerms={toolData.academicTerms as any}
           onComplete={(data) => onToolComplete(data)}
         />
@@ -237,6 +243,7 @@ export default function ToolRenderer({
     case 'milestones_and_constraints':
       return (
         <MilestonesAndConstraintsStep
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           distribution={toolData.distribution as any}
           onComplete={(data) => onToolComplete(data)}
         />

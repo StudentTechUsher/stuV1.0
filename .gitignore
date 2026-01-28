@@ -20,6 +20,9 @@
 # production
 /build
 
+# storybook
+storybook-static/
+
 # misc
 .DS_Store
 *.pem
@@ -63,3 +66,10 @@ rls_policies.sql
 Data Security Checklist*.pdf
 # Note: Compliance records should NEVER be in git repo
 # Store in secure external location (Google Drive, etc.)
+
+# Playwright
+/e2e/.auth/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

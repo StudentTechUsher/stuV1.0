@@ -152,19 +152,19 @@ export function InboxClient({ notifications, userId }: InboxClientProps) {
 	};
 
 	// Delete notification (not currently used but available for future)
-	const handleDeleteNotification = async (notifId: string) => {
-		try {
-			const result = await deleteNotificationAction(notifId, userId);
+	// const handleDeleteNotification = async (notifId: string) => {
+	// 	try {
+	// 		const result = await deleteNotificationAction(notifId, userId);
 
-			if (!result.success) {
-				console.error('Failed to delete notification:', result.error);
-			} else {
-				router.refresh();
-			}
-		} catch (error) {
-			console.error('Error deleting notification:', error);
-		}
-	};
+	// 		if (!result.success) {
+	// 			console.error('Failed to delete notification:', result.error);
+	// 		} else {
+	// 			router.refresh();
+	// 		}
+	// 	} catch (error) {
+	// 		console.error('Error deleting notification:', error);
+	// 	}
+	// };
 
 	// Delete all read notifications
 	const handleDeleteAllRead = async () => {
@@ -235,31 +235,28 @@ export function InboxClient({ notifications, userId }: InboxClientProps) {
 							<div className="flex gap-2">
 								<button
 									onClick={() => setReadFilter('all')}
-									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-										readFilter === 'all'
+									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${readFilter === 'all'
 											? 'bg-[var(--primary)] text-white'
 											: 'bg-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)]'
-									}`}
+										}`}
 								>
 									All
 								</button>
 								<button
 									onClick={() => setReadFilter('unread')}
-									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-										readFilter === 'unread'
+									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${readFilter === 'unread'
 											? 'bg-[var(--primary)] text-white'
 											: 'bg-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)]'
-									}`}
+										}`}
 								>
 									Unread
 								</button>
 								<button
 									onClick={() => setReadFilter('read')}
-									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-										readFilter === 'read'
+									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${readFilter === 'read'
 											? 'bg-[var(--primary)] text-white'
 											: 'bg-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)]'
-									}`}
+										}`}
 								>
 									Read
 								</button>
@@ -272,11 +269,10 @@ export function InboxClient({ notifications, userId }: InboxClientProps) {
 								<button
 									key={chip.value}
 									onClick={() => toggleTypeFilter(chip.value)}
-									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-										selectedTypes.has(chip.value)
+									className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${selectedTypes.has(chip.value)
 											? 'bg-[var(--primary)] text-white'
 											: 'bg-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted-foreground)_20%,transparent)]'
-									}`}
+										}`}
 								>
 									{chip.label} ({chip.count})
 								</button>

@@ -14,7 +14,6 @@ import {
   Card,
   CardContent,
   Button,
-  FormControlLabel,
   Checkbox,
   Alert,
 } from '@mui/material';
@@ -40,6 +39,7 @@ interface CreditDistributionStepProps {
   onComplete: (data: {
     type: 'fast_track' | 'balanced' | 'explore';
     includeSecondaryCourses: boolean;
+    selectedTermIds: string[];
     suggestedDistribution: SemesterAllocation[];
   }) => void;
   initialStrategy?: 'fast_track' | 'balanced' | 'explore';
@@ -92,17 +92,32 @@ export function CreditDistributionStep({
   const [selectedStrategy, setSelectedStrategy] = useState<'fast_track' | 'balanced' | 'explore' | null>(
     initialStrategy || null
   );
-  const [includeSecondaryCourses, setIncludeSecondaryCourses] = useState(initialIncludeSecondary);
+
+  // Initialize with all primary terms selected by default, secondary terms based on initialIncludeSecondary
+  const [selectedTermIds, setSelectedTermIds] = useState<string[]>(() => {
+    const primaryTermIds = academicTerms.terms.primary.map(t => t.id);
+    if (initialIncludeSecondary) {
+      const secondaryTermIds = academicTerms.terms.secondary.map(t => t.id);
+      return [...primaryTermIds, ...secondaryTermIds];
+    }
+    return primaryTermIds;
+  });
+
   const [error, setError] = useState<string | null>(null);
 
-  const resolveTermLabel = (termId: string) => {
+  // Helper to determine if we should include secondary courses (for backward compatibility)
+  const includeSecondaryCourses = academicTerms.terms.secondary.some(t =>
+    selectedTermIds.includes(t.id)
+  );
+
+  const resolveTermLabel = React.useCallback((termId: string) => {
     const allTerms = [...academicTerms.terms.primary, ...academicTerms.terms.secondary];
     const match = allTerms.find(
       term => term.id.toLowerCase() === termId.toLowerCase() || term.label.toLowerCase() === termId.toLowerCase()
     );
     if (match?.label) return match.label;
     return termId.charAt(0).toUpperCase() + termId.slice(1);
-  };
+  }, [academicTerms]);
 
   const getTermMonthIndex = (termId: string) => {
     const termLower = termId.toLowerCase();
@@ -116,7 +131,7 @@ export function CreditDistributionStep({
     return monthMap[termLower] ?? 0;
   };
 
-  const getFallbackCompletion = (
+  const getFallbackCompletion = React.useCallback((
     strategy: 'fast_track' | 'balanced' | 'explore',
     includeSecondary: boolean
   ) => {
@@ -147,9 +162,9 @@ export function CreditDistributionStep({
       termLabel: resolveTermLabel(termId),
       year,
     };
-  };
+  }, [academicTerms, studentData, resolveTermLabel]);
 
-  // Calculate distribution whenever strategy or secondary toggle changes
+  // Calculate distribution whenever strategy or selected terms change
   const distribution = useMemo<SemesterAllocation[] | null>(() => {
     if (!selectedStrategy) return null;
 
@@ -158,7 +173,7 @@ export function CreditDistributionStep({
       return calculateSemesterDistribution({
         totalCredits,
         strategy: selectedStrategy,
-        includeSecondaryCourses,
+        selectedTermIds,
         academicTerms,
         admissionYear: studentData.admission_year,
         admissionTerm: studentData.admission_term,
@@ -175,42 +190,51 @@ export function CreditDistributionStep({
     }
   }, [
     selectedStrategy,
-    includeSecondaryCourses,
+    selectedTermIds,
     totalCredits,
     academicTerms,
     studentData,
-    hasTranscript,
   ]);
 
-  // Estimate completion based on strategy, independent of profile target date
-  const estimatedCompletion = useMemo(() => {
-    if (!selectedStrategy) return null;
+  // Calculate estimated completion for ALL strategies (for display on cards)
+  const allStrategyCompletions = useMemo(() => {
+    const completions: Record<'fast_track' | 'balanced' | 'explore', string | null> = {
+      fast_track: null,
+      balanced: null,
+      explore: null,
+    };
 
-    try {
-      if (!hasTranscript) {
-        const fallback = getFallbackCompletion(selectedStrategy, includeSecondaryCourses);
-        return `${fallback.termLabel} ${fallback.year}`;
+    STRATEGIES.forEach((strategy) => {
+      try {
+        if (!hasTranscript) {
+          const fallback = getFallbackCompletion(strategy.id, includeSecondaryCourses);
+          completions[strategy.id] = `${fallback.termLabel} ${fallback.year}`;
+        } else {
+          const estimate = estimateCompletionTerm({
+            totalCredits,
+            strategy: strategy.id,
+            selectedTermIds,
+            academicTerms,
+            admissionYear: studentData.admission_year,
+            admissionTerm: studentData.admission_term,
+          });
+          completions[strategy.id] = `${estimate.term} ${estimate.year}`;
+        }
+      } catch (err) {
+        console.error(`Failed to estimate completion for ${strategy.id}:`, err);
+        completions[strategy.id] = null;
       }
-      const estimate = estimateCompletionTerm({
-        totalCredits,
-        strategy: selectedStrategy,
-        includeSecondaryCourses,
-        academicTerms,
-        admissionYear: studentData.admission_year,
-        admissionTerm: studentData.admission_term,
-      });
-      return `${estimate.term} ${estimate.year}`;
-    } catch (err) {
-      console.error('Failed to estimate completion term:', err);
-      return null;
-    }
+    });
+
+    return completions;
   }, [
-    selectedStrategy,
-    includeSecondaryCourses,
+    selectedTermIds,
     totalCredits,
     academicTerms,
     studentData,
     hasTranscript,
+    includeSecondaryCourses,
+    getFallbackCompletion,
   ]);
 
   const handleContinue = () => {
@@ -219,6 +243,7 @@ export function CreditDistributionStep({
     onComplete({
       type: selectedStrategy,
       includeSecondaryCourses,
+      selectedTermIds,
       suggestedDistribution: distribution,
     });
   };
@@ -232,7 +257,7 @@ export function CreditDistributionStep({
         Credit Distribution Strategy
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4 }}>
-        Choose how you'd like to distribute your {totalCredits} credits across semesters.
+        Choose how you&apos;d like to distribute your {totalCredits} credits across semesters.
       </Typography>
 
       {/* Error Alert */}
@@ -264,6 +289,7 @@ export function CreditDistributionStep({
         {STRATEGIES.map((strategy) => {
           const Icon = strategy.icon;
           const isSelected = selectedStrategy === strategy.id;
+          const completion = allStrategyCompletions[strategy.id];
 
           return (
             <Card
@@ -306,16 +332,39 @@ export function CreditDistributionStep({
                     <Icon size={24} color={strategy.color} />
                   </Box>
 
-                  <Box>
+                  <Box sx={{ width: '100%' }}>
                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
                       {strategy.label}
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>
                       {strategy.description}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
                       {strategy.details}
                     </Typography>
+
+                    {/* Estimated Completion for this strategy */}
+                    <Box
+                      sx={{
+                        mt: 2,
+                        pt: 2,
+                        borderTop: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                        Estimated Completion
+                      </Typography>
+                      {completion ? (
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: strategy.color }}>
+                          {completion}
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          Unable to estimate
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
               </CardContent>
@@ -324,53 +373,128 @@ export function CreditDistributionStep({
         })}
       </Box>
 
-      {/* Secondary Terms Toggle */}
+      {/* Term Selection */}
       {selectedStrategy && (
-        <Card sx={{ mb: 3, bgcolor: 'action.hover' }}>
-          <CardContent>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeSecondaryCourses}
-                  onChange={(e) => setIncludeSecondaryCourses(e.target.checked)}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    Include Spring & Summer terms when possible
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Take lighter loads during optional terms to graduate sooner
-                  </Typography>
-                </Box>
-              }
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Estimated Completion */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="subtitle2" sx={{ mb: 0.5, color: 'text.secondary' }}>
-            Estimated Completion
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            Select Terms to Include in Your Plan
           </Typography>
-          {estimatedCompletion ? (
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {estimatedCompletion}
-            </Typography>
-          ) : (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {error
-                ? 'Unable to estimate completion with your current profile settings.'
-                : selectedStrategy
-                  ? 'We could not estimate a completion term with your current settings.'
-                  : 'Select a strategy to see your estimated completion term.'}
-            </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+            Choose which terms you want to take courses. Primary terms are typical full semesters, while secondary terms are optional lighter sessions.
+          </Typography>
+
+          {/* Primary Terms */}
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+            Primary Terms
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mb: 3 }}>
+            {academicTerms.terms.primary.map((term) => {
+              const isSelected = selectedTermIds.includes(term.id);
+              return (
+                <Card
+                  key={term.id}
+                  onClick={() => {
+                    setSelectedTermIds(prev =>
+                      prev.includes(term.id)
+                        ? prev.filter(id => id !== term.id)
+                        : [...prev, term.id]
+                    );
+                  }}
+                  sx={{
+                    cursor: 'pointer',
+                    border: '2px solid',
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    bgcolor: isSelected ? 'primary.50' : 'background.paper',
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      transform: 'translateY(-2px)',
+                      boxShadow: 2,
+                    },
+                  }}
+                >
+                  <CardContent sx={{ py: 2.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Checkbox
+                        checked={isSelected}
+                        sx={{ p: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                          {term.label}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          Full semester
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Box>
+
+          {/* Secondary Terms */}
+          {academicTerms.terms.secondary.length > 0 && (
+            <>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+                Secondary Terms (Optional)
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+                {academicTerms.terms.secondary.map((term) => {
+                  const isSelected = selectedTermIds.includes(term.id);
+                  return (
+                    <Card
+                      key={term.id}
+                      onClick={() => {
+                        setSelectedTermIds(prev =>
+                          prev.includes(term.id)
+                            ? prev.filter(id => id !== term.id)
+                            : [...prev, term.id]
+                        );
+                      }}
+                      sx={{
+                        cursor: 'pointer',
+                        border: '1.5px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        bgcolor: isSelected ? 'primary.50' : 'background.paper',
+                        transition: 'all 0.2s ease-in-out',
+                        opacity: isSelected ? 1 : 0.85,
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          opacity: 1,
+                          transform: 'translateY(-2px)',
+                          boxShadow: 1,
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Checkbox
+                            checked={isSelected}
+                            size="small"
+                            sx={{ p: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {term.label}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                              Lighter session
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </Box>
+      )}
 
       {/* Continue Button */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
