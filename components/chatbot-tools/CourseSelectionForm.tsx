@@ -359,14 +359,10 @@ export default function CourseSelectionForm({
 
     // Perform auto-matching
     const matches = autoMatchTranscriptCourses(transcriptCourses, allRequirements);
-    console.log('[Auto-Match Debug] Transcript courses:', transcriptCourses);
-    console.log('[Auto-Match Debug] All requirements:', allRequirements);
-    console.log('[Auto-Match Debug] Matches found:', matches);
     setAutoMatches(matches);
 
     // Apply auto-matches to selected courses
     const groupedMatches = groupMatchesByRequirement(matches);
-    console.log('[Auto-Match Debug] Grouped matches:', groupedMatches);
 
     // Build a map of requirement keys to their subtitles/descriptions for GenEd requirements
     const genEdKeyToSubtitle = new Map<string, string>();
@@ -441,6 +437,68 @@ export default function CourseSelectionForm({
 
     return map;
   }, [programsData, selectedPrograms]);
+
+  // Auto-collapse completed or auto-selected sections when auto-matching completes
+  useEffect(() => {
+    if (completedRequirementKeys.size === 0 && autoMatchedKeys.size === 0 && requirements.length === 0) return;
+
+    setExpandedSections(prev => {
+      const updated = { ...prev };
+
+      // Collapse gen-ed requirements that are completed
+      completedRequirementKeys.forEach(subtitle => {
+        const sectionKey = `gen-ed-${subtitle}`;
+        // Only auto-collapse if user hasn't manually toggled this section
+        if (!(sectionKey in prev)) {
+          updated[sectionKey] = false;
+        }
+      });
+
+      // Also collapse gen-ed requirements that are auto-selected (only one course option)
+      requirements.forEach(req => {
+        const dropdownCount = getDropdownCount(req);
+        const courses = collectCourses(req.blocks);
+        const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
+
+        if (isAutoSelected) {
+          const sectionKey = `gen-ed-${req.subtitle}`;
+          // Only auto-collapse if user hasn't manually toggled this section
+          if (!(sectionKey in prev)) {
+            updated[sectionKey] = false;
+          }
+        }
+      });
+
+      // Collapse program requirements that are completed or auto-matched
+      autoMatchedKeys.forEach(requirementKey => {
+        if (!requirementKey.startsWith('genEd_')) {
+          const sectionKey = `prog-req-${requirementKey}`;
+          // Only auto-collapse if user hasn't manually toggled this section
+          if (!(sectionKey in prev)) {
+            updated[sectionKey] = false;
+          }
+        }
+      });
+
+      // Also collapse program requirements that are auto-selected
+      Object.entries(programRequirementsMap).forEach(([programId, reqs]) => {
+        reqs.forEach(req => {
+          const isAutoSelected = shouldAutoSelect(req, false);
+
+          if (isAutoSelected) {
+            const requirementKey = getRequirementKey(programId, req);
+            const sectionKey = `prog-req-${requirementKey}`;
+            // Only auto-collapse if user hasn't manually toggled this section
+            if (!(sectionKey in prev)) {
+              updated[sectionKey] = false;
+            }
+          }
+        });
+      });
+
+      return updated;
+    });
+  }, [completedRequirementKeys, autoMatchedKeys, requirements, programRequirementsMap]);
 
   // Course options per requirement (memoized map)
   const requirementCoursesMap = useMemo<Record<string, CourseBlock[]>>(() => {
@@ -1626,11 +1684,18 @@ export default function CourseSelectionForm({
                 const isAutoSelected = courses.length > 0 && courses.length === dropdownCount;
 
                 // Check if this requirement has a completed course from transcript
-                const hasCompletedCourse = completedRequirementKeys.has(req.subtitle);
+                // Either from auto-matching OR if any selected course is completed
+                const hasCompletedFromAutoMatch = completedRequirementKeys.has(req.subtitle);
+                const selectedCoursesForReq = selectedCourses[req.subtitle] || [];
+                const hasCompletedSelected = selectedCoursesForReq.some((courseCode: string) =>
+                  courseCode && completedCourses.has(courseCode)
+                );
+                const hasCompletedCourse = hasCompletedFromAutoMatch || hasCompletedSelected;
 
                 const sectionKey = `gen-ed-${req.subtitle}`;
-                // Always expand by default to show what course is required
-                const isExpanded = expandedSections[sectionKey] ?? true;
+                // Auto-collapse completed or auto-selected requirements
+                const isExpanded = expandedSections[sectionKey] ?? !(isAutoSelected || hasCompletedCourse);
+
                 const recommendations = genEdRecommendationsMap[req.subtitle] || [];
 
                 // Get color for this requirement
@@ -1907,8 +1972,8 @@ export default function CourseSelectionForm({
                   const hasCompletedCourse = autoMatchedKeys.has(requirementKey) && completedRequirementKeys.has(requirementKey);
 
                   const sectionKey = `prog-req-${requirementKey}`;
-                  // Always expand by default to show what course is required
-                  const isExpanded = expandedSections[sectionKey] ?? true;
+                  // Auto-collapse completed or auto-selected requirements
+                  const isExpanded = expandedSections[sectionKey] ?? !(isAutoSelected || hasCompletedCourse);
                   const progRecommendations = programRecommendationsMap[requirementKey] || [];
 
                   // Get color for this requirement

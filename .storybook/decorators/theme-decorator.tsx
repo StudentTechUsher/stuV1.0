@@ -28,15 +28,14 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    }
     : { r: 0, g: 0, b: 0 };
 }
 
-export const withUniversityTheme: Decorator = (Story, context) => {
-  const themeName = context.globals.universityTheme || 'STU Mint (Default)';
+const ThemeManager = ({ themeName }: { themeName: string }) => {
   const theme = UNIVERSITY_THEMES[themeName as keyof typeof UNIVERSITY_THEMES];
 
   useEffect(() => {
@@ -63,5 +62,16 @@ export const withUniversityTheme: Decorator = (Story, context) => {
     root.style.setProperty('--foreground', theme.foreground);
   }, [theme]);
 
-  return <Story />;
+  return null;
+};
+
+export const withUniversityTheme: Decorator = (Story, context) => {
+  const themeName = context.globals.universityTheme || 'STU Mint (Default)';
+
+  return (
+    <>
+      <ThemeManager themeName={themeName} />
+      <Story />
+    </>
+  );
 };

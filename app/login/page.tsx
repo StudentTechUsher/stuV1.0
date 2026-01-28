@@ -24,6 +24,9 @@ function LoginContent() {
   const [error, setError] = useState('');
   const [showPasswordAuth, setShowPasswordAuth] = useState(false);
 
+  // Only allow password auth in development (for e2e testing)
+  const isDevelopment = process.env.NEXT_PUBLIC_ENV === 'development';
+
   const redirectTo =
     typeof window !== 'undefined'
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
@@ -200,14 +203,16 @@ function LoginContent() {
             {loading ? (showPasswordAuth ? 'Signing in...' : 'Sending...') : (showPasswordAuth ? 'Sign In' : 'Continue')}
           </button>
 
-          {/* Toggle between Magic Link and Password */}
-          <button
-            type="button"
-            onClick={() => setShowPasswordAuth(!showPasswordAuth)}
-            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
-          >
-            {showPasswordAuth ? 'Use magic link instead' : 'Sign in with password'}
-          </button>
+          {/* Toggle between Magic Link and Password (dev only for e2e testing) */}
+          {isDevelopment && (
+            <button
+              type="button"
+              onClick={() => setShowPasswordAuth(!showPasswordAuth)}
+              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
+            >
+              {showPasswordAuth ? 'Use magic link instead' : 'Sign in with password'}
+            </button>
+          )}
         </form>
 
         <div className="relative mb-6">
