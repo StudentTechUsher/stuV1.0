@@ -1,4 +1,4 @@
-import { UnifiedLandingClient } from './unified-landing-client'
+import { UnifiedLandingClient } from './unified-landing-client-publishable'
 import { Metadata } from 'next'
 import { getOrganizationSchema, getSoftwareSchema, getWebsiteSchema } from '@/lib/seo/structured-data'
 
