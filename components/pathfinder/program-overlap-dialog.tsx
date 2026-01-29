@@ -103,10 +103,13 @@ function CollapsibleSection({
     <div className="border border-[color-mix(in_srgb,var(--border)_60%,transparent)] rounded-xl overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-3 hover:bg-[color-mix(in_srgb,var(--muted)_15%,transparent)] text-left transition-colors"
+        className="w-full flex items-center gap-2 p-3 hover:bg-[color-mix(in_srgb,var(--muted)_15%,transparent)] text-left transition-colors"
         type="button"
       >
-        <span className="text-sm font-bold text-[var(--foreground)]">
+        <span className="text-[var(--muted-foreground)] flex-shrink-0">
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </span>
+        <span className="text-sm font-bold text-[var(--foreground)] flex-1">
           {title}
           <span
             className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -117,9 +120,6 @@ function CollapsibleSection({
           >
             {count}
           </span>
-        </span>
-        <span className="text-[var(--muted-foreground)]">
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </span>
       </button>
       {expanded && (
@@ -335,7 +335,7 @@ export function ProgramOverlapPanel({
           <CollapsibleSection
             title="Completed"
             count={matched.length}
-            defaultExpanded={true}
+            defaultExpanded={false}
             categoryColor={categoryColor}
           >
             {matched.length > 0 ? (

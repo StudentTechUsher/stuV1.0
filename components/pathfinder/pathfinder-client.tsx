@@ -97,7 +97,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
   const [comparisonData, setComparisonData] = React.useState<MajorComparisonResult[] | null>(null);
   const [loadingComparison, setLoadingComparison] = React.useState(false);
   const [comparisonError, setComparisonError] = React.useState<string | null>(null);
-  const [sidebarVisible, setSidebarVisible] = React.useState(true);
+  const [sidebarVisible, setSidebarVisible] = React.useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -639,24 +639,6 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
         </p>
       </div>
       <div className="flex flex-1 gap-6 flex-col xl:flex-row relative">
-        {/* Toggle sidebar button - only show when comparison data exists */}
-        {activePanel === 'compare-majors' && comparisonData && (
-          <button
-            onClick={() => setSidebarVisible(!sidebarVisible)}
-            className="absolute top-2 left-2 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full p-2 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            title={sidebarVisible ? 'Hide completed courses' : 'Show completed courses'}
-            type="button"
-          >
-            <svg
-              className={`w-5 h-5 text-gray-700 dark:text-gray-200 transition-transform ${sidebarVisible ? '' : 'rotate-180'}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
 
         {/* Left: Course history - conditionally shown */}
         {sidebarVisible && (
@@ -671,18 +653,16 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
         {/* Right: Pivot options */}
         <div className={`flex flex-col gap-4 transition-all ${sidebarVisible ? 'flex-1' : 'w-full'}`}>
           {!activePanel && (
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-              <PivotOptionsPanel
-                options={pivotOptions}
-                onSelectOption={(opt) => {
-                  setLastAction(`Chose option: ${opt.title}`);
-                  if (opt.id === 'major-pivot') setActivePanel('major-pivot');
-                  if (opt.id === 'minor-pivot') setActivePanel('adjacent-career');
-                  if (opt.id === 'minor-audit') { setActivePanel('minor-audit'); void loadMinorAudit(); }
-                  if (opt.id === 'compare-majors') { void handleCompareMajorsClick(); }
-                }}
-              />
-            </div>
+            <PivotOptionsPanel
+              options={pivotOptions}
+              onSelectOption={(opt) => {
+                setLastAction(`Chose option: ${opt.title}`);
+                if (opt.id === 'major-pivot') setActivePanel('major-pivot');
+                if (opt.id === 'minor-pivot') setActivePanel('adjacent-career');
+                if (opt.id === 'minor-audit') { setActivePanel('minor-audit'); void loadMinorAudit(); }
+                if (opt.id === 'compare-majors') { void handleCompareMajorsClick(); }
+              }}
+            />
           )}
 
           {/* Quick navigation (when an option is active) */}
@@ -722,6 +702,15 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
 
                   <div className="flex-1" />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSidebarVisible(!sidebarVisible)}
+                  className="inline-flex items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--border)_80%,transparent)] bg-[color-mix(in_srgb,var(--muted)_18%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted)_28%,transparent)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--primary)_35%,transparent)] shrink-0"
+                  title={sidebarVisible ? 'Hide completed courses' : 'Show completed courses'}
+                >
+                  {sidebarVisible ? 'Hide' : 'View'} Courses
+                </button>
 
                 <button
                   type="button"
@@ -1071,7 +1060,7 @@ export default function PathfinderClient({ courses, currentPrograms }: Readonly<
                     setMajorsCatalog(null);
                     setSidebarVisible(true); // Reset sidebar visibility when closing
                   }}
-                  className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
+                  className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition shrink-0"
                   type="button"
                 >
                   Close
