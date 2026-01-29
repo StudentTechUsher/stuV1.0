@@ -1,17 +1,22 @@
 /**
- * STU Landing Page - TEMPLATE VERSION
+ * STU Landing Page - PUBLISHABLE VERSION
  *
- * This version contains placeholder sections for future content:
- * - University logo grid (8 placeholders)
- * - Product visual mockup (dashboard preview)
- * - TODO comments for content team
+ * This version has all placeholder sections removed and contains ONLY
+ * real, defensible content. Safe to publish immediately.
  *
- * CURRENT STATUS: Template only, not live
- * ACCESSIBLE AT: /landing-template
+ * CURRENT STATUS: Live on production
+ * ACCESSIBLE AT: / (root)
  *
- * TO PUBLISH THIS VERSION:
- * 1. Replace placeholders with real content (see LANDING_PAGE_REFINEMENTS.md)
- * 2. Update app/page.tsx to import this file instead of unified-landing-client-publishable.tsx
+ * DIFFERENCES FROM TEMPLATE:
+ * - No university logo grid placeholders
+ * - No product visual mockup
+ * - No TODO comments
+ * - All remaining content is real and verified
+ * - Emojis replaced with Lucide icons
+ *
+ * TO SWITCH TO TEMPLATE VERSION:
+ * Update app/page.tsx to import from './unified-landing-client' instead of
+ * './unified-landing-client-publishable'
  */
 
 "use client"
@@ -26,6 +31,14 @@ import {
   Menu,
   ShieldCheck,
   X,
+  Building2,
+  GraduationCap,
+  School,
+  Microscope,
+  Globe,
+  Lock,
+  Shield,
+  Accessibility,
 } from "lucide-react"
 
 type TrackingPayload = Record<string, string | number | undefined>
@@ -246,36 +259,14 @@ export function UnifiedLandingClient() {
           </div>
         </section>
 
-        {/* 2A. Trust Logo Grid */}
-        <section className="border-b border-border/60 bg-white py-12 md:py-16">
-          <div className="container mx-auto max-w-6xl px-4 md:px-8">
-            <div className="space-y-8">
-              <div className="space-y-2 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Built for higher education teams</p>
-                <p className="text-sm text-muted-foreground">Supporting registrars, advisors, and student success teams with better planning tools.</p>
-                <p className="text-xs text-muted-foreground/70 pt-2">Integration partners and early adopters</p>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                {/* TODO: Replace these placeholder slots with actual partner logos */}
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="w-full aspect-[3/2] rounded-lg border border-border/40 bg-gradient-to-br from-white to-muted/20 flex items-center justify-center hover:shadow-sm transition-shadow">
-                    <div className="text-center space-y-1">
-                      <span className="block text-xs text-muted-foreground font-medium">University</span>
-                      <span className="block text-xs text-muted-foreground/60">{i + 1}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Problem */}
         <section className="border-b border-border/60 bg-muted/30 py-18 md:py-30" id="product">
           <div className="container mx-auto max-w-6xl px-4 md:px-8">
             <div className="grid gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
               <div className="space-y-4">
-                <p className="text-xs font-semibold text-primary uppercase tracking-[0.2em]">The problem</p>
+                <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>The problem</span>
+                </div>
                 <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">
                   Academic planning is complex, fragmented, and hard to govern.
                 </h2>
@@ -299,7 +290,9 @@ export function UnifiedLandingClient() {
         <section className="border-b border-border/60 py-18 md:py-30 bg-white">
           <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
             <div className="space-y-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Why schools choose stu.</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Why schools choose stu.</span>
+              </div>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">
                 Built for higher ed institutions.
               </h2>
@@ -340,7 +333,9 @@ export function UnifiedLandingClient() {
         >
           <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
             <div className="space-y-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Why stu.</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Why stu.</span>
+              </div>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">
                 Imagine a campus where every student's pathway is clear.
               </h2>
@@ -369,7 +364,9 @@ export function UnifiedLandingClient() {
         >
           <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
             <div className="space-y-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Platform</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Platform</span>
+              </div>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">
                 Built to improve completion—at institutional scale.
               </h2>
@@ -401,60 +398,12 @@ export function UnifiedLandingClient() {
           </div>
         </section>
 
-        {/* Product visual */}
-        <section className="border-b border-border/60 py-16 md:py-24" style={{ backgroundColor: pageBg }}>
-          <div className="container mx-auto max-w-6xl space-y-8 px-4 md:px-8">
-            <div className="space-y-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Product overview</p>
-              <h3 className="font-header text-[clamp(1.5rem,4vw,4.5rem)] font-bold tracking-tight mx-auto">One system. Three unified experiences.</h3>
-              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">Students see clear next steps. Advisors can guide and adjust. Administrators maintain policy and visibility—without stitching tools together.</p>
-            </div>
-            {/* TODO: Replace entire preview area with actual dashboard screenshot or interactive demo */}
-            <div className="overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-white to-muted/10 shadow-xl">
-              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3 text-sm text-muted-foreground bg-white/70 backdrop-blur-sm">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                <span className="ml-3 text-foreground font-medium text-xs">Dashboard • Students & Advisors</span>
-              </div>
-              <div className="flex min-h-[480px] items-center justify-center bg-gradient-to-b from-white to-muted/20 p-6 md:p-12">
-                <div className="w-full max-w-5xl space-y-4">
-                  <div className="rounded-2xl border border-border/40 bg-white p-6 md:p-8 shadow-lg space-y-6">
-                    {/* Dashboard mockup sections */}
-                    <div className="space-y-4">
-                      <div className="h-8 w-48 rounded bg-muted/40" />
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="rounded-lg border border-border/40 p-4 bg-gradient-to-br from-primary/5 to-transparent">
-                            <div className="h-4 w-20 rounded bg-muted/40 mb-2" />
-                            <div className="h-3 w-32 rounded bg-muted/30" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="h-px bg-border/40" />
-                    <div className="space-y-4">
-                      <div className="h-6 w-40 rounded bg-muted/40" />
-                      <div className="space-y-2">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div key={i} className="h-3 rounded bg-muted/30" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-center text-sm text-muted-foreground">
-                    Replace this preview with a product walkthrough (video or screenshots).
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Works best together */}
         <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
           <div className="container mx-auto max-w-4xl space-y-6 px-4 text-center md:px-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">End-to-end</p>
+            <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>End-to-end</span>
+            </div>
             <h3 className="font-header text-[clamp(1.2rem,3.5vw,4.5rem)] font-bold tracking-tight text-center mx-auto">Clarity works best when everything connects.</h3>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
               stu. unifies planning, audit alignment, and schedules so policy, demand, and student goals stay in sync.
@@ -478,7 +427,9 @@ export function UnifiedLandingClient() {
           <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Success Stories</p>
+                <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Success Stories</span>
+                </div>
                 <h3 className="font-header text-4xl md:text-5xl font-bold tracking-tight">Outcomes institutions can stand behind.</h3>
                 <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">Retention, time-to-degree, and advising efficiency—measured and reported with clarity.</p>
               </div>
@@ -502,20 +453,24 @@ export function UnifiedLandingClient() {
         <section className="border-b border-border/60 py-18 md:py-24 bg-white">
           <div className="container mx-auto max-w-6xl space-y-10 md:space-y-12 px-4 md:px-8">
             <div className="space-y-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Built for every campus type</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Built for every campus type</span>
+              </div>
               <h3 className="font-header text-4xl md:text-5xl font-bold tracking-tight">Designed for complexity—across every campus type.</h3>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">stu. adapts to your programs, policies, and transfer reality—without adding complexity for students or staff.</p>
             </div>
             <div className="grid gap-3 md:gap-4 md:grid-cols-5">
               {[
-                { icon: "🏛️", label: "Large Public", desc: "Multi-college systems" },
-                { icon: "🎓", label: "Small Private", desc: "Boutique institutions" },
-                { icon: "🏫", label: "Community College", desc: "Open access/transfer" },
-                { icon: "🔬", label: "R1 Research", desc: "Complex requirements" },
-                { icon: "🌍", label: "International", desc: "Global programs" }
+                { icon: Building2, label: "Large Public", desc: "Multi-college systems" },
+                { icon: GraduationCap, label: "Small Private", desc: "Boutique institutions" },
+                { icon: School, label: "Community College", desc: "Open access/transfer" },
+                { icon: Microscope, label: "R1 Research", desc: "Complex requirements" },
+                { icon: Globe, label: "International", desc: "Global programs" }
               ].map((type) => (
                 <button key={type.label} className="rounded-xl border border-border/60 bg-white px-4 py-5 text-center text-sm font-semibold text-foreground hover:border-primary hover:bg-primary/5 hover:shadow-md transition-all space-y-2">
-                  <div className="text-2xl">{type.icon}</div>
+                  <div className="flex justify-center">
+                    <type.icon className="h-6 w-6 text-primary" />
+                  </div>
                   <div className="text-base font-semibold">{type.label}</div>
                   <div className="text-xs text-muted-foreground">{type.desc}</div>
                 </button>
@@ -528,7 +483,9 @@ export function UnifiedLandingClient() {
         <section className="border-b border-border/60 py-18 md:py-30" style={{ backgroundColor: pageBg }}>
           <div className="container mx-auto max-w-6xl grid gap-12 md:gap-16 px-4 md:grid-cols-[1.1fr_0.9fr] md:px-8">
             <div className="space-y-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Implementation</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Implementation</span>
+              </div>
               <h3 className="font-header text-4xl md:text-5xl font-bold tracking-tight">From pilot to impact in weeks.</h3>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">A phased rollout, clear data requirements, and a success team that keeps implementation calm and predictable.</p>
               <ul className="space-y-4 text-base md:text-lg text-foreground">
@@ -553,20 +510,22 @@ export function UnifiedLandingClient() {
         <section className="border-b border-border/60 py-18 md:py-30" style={{ backgroundColor: pageBg }}>
           <div className="container mx-auto max-w-6xl space-y-10 md:space-y-12 px-4 md:px-8">
             <div className="space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Security & Privacy</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Security & Privacy</span>
+              </div>
               <h3 className="font-header text-4xl md:text-5xl font-bold tracking-tight">Trust and governance built in.</h3>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">Role-based access, least-privilege data flows, and auditability—designed for institutional confidence.</p>
               <div className="flex flex-wrap gap-3 pt-2">
                 <div className="inline-flex items-center gap-2 rounded-full border-2 border-primary/20 bg-primary/5 px-4 py-2">
-                  <span className="text-lg">🔒</span>
+                  <Lock className="h-5 w-5 text-primary" />
                   <span className="text-sm font-semibold">SSO + RBAC</span>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border-2 border-primary/20 bg-primary/5 px-4 py-2">
-                  <span className="text-lg">🛡️</span>
+                  <Shield className="h-5 w-5 text-primary" />
                   <span className="text-sm font-semibold">Privacy-first (FERPA-aligned)</span>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border-2 border-primary/20 bg-primary/5 px-4 py-2">
-                  <span className="text-lg">♿</span>
+                  <Accessibility className="h-5 w-5 text-primary" />
                   <span className="text-sm font-semibold">Accessibility-first</span>
                 </div>
               </div>
@@ -598,7 +557,9 @@ export function UnifiedLandingClient() {
           <div className="container mx-auto max-w-6xl px-4 md:px-8">
             <div className="space-y-12 text-center">
               <div className="space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Outcomes that matter</p>
+                <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Outcomes that matter</span>
+                </div>
                 <h3 className="font-header text-4xl md:text-5xl font-bold tracking-tight">What we help you measure</h3>
                 <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">stu. gives leaders the visibility they need to prove impact and improve student success.</p>
               </div>
@@ -625,7 +586,9 @@ export function UnifiedLandingClient() {
         >
           <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
             <div className="space-y-4 md:w-2/3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">FAQ</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>FAQ</span>
+              </div>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">Answers for evaluation and procurement.</h2>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">Short, direct responses to common questions from academic and IT leaders.</p>
             </div>
@@ -662,7 +625,9 @@ export function UnifiedLandingClient() {
         >
           <div className="container mx-auto max-w-5xl grid gap-12 md:gap-16 px-4 md:grid-cols-[1.1fr_0.9fr] md:px-8">
             <div className="space-y-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Get started</p>
+              <div className="inline-flex rounded-full bg-foreground px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>Get started</span>
+              </div>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">See STU in action.</h2>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
                 We'll tailor a walkthrough to your degree structure, advising model, and systems—so you can evaluate fit quickly and confidently.
@@ -679,7 +644,6 @@ export function UnifiedLandingClient() {
                 </div>
               </div>
               <div className="rounded-lg border border-border/40 bg-white p-4 text-sm text-foreground space-y-2">
-                {/* TODO: Embed Calendly scheduling link if available - for now show email alternative */}
                 <p className="font-medium">Want to schedule directly?</p>
                 <Link href="mailto:hello@stuplanning.com" className="text-primary font-semibold underline-offset-4 hover:underline">
                   Email hello@stuplanning.com and we'll coordinate a time.

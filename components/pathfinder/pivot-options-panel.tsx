@@ -15,11 +15,18 @@ interface PivotOption {
   comingSoon?: boolean;
 }
 
-const ICON_MAP: Record<PivotOption['icon'], React.ReactNode> = {
-  sparkles: <AutoAwesomeIcon className="text-emerald-600" fontSize="small" />,
-  lightbulb: <LightbulbOutlinedIcon className="text-amber-600" fontSize="small" />,
-  cap: <SchoolOutlinedIcon className="text-indigo-600" fontSize="small" />,
-  compare: <CompareArrowsIcon className="text-emerald-600" fontSize="small" />,
+const ICON_COLORS: Record<PivotOption['icon'], string> = {
+  sparkles: 'var(--primary)', // bright green
+  lightbulb: '#f59e0b', // amber
+  cap: '#003D82', // medium blue (minor color)
+  compare: 'var(--primary)', // bright green
+};
+
+const ICON_MAP: Record<PivotOption['icon'], React.ReactElement> = {
+  sparkles: <AutoAwesomeIcon className="text-[var(--primary)]" fontSize="large" />,
+  lightbulb: <LightbulbOutlinedIcon className="text-amber-500" fontSize="large" />,
+  cap: <SchoolOutlinedIcon className="text-blue-600" fontSize="large" />,
+  compare: <CompareArrowsIcon className="text-[var(--primary)]" fontSize="large" />,
 };
 
 interface PivotOptionsPanelProps {
@@ -29,32 +36,51 @@ interface PivotOptionsPanelProps {
 
 export function PivotOptionsPanel({ options, onSelectOption }: Readonly<PivotOptionsPanelProps>) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-      {options.map(opt => (
-        <button
-          key={opt.id}
+    <div className="w-full grid gap-6 grid-cols-2 auto-rows-max">
+      {options.map(opt => {
+        const iconColor = ICON_COLORS[opt.icon];
+        return (
+          <button
+            key={opt.id}
             onClick={() => onSelectOption?.(opt)}
-          className="relative group text-left rounded-lg border w-94 border-gray-200 bg-white/70 backdrop-blur p-4 shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-300"
-        >
-          <div className="flex items-start gap-3">
-            <div className="shrink-0">{ICON_MAP[opt.icon]}</div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-800 group-hover:text-emerald-700 flex items-center gap-2">
-                {opt.title}
-                {opt.comingSoon && (
-                  <span className="rounded bg-amber-100 text-amber-700 text-[10px] font-medium px-1.5 py-0.5">Soon</span>
-                )}
-              </h3>
-              <p className="mt-1 text-xs text-gray-600 line-clamp-3">{opt.description}</p>
-              <span className="mt-2 inline-flex items-center text-[11px] font-medium text-emerald-700 group-hover:underline">
-                {opt.cta} →
-              </span>
+            className="relative group text-left rounded-2xl border-2 p-6 shadow-sm hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{
+              backgroundColor: `color-mix(in srgb, ${iconColor} 8%, var(--background))`,
+              borderColor: `color-mix(in srgb, ${iconColor} 30%, var(--border))`,
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                className="shrink-0 p-3 rounded-xl flex items-center justify-center"
+                style={{
+                  backgroundColor: `color-mix(in srgb, ${iconColor} 15%, transparent)`,
+                }}
+              >
+                {React.cloneElement(ICON_MAP[opt.icon], {
+                  style: { color: iconColor, fontSize: '28px' }
+                } as Record<string, unknown>)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-black text-[var(--foreground)] flex items-center gap-2 mb-1">
+                  {opt.title}
+                  {opt.comingSoon && (
+                    <span className="rounded bg-amber-100 text-amber-700 text-[10px] font-medium px-1.5 py-0.5">Soon</span>
+                  )}
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 mb-3">{opt.description}</p>
+                <span
+                  className="inline-flex items-center text-sm font-semibold group-hover:underline transition-colors"
+                  style={{ color: iconColor }}
+                >
+                  {opt.cta} →
+                </span>
+              </div>
             </div>
-          </div>
-        </button>
-      ))}
+          </button>
+        );
+      })}
       {options.length === 0 && (
-        <div className="text-xs text-gray-500 py-6 text-center border rounded">No options</div>
+        <div className="text-xs text-[var(--muted-foreground)] py-6 text-center border rounded">No options</div>
       )}
     </div>
   );
