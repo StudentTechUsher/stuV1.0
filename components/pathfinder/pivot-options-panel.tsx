@@ -22,7 +22,7 @@ const ICON_COLORS: Record<PivotOption['icon'], string> = {
   compare: 'var(--primary)', // bright green
 };
 
-const ICON_MAP: Record<PivotOption['icon'], React.ReactNode> = {
+const ICON_MAP: Record<PivotOption['icon'], React.ReactElement> = {
   sparkles: <AutoAwesomeIcon className="text-[var(--primary)]" fontSize="large" />,
   lightbulb: <LightbulbOutlinedIcon className="text-amber-500" fontSize="large" />,
   cap: <SchoolOutlinedIcon className="text-blue-600" fontSize="large" />,
@@ -47,7 +47,6 @@ export function PivotOptionsPanel({ options, onSelectOption }: Readonly<PivotOpt
             style={{
               backgroundColor: `color-mix(in srgb, ${iconColor} 8%, var(--background))`,
               borderColor: `color-mix(in srgb, ${iconColor} 30%, var(--border))`,
-              focusColor: iconColor,
             }}
           >
             <div className="flex items-start gap-4">
@@ -57,9 +56,9 @@ export function PivotOptionsPanel({ options, onSelectOption }: Readonly<PivotOpt
                   backgroundColor: `color-mix(in srgb, ${iconColor} 15%, transparent)`,
                 }}
               >
-                {React.cloneElement(ICON_MAP[opt.icon] as React.ReactElement, {
+                {React.cloneElement(ICON_MAP[opt.icon], {
                   style: { color: iconColor, fontSize: '28px' }
-                })}
+                } as Record<string, unknown>)}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-black text-[var(--foreground)] flex items-center gap-2 mb-1">
