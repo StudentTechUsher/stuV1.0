@@ -17,7 +17,7 @@ export type SchedulerEvent = {
   startTime: string; // "09:00"
   endTime: string; // "10:30"
   type: "class" | "personal";
-  status?: "registered" | "waitlisted" | "blocked";
+  status?: "registered" | "waitlisted" | "blocked" | "planned" | "dropped";
   course_code?: string;
   professor?: string;
   location?: string;
@@ -321,18 +321,18 @@ export default function SchedulerCalendar({
               select={handleSlotSelect}
               eventClick={handleEventClick}
               eventChange={handleEventChange}
-            eventContent={(arg) => (
-              <div style={{ padding: "2px 6px", lineHeight: 1.1 }}>
-                <div style={{ fontWeight: 700, fontSize: "9px" }}>
-                  {arg.event.extendedProps.course_code || arg.event.title}
-                </div>
-                {arg.event.extendedProps.location && (
-                  <div style={{ fontSize: "8px", opacity: 0.9 }}>
-                    {arg.event.extendedProps.location}
+              eventContent={(arg) => (
+                <div style={{ padding: "2px 6px", lineHeight: 1.1 }}>
+                  <div style={{ fontWeight: 700, fontSize: "9px" }}>
+                    {arg.event.extendedProps.course_code || arg.event.title}
                   </div>
-                )}
-              </div>
-            )}
+                  {arg.event.extendedProps.location && (
+                    <div style={{ fontSize: "8px", opacity: 0.9 }}>
+                      {arg.event.extendedProps.location}
+                    </div>
+                  )}
+                </div>
+              )}
             />
           </Box>
 

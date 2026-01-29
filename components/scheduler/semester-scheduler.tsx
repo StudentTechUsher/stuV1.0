@@ -1,17 +1,40 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Box, Button, Typography, Alert, Paper, Collapse, IconButton } from "@mui/material";
-import { Plus, Trash2, BookOpen, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Box, Button, Typography, Alert, Paper, Collapse, IconButton, CircularProgress } from "@mui/material";
+import { Plus, Trash2, BookOpen, Clock, ChevronDown, ChevronUp, Settings } from "lucide-react";
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
 import ClassInfoDialog from "./class-info-dialog";
 import SemesterResultsTable from "./semester-results-table";
-import { loadMockCourses } from "@/lib/course-parser";
 import { encodeAccessIdClient } from "@/lib/utils/access-id";
 import { CalendarExportButtons } from "@/components/dashboard/calendar/CalendarExportButtons";
 import type { CourseScheduleRow } from "@/components/dashboard/calendar/scheduleTableMockData";
+
+// New Integrated Components
+import TermSelector from "./TermSelector";
+import SchedulePreferencesDialog from "./SchedulePreferencesDialog";
+import CourseSelectionDialog from "./CourseSelectionDialog";
+
+// Services
+import {
+  getActiveScheduleAction,
+  createScheduleAction,
+  setActiveScheduleAction,
+  addBlockedTimeAction,
+  updateBlockedTimeAction,
+  deleteBlockedTimeAction,
+  updateSchedulePreferencesAction,
+  getScheduleWithCourseDetailsAction,
+  addCourseSelectionAction,
+  updateCourseSelectionAction,
+  deleteCourseSelectionAction,
+  getCourseSectionsAction
+} from "@/lib/services/server-actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+import type { StudentSchedule, SchedulePreferences, BlockedTime, CourseSelection } from "@/lib/services/scheduleService";
 
 type GradPlan = {
   id: string;
@@ -24,41 +47,314 @@ type GradPlan = {
     elective: number;
     rel: number;
   };
+  plan_details?: unknown;
 };
 
 type Props = {
   gradPlans?: GradPlan[];
 };
 
+// Helper: Convert BlockedTime (DB) to SchedulerEvent (UI)
+function convertBlockedTimeToEvent(bt: BlockedTime): SchedulerEvent {
+  return {
+    id: bt.id,
+    title: bt.title,
+    category: bt.category,
+    dayOfWeek: bt.day_of_week === 7 ? 0 : bt.day_of_week, // Ensure Mon=1..Sat=6, Sun=0 mapping if needed
+    startTime: bt.start_time,
+    endTime: bt.end_time,
+    type: "personal",
+    status: "planned" // Default
+  };
+}
+
 export default function SemesterScheduler({ gradPlans = [] }: Props) {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [events, setEvents] = useState<SchedulerEvent[]>([]);
+  // State for Schedule Data
+  const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
+  const [courseEvents, setCourseEvents] = useState<SchedulerEvent[]>([]);
+  const [preferences, setPreferences] = useState<SchedulePreferences>({});
+
+  // UI State
   const [isLoading, setIsLoading] = useState(true);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const calendarExportRef = useRef<HTMLDivElement>(null);
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [showResults, setShowResults] = useState(false);
 
-  // Find active grad plan and construct edit URL
+  // Term Selection State
+  const [selectedTermIndex, setSelectedTermIndex] = useState<number | null>(null);
+  const [selectedTermName, setSelectedTermName] = useState<string | null>(null);
   const activeGradPlan = gradPlans.find(plan => plan.isActive) || gradPlans[0];
-  const gradPlanEditUrl = activeGradPlan
-    ? `/grad-plan/${encodeAccessIdClient(activeGradPlan.id)}`
-    : '/grad-plan';
+
+  // Dialog States
+  const [eventDialog, setEventDialog] = useState<{
+    isOpen: boolean;
+    event?: SchedulerEvent;
+    selectedSlot?: { dayOfWeek: number; startTime: string; endTime: string };
+    isEdit: boolean;
+  }>({ isOpen: false, isEdit: false });
+
+  const [classInfoDialog, setClassInfoDialog] = useState<{
+    isOpen: boolean;
+    event?: SchedulerEvent;
+  }>({ isOpen: false });
+
+  const [prefDialog, setPrefDialog] = useState(false);
+
+  const [courseSelectionDialog, setCourseSelectionDialog] = useState<{
+    open: boolean;
+    courseCode: string;
+    courseTitle: string;
+    termName: string;
+    universityId: number;
+  }>({ open: false, courseCode: '', courseTitle: '', termName: '', universityId: 1 }); // Defaulting Univ ID to 1 for now
+
+  // Add state for university ID (could come from context or props)
+  const [universityId] = useState(1);
+
+  // --- Initial Data Load ---
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          // Get student ID (assuming simple look up or part of session - simplified here)
+          const { data: student } = await supabase.from('student').select('id').eq('profile_id', user.id).single();
+
+          if (student) {
+            const schedule = await getActiveScheduleAction(student.id);
+            if (schedule) {
+              setActiveScheduleId(schedule.schedule_id);
+              setPersonalEvents(schedule.blocked_times.map(convertBlockedTimeToEvent));
+              setPreferences(schedule.preferences);
+              setSelectedTermName(schedule.term_name);
+              setSelectedTermIndex(schedule.term_index ?? null);
+
+              // Load course details
+              loadScheduleCourses(schedule.schedule_id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load initial schedule", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // --- Helper: Load Full Schedule Details (courses) ---
+  const loadScheduleCourses = async (scheduleId: string) => {
+    setIsScheduleLoading(true);
+    try {
+      const details = await getScheduleWithCourseDetailsAction(scheduleId);
+      if (!details) return;
+
+      // Transform course selections -> SchedulerEvents
+      const events: SchedulerEvent[] = [];
+      details.courseDetails.forEach(cd => {
+        const section = cd.primarySection; // Only showing primary for calendar view
+        if (section && section.meetings_json) {
+          // Parse meetings_json
+          const meetings = section.meetings_json as { days?: string, start?: string, end?: string, location?: string };
+          if (meetings.days && meetings.start && meetings.end) {
+            // Map days string (e.g. "MWF") to numbers
+            const dayMap: Record<string, number> = { "M": 1, "T": 2, "W": 3, "Th": 4, "F": 5, "S": 6 };
+            // Simple parser (robust one is needed for edge cases)
+            let currentDays: number[] = [];
+            if (meetings.days.includes("Th")) {
+              currentDays.push(4);
+              meetings.days = meetings.days.replace("Th", "");
+            }
+            meetings.days.split("").forEach(c => { if (dayMap[c]) currentDays.push(dayMap[c]); });
+
+            currentDays.forEach(d => {
+              events.push({
+                id: cd.selection.selection_id + '-' + d, // unique composite
+                title: cd.selection.course_code, // Use code or title
+                dayOfWeek: d,
+                startTime: meetings.start!,
+                endTime: meetings.end!,
+                type: "class",
+                status: cd.selection.status,
+                course_code: cd.selection.course_code,
+                section: section.section_label,
+                professor: section.instructor || 'TBA',
+                location: meetings.location || 'TBA',
+                credits: section.credits_decimal || 3,
+                requirement: cd.selection.requirement_type || '',
+              });
+            });
+          }
+        }
+      });
+
+      setCourseEvents(events);
+      if (events.length > 0) setShowResults(true);
+
+    } catch (err) {
+      console.error("Error loading course details", err);
+    } finally {
+      setIsScheduleLoading(false);
+    }
+  };
+
+  // --- Handlers: Term Selection ---
+  const handleTermSelect = async (termName: string, index: number) => {
+    setSelectedTermIndex(index);
+    setSelectedTermName(termName);
+
+    // Check if user has an active schedule for this term? 
+    // For MVP, we'll try to create one if it doesn't exist, or switch to it.
+    // Logic: Create new or Switch.
+
+    setIsLoading(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: student } = await supabase.from('student').select('id').eq('profile_id', user.id).single();
+      if (!student) return;
+
+      // Try to create (or find)
+      const result = await createScheduleAction(student.id, termName, activeGradPlan?.id, index);
+
+      if (result.success && result.scheduleId) {
+        setActiveScheduleId(result.scheduleId);
+        // Clear current view
+        setPersonalEvents([]);
+        setCourseEvents([]);
+        setPreferences({});
+      } else if (result.error && result.error.includes("already exists")) {
+        // It exists, we likely need to fetch it specifically or handle the unique constraint better in service
+        // For now, let's assume createSchedule sets it active if it inserts, but if it fails we might need to find it.
+        // Wait, createSchedule attempts to insert. If unique constraint fails, we should FETCH that schedule and setActive.
+        // Simplified: The user likely wants to SWITCH to this term.
+        // Impl detail: We need a getScheduleByTerm method or similar, OR createSchedule should handle this.
+        // For this UI demo, we'll notify error if strict.
+        setError("Schedule for this term already exists. Please active it manually (Feature WIP).");
+      } else {
+        setError(result.error || "Failed to create/select schedule for term");
+      }
+    } catch (e) {
+      console.error(e);
+      setError("An error occurred selecting the term.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- Handlers: Personal Events (Blocked Time) ---
+  const handleEventSave = async (eventData: Omit<SchedulerEvent, "id"> | SchedulerEvent | Array<Omit<SchedulerEvent, "id"> | SchedulerEvent>) => {
+    if (!activeScheduleId) {
+      setError("Please select a term first.");
+      return;
+    }
+
+    // Convert UI event to DB BlockedTime format
+    const mapToBlocked = (uievt: any): Omit<BlockedTime, 'id'> => ({
+      title: uievt.title || 'Personal Event',
+      category: uievt.category || 'Other',
+      day_of_week: uievt.dayOfWeek === 0 ? 7 : uievt.dayOfWeek, // UI 0-6 (Sun-Sat) or 1-6? Calendar uses 0=Sun. DB uses? 1-6 usually.
+      start_time: uievt.startTime,
+      end_time: uievt.endTime
+    });
+
+    try {
+      if (Array.isArray(eventData)) {
+        // Add multiple
+        for (const evt of eventData) {
+          const payload = mapToBlocked(evt);
+          const res = await addBlockedTimeAction(activeScheduleId, payload);
+          if (res.success && res.blockedTimeId) {
+            setPersonalEvents(prev => [...prev, { ...evt as SchedulerEvent, id: res.blockedTimeId! }]);
+          }
+        }
+      } else if ('id' in eventData && eventData.id) {
+        // Update existing
+        const payload = mapToBlocked(eventData);
+        const res = await updateBlockedTimeAction(activeScheduleId, eventData.id, payload);
+        if (res.success) {
+          setPersonalEvents(prev => prev.map(e => e.id === eventData.id ? (eventData as SchedulerEvent) : e));
+        }
+      } else {
+        // Add single new
+        const payload = mapToBlocked(eventData);
+        const res = await addBlockedTimeAction(activeScheduleId, payload);
+        if (res.success && res.blockedTimeId) {
+          setPersonalEvents(prev => [...prev, { ...eventData as SchedulerEvent, id: res.blockedTimeId! }]);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to save blocked time", e);
+      setError("Failed to save event.");
+    }
+  };
+
+  const handleEventDelete = async (eventId: string) => {
+    if (!activeScheduleId) return;
+    try {
+      const res = await deleteBlockedTimeAction(activeScheduleId, eventId);
+      if (res.success) {
+        setPersonalEvents(prev => prev.filter(e => e.id !== eventId));
+        setEventDialog({ isOpen: false, isEdit: false }); // Close dialog
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEventDrop = async (eventId: string, newDayOfWeek: number, newStartTime: string, newEndTime: string) => {
+    if (!activeScheduleId) return;
+    try {
+      // Optimistic update
+      setPersonalEvents(prev => prev.map(e => e.id === eventId ? { ...e, dayOfWeek: newDayOfWeek, startTime: newStartTime, endTime: newEndTime } : e));
+
+      const res = await updateBlockedTimeAction(activeScheduleId, eventId, {
+        day_of_week: newDayOfWeek === 0 ? 7 : newDayOfWeek,
+        start_time: newStartTime,
+        end_time: newEndTime
+      });
+
+      if (!res.success) {
+        // Revert if failed (todo)
+        console.error("Drop failed", res.error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // --- Handlers: Preferences ---
+  const handlePreferencesSave = async (newPrefs: Partial<SchedulePreferences>) => {
+    if (!activeScheduleId) return;
+    try {
+      setPreferences(prev => ({ ...prev, ...newPrefs })); // Optimistic
+      await updateSchedulePreferencesAction(activeScheduleId, newPrefs);
+    } catch (e) {
+      console.error("Failed to update preferences", e);
+    }
+  };
+
+  // --- UI Wrappers ---
+  const allEvents = [...courseEvents, ...personalEvents];
 
   const getEventColor = (event: SchedulerEvent) => {
     if (event.type === "personal") {
       switch (event.category) {
-        case "Work":
-          return "var(--action-cancel)";
-        case "Club":
-          return "var(--action-info)";
-        case "Sports":
-          return "var(--action-edit)";
-        case "Study":
-          return "var(--primary)";
-        case "Family":
-          return "var(--hover-gray)";
-        default:
-          return "var(--hover-green)"; // Darker green for "Other"
+        case "Work": return "var(--action-cancel)";
+        case "Club": return "var(--action-info)";
+        case "Sports": return "var(--action-edit)";
+        case "Study": return "var(--primary)";
+        case "Family": return "var(--hover-gray)";
+        default: return "var(--hover-green)";
       }
     }
     return "var(--primary)";
@@ -67,687 +363,148 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   const getEventBackgroundColor = (event: SchedulerEvent) => {
     if (event.type === "personal") {
       switch (event.category) {
-        case "Work":
-          return "rgba(244, 67, 54, 0.1)"; // red with 10% opacity
-        case "Club":
-          return "rgba(25, 118, 210, 0.1)"; // blue with 10% opacity
-        case "Sports":
-          return "rgba(253, 204, 74, 0.1)"; // yellow with 10% opacity
-        case "Study":
-          return "var(--primary-15)"; // green with 15% opacity
-        case "Family":
-          return "rgba(63, 63, 70, 0.1)"; // gray with 10% opacity
-        default:
-          return "rgba(6, 201, 108, 0.1)"; // Darker green with opacity for "Other"
+        case "Work": return "rgba(244, 67, 54, 0.1)";
+        case "Club": return "rgba(25, 118, 210, 0.1)";
+        case "Sports": return "rgba(253, 204, 74, 0.1)";
+        case "Study": return "var(--primary-15)";
+        case "Family": return "rgba(63, 63, 70, 0.1)";
+        default: return "rgba(6, 201, 108, 0.1)";
       }
     }
     return "var(--primary-15)";
   };
-  const [eventDialog, setEventDialog] = useState<{
-    isOpen: boolean;
-    event?: SchedulerEvent;
-    selectedSlot?: { dayOfWeek: number; startTime: string; endTime: string };
-    isEdit: boolean;
-  }>({ isOpen: false, isEdit: false });
-  const [classInfoDialog, setClassInfoDialog] = useState<{
-    isOpen: boolean;
-    event?: SchedulerEvent;
-  }>({ isOpen: false });
-  const [showAllPersonalEvents, setShowAllPersonalEvents] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const loadedCourses = await loadMockCourses();
-        setCourses(loadedCourses);
-
-        // Load saved personal events from localStorage (mock storage)
-        const savedPersonalEvents = localStorage.getItem('scheduler-personal-events');
-        if (savedPersonalEvents) {
-          try {
-            const parsed: unknown = JSON.parse(savedPersonalEvents);
-            if (Array.isArray(parsed)) {
-              const validEvents = parsed.filter((event): event is SchedulerEvent => {
-                if (!event || typeof event !== 'object') return false;
-                const candidate = event as Partial<SchedulerEvent>;
-                return typeof candidate.dayOfWeek === 'number'
-                  && typeof candidate.startTime === 'string'
-                  && typeof candidate.endTime === 'string';
-              });
-              setPersonalEvents(validEvents);
-            } else {
-              setPersonalEvents([]);
-            }
-          } catch (parseError) {
-            console.warn('Invalid personal events in localStorage, clearing...', parseError);
-            localStorage.removeItem('scheduler-personal-events');
-          }
-        }
-    } catch (err) {
-      console.error('Error loading courses:', err);
-        setError('Failed to load course data. Please refresh the page.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // Combine all events for display
-  const allEvents = [...events, ...personalEvents];
-
-  const [showResults, setShowResults] = useState(false);
-
-  const handleScheduleGenerated = (generatedEvents: SchedulerEvent[]) => {
-    setEvents(generatedEvents);
-    setShowResults(true); // Show results table when schedule is generated
-  };
-
-  const handleScheduleSaved = (schedule: SchedulerEvent[]) => {
-    // Mock save to localStorage
-    localStorage.setItem('scheduler-generated-schedule', JSON.stringify(schedule));
-  };
-
-  const handleAddPersonalEvent = () => {
-    setEventDialog({
-      isOpen: true,
-      isEdit: false,
-    });
-  };
-
-
-  const handleEventSave = (eventData: Omit<SchedulerEvent, "id"> | SchedulerEvent | Array<Omit<SchedulerEvent, "id"> | SchedulerEvent>) => {
-    // Handle array of events (for multi-day selection)
-    if (Array.isArray(eventData)) {
-      const newEvents: SchedulerEvent[] = eventData.map((evt, index) => ({
-        ...evt,
-        id: 'id' in evt ? evt.id : `personal-${Date.now()}-${Math.random()}-${index}`,
-      })) as SchedulerEvent[];
-
-      const updatedEvents = [...personalEvents, ...newEvents];
-      setPersonalEvents(updatedEvents);
-      localStorage.setItem('scheduler-personal-events', JSON.stringify(updatedEvents));
-    } else if ('id' in eventData) {
-      // Edit existing event
-      const updatedEvents = personalEvents.map(event =>
-        event.id === eventData.id ? eventData : event
-      );
-      setPersonalEvents(updatedEvents);
-      localStorage.setItem('scheduler-personal-events', JSON.stringify(updatedEvents));
-    } else {
-      // Add new event
-      const newEvent: SchedulerEvent = {
-        ...eventData,
-        id: `personal-${Date.now()}-${Math.random()}`,
-      };
-      const updatedEvents = [...personalEvents, newEvent];
-      setPersonalEvents(updatedEvents);
-      localStorage.setItem('scheduler-personal-events', JSON.stringify(updatedEvents));
-    }
-  };
-
-  const handlePersonalEventClick = (event: SchedulerEvent) => {
-    setEventDialog({
-      isOpen: true,
-      event,
-      isEdit: true,
-    });
-  };
-
-  const handleClassEventClick = (event: SchedulerEvent) => {
-    setClassInfoDialog({
-      isOpen: true,
-      event,
-    });
-  };
-
-  const handleSectionClick = (courseCode: string, section: string) => {
-    // Find the event for this course
-    const courseEvent = events.find(e => e.course_code === courseCode && e.section === section);
-    if (courseEvent) {
-      setClassInfoDialog({
-        isOpen: true,
-        event: courseEvent,
-      });
-    }
-  };
-
-  const handleInstructorClick = (courseCode: string, instructor: string) => {
-    // Find the event for this course
-    const courseEvent = events.find(e => e.course_code === courseCode && e.professor === instructor);
-    if (courseEvent) {
-      setClassInfoDialog({
-        isOpen: true,
-        event: courseEvent,
-      });
-    }
-  };
-
-  const handleEventDrop = (eventId: string, newDayOfWeek: number, newStartTime: string, newEndTime: string) => {
-    const updatedEvents = personalEvents.map(event =>
-      event.id === eventId
-        ? { ...event, dayOfWeek: newDayOfWeek, startTime: newStartTime, endTime: newEndTime }
-        : event
-    );
-    setPersonalEvents(updatedEvents);
-    localStorage.setItem('scheduler-personal-events', JSON.stringify(updatedEvents));
-  };
-
-  const handleSlotSelect = (dayOfWeek: number, startTime: string, endTime: string) => {
-    setEventDialog({
-      isOpen: true,
-      selectedSlot: { dayOfWeek, startTime, endTime },
-      isEdit: false,
-    });
-  };
-
-  const handleEventDelete = (eventId: string) => {
-    const updatedEvents = personalEvents.filter(event => event.id !== eventId);
-    setPersonalEvents(updatedEvents);
-    localStorage.setItem('scheduler-personal-events', JSON.stringify(updatedEvents));
-  };
-
-  const handleClearAllEvents = () => {
-    setPersonalEvents([]);
-    localStorage.removeItem('scheduler-personal-events');
-    setShowAllPersonalEvents(false);
-  };
-
-  const handleReplaceClass = (oldEvent: SchedulerEvent, newCourse: Course) => {
-    // Remove all events for the old course
-    const updatedEvents = events.filter(event =>
-      !(event.course_code === oldEvent.course_code && event.section === oldEvent.section)
-    );
-
-    // Generate new events for the replacement course
-    const newEvents = generateScheduleEventsFromCourse(newCourse);
-
-    // Update the events state
-    setEvents([...updatedEvents, ...newEvents]);
-  };
-
-  const generateScheduleEventsFromCourse = (course: Course): SchedulerEvent[] => {
-    const { days, startTime, endTime } = parseSchedule(course.schedule);
-    const events: SchedulerEvent[] = [];
-
-    const dayMap: Record<string, number> = {
-      "M": 1, "T": 2, "W": 3, "Th": 4, "F": 5, "S": 6
-    };
-
-    days.forEach(day => {
-      const dayOfWeek = dayMap[day];
-      if (dayOfWeek !== undefined) {
-        events.push({
-          id: `${course.course_code}-${course.section}-${day}`,
-          title: course.course_code,
-          dayOfWeek,
-          startTime,
-          endTime,
-          type: "class",
-          status: "registered",
-          course_code: course.course_code,
-          professor: course.professor,
-          location: course.location,
-          credits: course.credits,
-          section: course.section,
-          requirement: course.requirement,
-        });
-      }
-    });
-
-    return events;
-  };
-
-  const parseSchedule = (schedule: string): { days: string[]; startTime: string; endTime: string } => {
-    const parts = schedule.split(" ");
-    if (parts.length !== 2) {
-      throw new Error(`Invalid schedule format: ${schedule}`);
-    }
-
-    const [daysPart, timePart] = parts;
-    const [startTime, endTime] = timePart.split("-");
-
-    const days: string[] = [];
-    let i = 0;
-    while (i < daysPart.length) {
-      if (i < daysPart.length - 1 && daysPart.substring(i, i + 2) === "Th") {
-        days.push("Th");
-        i += 2;
-      } else {
-        days.push(daysPart[i]);
-        i += 1;
-      }
-    }
-
-    return { days, startTime, endTime };
-  };
-
-  // Convert SchedulerEvents to CourseRow format for SemesterResultsTable
-  const convertEventsToRows = (events: SchedulerEvent[]) => {
-    // Group events by course code to avoid duplicates
-    const courseMap = new Map<string, SchedulerEvent>();
-
-    events.forEach(event => {
-      if (event.type === 'class' && event.course_code) {
-        const key = `${event.course_code}-${event.section || ''}`;
-        if (!courseMap.has(key)) {
-          courseMap.set(key, event);
-        }
-      }
-    });
-
-    // Convert to rows
-    return Array.from(courseMap.values()).map(event => {
-      // Determine requirement chip color based on requirement type
-      const getRequirementColor = (req: string): 'green' | 'blue' | 'purple' | 'indigo' | 'magenta' => {
-        const reqLower = req.toLowerCase();
-        if (reqLower.includes('major')) return 'green';
-        if (reqLower.includes('ge') || reqLower.includes('general')) return 'blue';
-        if (reqLower.includes('minor')) return 'purple';
-        if (reqLower.includes('rel')) return 'indigo';
-        return 'magenta'; // elective
-      };
-
-      // Format days for display
-      const dayOfWeekMap: Record<number, string> = {
-        1: 'M', 2: 'T', 3: 'W', 4: 'Th', 5: 'F', 6: 'S'
-      };
-
-      const allDaysForCourse = events
-        .filter(e => e.course_code === event.course_code && e.section === event.section)
-        .map(e => dayOfWeekMap[e.dayOfWeek])
-        .filter(Boolean);
-
-      // Combine adjacent days (M,W -> MW, T,Th -> TTh)
-      const days = Array.from(new Set(allDaysForCourse)).sort();
-
-      return {
-        courseCode: event.course_code || 'Unknown',
-        title: event.title || '',
-        section: event.section || '000',
-        difficulty: '__/5', // Default placeholder
-        instructor: event.professor || 'TBA',
-        days: days as ('M' | 'T' | 'W' | 'Th' | 'F' | 'MW' | 'TTh' | 'Fri')[],
-        time: `${event.startTime}-${event.endTime}`,
-        location: event.location || 'TBA',
-        hours: event.credits || 3.0,
-        requirements: event.requirement ? [{
-          label: event.requirement,
-          color: getRequirementColor(event.requirement)
-        }] : [],
-        status: 'active' as const,
-      };
-    });
-  };
-
-  const exportRows: CourseScheduleRow[] = convertEventsToRows(events).map(row => ({
-    course: row.courseCode,
-    section: row.section,
-    difficulty: row.difficulty,
-    instructor: row.instructor,
-    schedule: `${row.days.join('') || ''} ${row.time}`.trim(),
-    location: row.location,
-    credits: row.hours,
-    requirement: row.requirements.map(req => req.label).join(', ') || 'N/A',
-  }));
-
-  if (isLoading) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" className="font-header-bold" sx={{ mb: 3 }}>
-          Semester Scheduler
-        </Typography>
-        <Typography className="font-body">Loading course data...</Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" className="font-header" sx={{ mb: 3 }}>
-          Semester Scheduler
-        </Typography>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
+  // Mock Grad Plan Terms (extract from plan_details or use dumb array for MVP)
+  // Real implementation should parse activeGradPlan.plan_details
+  const mockTerms = [
+    { term: "Fall 2024", title: "Semester 1" },
+    { term: "Winter 2025", title: "Semester 2" },
+    { term: "Fall 2025", title: "Semester 3" },
+    { term: "Winter 2026", title: "Semester 4" },
+    { term: "Fall 2026", title: "Semester 5" },
+    { term: "Winter 2027", title: "Semester 6" },
+    { term: "Fall 2027", title: "Semester 7" },
+    { term: "Winter 2028", title: "Semester 8" }
+  ];
 
   return (
     <Box sx={{ p: 2, display: "flex", flexDirection: "column" }}>
       <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontFamily: '"Red Hat Display", sans-serif',
-            fontWeight: 800,
-            color: 'black',
-            mb: 1,
-            fontSize: '2rem'
-          }}
-        >
+        <Typography variant="h4" sx={{ fontFamily: '"Red Hat Display", sans-serif', fontWeight: 800, mb: 1, fontSize: '2rem' }}>
           Semester Scheduler
         </Typography>
         <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
           Plan your optimal class schedule based on your graduation plan and personal commitments.
         </Typography>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {/* Term Selector */}
+        <Box sx={{ mb: 2 }}>
+          <TermSelector
+            terms={mockTerms}
+            selectedTermIndex={selectedTermIndex}
+            selectedYear={null}
+            onTermSelect={handleTermSelect}
+            isLoading={isLoading}
+          />
+        </Box>
+
+        {/* Action Buttons Row */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <BookOpen size={16} style={{ color: "var(--muted-foreground)" }} />
-            <Typography variant="body2" className="font-body" color="text.secondary">
-              Auto-generate from course catalog
-            </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<Settings size={16} />}
+              onClick={() => setPrefDialog(true)}
+              disabled={!activeScheduleId}
+            >
+              Preferences
+            </Button>
+
+            {/* Auto-generate triggers a logical flow, maybe just a redirect or modal in future */}
+            {/* <ScheduleGenerator ... /> can be re-enabled if updated for DB */}
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Clock size={16} style={{ color: "var(--muted-foreground)" }} />
-            <Typography variant="body2" className="font-body" color="text.secondary">
-              Avoid time conflicts
-            </Typography>
+          <Box>
+            {/* Export / Print */}
           </Box>
         </Box>
 
-        {/* Instructional Card */}
-        <Paper
-          elevation={0}
-          sx={{
-            mt: 3,
-            borderRadius: 3,
-            border: "2px solid var(--primary)",
-            backgroundColor: "var(--card)",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-            overflow: "hidden",
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              p: 3,
-              backgroundColor: "color-mix(in srgb, var(--primary) 5%, var(--card))",
-              borderBottom: showInstructions ? "1px solid var(--border)" : "none",
-            }}
-          >
-            <Typography
-              variant="h6"
-              className="font-header"
-              sx={{
-                fontWeight: 800,
-                color: "var(--foreground)",
-                fontSize: "1.125rem",
-              }}
-            >
-              How to Schedule Your Semester
-            </Typography>
-            <IconButton
-              onClick={() => setShowInstructions(!showInstructions)}
-              size="small"
-              sx={{
-                color: "var(--primary)",
-                "&:hover": {
-                  backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)",
-                },
-              }}
-              aria-label={showInstructions ? "Collapse instructions" : "Expand instructions"}
-            >
-              {showInstructions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </IconButton>
-          </Box>
-
-          <Collapse in={showInstructions}>
-            <Box sx={{ p: 3 }}>
-              <Box
-                component="ol"
-                sx={{
-                  m: 0,
-                  pl: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2.5,
-                  listStyle: "none",
-                  counterReset: "step-counter",
-                }}
-              >
-                {[
-                  "Add your time constraints (work schedule, clubs, study time, family commitments, etc.)",
-                  "Select your active graduation plan",
-                  "Auto-generate your course schedule",
-                  "Review and make any adjustments you need"
-                ].map((step, index) => (
-                  <Box
-                    key={index}
-                    component="li"
-                    sx={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 2.5,
-                      counterIncrement: "step-counter",
-                      "&::before": {
-                        content: "counter(step-counter)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minWidth: 36,
-                        height: 36,
-                        borderRadius: "50%",
-                        backgroundColor: "var(--primary)",
-                        color: "var(--dark)",
-                        fontWeight: 800,
-                        fontSize: "1rem",
-                        fontFamily: '"Red Hat Display", sans-serif',
-                      },
-                    }}
-                  >
-                    <Typography
-                      variant="body1"
-                      className="font-body"
-                      sx={{
-                        color: "var(--foreground)",
-                        fontWeight: 600,
-                        fontSize: "1rem",
-                        lineHeight: 1.7,
-                        pt: 0.75,
-                      }}
-                    >
-                      {step}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          </Collapse>
-        </Paper>
-      </Box>
-
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {/* Top Section - Controls + Calendar */}
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" }, gap: 2 }}>
-          {/* Left Panel - Controls */}
+          {/* Left Panel - Personal Events & Controls */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <ScheduleGenerator
-              gradPlans={gradPlans}
-              courses={courses}
-              blockedEvents={personalEvents}
-              onScheduleGenerated={handleScheduleGenerated}
-              onScheduleSaved={handleScheduleSaved}
-            />
-
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                border: "1px solid var(--border)",
-                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-              }}
-            >
-              <Typography variant="h6" className="font-header" sx={{ mb: 2, fontWeight: 700, color: "var(--foreground)" }}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid var(--border)" }}>
+              <Typography variant="h6" className="font-header" sx={{ mb: 2, fontWeight: 700 }}>
                 Personal Events
-              </Typography>
-              <Typography variant="body2" className="font-body" sx={{ color: "var(--muted-foreground)", mb: 2.5, fontWeight: 500 }}>
-                Block out time for work, clubs, sports, and other commitments
               </Typography>
               <Button
                 variant="outlined"
                 startIcon={<Plus size={16} />}
-                onClick={handleAddPersonalEvent}
+                onClick={() => setEventDialog({ isOpen: true, isEdit: false })}
                 fullWidth
+                disabled={!activeScheduleId}
                 sx={{
                   borderColor: "var(--border)",
                   color: "var(--foreground)",
                   fontWeight: 600,
-                  px: 2.5,
                   py: 1.25,
                   borderWidth: "1.5px",
-                  "&:hover": {
-                    backgroundColor: "color-mix(in srgb, var(--muted) 15%, white)",
-                    borderColor: "var(--foreground)",
-                  },
                 }}
               >
                 Add Personal Event
               </Button>
 
-              {personalEvents.length > 0 && (
-                <Button
-                  variant="outlined"
-                  startIcon={<Trash2 size={16} />}
-                  onClick={handleClearAllEvents}
-                  fullWidth
-                  sx={{
-                    borderColor: "var(--action-cancel)",
-                    color: "var(--action-cancel)",
-                    fontWeight: 600,
-                    px: 2.5,
-                    py: 1.25,
-                    mt: 1.5,
-                    borderWidth: "1.5px",
-                    "&:hover": {
-                      backgroundColor: "var(--action-cancel)",
-                      color: "white",
-                      borderColor: "var(--action-cancel)",
-                    },
-                  }}
-                >
-                  Clear All Events
-                </Button>
-              )}
-
-              {personalEvents.length > 0 && (
-                <Box sx={{ mt: 2.5 }}>
-                  <Typography variant="subtitle2" className="font-body-semi" sx={{ mb: 1.5, fontWeight: 700, color: "var(--foreground)", textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }}>
-                    Current Blocked Times: {personalEvents.length}
-                  </Typography>
-                  {(showAllPersonalEvents ? personalEvents : personalEvents.slice(0, 3)).map((event) => (
-                    <Box
-                      key={event.id}
-                      sx={{
-                        p: 1.5,
-                        mb: 1.5,
-                        bgcolor: getEventBackgroundColor(event),
-                        borderRadius: 2,
-                        borderLeft: `3px solid ${getEventColor(event)}`,
-                        border: "1px solid var(--border)",
-                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                      }}
-                    >
-                      <Typography variant="caption" className="font-body-semi" sx={{ fontWeight: 600, color: "var(--foreground)" }}>
-                        {event.title}
-                      </Typography>
-                      <Typography variant="caption" className="font-body" display="block" sx={{ color: "var(--muted-foreground)", fontWeight: 500, mt: 0.25 }}>
-                        {event.category}
-                      </Typography>
-                    </Box>
-                  ))}
-                  {personalEvents.length > 3 && !showAllPersonalEvents && (
-                    <Typography
-                      variant="caption"
-                      className="font-body"
-                      color="text.secondary"
-                      sx={{
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        "&:hover": { color: "var(--primary)" }
-                      }}
-                      onClick={() => setShowAllPersonalEvents(true)}
-                    >
-                      +{personalEvents.length - 3} more events
+              <Box sx={{ mt: 2.5 }}>
+                {personalEvents.map((event) => (
+                  <Box
+                    key={event.id}
+                    onClick={() => setEventDialog({ isOpen: true, event, isEdit: true })}
+                    sx={{
+                      p: 1.5,
+                      mb: 1.5,
+                      bgcolor: getEventBackgroundColor(event),
+                      borderRadius: 2,
+                      borderLeft: `3px solid ${getEventColor(event)}`,
+                      border: "1px solid var(--border)",
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Typography variant="caption" className="font-body-semi" sx={{ fontWeight: 600 }}>
+                      {event.title}
                     </Typography>
-                  )}
-                  {showAllPersonalEvents && personalEvents.length > 3 && (
-                    <Typography
-                      variant="caption"
-                      className="font-body"
-                      color="text.secondary"
-                      sx={{
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        "&:hover": { color: "var(--primary)" }
-                      }}
-                      onClick={() => setShowAllPersonalEvents(false)}
-                    >
-                      Show less
+                    <Typography variant="caption" className="font-body" display="block" color="text.secondary">
+                      {event.category} ({event.startTime} - {event.endTime})
                     </Typography>
-                  )}
-                </Box>
-              )}
+                  </Box>
+                ))}
+              </Box>
             </Paper>
           </Box>
 
           {/* Right Panel - Calendar */}
           <Box>
-            <SchedulerCalendar
-              events={allEvents}
-              onPersonalEventClick={handlePersonalEventClick}
-              onClassEventClick={handleClassEventClick}
-              onEventDrop={handleEventDrop}
-              onSlotSelect={handleSlotSelect}
-              slotMinTime="08:00:00"
-              slotMaxTime="19:00:00"
-              gradPlanEditUrl={gradPlanEditUrl}
-              exportRef={calendarExportRef}
-              headerActions={(
-                <CalendarExportButtons
-                  calendarRef={calendarExportRef}
-                  semester="Semester Schedule"
-                  tableRows={exportRows}
-                  showEditButton={false}
-                />
-              )}
-            />
+            {isScheduleLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <SchedulerCalendar
+                events={allEvents}
+                onPersonalEventClick={(evt) => setEventDialog({ isOpen: true, event: evt, isEdit: true })}
+                onClassEventClick={(evt) => setClassInfoDialog({ isOpen: true, event: evt })}
+                onEventDrop={handleEventDrop}
+                onSlotSelect={(day, start, end) => setEventDialog({ isOpen: true, selectedSlot: { dayOfWeek: day, startTime: start, endTime: end }, isEdit: false })}
+                slotMinTime={preferences.earliest_class_time || "08:00:00"}
+                slotMaxTime={preferences.latest_class_time || "19:00:00"}
+                gradPlanEditUrl={`/grad-plan`}
+                exportRef={calendarExportRef}
+                headerActions={<CalendarExportButtons calendarRef={calendarExportRef} semester="Schedule" tableRows={[]} showEditButton={false} />}
+              />
+            )}
           </Box>
         </Box>
-
-        {/* Bottom Section - Results Table (Full Width) */}
-        {showResults && events.length > 0 && (() => {
-          const rows = convertEventsToRows(events);
-          const totalCredits = rows.reduce((sum, row) => sum + row.hours, 0);
-
-          return (
-            <Box sx={{ width: "100%", mb: 4 }}>
-              <SemesterResultsTable
-                termLabel="Winter 2025 Classes"
-                totalCredits={totalCredits}
-                scheduleDifficulty="?/5"
-                addDropDeadline="12 Sept"
-                rows={rows}
-                onWithdraw={(courseCode) => {
-                  console.log(`Withdraw requested for ${courseCode}`);
-                }}
-                onSectionClick={handleSectionClick}
-                onInstructorClick={handleInstructorClick}
-                gradPlanEditUrl={gradPlanEditUrl}
-              />
-            </Box>
-          );
-        })()}
       </Box>
 
+      {/* Dialogs */}
       <EventManager
         open={eventDialog.isOpen}
         onClose={() => setEventDialog({ isOpen: false, isEdit: false })}
@@ -762,10 +519,44 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
         open={classInfoDialog.isOpen}
         onClose={() => setClassInfoDialog({ isOpen: false })}
         event={classInfoDialog.event || null}
-        courses={courses}
+        courses={[]} // Pass real courses if needed for reference
         allEvents={allEvents}
-        onReplaceClass={handleReplaceClass}
+        onReplaceClass={() => { }} // TODO: Implement replace logic
       />
+
+      <SchedulePreferencesDialog
+        open={prefDialog}
+        onClose={() => setPrefDialog(false)}
+        onSave={handlePreferencesSave}
+        initialPreferences={preferences}
+      />
+
+      {/* CourseSelectionDialog would be triggered by an "Add Course" button usually, not exposed yet in UI above but ready */}
+      <CourseSelectionDialog
+        open={courseSelectionDialog.open}
+        onClose={() => setCourseSelectionDialog(prev => ({ ...prev, open: false }))}
+        onSave={async (sel) => {
+          // Handle save logic
+          if (activeScheduleId) {
+            await addCourseSelectionAction(activeScheduleId, {
+              course_code: courseSelectionDialog.courseCode,
+              requirement_type: 'Core', // heuristic
+              primary_offering_id: sel.primaryId,
+              backup_1_offering_id: sel.backup1Id || null,
+              backup_2_offering_id: sel.backup2Id || null,
+              status: 'planned',
+              notes: ''
+            });
+            // Reload
+            loadScheduleCourses(activeScheduleId);
+          }
+        }}
+        courseCode={courseSelectionDialog.courseCode}
+        courseTitle={courseSelectionDialog.courseTitle}
+        termName={courseSelectionDialog.termName}
+        universityId={universityId}
+      />
+
     </Box>
   );
 }

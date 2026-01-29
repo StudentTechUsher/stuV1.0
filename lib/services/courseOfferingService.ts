@@ -299,6 +299,17 @@ export interface CourseOffering {
   prerequisites?: string | null;
 }
 
+export interface CourseSection extends CourseOffering {
+  section_label: string;
+  instructor: string | null;
+  meetings_json: Record<string, unknown> | null;
+  seats_available: number | null;
+  seats_capacity: number | null;
+  waitlist_count: number | null;
+  term_name: string;
+  location_raw: string | null;
+}
+
 export class CourseOfferingFetchError extends Error {
   constructor(message: string, public cause?: unknown) {
     super(message);
@@ -616,7 +627,7 @@ export async function getCoursesByDepartment(
   departmentCode: string
 ): Promise<CourseOffering[]> {
   try {
-    const { data, error} = await supabase
+    const { data, error } = await supabase
       .from('course_offerings')
       .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites')
       .eq('university_id', universityId)
@@ -650,5 +661,32 @@ export async function getCoursesByDepartment(
       throw error;
     }
     throw new CourseOfferingFetchError('Unexpected error fetching courses by department', error);
+  }
+}
+
+export async function getCourseSections(
+  universityId: number,
+  termName: string,
+  courseCode: string
+): Promise<CourseSection[]> {
+  try {
+    const { data, error } = await supabase
+      .from('course_offerings')
+      .select('offering_id, course_code, title, credits_decimal, description, department_code, prerequisites, section_label, instructor, meetings_json, seats_available, seats_capacity, waitlist_count, term_name, location_raw')
+      .eq('university_id', universityId)
+      .eq('term_name', termName)
+      .eq('course_code', courseCode)
+      .order('section_label', { ascending: true });
+
+    if (error) {
+      throw new CourseOfferingFetchError('Failed to fetch course sections', error);
+    }
+
+    return data as CourseSection[];
+  } catch (error) {
+    if (error instanceof CourseOfferingFetchError) {
+      throw error;
+    }
+    throw new CourseOfferingFetchError('Unexpected error fetching course sections', error);
   }
 }

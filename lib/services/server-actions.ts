@@ -67,6 +67,27 @@ import {
     updateCareerGoals as _updateCareerGoals,
     fetchStudentPlanningData as _fetchStudentPlanningData,
 } from './studentService';
+import {
+    getActiveSchedule as _getActiveSchedule,
+    createSchedule as _createSchedule,
+    setActiveSchedule as _setActiveSchedule,
+    addBlockedTime as _addBlockedTime,
+    updateBlockedTime as _updateBlockedTime,
+    deleteBlockedTime as _deleteBlockedTime,
+    updateSchedulePreferences as _updateSchedulePreferences,
+    addCourseSelection as _addCourseSelection,
+    updateCourseSelection as _updateCourseSelection,
+    deleteCourseSelection as _deleteCourseSelection,
+    validateSchedule as _validateSchedule,
+    getScheduleWithCourseDetails as _getScheduleWithCourseDetails,
+    type BlockedTime,
+    type SchedulePreferences,
+    type CourseSelection,
+} from './scheduleService';
+import {
+    searchCourseOfferings as _searchCourseOfferings,
+    getCourseSections as _getCourseSections,
+} from './courseOfferingService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
 export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: unknown) {
@@ -1323,4 +1344,74 @@ export async function fetchStudentPlanningDataAction() {
             data: null,
         };
     }
+}
+
+// ---- Student Scheduler Actions ----
+
+export async function getActiveScheduleAction(studentId: number) {
+    return await _getActiveSchedule(studentId);
+}
+
+export async function createScheduleAction(
+    studentId: number,
+    termName: string,
+    gradPlanId?: string,
+    termIndex?: number
+) {
+    return await _createSchedule(studentId, termName, gradPlanId, termIndex);
+}
+
+export async function setActiveScheduleAction(scheduleId: string, studentId: number) {
+    return await _setActiveSchedule(scheduleId, studentId);
+}
+
+export async function addBlockedTimeAction(scheduleId: string, blockedTime: Omit<BlockedTime, 'id'>) {
+    return await _addBlockedTime(scheduleId, blockedTime);
+}
+
+export async function updateBlockedTimeAction(scheduleId: string, blockedTimeId: string, updates: Partial<Omit<BlockedTime, 'id'>>) {
+    return await _updateBlockedTime(scheduleId, blockedTimeId, updates);
+}
+
+export async function deleteBlockedTimeAction(scheduleId: string, blockedTimeId: string) {
+    return await _deleteBlockedTime(scheduleId, blockedTimeId);
+}
+
+export async function updateSchedulePreferencesAction(scheduleId: string, preferences: Partial<SchedulePreferences>) {
+    return await _updateSchedulePreferences(scheduleId, preferences);
+}
+
+export async function addCourseSelectionAction(scheduleId: string, courseSelection: Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>) {
+    return await _addCourseSelection(scheduleId, courseSelection);
+}
+
+export async function updateCourseSelectionAction(selectionId: string, updates: Partial<Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>>) {
+    return await _updateCourseSelection(selectionId, updates);
+}
+
+export async function deleteCourseSelectionAction(selectionId: string) {
+    return await _deleteCourseSelection(selectionId);
+}
+
+export async function validateScheduleAction(scheduleId: string) {
+    return await _validateSchedule(scheduleId);
+}
+
+export async function getScheduleWithCourseDetailsAction(scheduleId: string) {
+    try {
+        return await _getScheduleWithCourseDetails(scheduleId);
+    } catch (e) {
+        console.error("Error getting schedule details", e);
+        // Return structured error or null to avoid client crash
+        return null; // Or throw depending on error handling strategy. 
+        // Client expects { schedule, courseDetails }, calling code should handle null.
+    }
+}
+
+export async function searchCourseOfferingsAction(universityId: number, searchTerm?: string) {
+    return await _searchCourseOfferings(universityId, searchTerm);
+}
+
+export async function getCourseSectionsAction(universityId: number, termName: string, courseCode: string) {
+    return await _getCourseSections(universityId, termName, courseCode);
 }

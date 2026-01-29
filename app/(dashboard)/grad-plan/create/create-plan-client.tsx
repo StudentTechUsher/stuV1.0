@@ -438,6 +438,15 @@ export default function CreatePlanClient({
     }, 500);
   };
 
+  const handleStudentDataRefresh = async () => {
+    try {
+      // Refresh student data from API after updates (e.g., graduation date changes)
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to refresh student data:', error);
+    }
+  };
+
   const handleToolComplete = async (toolType: ToolType, result: unknown) => {
     setIsProcessing(true);
 
@@ -1869,6 +1878,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                               onToolSkip={handleToolSkip}
                               onCareerPathfinderClick={handleCareerPathfinderClick}
                               onProgramPathfinderClick={handleProgramPathfinderClick}
+                              onStudentDataChanged={handleStudentDataRefresh}
                             />
                           </div>
                         );

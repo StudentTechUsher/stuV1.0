@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -23,8 +23,10 @@ import {
   SemesterAllocation,
   AcademicTermsConfig,
   CreditDistributionError,
+  InvalidGraduationDateError,
   estimateCompletionTerm,
 } from '@/lib/services/gradPlanGenerationService';
+import { GraduationDateErrorBanner } from './GraduationDateErrorBanner';
 
 interface CreditDistributionStepProps {
   totalCredits: number;
@@ -44,6 +46,7 @@ interface CreditDistributionStepProps {
   }) => void;
   initialStrategy?: 'fast_track' | 'balanced' | 'explore';
   initialIncludeSecondary?: boolean;
+  onStudentDataChanged?: () => void;
 }
 
 const STRATEGIES = [
@@ -88,6 +91,7 @@ export function CreditDistributionStep({
   onComplete,
   initialStrategy,
   initialIncludeSecondary = false,
+  onStudentDataChanged,
 }: CreditDistributionStepProps) {
   const [selectedStrategy, setSelectedStrategy] = useState<'fast_track' | 'balanced' | 'explore' | null>(
     initialStrategy || null
@@ -103,7 +107,7 @@ export function CreditDistributionStep({
     return primaryTermIds;
   });
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<InvalidGraduationDateError | Error | null>(null);
 
   // Helper to determine if we should include secondary courses (for backward compatibility)
   const includeSecondaryCourses = academicTerms.terms.secondary.some(t =>
@@ -181,10 +185,12 @@ export function CreditDistributionStep({
       });
     } catch (err) {
       console.error('Failed to calculate credit distribution:', err);
-      if (err instanceof CreditDistributionError) {
-        setError(err.message);
+      if (err instanceof InvalidGraduationDateError) {
+        setError(err);
+      } else if (err instanceof CreditDistributionError) {
+        setError(new Error(err.message));
       } else {
-        setError('Failed to calculate credit distribution. Please check your profile settings.');
+        setError(new Error('Failed to calculate credit distribution. Please check your profile settings.'));
       }
       return null;
     }
@@ -237,6 +243,16 @@ export function CreditDistributionStep({
     getFallbackCompletion,
   ]);
 
+  const handleDateUpdated = () => {
+    // Clear error to allow re-calculation
+    setError(null);
+
+    // Notify parent to refresh student data
+    if (onStudentDataChanged) {
+      onStudentDataChanged();
+    }
+  };
+
   const handleContinue = () => {
     if (!selectedStrategy || !distribution) return;
 
@@ -260,11 +276,19 @@ export function CreditDistributionStep({
         Choose how you&apos;d like to distribute your {totalCredits} credits across semesters.
       </Typography>
 
-      {/* Error Alert */}
+      {/* Error Display */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        error instanceof InvalidGraduationDateError ? (
+          <GraduationDateErrorBanner
+            error={error}
+            studentData={studentData}
+            onDateUpdated={handleDateUpdated}
+          />
+        ) : (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error.message}
+          </Alert>
+        )
       )}
 
       {/* Total Credits and Courses */}

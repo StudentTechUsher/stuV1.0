@@ -118,7 +118,7 @@ export function MilestonesAndConstraintsStep({
     const base = [...MILESTONE_TYPES];
     if (studentType === 'honor') {
       const insertIndex = base.findIndex((type) => type.id === 'study_break');
-      const honorsEntry = { id: 'honors_thesis', label: 'Honors Thesis', icon: GraduationCap, color: '#0EA5E9' };
+      const honorsEntry = { id: 'honors_thesis' as const, label: 'Honors Thesis', icon: GraduationCap, color: '#0EA5E9' };
       if (insertIndex >= 0) {
         base.splice(insertIndex + 1, 0, honorsEntry);
       } else {

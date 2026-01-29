@@ -84,6 +84,26 @@ export class InvalidTermSequenceError extends Error {
   }
 }
 
+export class InvalidGraduationDateError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'INVALID_DATE_FORMAT'
+      | 'GRADUATION_BEFORE_ADMISSION'
+      | 'INVALID_TERM_IDS'
+      | 'ADMISSION_YEAR_INVALID',
+    public readonly context?: {
+      graduationDate?: string;
+      admissionYear?: number;
+      admissionTerm?: string;
+      selectedTermIds?: string[];
+    }
+  ) {
+    super(message);
+    this.name = 'InvalidGraduationDateError';
+  }
+}
+
 // ============================================================================
 // Core Functions
 // ============================================================================
@@ -125,7 +145,10 @@ export function calculateSemesterDistribution(
   );
 
   if (termSequence.length === 0) {
-    throw new CreditDistributionError('No terms available between admission and graduation');
+    // Should be unreachable now due to validation, but keep as safety
+    throw new CreditDistributionError(
+      'Unable to generate term sequence. This may indicate a configuration issue with your institution\'s academic terms. Please contact support.'
+    );
   }
 
   // Determine credit load ranges based on strategy
@@ -316,6 +339,84 @@ export function calculateTargetTotalCredits(
 
 /**
  * AUTHORIZATION: PUBLIC
+ * Validates inputs before generating term sequence
+ * @throws InvalidGraduationDateError with specific error codes
+ */
+function validateTermSequenceInputs(
+  admissionYear: number,
+  admissionTerm: string,
+  graduationDate: Date,
+  academicTerms: AcademicTermsConfig,
+  selectedTermIds: string[]
+): void {
+  // 1. Validate graduation date is valid
+  if (isNaN(graduationDate.getTime())) {
+    throw new InvalidGraduationDateError(
+      'Graduation date is invalid or cannot be parsed',
+      'INVALID_DATE_FORMAT',
+      { graduationDate: String(graduationDate) }
+    );
+  }
+
+  // 2. Validate admission year is reasonable (1950 to current+10)
+  const currentYear = new Date().getFullYear();
+  if (admissionYear < 1950 || admissionYear > currentYear + 10) {
+    throw new InvalidGraduationDateError(
+      `Admission year (${admissionYear}) is outside valid range (1950-${currentYear + 10})`,
+      'ADMISSION_YEAR_INVALID',
+      { admissionYear }
+    );
+  }
+
+  // 3. Validate graduation year is after admission year
+  const gradYear = graduationDate.getFullYear();
+  if (gradYear < admissionYear) {
+    throw new InvalidGraduationDateError(
+      `Graduation year (${gradYear}) cannot be before admission year (${admissionYear})`,
+      'GRADUATION_BEFORE_ADMISSION',
+      { graduationDate: graduationDate.toISOString(), admissionYear }
+    );
+  }
+
+  // 4. If same year, check graduation month is after admission term month
+  if (gradYear === admissionYear) {
+    const admissionTermMonth = getTermMonth(admissionTerm.toLowerCase(), academicTerms);
+    const gradMonth = graduationDate.getMonth();
+
+    if (gradMonth < admissionTermMonth) {
+      throw new InvalidGraduationDateError(
+        `Graduation date is before admission term (${admissionTerm} ${admissionYear})`,
+        'GRADUATION_BEFORE_ADMISSION',
+        { graduationDate: graduationDate.toISOString(), admissionYear, admissionTerm }
+      );
+    }
+  }
+
+  // 5. Validate selected term IDs are non-empty and exist in ordering
+  if (selectedTermIds.length === 0) {
+    throw new InvalidGraduationDateError(
+      'No academic terms selected for planning',
+      'INVALID_TERM_IDS',
+      { selectedTermIds }
+    );
+  }
+
+  const validTermIds = academicTerms.ordering.map(t => t.toLowerCase());
+  const invalidTerms = selectedTermIds.filter(
+    id => !validTermIds.includes(id.toLowerCase())
+  );
+
+  if (invalidTerms.length > 0) {
+    throw new InvalidGraduationDateError(
+      `Selected terms [${invalidTerms.join(', ')}] do not exist in institution's term ordering`,
+      'INVALID_TERM_IDS',
+      { selectedTermIds }
+    );
+  }
+}
+
+/**
+ * AUTHORIZATION: PUBLIC
  * Generates chronological sequence of academic terms
  * @param startYear - Year of admission
  * @param startTerm - Term of admission (e.g., "Fall", "Winter")
@@ -331,6 +432,9 @@ export function generateTermSequence(
   academicTerms: AcademicTermsConfig,
   selectedTermIds: string[]
 ): Array<{ term: string; year: number; type: 'primary' | 'secondary' }> {
+  // Validate inputs before processing
+  validateTermSequenceInputs(startYear, startTerm, endDate, academicTerms, selectedTermIds);
+
   const sequence: Array<{ term: string; year: number; type: 'primary' | 'secondary' }> = [];
 
   const endYear = endDate.getFullYear();
