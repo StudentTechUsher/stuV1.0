@@ -293,6 +293,11 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
       text: 'text-[#FF9800]',
       titleText: 'text-white',
     },
+    honors: {
+      bg: 'bg-[#F59E0B]',
+      text: 'text-[#F59E0B]',
+      titleText: 'text-white',
+    },
   };
 
   const programType = program.program_type?.toLowerCase() || 'major';

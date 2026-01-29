@@ -188,16 +188,16 @@ export async function updateGraduationTimeline(
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
- * Updates student type (undergraduate vs graduate)
+ * Updates student type (undergraduate, honors, or graduate)
  * @param supabaseClient - Supabase client
  * @param profileId - The user's profile ID
- * @param studentType - 'undergraduate' or 'graduate'
+ * @param studentType - 'undergraduate', 'honor', or 'graduate'
  * @returns Updated student record
  */
 export async function updateStudentType(
   supabaseClient: SupabaseClient,
   profileId: string,
-  studentType: 'undergraduate' | 'graduate'
+  studentType: 'undergraduate' | 'honor' | 'graduate'
 ): Promise<{ success: boolean }> {
   try {
     const { error } = await supabaseClient

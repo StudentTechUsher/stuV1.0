@@ -10,6 +10,7 @@ export const UndergraduateProgramSchema = z.object({
   majorIds: z.array(z.string()).min(1, 'At least one major is required'),
   minorIds: z.array(z.string()).optional(),
   genEdIds: z.array(z.string()).optional(),
+  honorsProgramIds: z.array(z.string()).optional(),
 });
 
 // Program selection for graduate students
@@ -21,6 +22,10 @@ export const GraduateProgramSchema = z.object({
 export const ProgramSelectionSchema = z.discriminatedUnion('studentType', [
   z.object({
     studentType: z.literal('undergraduate'),
+    programs: UndergraduateProgramSchema,
+  }),
+  z.object({
+    studentType: z.literal('honor'),
     programs: UndergraduateProgramSchema,
   }),
   z.object({
@@ -36,6 +41,9 @@ export interface ProgramOption {
   id: string;
   name: string;
   program_type: string;
+  applicable_start_year?: number | null;
+  applicable_end_year?: number | null;
+  priority?: number | null;
   slug?: string;
   course_flow?: unknown;
   requirements?: unknown;
@@ -48,7 +56,7 @@ export interface ProgramOption {
 export interface ProgramSelectionResult {
   success: boolean;
   data?: {
-    studentType: 'undergraduate' | 'graduate';
+    studentType: 'undergraduate' | 'honor' | 'graduate';
     selectedPrograms: number[];
   };
   error?: string;
@@ -66,6 +74,12 @@ export const programSelectionToolDefinition = {
     - Optionally select minor(s)
     - Optionally select general education requirements
 
+    For honors students:
+    - Select one or more majors (required)
+    - Optionally select minor(s)
+    - Optionally select general education requirements
+    - Honors program is applied automatically
+
     For graduate students:
     - Select one or more graduate programs (Master's, PhD, etc.)
 
@@ -75,7 +89,7 @@ export const programSelectionToolDefinition = {
       properties: {
         studentType: {
           type: 'string',
-          enum: ['undergraduate', 'graduate'],
+          enum: ['undergraduate', 'honor', 'graduate'],
           description: 'The type of student (determines which programs are shown)',
         },
         programs: {
@@ -98,6 +112,11 @@ export const programSelectionToolDefinition = {
                   type: 'array',
                   items: { type: 'string' },
                   description: 'Array of selected general education program IDs (optional)',
+                },
+                honorsProgramIds: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Array of applied honors program IDs (optional)',
                 },
               },
               required: ['majorIds'],
@@ -125,7 +144,7 @@ export const programSelectionToolDefinition = {
  */
 export async function fetchProgramsByType(
   universityId: number,
-  programType: 'major' | 'minor' | 'graduate' | 'gen_ed',
+  programType: 'major' | 'minor' | 'honors' | 'graduate' | 'gen_ed',
   studentMetadata?: {
     admissionYear?: number | null;
     isTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
@@ -164,10 +183,10 @@ export async function fetchProgramsByType(
  * Gets the confirmation message based on selections
  */
 export function getProgramSelectionConfirmationMessage(
-  studentType: 'undergraduate' | 'graduate',
+  studentType: 'undergraduate' | 'honor' | 'graduate',
   programCount: number
 ): string {
-  if (studentType === 'undergraduate') {
+  if (studentType === 'undergraduate' || studentType === 'honor') {
     return `Perfect! I've recorded your ${programCount} program${programCount > 1 ? 's' : ''}. Next, let's determine how you'd like to select your courses.`;
   }
   return `Excellent! I've recorded your graduate program${programCount > 1 ? 's' : ''}. Next, let's determine how you'd like to select your courses.`;

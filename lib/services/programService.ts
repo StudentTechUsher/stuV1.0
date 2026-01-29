@@ -291,12 +291,13 @@ export async function fetchPrograms(options?: {
 
 /**
  * AUTHORIZATION: PUBLIC
- * Checks which student types (undergraduate/graduate) are available for a university
+ * Checks which student types (undergraduate/honors/graduate) are available for a university
  * @param universityId - The university ID to check
  * @returns Object indicating availability of undergraduate and graduate programs
  */
 export async function fetchAvailableStudentTypes(universityId: number): Promise<{
   hasUndergraduate: boolean;
+  hasHonors: boolean;
   hasGraduate: boolean;
 }> {
   try {
@@ -310,6 +311,18 @@ export async function fetchAvailableStudentTypes(universityId: number): Promise<
 
     if (undergradError) {
       throw new ProgramFetchError('Failed to check undergraduate programs', undergradError);
+    }
+
+    // Check for honors programs
+    const { data: honorsData, error: honorsError } = await db
+      .from('program')
+      .select('id')
+      .eq('university_id', universityId)
+      .eq('program_type', 'honors')
+      .limit(1);
+
+    if (honorsError) {
+      throw new ProgramFetchError('Failed to check honors programs', honorsError);
     }
 
     // Check for graduate programs
@@ -326,6 +339,7 @@ export async function fetchAvailableStudentTypes(universityId: number): Promise<
 
     return {
       hasUndergraduate: (undergradData?.length ?? 0) > 0,
+      hasHonors: (honorsData?.length ?? 0) > 0,
       hasGraduate: (gradData?.length ?? 0) > 0
     };
   } catch (error) {

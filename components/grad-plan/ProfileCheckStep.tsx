@@ -22,13 +22,13 @@ import {
   InputLabel,
   Select,
 } from '@mui/material';
-import { CheckCircle, Edit, AlertCircle, BookOpen, GraduationCap, Compass } from 'lucide-react';
+import { CheckCircle, Edit, AlertCircle, BookOpen, GraduationCap, Compass, Award } from 'lucide-react';
 
 interface StudentPlanningData {
   est_grad_date: string | null;
   est_grad_term: string | null;
   admission_year: number | null;
-  student_type: 'undergraduate' | 'graduate' | null;
+  student_type: 'undergraduate' | 'honor' | 'graduate' | null;
   career_goals: string | null;
   is_transfer: 'transfer' | 'freshman' | null;
 }
@@ -65,6 +65,12 @@ export function ProfileCheckStep({
   const [formData, setFormData] = useState<Partial<StudentPlanningData>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const formatStudentType = (type?: string | null) => {
+    if (!type) return '';
+    if (type === 'honor') return 'Honors';
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
 
   // Fetch student data on mount
   useEffect(() => {
@@ -230,7 +236,7 @@ export function ProfileCheckStep({
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 2 }}>
                   Student Type <span style={{ color: '#DC2626' }}>*</span>
                 </Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2 }}>
                   {/* Undergraduate Card */}
                   <Box
                     onClick={() => setFormData({ ...formData, student_type: 'undergraduate' })}
@@ -270,6 +276,50 @@ export function ProfileCheckStep({
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                           Pursuing a bachelor&apos;s degree
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* Honors Card */}
+                  <Box
+                    onClick={() => setFormData({ ...formData, student_type: 'honor' })}
+                    sx={{
+                      position: 'relative',
+                      p: 3,
+                      border: '2px solid',
+                      borderColor: formData.student_type === 'honor' ? '#0A0A0A' : 'var(--border)',
+                      borderRadius: 2,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      bgcolor: formData.student_type === 'honor' ? 'rgba(10, 10, 10, 0.05)' : 'background.paper',
+                      '&:hover': {
+                        borderColor: '#0A0A0A',
+                        boxShadow: 1,
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 2 }}>
+                      <Box
+                        sx={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          bgcolor: formData.student_type === 'honor' ? '#0A0A0A' : 'var(--muted)',
+                          color: formData.student_type === 'honor' ? 'white' : 'text.secondary',
+                        }}
+                      >
+                        <Award size={32} />
+                      </Box>
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                          Honors
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          Undergraduate honors student
                         </Typography>
                       </Box>
                     </Box>
@@ -440,8 +490,8 @@ export function ProfileCheckStep({
                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                     Student Type
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                    {studentData.student_type}
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {formatStudentType(studentData.student_type)}
                   </Typography>
                 </Box>
                 <Box>

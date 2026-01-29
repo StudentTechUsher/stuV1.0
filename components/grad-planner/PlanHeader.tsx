@@ -63,6 +63,7 @@ interface PlanHeaderProps {
     est_grad_sem?: string | null;
     career_goals?: string | null;
     student_interests?: string | null;
+    admission_year?: number | null;
     [key: string]: unknown;
   };
   onProfileUpdate?: (updates: Record<string, string | null>) => void;
@@ -575,6 +576,7 @@ export default function PlanHeader({
         onClose={handleProgramSelectionClose}
         onNext={handleProgramSelectionNext}
         universityId={universityId}
+        studentAdmissionYear={studentProfile?.admission_year as number | null | undefined}
       />
 
       {/* Step 2: Course Selection Dialog */}
@@ -585,7 +587,11 @@ export default function PlanHeader({
           selectedProgramIds={
             programSelections.isGraduateStudent
               ? programSelections.graduateProgramIds
-              : [...programSelections.majorIds, ...programSelections.minorIds]
+              : [
+                ...programSelections.majorIds,
+                ...programSelections.minorIds,
+                ...(programSelections.honorsProgramIds ?? []),
+              ]
           }
           genEdProgramIds={programSelections.genEdIds}
           genEdStrategy={programSelections.genEdStrategy}

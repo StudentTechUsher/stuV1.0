@@ -42,7 +42,7 @@ interface ToolRendererProps {
     hasActivePlan?: boolean;
     hasCourses?: boolean;
     hasTranscript?: boolean;
-    studentType?: 'undergraduate' | 'graduate';
+    studentType?: 'undergraduate' | 'honor' | 'graduate';
     universityId?: number;
     selectedProgramIds?: number[];
     genEdProgramIds?: number[];
@@ -245,6 +245,7 @@ export default function ToolRenderer({
         <MilestonesAndConstraintsStep
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           distribution={toolData.distribution as any}
+          studentType={toolData.studentType}
           onComplete={(data) => onToolComplete(data)}
         />
       );

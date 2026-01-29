@@ -45,6 +45,7 @@ interface GradPlanWizardProps {
 
 // Step definitions with visibility and validation logic
 const getStepConfig = (state: WizardState) => {
+  const isUndergradType = state.studentType === 'undergraduate' || state.studentType === 'honor';
   return [
     {
       id: 'name',
@@ -63,9 +64,8 @@ const getStepConfig = (state: WizardState) => {
     },
     {
       id: 'gen-ed-strategy',
-      shouldShow: () => state.studentType === 'undergraduate',
-      isValid: () =>
-        state.studentType !== 'undergraduate' || state.genEdStrategy !== null,
+      shouldShow: () => isUndergradType,
+      isValid: () => !isUndergradType || state.genEdStrategy !== null,
     },
     {
       id: 'plan-mode',

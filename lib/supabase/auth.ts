@@ -84,7 +84,7 @@ export async function getVerifiedUserProfile() {
     if (profile.role_id === 3) {
       const { data: student, error: studentError } = await supabase
         .from('student')
-        .select('est_grad_date, est_grad_term, career_goals, admission_year, is_transfer')
+        .select('est_grad_date, est_grad_term, career_goals, admission_year, is_transfer, student_type')
         .eq('profile_id', user.id)
         .maybeSingle()
 
@@ -101,6 +101,7 @@ export async function getVerifiedUserProfile() {
           career_goals: student.career_goals,
           admission_year: student.admission_year,
           is_transfer: student.is_transfer,
+          student_type: student.student_type,
         }
       }
     }

@@ -59,12 +59,25 @@ interface CreatePlanClientProps {
     est_grad_date?: string | null;
     est_grad_sem?: string | null;
     career_goals?: string | null;
+    student_type?: 'undergraduate' | 'honor' | 'graduate' | null;
+    admission_year?: number | null;
+    is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
     [key: string]: unknown;
   };
   hasCourses: boolean;
   hasActivePlan: boolean;
   academicTerms: AcademicTermsConfig;
 }
+
+const resolveStudentType = (value: unknown): 'undergraduate' | 'honor' | 'graduate' => {
+  if (value === 'honor' || value === 'graduate' || value === 'undergraduate') {
+    return value;
+  }
+  if (value === 'honors') {
+    return 'honor';
+  }
+  return 'undergraduate';
+};
 
 export default function CreatePlanClient({
   user,
@@ -98,6 +111,20 @@ export default function CreatePlanClient({
       }
     }
   }, []);
+
+  // Seed student type from profile on initial load
+  // After initial load, profile check updates take priority
+  useEffect(() => {
+    // Only seed if not already set (either null or we need to correct stale localStorage data)
+    const resolvedType = resolveStudentType(studentProfile.student_type);
+    const currentType = conversationState.collectedData.studentType;
+
+    // Seed if null, or if profile check hasn't been completed yet and we have stale data
+    const profileCheckCompleted = conversationState.completedSteps.includes(ConversationStep.PROFILE_CHECK);
+    if (currentType === null || (!profileCheckCompleted && currentType !== resolvedType)) {
+      setConversationState(prev => updateState(prev, { data: { studentType: resolvedType } }));
+    }
+  }, [conversationState.collectedData.studentType, conversationState.completedSteps, studentProfile.student_type]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -250,6 +277,8 @@ export default function CreatePlanClient({
     setActiveTool(null);
     setIsProcessing(true);
 
+    const currentStudentType = updatedState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type);
+
     // Clear chat window and add a message indicating we're going back to this step
     setMessages([
       {
@@ -298,8 +327,7 @@ export default function CreatePlanClient({
             timestamp: new Date(),
             toolType: 'program_selection',
             toolData: {
-              // TODO: Fetch studentType from student table
-              studentType: (studentProfile as { student_type?: 'undergraduate' | 'graduate' }).student_type || 'undergraduate',
+              studentType: currentStudentType,
               universityId: updatedState.universityId,
               studentAdmissionYear: (studentProfile as { admission_year?: number }).admission_year,
               studentIsTransfer: (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' }).is_transfer,
@@ -314,7 +342,7 @@ export default function CreatePlanClient({
           // For course selection, we need the program info
           const selectedPrograms = updatedState.collectedData.selectedPrograms || [];
           const majorMinorIds = selectedPrograms
-            .filter(p => p.programType === 'major' || p.programType === 'minor')
+            .filter(p => p.programType === 'major' || p.programType === 'minor' || p.programType === 'honors')
             .map(p => p.programId);
           const genEdIds = selectedPrograms
             .filter(p => p.programType === 'general_education')
@@ -326,8 +354,7 @@ export default function CreatePlanClient({
             timestamp: new Date(),
             toolType: 'course_selection',
             toolData: {
-              // TODO: Fetch studentType from student table
-              studentType: (studentProfile as { student_type?: 'undergraduate' | 'graduate' }).student_type || 'undergraduate',
+              studentType: currentStudentType,
               universityId: updatedState.universityId,
               selectedProgramIds: majorMinorIds,
               genEdProgramIds: genEdIds,
@@ -371,6 +398,7 @@ export default function CreatePlanClient({
             toolType: 'milestones_and_constraints',
             toolData: {
               distribution: updatedState.collectedData.creditDistributionStrategy?.suggestedDistribution,
+              studentType: updatedState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type),
             },
           };
           setActiveTool('milestones_and_constraints');
@@ -419,9 +447,23 @@ export default function CreatePlanClient({
         // Just mark step as complete and move to next
         setActiveTool(null);
 
+        let updatedStudentType = resolveStudentType(studentProfile.student_type);
+        try {
+          const response = await fetch('/api/student/planning-data');
+          if (response.ok) {
+            const data = await response.json();
+            updatedStudentType = resolveStudentType(data?.data?.student_type);
+          }
+        } catch (error) {
+          console.error('Failed to refresh student type after profile check:', error);
+        }
+
         setConversationState(prev => {
           const updated = updateState(prev, {
             step: ConversationStep.PROFILE_CHECK,
+            data: {
+              studentType: updatedStudentType,
+            },
             completedStep: ConversationStep.PROFILE_CHECK,
           });
           return updateState(updated, {
@@ -510,6 +552,11 @@ export default function CreatePlanClient({
           ];
         });
 
+        const currentStudentType = conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type);
+        const studentAdmissionYear = (studentProfile as { admission_year?: number }).admission_year;
+        const studentIsTransfer = (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' }).is_transfer;
+        const selectedGenEdProgramId = conversationState.collectedData.selectedGenEdProgramId;
+
         // Trigger program selection (student type now part of profile check)
         setTimeout(() => {
           setMessages(prev => [
@@ -520,8 +567,11 @@ export default function CreatePlanClient({
               timestamp: new Date(),
               toolType: 'program_selection',
               toolData: {
-                studentType: 'undergraduate', // TODO: Get from student table
+                studentType: currentStudentType,
                 universityId: studentProfile.university_id,
+                studentAdmissionYear,
+                studentIsTransfer,
+                selectedGenEdProgramId,
                 profileId: user.id,
               },
             },
@@ -534,9 +584,9 @@ export default function CreatePlanClient({
         const programData = result as ProgramSelectionInput;
 
         // Build program selections with proper type info
-        const selectedPrograms: { programId: number; programName: string; programType: 'major' | 'minor' | 'graduate' | 'general_education' }[] = [];
+        const selectedPrograms: { programId: number; programName: string; programType: 'major' | 'minor' | 'honors' | 'graduate' | 'general_education' }[] = [];
 
-        if (programData.studentType === 'undergraduate') {
+        if (programData.studentType !== 'graduate') {
           // Add majors
           programData.programs.majorIds.forEach(id => {
             selectedPrograms.push({
@@ -567,6 +617,17 @@ export default function CreatePlanClient({
               });
             });
           }
+
+          // Add honors program if applied
+          if ('honorsProgramIds' in programData.programs && programData.programs.honorsProgramIds) {
+            programData.programs.honorsProgramIds.forEach(id => {
+              selectedPrograms.push({
+                programId: Number(id),
+                programName: '',
+                programType: 'honors',
+              });
+            });
+          }
         } else {
           // Add graduate programs
           programData.programs.graduateProgramIds.forEach(id => {
@@ -576,6 +637,32 @@ export default function CreatePlanClient({
               programType: 'graduate',
             });
           });
+        }
+
+        // Enrich with program names for context display
+        let enrichedPrograms = selectedPrograms;
+        try {
+          const programIds = selectedPrograms.map(p => String(p.programId)).filter(Boolean);
+          if (programIds.length > 0) {
+            const programsRes = await fetch(
+              `/api/programs/batch?ids=${programIds.join(',')}&universityId=${studentProfile.university_id}`
+            );
+            if (programsRes.ok) {
+              const programsJson = await programsRes.json();
+              const nameById = new Map<string, string>(
+                (Array.isArray(programsJson) ? programsJson : []).map((program: { id: string | number; name?: string | null }) => [
+                  String(program.id),
+                  program.name ?? '',
+                ])
+              );
+              enrichedPrograms = selectedPrograms.map(program => ({
+                ...program,
+                programName: nameById.get(String(program.programId)) ?? program.programName,
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching program names:', error);
         }
 
         const primaryProgramsCount = selectedPrograms.filter(p => p.programType !== 'general_education').length;
@@ -589,7 +676,8 @@ export default function CreatePlanClient({
           const updated = updateState(prev, {
             step: ConversationStep.PROGRAM_SELECTION,
             data: {
-              selectedPrograms,
+              selectedPrograms: enrichedPrograms,
+              studentType: programData.studentType,
             },
             completedStep: ConversationStep.PROGRAM_SELECTION,
           });
@@ -602,7 +690,7 @@ export default function CreatePlanClient({
 
         // Extract program IDs by type for course selection
         const majorMinorIds = selectedPrograms
-          .filter(p => p.programType === 'major' || p.programType === 'minor')
+          .filter(p => p.programType === 'major' || p.programType === 'minor' || p.programType === 'honors')
           .map(p => p.programId);
         const genEdIds = selectedPrograms
           .filter(p => p.programType === 'general_education')
@@ -749,6 +837,7 @@ export default function CreatePlanClient({
               toolType: 'milestones_and_constraints',
               toolData: {
                 distribution: creditData.suggestedDistribution,
+                studentType: conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type),
               },
             },
           ]);
@@ -961,6 +1050,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
         // Move back to program selection with the suggestions
         setTimeout(() => {
+          const currentStudentType = conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type);
           setConversationState(prev => updateState(prev, {
             step: ConversationStep.PROGRAM_SELECTION,
           }));
@@ -978,8 +1068,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
               timestamp: new Date(),
               toolType: 'program_selection',
               toolData: {
-                // TODO: Fetch studentType from student table
-                studentType: (studentProfile as { student_type?: 'undergraduate' | 'graduate' }).student_type || 'undergraduate',
+                studentType: currentStudentType,
                 universityId: conversationState.universityId,
                 studentAdmissionYear: (studentProfile as { admission_year?: number }).admission_year,
                 studentIsTransfer: (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' }).is_transfer,
@@ -1009,6 +1098,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
   const handleToolSkip = () => {
     setActiveTool(null);
+    const currentStudentType = conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type);
 
     // Check which tool was skipped to determine next step
     const lastToolMessage = messages.findLast(m => m.role === 'tool');
@@ -1022,6 +1112,9 @@ One last question: On a scale of 1-10, how committed are you to this career path
         setConversationState(prev => {
           let updated = updateState(prev, {
             step: ConversationStep.PROFILE_CHECK,
+            data: {
+              studentType: currentStudentType,
+            },
             completedStep: ConversationStep.PROFILE_CHECK,
           });
 
@@ -1054,8 +1147,11 @@ One last question: On a scale of 1-10, how committed are you to this career path
             timestamp: new Date(),
             toolType: 'program_selection',
             toolData: {
-              studentType: 'undergraduate', // TODO: Get from student table
+              studentType: currentStudentType,
               universityId: studentProfile.university_id,
+              studentAdmissionYear: (studentProfile as { admission_year?: number }).admission_year,
+              studentIsTransfer: (studentProfile as { is_transfer?: 'freshman' | 'transfer' | 'dual_enrollment' }).is_transfer,
+              selectedGenEdProgramId: conversationState.collectedData.selectedGenEdProgramId,
               profileId: user.id,
             },
           },
@@ -1067,6 +1163,9 @@ One last question: On a scale of 1-10, how committed are you to this career path
         setConversationState(prev => {
           const updated = updateState(prev, {
             step: ConversationStep.PROFILE_CHECK,
+            data: {
+              studentType: currentStudentType,
+            },
             completedStep: ConversationStep.PROFILE_CHECK,
           });
 
@@ -1411,10 +1510,9 @@ One last question: On a scale of 1-10, how committed are you to this career path
         });
 
         // Fetch available programs for RAG context
-        // TODO: Get studentType from student table
         const availablePrograms = await fetchAvailableProgramsForRAG(
           conversationState.universityId,
-          'undergraduate' // TODO: Fetch from student table
+          conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type)
         );
 
         // Build system prompt with RAG context
@@ -1635,6 +1733,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
       const transformedCourseData = {
         ...courseData,
         takenCourses,
+        studentType: conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type),
         selectionMode: 'MANUAL' as const,
         selectedPrograms: programIds,
         milestones: conversationState.collectedData.milestones || [],
@@ -1732,8 +1831,17 @@ One last question: On a scale of 1-10, how committed are you to this career path
               {/* Messages Container */}
               <div className="flex-1 min-h-0 max-h-full overflow-y-auto pt-3 px-3 pb-0 space-y-2">
                 {messages
-                  // Hide previous messages when course selection tool is active
+                  // Hide previous messages when certain tools are active to keep chat clean
                   .filter((_message, index) => {
+                    // If program_selection is active, only show the last assistant message and the tool
+                    if (activeTool === 'program_selection') {
+                      const programSelectionIndex = messages.findIndex(
+                        m => m.role === 'tool' && m.toolType === 'program_selection'
+                      );
+                      // Show the assistant message right before the tool (if it exists) and everything from the tool onwards
+                      return index >= Math.max(0, programSelectionIndex - 1);
+                    }
+
                     // If course_selection is active, only show the course selection tool and any messages after it
                     if (activeTool === 'course_selection') {
                       // Find the index of the course_selection tool message

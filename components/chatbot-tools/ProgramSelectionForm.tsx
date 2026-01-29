@@ -20,7 +20,7 @@ import MarkdownMessage from '@/components/chatbot/MarkdownMessage';
 import { fetchActiveGradPlanProgramsAction } from '@/lib/services/server-actions';
 
 interface ProgramSelectionFormProps {
-  studentType: 'undergraduate' | 'graduate';
+  studentType: 'undergraduate' | 'honor' | 'graduate';
   universityId: number;
   studentAdmissionYear?: number | null;
   studentIsTransfer?: 'freshman' | 'transfer' | 'dual_enrollment' | null;
@@ -58,6 +58,7 @@ export default function ProgramSelectionForm({
   const [selectedMinors, setSelectedMinors] = useState<ProgramOption[]>([]);
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
   const [selectedGenEd, setSelectedGenEd] = useState<ProgramOption | null>(null);
+  const [selectedHonorsProgram, setSelectedHonorsProgram] = useState<ProgramOption | null>(null);
 
   // Graduate state
   const [graduatePrograms, setGraduatePrograms] = useState<ProgramOption[]>([]);
@@ -83,7 +84,7 @@ export default function ProgramSelectionForm({
 
   // Fetch programs based on student type
   useEffect(() => {
-    if (studentType === 'undergraduate') {
+    if (studentType !== 'graduate') {
       // Fetch majors
       setLoadingMajors(true);
       fetchProgramsByType(universityId, 'major')
@@ -140,6 +141,48 @@ export default function ProgramSelectionForm({
     }
   }, [studentType, universityId, selectedGenEdProgramId, studentAdmissionYear, studentIsTransfer]);
 
+  // Fetch honors program when applicable
+  useEffect(() => {
+    if (studentType !== 'honor') {
+      setSelectedHonorsProgram(null);
+      return;
+    }
+
+    fetchProgramsByType(universityId, 'honors')
+      .then((honorsPrograms) => {
+        if (!honorsPrograms || honorsPrograms.length === 0) {
+          setSelectedHonorsProgram(null);
+          return;
+        }
+
+        const admissionYear = studentAdmissionYear ?? null;
+        const filtered = admissionYear
+          ? honorsPrograms.filter((program) => {
+            const start = program.applicable_start_year ?? null;
+            const end = program.applicable_end_year ?? null;
+            if (start !== null && admissionYear < start) return false;
+            if (end !== null && admissionYear > end) return false;
+            return true;
+          })
+          : honorsPrograms;
+
+        const sorted = [...filtered].sort((a, b) => {
+          const priorityA = a.priority ?? 0;
+          const priorityB = b.priority ?? 0;
+          if (priorityA !== priorityB) return priorityB - priorityA;
+          const startA = a.applicable_start_year ?? 0;
+          const startB = b.applicable_start_year ?? 0;
+          return startB - startA;
+        });
+
+        setSelectedHonorsProgram(sorted[0] ?? null);
+      })
+      .catch((error) => {
+        console.error('Error fetching honors programs:', error);
+        setSelectedHonorsProgram(null);
+      });
+  }, [studentType, universityId, studentAdmissionYear]);
+
   // Fetch active grad plan programs if profileId is provided
   useEffect(() => {
     if (profileId) {
@@ -160,7 +203,7 @@ export default function ProgramSelectionForm({
   useEffect(() => {
     if (!suggestedPrograms || suggestedPrograms.length === 0) return;
 
-    if (studentType === 'undergraduate') {
+    if (studentType !== 'graduate') {
       // Wait for programs to be loaded
       if (loadingMajors || loadingMinors) return;
 
@@ -214,7 +257,7 @@ export default function ProgramSelectionForm({
   const handleLoadPriorGradPlan = () => {
     if (!priorGradPlanPrograms || priorGradPlanPrograms.length === 0) return;
 
-    if (studentType === 'undergraduate') {
+    if (studentType !== 'graduate') {
       // Separate programs by type
       const priorMajors = priorGradPlanPrograms.filter((p: { id: string; name: string; program_type: string }) => p.program_type === 'major');
       const priorMinors = priorGradPlanPrograms.filter((p: { id: string; name: string; program_type: string }) => p.program_type === 'minor');
@@ -247,18 +290,19 @@ export default function ProgramSelectionForm({
   };
 
   const handleSubmit = () => {
-    if (studentType === 'undergraduate') {
+    if (studentType !== 'graduate') {
       if (selectedMajors.length === 0) {
         alert('Please select at least one major');
         return;
       }
 
       onSubmit({
-        studentType: 'undergraduate',
+        studentType,
         programs: {
           majorIds: selectedMajors.map((m: ProgramOption) => m.id),
           minorIds: selectedMinors.map((m: ProgramOption) => m.id),
           genEdIds: selectedGenEd ? [selectedGenEd.id] : [],
+          honorsProgramIds: selectedHonorsProgram ? [selectedHonorsProgram.id] : [],
         },
       });
     } else {
@@ -276,7 +320,7 @@ export default function ProgramSelectionForm({
     }
   };
 
-  const isValid = studentType === 'undergraduate'
+  const isValid = studentType !== 'graduate'
     ? selectedMajors.length > 0
     : selectedGraduatePrograms.length > 0;
 
@@ -324,14 +368,14 @@ export default function ProgramSelectionForm({
     <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          {studentType === 'undergraduate' ? (
+          {studentType !== 'graduate' ? (
             <><School size={20} /> Select Your Programs</>
           ) : (
             <><GraduationCap size={20} /> Select Your Graduate Program</>
           )}
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          {studentType === 'undergraduate'
+          {studentType !== 'graduate'
             ? 'Choose your major(s), and optionally add minors or certificates'
             : 'Choose your graduate program(s)'}
         </p>
@@ -366,7 +410,7 @@ export default function ProgramSelectionForm({
       )}
 
       <div className="space-y-6">
-        {studentType === 'undergraduate' ? (
+        {studentType !== 'graduate' ? (
           <>
             {/* Majors */}
             <div>

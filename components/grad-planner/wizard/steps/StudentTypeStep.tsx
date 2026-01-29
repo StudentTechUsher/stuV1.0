@@ -56,6 +56,14 @@ export const StudentTypeStep: React.FC<StudentTypeStepProps> = ({
         />
 
         <OptionTile
+          icon="🏅"
+          label="Honors"
+          description="Undergraduate honors student"
+          selected={state.studentType === 'honor'}
+          onClick={() => handleTypeSelect('honor')}
+        />
+
+        <OptionTile
           icon="📚"
           label="Graduate"
           description="Pursuing a master's or doctoral degree"

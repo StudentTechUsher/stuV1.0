@@ -1210,7 +1210,7 @@ export async function updateGraduationTimelineAction(
  * Server action to update student type
  * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
  */
-export async function updateStudentTypeAction(studentType: 'undergraduate' | 'graduate') {
+export async function updateStudentTypeAction(studentType: 'undergraduate' | 'honor' | 'graduate') {
     try {
         const supabase = await createSupabaseServerComponentClient();
         const { data: { user } } = await supabase.auth.getUser();

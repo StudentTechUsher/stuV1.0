@@ -59,7 +59,7 @@ import {
 } from '@/lib/utils/course-requirement-matcher';
 
 interface CourseSelectionFormProps {
-  studentType: 'undergraduate' | 'graduate';
+  studentType: 'undergraduate' | 'honor' | 'graduate';
   universityId: number;
   selectedProgramIds: number[];
   genEdProgramIds?: number[];
@@ -165,6 +165,20 @@ export default function CourseSelectionForm({
 
   const selectedPrograms = useMemo(() => new Set(selectedProgramIds.map(id => String(id))), [selectedProgramIds]);
   const isGraduateStudent = studentType === 'graduate';
+  const honorsProgramIdSet = useMemo(() => {
+    return new Set(
+      programsData
+        .filter(program => program.program_type === 'honors')
+        .map(program => String(program.id))
+    );
+  }, [programsData]);
+
+  const orderedProgramIds = useMemo(() => {
+    const orderedIds = selectedProgramIds.map(id => String(id));
+    const honorsIds = orderedIds.filter(id => honorsProgramIdSet.has(id));
+    const otherIds = orderedIds.filter(id => !honorsProgramIdSet.has(id));
+    return [...honorsIds, ...otherIds];
+  }, [selectedProgramIds, honorsProgramIdSet]);
 
   // Build a map of course codes to the programs/requirements they fulfill
   const courseToProgramsMap = useMemo(() => {
@@ -1611,7 +1625,7 @@ export default function CourseSelectionForm({
             )}
 
             {/* Tab for each selected program */}
-            {Array.from(selectedPrograms).map((programId, index) => {
+            {orderedProgramIds.map((programId, index) => {
               const program = programsData?.find(p => String(p.id) === programId);
               if (!program) return null;
 
@@ -1622,7 +1636,9 @@ export default function CourseSelectionForm({
                 '#6366f1', // Indigo for third
                 '#ec4899', // Pink for fourth
               ];
-              const color = colors[index % colors.length];
+              const color = program.program_type === 'honors'
+                ? '#facc15' // Yellow for honors
+                : colors[index % colors.length];
 
               // Shorten program name for tab if too long
               const shortName = program.name && program.name.length > 20
@@ -1940,7 +1956,7 @@ export default function CourseSelectionForm({
         )}
 
         {/* Program Requirements - Only show in Manual mode */}
-        {selectionMethod === 'manual' && Array.from(selectedPrograms).map((programId, programIndex) => {
+        {selectionMethod === 'manual' && orderedProgramIds.map((programId, programIndex) => {
           const program = programsData?.find(p => String(p.id) === programId);
           if (!program) return null;
 
@@ -1959,6 +1975,11 @@ export default function CourseSelectionForm({
 
           return (
             <div key={programId}>
+              {program.program_type === 'honors' && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  These courses will affect which Gen Ed courses you will not need, but this will be determined after advisor review.
+                </Alert>
+              )}
               <div className="space-y-3">
                 {programReqs.map((req, reqIdx) => {
                   if (!req.courses || req.courses.length === 0) return null;

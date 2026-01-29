@@ -993,7 +993,7 @@ export default function CreateGradPlanDialog({
                         return acc;
                       }, {} as Record<string, typeof programsData>);
 
-                      const typeOrder = ['major', 'minor', 'emphasis'];
+                      const typeOrder = ['major', 'minor', 'honors', 'emphasis'];
                       const orderedTypes = [
                         ...typeOrder.filter(type => groupedPrograms[type]),
                         ...Object.keys(groupedPrograms).filter(type => !typeOrder.includes(type.toLowerCase()))

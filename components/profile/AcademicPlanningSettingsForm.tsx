@@ -33,7 +33,7 @@ interface StudentPlanningData {
   est_grad_term: string | null;
   admission_year: number | null;
   is_transfer: boolean | null;
-  student_type: 'undergraduate' | 'graduate' | null;
+  student_type: 'undergraduate' | 'honor' | 'graduate' | null;
   work_status: 'not_working' | 'part_time' | 'full_time' | 'variable' | null;
   career_goals: string | null;
 }
@@ -47,7 +47,7 @@ interface AcademicPlanningSettingsFormProps {
     est_grad_term?: string | null;
     admission_year?: number | null;
   }) => Promise<void>;
-  onUpdateStudentType: (studentType: 'undergraduate' | 'graduate') => Promise<void>;
+  onUpdateStudentType: (studentType: 'undergraduate' | 'honor' | 'graduate') => Promise<void>;
   onUpdateWorkStatus: (workStatus: 'not_working' | 'part_time' | 'full_time' | 'variable') => Promise<void>;
   onUpdateCareerGoals: (careerGoals: string | null) => Promise<void>;
 }
@@ -74,7 +74,7 @@ export function AcademicPlanningSettingsForm({
   const [gradTerm, setGradTerm] = useState<string>('');
   const [gradYear, setGradYear] = useState<string>('');
   const [admissionYear, setAdmissionYear] = useState<string>('');
-  const [studentType, setStudentType] = useState<'undergraduate' | 'graduate' | ''>('');
+  const [studentType, setStudentType] = useState<'undergraduate' | 'honor' | 'graduate' | ''>('');
   const [workStatus, setWorkStatus] = useState<'not_working' | 'part_time' | 'full_time' | 'variable' | ''>('');
   const [careerGoals, setCareerGoals] = useState<string>('');
 
@@ -250,7 +250,7 @@ export function AcademicPlanningSettingsForm({
           </FormLabel>
           <RadioGroup
             value={studentType}
-            onChange={(e) => setStudentType(e.target.value as 'undergraduate' | 'graduate')}
+            onChange={(e) => setStudentType(e.target.value as 'undergraduate' | 'honor' | 'graduate')}
           >
             <FormControlLabel
               value="undergraduate"
@@ -262,6 +262,20 @@ export function AcademicPlanningSettingsForm({
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     Pursuing a bachelor's degree
+                  </Typography>
+                </Box>
+              }
+            />
+            <FormControlLabel
+              value="honor"
+              control={<Radio />}
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Honors
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Undergraduate honors student
                   </Typography>
                 </Box>
               }
