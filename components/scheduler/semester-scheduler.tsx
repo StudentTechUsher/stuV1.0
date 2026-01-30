@@ -436,7 +436,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
             <Typography variant="body2" color="text.secondary">
               Using plan:
             </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
               {activeGradPlan.name || 'Untitled Plan'}
             </Typography>
           </Box>
