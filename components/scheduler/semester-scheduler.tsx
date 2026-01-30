@@ -376,20 +376,48 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
 
   // Extract terms from active grad plan
   const gradPlanTerms = (() => {
-    if (!activeGradPlan?.plan_details) return [];
+    if (!activeGradPlan) {
+      console.log('No active grad plan found');
+      return [];
+    }
 
-    const planDetails = activeGradPlan.plan_details as Record<string, unknown>;
+    if (!activeGradPlan.plan_details) {
+      console.log('No plan_details in grad plan');
+      return [];
+    }
+
+    // Handle both parsed JSON object and string
+    let planDetails: Record<string, unknown>;
+    if (typeof activeGradPlan.plan_details === 'string') {
+      try {
+        planDetails = JSON.parse(activeGradPlan.plan_details);
+      } catch (error) {
+        console.error('Failed to parse plan_details:', error);
+        return [];
+      }
+    } else {
+      planDetails = activeGradPlan.plan_details as Record<string, unknown>;
+    }
+
     const planArray = planDetails.plan as unknown[];
 
-    if (!Array.isArray(planArray)) return [];
+    if (!Array.isArray(planArray)) {
+      console.log('plan_details.plan is not an array:', typeof planDetails.plan);
+      return [];
+    }
+
+    console.log('Found plan array with', planArray.length, 'items');
 
     // Filter out events/milestones - only keep terms
-    return planArray.filter((item): item is { term: string; notes?: string; courses?: unknown[]; credits_planned?: number; is_active?: boolean } => {
+    const terms = planArray.filter((item): item is { term: string; notes?: string; courses?: unknown[]; credits_planned?: number; is_active?: boolean } => {
       if (typeof item !== 'object' || item === null) return false;
       const candidate = item as Record<string, unknown>;
       // A term has a 'term' property but NOT 'type' and 'afterTerm' (which identify events)
       return 'term' in candidate && !('type' in candidate && 'afterTerm' in candidate);
     });
+
+    console.log('Filtered to', terms.length, 'terms');
+    return terms;
   })();
 
   return (
