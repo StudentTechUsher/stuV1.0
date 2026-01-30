@@ -13,10 +13,10 @@ import {
     TextField,
     Switch,
     Divider,
-    Grid,
     Select,
     MenuItem,
-    InputLabel
+    InputLabel,
+    Stack
 } from '@mui/material';
 import { SchedulePreferences } from '@/lib/services/scheduleService';
 
@@ -87,8 +87,8 @@ export default function SchedulePreferencesDialog({
                         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
                             Class Timing
                         </Typography>
-                        <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                        <Stack direction="row" spacing={2}>
+                            <Box sx={{ flex: 1 }}>
                                 <TextField
                                     label="Earliest Start Time"
                                     type="time"
@@ -97,8 +97,8 @@ export default function SchedulePreferencesDialog({
                                     value={preferences.earliest_class_time || ''}
                                     onChange={(e) => setPreferences({ ...preferences, earliest_class_time: e.target.value })}
                                 />
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
                                 <TextField
                                     label="Latest End Time"
                                     type="time"
@@ -107,8 +107,8 @@ export default function SchedulePreferencesDialog({
                                     value={preferences.latest_class_time || ''}
                                     onChange={(e) => setPreferences({ ...preferences, latest_class_time: e.target.value })}
                                 />
-                            </Grid>
-                        </Grid>
+                            </Box>
+                        </Stack>
                     </Box>
 
                     <Divider />
@@ -152,19 +152,20 @@ export default function SchedulePreferencesDialog({
                         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
                             Breaks & Layout
                         </Typography>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={preferences.lunch_break_required || false}
-                                            onChange={(e) => setPreferences({ ...preferences, lunch_break_required: e.target.checked })}
-                                        />
-                                    }
-                                    label="Reserve lunch break (12:00 - 1:00 PM)"
-                                />
-                            </Grid>
-                            <Grid item xs={6}>
+                        <Box>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={preferences.lunch_break_required || false}
+                                        onChange={(e) => setPreferences({ ...preferences, lunch_break_required: e.target.checked })}
+                                    />
+                                }
+                                label="Reserve lunch break (12:00 - 1:00 PM)"
+                                sx={{ mb: 2, display: 'block' }}
+                            />
+                        </Box>
+                        <Stack direction="row" spacing={2}>
+                            <Box sx={{ flex: 1 }}>
                                 <FormControlLabel
                                     control={
                                         <Checkbox
@@ -174,8 +175,8 @@ export default function SchedulePreferencesDialog({
                                     }
                                     label="Prefer condensed schedule"
                                 />
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
                                 <FormControlLabel
                                     control={
                                         <Checkbox
@@ -185,8 +186,8 @@ export default function SchedulePreferencesDialog({
                                     }
                                     label="Prefer gaps between classes"
                                 />
-                            </Grid>
-                        </Grid>
+                            </Box>
+                        </Stack>
                     </Box>
 
                     <Divider />

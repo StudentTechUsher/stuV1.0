@@ -18,7 +18,8 @@ import {
     ListItem
 } from '@mui/material';
 import { Clock, MapPin, User, AlertCircle } from 'lucide-react';
-import { CourseSection, getCourseSectionsAction } from '@/lib/services/server-actions';
+import { getCourseSectionsAction } from '@/lib/services/server-actions';
+import type { CourseSection } from '@/lib/services/courseOfferingService';
 
 interface CourseSelectionDialogProps {
     open: boolean;
