@@ -39,6 +39,7 @@ type Props = {
   gradPlanEditUrl?: string;
   exportRef?: RefObject<HTMLDivElement | null>;
   headerActions?: ReactNode;
+  termName?: string | null;
 };
 
 
@@ -54,6 +55,7 @@ export default function SchedulerCalendar({
   gradPlanEditUrl,
   exportRef,
   headerActions,
+  termName,
 }: Props) {
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -159,7 +161,7 @@ export default function SchedulerCalendar({
       >
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
           <Typography variant="h5" className="font-header" sx={{ color: "white", fontWeight: 700 }}>
-            Weekly Schedule
+            {termName ? `Weekly Schedule for ${termName}` : 'Weekly Schedule'}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", color: "white" }}>
             {/* Total Credits Counter */}

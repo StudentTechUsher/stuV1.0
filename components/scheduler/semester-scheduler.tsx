@@ -453,6 +453,66 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
           />
         </Box>
 
+        {/* How to Schedule Your Semester Instructions */}
+        <Paper elevation={0} sx={{ mb: 3, border: '1px solid var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+          <Box
+            onClick={() => setShowInstructions(!showInstructions)}
+            sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              bgcolor: 'var(--muted)',
+              '&:hover': { bgcolor: 'var(--accent)' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <BookOpen size={20} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                How to Schedule Your Semester
+              </Typography>
+            </Box>
+            <IconButton size="small">
+              {showInstructions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </IconButton>
+          </Box>
+          <Collapse in={showInstructions}>
+            <Box sx={{ p: 3, bgcolor: 'background.paper' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Follow these steps to build your optimal class schedule:
+              </Typography>
+              <Box component="ol" sx={{ pl: 2.5, m: 0, '& li': { mb: 1.5, color: 'text.secondary' } }}>
+                <li>
+                  <Typography variant="body2" component="span">
+                    <strong>Select a term</strong> from your graduation plan using the dropdown above
+                  </Typography>
+                </li>
+                <li>
+                  <Typography variant="body2" component="span">
+                    <strong>Add personal commitments</strong> (work, clubs, etc.) to block off unavailable times
+                  </Typography>
+                </li>
+                <li>
+                  <Typography variant="body2" component="span">
+                    <strong>Set your preferences</strong> for class timing, breaks, and schedule density
+                  </Typography>
+                </li>
+                <li>
+                  <Typography variant="body2" component="span">
+                    <strong>Search and add courses</strong> from the course catalog, selecting your preferred sections
+                  </Typography>
+                </li>
+                <li>
+                  <Typography variant="body2" component="span">
+                    <strong>Review conflicts</strong> and adjust your schedule as needed
+                  </Typography>
+                </li>
+              </Box>
+            </Box>
+          </Collapse>
+        </Paper>
+
         {/* Action Buttons Row */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -543,6 +603,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
                 gradPlanEditUrl={`/grad-plan`}
                 exportRef={calendarExportRef}
                 headerActions={<CalendarExportButtons calendarRef={calendarExportRef} semester="Schedule" tableRows={[]} showEditButton={false} />}
+                termName={selectedTermName}
               />
             )}
           </Box>
