@@ -374,18 +374,23 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     return "var(--primary-15)";
   };
 
-  // Mock Grad Plan Terms (extract from plan_details or use dumb array for MVP)
-  // Real implementation should parse activeGradPlan.plan_details
-  const mockTerms = [
-    { term: "Fall 2024", title: "Semester 1" },
-    { term: "Winter 2025", title: "Semester 2" },
-    { term: "Fall 2025", title: "Semester 3" },
-    { term: "Winter 2026", title: "Semester 4" },
-    { term: "Fall 2026", title: "Semester 5" },
-    { term: "Winter 2027", title: "Semester 6" },
-    { term: "Fall 2027", title: "Semester 7" },
-    { term: "Winter 2028", title: "Semester 8" }
-  ];
+  // Extract terms from active grad plan
+  const gradPlanTerms = (() => {
+    if (!activeGradPlan?.plan_details) return [];
+
+    const planDetails = activeGradPlan.plan_details as Record<string, unknown>;
+    const planArray = planDetails.plan as unknown[];
+
+    if (!Array.isArray(planArray)) return [];
+
+    // Filter out events/milestones - only keep terms
+    return planArray.filter((item): item is { term: string; notes?: string; courses?: unknown[]; credits_planned?: number; is_active?: boolean } => {
+      if (typeof item !== 'object' || item === null) return false;
+      const candidate = item as Record<string, unknown>;
+      // A term has a 'term' property but NOT 'type' and 'afterTerm' (which identify events)
+      return 'term' in candidate && !('type' in candidate && 'afterTerm' in candidate);
+    });
+  })();
 
   return (
     <Box sx={{ p: 2, display: "flex", flexDirection: "column" }}>
@@ -397,10 +402,22 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
           Plan your optimal class schedule based on your graduation plan and personal commitments.
         </Typography>
 
+        {/* Active Grad Plan Display */}
+        {activeGradPlan && (
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Using plan:
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--primary)' }}>
+              {activeGradPlan.name || 'Untitled Plan'}
+            </Typography>
+          </Box>
+        )}
+
         {/* Term Selector */}
         <Box sx={{ mb: 2 }}>
           <TermSelector
-            terms={mockTerms}
+            terms={gradPlanTerms}
             selectedTermIndex={selectedTermIndex}
             selectedYear={null}
             onTermSelect={handleTermSelect}
