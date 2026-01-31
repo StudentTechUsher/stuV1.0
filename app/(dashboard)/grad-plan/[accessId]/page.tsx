@@ -6,6 +6,7 @@ import { Box, Typography, Button, Snackbar, Alert, Dialog, DialogTitle, DialogCo
 import { Save, Cancel } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchGradPlanForEditing, updateStudentGradPlanAction, decodeAccessIdServerAction, setGradPlanActiveAction } from '@/lib/services/server-actions';
+import { recalculatePlanCompletion } from '@/lib/services/gradPlanService';
 import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
@@ -343,9 +344,13 @@ export default function EditGradPlanPage() {
         setGradPlan(planData);
         setIsActivePlan(planData.is_active);
 
+        // Recalculate completion metadata on load to ensure it reflects current course status
+        // (User may have changed course completion in another session/view)
+        const planDetailsWithFreshMetadata = recalculatePlanCompletion(planData.plan_details);
+
         // Extract terms and events from the plan
-        if (isRecord(planData.plan_details)) {
-          const candidate = planData.plan_details;
+        if (isRecord(planDetailsWithFreshMetadata)) {
+          const candidate = planDetailsWithFreshMetadata;
 
           // Try to get the plan array
           let rawPlanArray: unknown[] | null = null;
@@ -360,6 +365,7 @@ export default function EditGradPlanPage() {
           if (rawPlanArray) {
             const { terms, events: extractedEvents } = extractTermsAndEvents(rawPlanArray);
             if (terms.length > 0) {
+              // Terms already have fresh completion metadata from recalculation above
               setCurrentPlanData(terms);
               console.log('currentPlanData:', JSON.stringify(terms, null, 2));
             }
@@ -368,7 +374,7 @@ export default function EditGradPlanPage() {
             }
           } else {
             // Fallback to old method
-            const planArray = extractPlanArray(planData.plan_details);
+            const planArray = extractPlanArray(planDetailsWithFreshMetadata);
             if (planArray) {
               setCurrentPlanData(planArray);
             }
@@ -463,8 +469,11 @@ export default function EditGradPlanPage() {
         requestAdvisorReview,
       };
 
+      // Recalculate completion metadata before saving to ensure it's fresh
+      const planDetailsWithFreshMetadata = recalculatePlanCompletion(planDetailsWithEvents);
+
       // Update the existing plan (students can only update their own plans)
-      const result = await updateStudentGradPlanAction(gradPlan.id, planDetailsWithEvents);
+      const result = await updateStudentGradPlanAction(gradPlan.id, planDetailsWithFreshMetadata);
 
       if (result.success) {
         showSnackbar('Changes saved successfully!', 'success');

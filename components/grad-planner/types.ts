@@ -40,4 +40,5 @@ export interface Term {
   courses?: Course[];
   credits_planned?: number;
   is_active?: boolean;
+  allCoursesCompleted?: boolean; // Cached completion status - calculated at runtime
 }

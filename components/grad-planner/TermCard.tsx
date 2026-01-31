@@ -7,6 +7,7 @@ import { DraggableCourse } from './DraggableCourse';
 import { DroppableTerm } from './DroppableTerm';
 import type { Term as PlannerTerm } from './types';
 import { setActiveTermAction, updateTermTitleAction } from '@/lib/services/server-actions';
+import { getTermCompletionStats } from '@/lib/utils/termHelpers';
 
 interface TermCardProps {
   term: PlannerTerm;
@@ -101,8 +102,9 @@ export function TermCard({
   const visibleTermLabel = term.term?.trim() || `Term ${termIndex + 1}`;
   const isEmpty = !term.courses || term.courses.length === 0;
 
-  // Check if any courses in the term are completed
-  const hasCompletedCourses = !isEmpty && term.courses?.some(course => course.isCompleted === true);
+  // Use the stored completion metadata or fallback to false
+  const allCoursesCompleted = term.allCoursesCompleted ?? false;
+  const completionStats = getTermCompletionStats(term);
 
   // Debug logging
   console.log(`TermCard ${termIndex} (${term.term}):`, {
@@ -110,13 +112,9 @@ export function TermCard({
     'term.is_active': term.is_active,
     isEmpty,
     courseCount: term.courses?.length ?? 0,
-    courses: term.courses?.map(c => ({
-      code: c.code,
-      isCompleted: c.isCompleted,
-      type: typeof c.isCompleted
-    })),
-    hasCompletedCourses,
-    'showSetActiveButton': gradPlanId && !term.is_active && !hasCompletedCourses,
+    allCoursesCompleted,
+    completionStats,
+    'showSetActiveButton': gradPlanId && !term.is_active && !allCoursesCompleted,
   });
 
   return (
@@ -212,7 +210,7 @@ export function TermCard({
                 </span>
               )}
             </div>
-            {gradPlanId && !term.is_active && !hasCompletedCourses && (
+            {gradPlanId && !term.is_active && !allCoursesCompleted && (
               <button
                 type="button"
                 onClick={handleSetActiveTerm}
@@ -259,6 +257,41 @@ export function TermCard({
               </span>
               <span className="text-sm opacity-85">courses</span>
             </span>
+
+            {/* Completion Status Badge */}
+            {allCoursesCompleted && (
+              <span
+                className={cn(
+                  statBadgeBase,
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all duration-200"
+                )}
+                style={{
+                  backgroundColor: "rgba(34, 197, 94, 0.15)",
+                  color: "rgb(22, 163, 74)",
+                  border: "1px solid rgba(34, 197, 94, 0.3)",
+                }}
+              >
+                <CheckCircle2 size={14} strokeWidth={2.5} />
+                <span className="text-sm font-semibold">Completed</span>
+              </span>
+            )}
+            {!allCoursesCompleted && completionStats.total > 0 && (
+              <span
+                className={cn(
+                  statBadgeBase,
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium"
+                )}
+                style={{
+                  backgroundColor: "rgba(59, 130, 246, 0.12)",
+                  color: "rgb(37, 99, 235)",
+                  border: "1px solid rgba(59, 130, 246, 0.25)",
+                }}
+              >
+                <span className="text-xs">
+                  {completionStats.completed}/{completionStats.total} done
+                </span>
+              </span>
+            )}
           </div>
         </header>
 

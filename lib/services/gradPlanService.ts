@@ -1,5 +1,7 @@
 import { supabase } from "../supabase";
 import { encodeAccessId } from "../utils/access-id";
+import { enrichTermWithCompletion, calculateTermCompletion } from "../utils/termHelpers";
+import type { Term } from "@/components/grad-planner/types";
 
 // ---- Error Types ----
 export class GradPlanNotFoundError extends Error {
@@ -984,6 +986,68 @@ export async function deleteGradPlan(
         console.error('❌ Unexpected error deleting grad plan:', err);
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Enriches plan data with term completion metadata.
+ * Only calculates for terms that don't already have the metadata.
+ *
+ * @param planDetails - The plan details object from database
+ * @returns Enriched plan details with all terms having completion metadata
+ */
+export function enrichPlanWithCompletion(planDetails: unknown): unknown {
+  if (!planDetails || typeof planDetails !== 'object') {
+    return planDetails;
+  }
+
+  const details = planDetails as Record<string, unknown>;
+
+  // Handle the plan array (mix of terms and events)
+  if (Array.isArray(details.plan)) {
+    details.plan = details.plan.map(item => {
+      // Only enrich term items (they have 'term' field)
+      if (item && typeof item === 'object' && 'term' in item) {
+        return enrichTermWithCompletion(item as Term);
+      }
+      return item;
+    });
+  }
+
+  return details;
+}
+
+/**
+ * AUTHORIZED FOR STUDENTS AND ABOVE
+ * Recalculates term completion metadata for all terms in a plan.
+ * Used before saving to ensure metadata is fresh and accurate.
+ *
+ * @param planDetails - The plan details object to update
+ * @returns Plan details with updated completion metadata
+ */
+export function recalculatePlanCompletion(planDetails: unknown): unknown {
+  if (!planDetails || typeof planDetails !== 'object') {
+    return planDetails;
+  }
+
+  const details = planDetails as Record<string, unknown>;
+
+  // Handle the plan array (mix of terms and events)
+  if (Array.isArray(details.plan)) {
+    details.plan = details.plan.map(item => {
+      // Only update term items (they have 'term' field)
+      if (item && typeof item === 'object' && 'term' in item) {
+        const term = item as Term;
+        return {
+          ...term,
+          allCoursesCompleted: calculateTermCompletion(term),
+        };
+      }
+      return item;
+    });
+  }
+
+  return details;
 }
 
 /**
