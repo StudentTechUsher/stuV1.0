@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography';
 
 interface Course {
   code: string;
-  title: string;
+  title: string | null;
   credits: number;
   fulfills?: string[];
 }

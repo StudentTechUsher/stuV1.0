@@ -23,6 +23,12 @@ interface CoursePillProps {
 }
 
 export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: CoursePillProps) {
+  const isCompleted = course.rawCourse.isCompleted || false;
+  const isWithdrawn = course.rawCourse.status === 'Withdrawn';
+
+  // Disable dragging for completed or withdrawn courses
+  const isDraggingDisabled = !isEditMode || isCompleted || isWithdrawn;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: course.id,
     data: {
@@ -30,7 +36,7 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
       termIndex: course.termIndex,
       courseIndex: course.courseIndex,
     },
-    disabled: !isEditMode,
+    disabled: isDraggingDisabled,
   });
 
   const style = transform
@@ -39,8 +45,6 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
         zIndex: isDragging ? 1000 : 'auto',
       }
     : { zIndex: isDragging ? 1000 : 'auto' };
-
-  const isCompleted = course.rawCourse.isCompleted || false;
 
   return (
     <Tooltip>
@@ -52,11 +56,13 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
           className={`grid grid-cols-[1fr_auto] items-center gap-2 px-2 py-1 rounded-lg shadow-sm ${
             isCompleted
               ? 'bg-green-50 border border-green-200'
+              : isWithdrawn
+              ? 'bg-gray-100 border border-gray-300'
               : 'bg-white border border-gray-200'
           }`}
           style={{
             ...style,
-            cursor: isEditMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            cursor: isEditMode && !isCompleted && !isWithdrawn ? (isDragging ? 'grabbing' : 'grab') : 'default',
             opacity: isDragging ? 0.7 : 1,
             userSelect: 'none',
           }}
@@ -90,8 +96,25 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
+              {isWithdrawn && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-gray-600 shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M4.93 4.93l14.14 14.14" />
+                </svg>
+              )}
               <span className={`text-[11px] font-medium truncate block max-w-[180px] sm:max-w-[200px] ${
-                isCompleted ? 'text-green-700' : 'text-gray-900'
+                isCompleted ? 'text-green-700' : isWithdrawn ? 'text-gray-700' : 'text-gray-900'
               }`}>
                 {course.code} - {course.title}
               </span>
@@ -103,6 +126,8 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
             <span className={`inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded text-[10px] font-mono ${
               isCompleted
                 ? 'bg-green-100 text-green-700'
+                : isWithdrawn
+                ? 'bg-gray-200 text-gray-700'
                 : 'bg-gray-100 text-gray-700'
             }`}>
               {course.credits}
@@ -138,13 +163,32 @@ export function CoursePill({ course, isEditMode = false, onSubstituteCourse }: C
                 <span className="font-medium">Completed</span>
               </p>
             )}
+            {isWithdrawn && (
+              <p className="text-xs text-gray-300 mt-1 flex items-center gap-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M4.93 4.93l14.14 14.14" />
+                </svg>
+                <span className="font-medium">Withdrawn</span>
+              </p>
+            )}
             {course.requirements && course.requirements.length > 0 && (
               <p className="text-xs text-zinc-300 mt-1">
                 <span className="font-medium">Fulfills:</span> {course.requirements.join(', ')}
               </p>
             )}
           </div>
-          {isEditMode && onSubstituteCourse && (
+          {isEditMode && onSubstituteCourse && !isCompleted && !isWithdrawn && (
             <div className="border-t border-zinc-700 pt-1.5">
               <button
                 type="button"

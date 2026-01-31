@@ -104,6 +104,7 @@ export function TermCard({
 
   // Use the stored completion metadata or fallback to false
   const allCoursesCompleted = term.allCoursesCompleted ?? false;
+  const termPassed = term.termPassed ?? false;
   const completionStats = getTermCompletionStats(term);
 
   // Debug logging
@@ -113,8 +114,9 @@ export function TermCard({
     isEmpty,
     courseCount: term.courses?.length ?? 0,
     allCoursesCompleted,
+    termPassed,
     completionStats,
-    'showSetActiveButton': gradPlanId && !term.is_active && !allCoursesCompleted,
+    'showSetActiveButton': gradPlanId && !term.is_active && !termPassed,
   });
 
   return (
@@ -210,7 +212,7 @@ export function TermCard({
                 </span>
               )}
             </div>
-            {gradPlanId && !term.is_active && !allCoursesCompleted && (
+            {gradPlanId && !term.is_active && !termPassed && (
               <button
                 type="button"
                 onClick={handleSetActiveTerm}
@@ -275,7 +277,25 @@ export function TermCard({
                 <span className="text-sm font-semibold">Completed</span>
               </span>
             )}
-            {!allCoursesCompleted && completionStats.total > 0 && (
+            {!allCoursesCompleted && termPassed && completionStats.withdrawn > 0 && (
+              <span
+                className={cn(
+                  statBadgeBase,
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium"
+                )}
+                style={{
+                  backgroundColor: "rgba(251, 146, 60, 0.12)",
+                  color: "rgb(194, 65, 12)",
+                  border: "1px solid rgba(251, 146, 60, 0.3)",
+                }}
+                title={`${completionStats.completed} completed, ${completionStats.withdrawn} withdrawn`}
+              >
+                <span className="text-xs">
+                  {completionStats.completed}/{completionStats.total} passed ({completionStats.withdrawn}W)
+                </span>
+              </span>
+            )}
+            {!termPassed && completionStats.total > 0 && (
               <span
                 className={cn(
                   statBadgeBase,
@@ -288,7 +308,7 @@ export function TermCard({
                 }}
               >
                 <span className="text-xs">
-                  {completionStats.completed}/{completionStats.total} done
+                  {completionStats.completed > 0 ? `${completionStats.completed}/${completionStats.total} done` : 'Planned'}
                 </span>
               </span>
             )}

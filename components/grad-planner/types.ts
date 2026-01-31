@@ -1,9 +1,15 @@
+export type CourseStatus = 'Completed' | 'Withdrawn';
+
 export interface Course {
   code: string;
-  title: string;
+  title: string | null;
   credits: number;
   fulfills?: string[];
   isCompleted?: boolean;
+  status?: CourseStatus; // Present for past courses, absent for planned courses
+  grade?: string; // Letter grade (A, B+, W, P, etc.)
+  term?: string; // Term when course was taken
+  source?: string; // "Institutional" for transcript courses
 }
 
 export type EventType =
@@ -40,5 +46,6 @@ export interface Term {
   courses?: Course[];
   credits_planned?: number;
   is_active?: boolean;
-  allCoursesCompleted?: boolean; // Cached completion status - calculated at runtime
+  allCoursesCompleted?: boolean; // All courses successfully completed (isCompleted = true)
+  termPassed?: boolean; // Term has already occurred (all courses have status - either Completed or Withdrawn)
 }

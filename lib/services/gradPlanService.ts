@@ -1,6 +1,6 @@
 import { supabase } from "../supabase";
 import { encodeAccessId } from "../utils/access-id";
-import { enrichTermWithCompletion, calculateTermCompletion } from "../utils/termHelpers";
+import { enrichTermWithCompletion, calculateTermCompletion, calculateTermPassed } from "../utils/termHelpers";
 import type { Term } from "@/components/grad-planner/types";
 
 // ---- Error Types ----
@@ -1041,6 +1041,7 @@ export function recalculatePlanCompletion(planDetails: unknown): unknown {
         return {
           ...term,
           allCoursesCompleted: calculateTermCompletion(term),
+          termPassed: calculateTermPassed(term),
         };
       }
       return item;

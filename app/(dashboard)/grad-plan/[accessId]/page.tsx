@@ -10,7 +10,7 @@ import { recalculatePlanCompletion } from '@/lib/services/gradPlanService';
 import { StuLoader } from '@/components/ui/StuLoader';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import AdvisorNotesBox from '@/components/grad-planner/AdvisorNotesBox';
-import { Event } from '@/components/grad-planner/types';
+import { Event, Term } from '@/components/grad-planner/types';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
 import { buildPlanProgress } from '@/components/progress-overview/planProgressAdapter';
@@ -31,20 +31,6 @@ interface GradPlanDetails {
   advisor_notes: string | null;
   plan_name: string | null;
   is_active: boolean;
-}
-
-interface Term {
-  term: string;
-  notes?: string;
-  courses?: Array<{
-    code: string;
-    title: string;
-    credits: number;
-    fulfills?: string[];
-    isCompleted?: boolean;
-  }>;
-  credits_planned?: number;
-  is_active?: boolean;
 }
 
 type Role = "student" | "advisor" | "admin";
