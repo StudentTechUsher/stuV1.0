@@ -129,7 +129,7 @@ function classifyItemSection(href: string): 'primary' | 'secondary' {
     '/grad-plan',
     '/sandbox',
     '/academic-history',
-    '/semester-scheduler',
+    '/course-scheduler',
     '/pathfinder',
     '/approve-grad-plans',
     '/advisees',

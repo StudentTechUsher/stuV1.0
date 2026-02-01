@@ -9,7 +9,7 @@ export default function SchedulerQuickAccess() {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Calendar size={24} style={{ color: "var(--primary)" }} />
           <Typography variant="h6" className="font-header">
-            Semester Scheduler
+            Course Scheduler
           </Typography>
         </Box>
 
@@ -32,7 +32,7 @@ export default function SchedulerQuickAccess() {
             </Typography>
           </Box>
 
-          <Link href="/semester-scheduler" passHref>
+          <Link href="/course-scheduler" passHref>
             <Button
               variant="contained"
               fullWidth

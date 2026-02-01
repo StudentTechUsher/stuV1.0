@@ -152,7 +152,7 @@ Recalculate all metadata → Store in DB
 ✅ **No AI Involvement**: Pure boolean logic based on course status fields
 ✅ **Single Source of Truth**: Course `isCompleted` and `status` are the only sources
 ✅ **Dual Purpose**: Tracks both success (completed) and history (passed)
-✅ **Scheduler Integration**: `termPassed` prevents scheduling past terms in semester-scheduler
+✅ **Scheduler Integration**: `termPassed` prevents scheduling past terms in course-scheduler
 ✅ **Withdrawal Support**: Properly handles withdrawn courses (W grades)
 ✅ **Reusable**: Any component can check `term.allCoursesCompleted` or `term.termPassed`
 ✅ **Type-Safe**: Properly integrated into Term and Course interfaces
@@ -171,8 +171,8 @@ Recalculate all metadata → Store in DB
 ### Manual Testing - Term Passed Status
 - [ ] "Set as Current Term" button hidden for ALL past terms (completed OR withdrawn)
 - [ ] "Set as Current Term" button visible for future/current terms
-- [ ] Verify past terms (with status) can't be scheduled in semester-scheduler
-- [ ] Verify future terms (no status) can be scheduled in semester-scheduler
+- [ ] Verify past terms (with status) can't be scheduled in course-scheduler
+- [ ] Verify future terms (no status) can be scheduled in course-scheduler
 
 ### Manual Testing - Withdrawals
 - [ ] Create a term with some completed and some withdrawn courses

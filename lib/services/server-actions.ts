@@ -88,6 +88,9 @@ import {
     searchCourseOfferings as _searchCourseOfferings,
     getCourseSections as _getCourseSections,
 } from './courseOfferingService';
+import {
+    fetchCourseOfferingsForTerm as _fetchCourseOfferingsForTerm,
+} from './generateScheduleService';
 
 // AI organize courses (directly re-exported earlier - now wrapped for consistency if future decoration needed)
 export async function organizeCoursesIntoSemestersAction(coursesData: unknown, prompt: unknown) {
@@ -1414,4 +1417,17 @@ export async function searchCourseOfferingsAction(universityId: number, searchTe
 
 export async function getCourseSectionsAction(universityId: number, termName: string, courseCode: string) {
     return await _getCourseSections(universityId, termName, courseCode);
+}
+
+export async function fetchCourseOfferingsForTermAction(
+    universityId: number,
+    termName: string,
+    courseCodes: string[]
+) {
+    try {
+        return await _fetchCourseOfferingsForTerm(universityId, termName, courseCodes);
+    } catch (error) {
+        console.error('Failed to fetch course offerings:', error);
+        throw error;
+    }
 }

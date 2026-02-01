@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Box, Button, Typography, Alert, Paper, Collapse, IconButton, CircularProgress } from "@mui/material";
-import { Plus, Trash2, BookOpen, Clock, ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { Plus, Trash2, Settings } from "lucide-react";
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 import ScheduleGenerator, { type Course } from "./schedule-generator";
 import EventManager from "./event-manager";
@@ -16,6 +16,7 @@ import type { CourseScheduleRow } from "@/components/dashboard/calendar/schedule
 import TermSelector from "./TermSelector";
 import SchedulePreferencesDialog from "./SchedulePreferencesDialog";
 import CourseSelectionDialog from "./CourseSelectionDialog";
+import ScheduleGenerationPanel from "./ScheduleGenerationPanel";
 
 // Services
 import {
@@ -68,7 +69,7 @@ function convertBlockedTimeToEvent(bt: BlockedTime): SchedulerEvent {
   };
 }
 
-export default function SemesterScheduler({ gradPlans = [] }: Props) {
+export default function CourseScheduler({ gradPlans = [] }: Props) {
   // State for Schedule Data
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
@@ -80,7 +81,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
   const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const calendarExportRef = useRef<HTMLDivElement>(null);
-  const [showInstructions, setShowInstructions] = useState(true);
   const [showResults, setShowResults] = useState(false);
 
   // Term Selection State
@@ -424,7 +424,7 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
     <Box sx={{ p: 2, display: "flex", flexDirection: "column" }}>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" sx={{ fontFamily: '"Red Hat Display", sans-serif', fontWeight: 800, mb: 1, fontSize: '2rem' }}>
-          Semester Scheduler
+          Course Scheduler
         </Typography>
         <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
           Plan your optimal class schedule based on your graduation plan and personal commitments.
@@ -453,65 +453,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
           />
         </Box>
 
-        {/* How to Schedule Your Semester Instructions */}
-        <Paper elevation={0} sx={{ mb: 3, border: '1px solid var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-          <Box
-            onClick={() => setShowInstructions(!showInstructions)}
-            sx={{
-              p: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              bgcolor: 'var(--muted)',
-              '&:hover': { bgcolor: 'var(--accent)' },
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <BookOpen size={20} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                How to Schedule Your Semester
-              </Typography>
-            </Box>
-            <IconButton size="small">
-              {showInstructions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </IconButton>
-          </Box>
-          <Collapse in={showInstructions}>
-            <Box sx={{ p: 3, bgcolor: 'background.paper' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Follow these steps to build your optimal class schedule:
-              </Typography>
-              <Box component="ol" sx={{ pl: 2.5, m: 0, '& li': { mb: 1.5, color: 'text.secondary' } }}>
-                <li>
-                  <Typography variant="body2" component="span">
-                    <strong>Select a term</strong> from your graduation plan using the dropdown above
-                  </Typography>
-                </li>
-                <li>
-                  <Typography variant="body2" component="span">
-                    <strong>Add personal commitments</strong> (work, clubs, etc.) to block off unavailable times
-                  </Typography>
-                </li>
-                <li>
-                  <Typography variant="body2" component="span">
-                    <strong>Set your preferences</strong> for class timing, breaks, and schedule density
-                  </Typography>
-                </li>
-                <li>
-                  <Typography variant="body2" component="span">
-                    <strong>Search and add courses</strong> from the course catalog, selecting your preferred sections
-                  </Typography>
-                </li>
-                <li>
-                  <Typography variant="body2" component="span">
-                    <strong>Review conflicts</strong> and adjust your schedule as needed
-                  </Typography>
-                </li>
-              </Box>
-            </Box>
-          </Collapse>
-        </Paper>
 
         {/* Action Buttons Row */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -524,9 +465,6 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
             >
               Preferences
             </Button>
-
-            {/* Auto-generate triggers a logical flow, maybe just a redirect or modal in future */}
-            {/* <ScheduleGenerator ... /> can be re-enabled if updated for DB */}
           </Box>
 
           <Box>
@@ -534,55 +472,49 @@ export default function SemesterScheduler({ gradPlans = [] }: Props) {
           </Box>
         </Box>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" }, gap: 2 }}>
-          {/* Left Panel - Personal Events & Controls */}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" }, gap: 2 }}>
+          {/* Left Panel - Schedule Generation or Instruction */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid var(--border)" }}>
-              <Typography variant="h6" className="font-header" sx={{ mb: 2, fontWeight: 700 }}>
-                Personal Events
-              </Typography>
-              <Button
-                variant="outlined"
-                startIcon={<Plus size={16} />}
-                onClick={() => setEventDialog({ isOpen: true, isEdit: false })}
-                fullWidth
-                disabled={!activeScheduleId}
-                sx={{
-                  borderColor: "var(--border)",
-                  color: "var(--foreground)",
-                  fontWeight: 600,
-                  py: 1.25,
-                  borderWidth: "1.5px",
-                }}
-              >
-                Add Personal Event
-              </Button>
-
-              <Box sx={{ mt: 2.5 }}>
-                {personalEvents.map((event) => (
-                  <Box
-                    key={event.id}
-                    onClick={() => setEventDialog({ isOpen: true, event, isEdit: true })}
-                    sx={{
-                      p: 1.5,
-                      mb: 1.5,
-                      bgcolor: getEventBackgroundColor(event),
-                      borderRadius: 2,
-                      borderLeft: `3px solid ${getEventColor(event)}`,
-                      border: "1px solid var(--border)",
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Typography variant="caption" className="font-body-semi" sx={{ fontWeight: 600 }}>
-                      {event.title}
-                    </Typography>
-                    <Typography variant="caption" className="font-body" display="block" color="text.secondary">
-                      {event.category} ({event.startTime} - {event.endTime})
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
+            {activeScheduleId && selectedTermName !== null && selectedTermIndex !== null ? (
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid var(--border)" }}>
+                <ScheduleGenerationPanel
+                  termName={selectedTermName}
+                  termIndex={selectedTermIndex}
+                  gradPlanDetails={activeGradPlan?.plan_details ? (typeof activeGradPlan.plan_details === 'string' ? JSON.parse(activeGradPlan.plan_details) : activeGradPlan.plan_details) as any : null}
+                  universityId={universityId}
+                  existingPersonalEvents={personalEvents.map(e => ({
+                    id: e.id,
+                    title: e.title,
+                    category: e.category as 'Work' | 'Club' | 'Sports' | 'Study' | 'Family' | 'Other',
+                    day_of_week: e.dayOfWeek === 0 ? 7 : e.dayOfWeek,
+                    start_time: e.startTime,
+                    end_time: e.endTime,
+                  }))}
+                  existingPreferences={preferences}
+                  onComplete={() => {
+                    if (activeScheduleId) {
+                      loadScheduleCourses(activeScheduleId);
+                    }
+                  }}
+                  onEventsChange={(events) => {
+                    // Update calendar in real-time
+                    events.forEach(evt => handleEventSave(evt));
+                  }}
+                  onPreferencesChange={(prefs) => {
+                    handlePreferencesSave(prefs);
+                  }}
+                />
+              </Paper>
+            ) : (
+              <Paper elevation={0} sx={{ p: 5, borderRadius: 3, border: "1px solid var(--border)", textAlign: "center" }}>
+                <Typography variant="h6" className="font-header" sx={{ mb: 1, fontWeight: 700, color: "text.secondary" }}>
+                  Get Started
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Select a term from your graduation plan above to begin scheduling your classes.
+                </Typography>
+              </Paper>
+            )}
           </Box>
 
           {/* Right Panel - Calendar */}

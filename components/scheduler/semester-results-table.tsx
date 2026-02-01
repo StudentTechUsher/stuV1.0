@@ -322,7 +322,7 @@ export default function SemesterResultsTable({
 // Demo Wrapper Example
 // ============================================================================
 
-export function SemesterSchedulerPage() {
+export function CourseSchedulerPage() {
   const [showResults, setShowResults] = useState(false);
 
   const mockRows: CourseRow[] = [

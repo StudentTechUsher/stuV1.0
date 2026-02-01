@@ -1,4 +1,4 @@
-import SemesterScheduler from "@/components/scheduler/semester-scheduler";
+import CourseScheduler from "@/components/scheduler/course-scheduler";
 import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import { GetAllGradPlans } from '@/lib/services/gradPlanService';
 import { redirect } from "next/navigation";
@@ -39,5 +39,5 @@ export default async function SchedulerPage() {
     plan_details: plan.plan_details, // Include plan details for term extraction
   }));
 
-  return <SemesterScheduler gradPlans={formattedGradPlans} />;
+  return <CourseScheduler gradPlans={formattedGradPlans} />;
 }

@@ -44,7 +44,7 @@ function classifyItemSection(href: string, index: number, totalItems: number): '
   // Primary: Dashboard, Inbox, and core navigation (first ~7-8 items)
   // Secondary: Admin/system items
 
-  const primaryRoutes = ['/', '/inbox', '/grad-plan', '/sandbox', '/academic-history', '/semester-scheduler', '/pathfinder', '/approve-grad-plans', '/advisees', '/maintain-programs', '/program-flow', '/appointments', '/admin/forecast'];
+  const primaryRoutes = ['/', '/inbox', '/grad-plan', '/sandbox', '/academic-history', '/course-scheduler', '/pathfinder', '/approve-grad-plans', '/advisees', '/maintain-programs', '/program-flow', '/appointments', '/admin/forecast'];
 
   if (primaryRoutes.some(route => href.startsWith(route))) {
     return 'primary';

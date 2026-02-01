@@ -122,7 +122,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/semester-scheduler" className="block mb-3">
+              <Link href="/course-scheduler" className="block mb-3">
                 <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-all duration-200 cursor-pointer">
                   <h3 className="text-lg text-card-foreground" style={{fontFamily: "var(--font-geist-sans)", fontWeight: 800}}>
                     Plan my schedule for next semester
