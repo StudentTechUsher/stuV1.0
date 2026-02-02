@@ -1,8 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
 import { Sidebar } from './sidebar';
+import { signOut } from '@/lib/utils/auth-client';
 import type { NavItem as BaseNavItem } from '@/app/(dashboard)/layout';
 
 type NavItem = BaseNavItem & {
@@ -15,12 +14,15 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, items }: DashboardLayoutProps) {
-  const router = useRouter();
-
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      router.push('/login');
+      const result = await signOut();
+      if (result.success) {
+        // Use window.location for a hard redirect that clears all client state
+        window.location.href = '/login';
+      } else {
+        console.error('Sign out failed:', result.error);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }

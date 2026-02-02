@@ -5,6 +5,7 @@ import { Upload, Save, Download, RefreshCw, Grid3x3, List, Edit2, X, ExternalLin
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { StuLoader } from '@/components/ui/StuLoader';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
+import { clientLogger } from '@/lib/client-logger';
 import {
   fetchUserCourses,
   type ParsedCourse,
@@ -152,7 +153,7 @@ export default function AcademicHistoryPage() {
         setEnrollmentYear(student?.admission_year ?? null);
         setIsTransferStudent(student?.is_transfer === 'transfer');
       } catch (error) {
-        console.error('Failed to fetch profile metadata:', error);
+        clientLogger.error('Failed to fetch profile metadata', error, { action: 'AcademicHistoryPage.fetchProfile', userId: id });
       }
     })();
   }, [supabase]);
@@ -178,7 +179,7 @@ export default function AcademicHistoryPage() {
           setUserCourses([]);
         }
       } catch (error) {
-        console.error('Failed to fetch user courses:', error);
+        clientLogger.error('Failed to fetch user courses', error, { action: 'AcademicHistoryPage.fetchUserCourses', userId });
         setHasUserCourses(false);
         setUserCourses([]);
       } finally {
@@ -219,7 +220,7 @@ export default function AcademicHistoryPage() {
           return autoSelected ? [autoSelected] : [];
         });
       } catch (error) {
-        console.error('❌ Failed to fetch general education programs:', error);
+        clientLogger.error('Failed to fetch general education programs', error, { action: 'AcademicHistoryPage.fetchGenEds', universityId });
       } finally {
         if (isMounted) {
           setGenEdOptionsLoading(false);
@@ -260,7 +261,7 @@ export default function AcademicHistoryPage() {
       if (requirements && typeof requirements === 'object') {
         return Boolean(
           (requirements as { noDoubleCount?: boolean }).noDoubleCount ||
-            (requirements as { metadata?: { noDoubleCount?: boolean } }).metadata?.noDoubleCount,
+          (requirements as { metadata?: { noDoubleCount?: boolean } }).metadata?.noDoubleCount,
         );
       }
       return false;
@@ -305,13 +306,13 @@ export default function AcademicHistoryPage() {
           .maybeSingle();
 
         if (error) {
-          console.error('Failed to fetch student GPA:', error);
+          clientLogger.error('Failed to fetch student GPA', error, { action: 'AcademicHistoryPage.fetchGPA', userId });
           setGpa(null);
         } else {
           setGpa(studentData?.gpa ?? null);
         }
       } catch (error) {
-        console.error('Error fetching GPA:', error);
+        clientLogger.error('Error fetching GPA', error, { action: 'AcademicHistoryPage.fetchGPA', userId });
         setGpa(null);
       }
     })();
@@ -337,7 +338,7 @@ export default function AcademicHistoryPage() {
           });
         }
       } catch (error) {
-        console.error('Failed to fetch active grad plan:', error);
+        clientLogger.error('Failed to fetch active grad plan', error, { action: 'AcademicHistoryPage.fetchActiveGradPlan', userId });
         setActiveGradPlan(null);
       }
     })();
@@ -357,7 +358,7 @@ export default function AcademicHistoryPage() {
         setGradPlanPrograms(programs);
         console.log('✅ Fetched', programs.length, 'programs from active grad plan');
       } catch (error) {
-        console.error('Failed to fetch programs from grad plan:', error);
+        clientLogger.error('Failed to fetch programs from grad plan', error, { action: 'AcademicHistoryPage.fetchGradPlanPrograms' });
         setGradPlanPrograms([]);
       }
     })();
@@ -378,7 +379,7 @@ export default function AcademicHistoryPage() {
       setCopyStatus('copied');
       setTimeout(() => setCopyStatus('idle'), 2500);
     } catch (error) {
-      console.error('Copy failed', error);
+      clientLogger.error('Copy failed', error, { action: 'AcademicHistoryPage.exportJson' });
     }
   };
 
@@ -421,7 +422,7 @@ export default function AcademicHistoryPage() {
         });
       }
     } catch (error) {
-      console.error('Error clearing courses:', error);
+      clientLogger.error('Error clearing courses', error, { action: 'AcademicHistoryPage.clearAll', userId });
       setSnackbar({
         open: true,
         message: 'An error occurred while clearing courses',
@@ -463,7 +464,7 @@ export default function AcademicHistoryPage() {
         });
       }
     } catch (error) {
-      console.error('Error saving courses:', error);
+      clientLogger.error('Error saving courses', error, { action: 'AcademicHistoryPage.saveToDatabase', userId });
       setSnackbar({
         open: true,
         message: 'An error occurred while saving courses',
@@ -490,14 +491,14 @@ export default function AcademicHistoryPage() {
     const updatedCourses: ParsedCourse[] = userCourses.map((course) =>
       course.id === editingCourse.id
         ? {
-            ...course,
-            subject: editForm.subject.trim(),
-            number: editForm.number.trim(),
-            title: editForm.title.trim(),
-            credits: editForm.credits ? parseFloat(editForm.credits) : null,
-            grade: editForm.grade.trim() || null,
-            term: editForm.term.trim() || '',
-          }
+          ...course,
+          subject: editForm.subject.trim(),
+          number: editForm.number.trim(),
+          title: editForm.title.trim(),
+          credits: editForm.credits ? parseFloat(editForm.credits) : null,
+          grade: editForm.grade.trim() || null,
+          term: editForm.term.trim() || '',
+        }
         : course
     );
 
@@ -528,7 +529,7 @@ export default function AcademicHistoryPage() {
           setUserCourses(coursesRecord.courses);
         }
       } catch (error) {
-        console.error('Failed to reload user courses:', error);
+        clientLogger.error('Failed to reload user courses', error, { action: 'AcademicHistoryPage.handleParsingComplete', userId });
       }
     }
     setSnackbar({
@@ -582,7 +583,7 @@ export default function AcademicHistoryPage() {
         setMatchResults(results);
         console.log('✅ Auto-match complete');
       } catch (error) {
-        console.error('Failed to auto-match courses:', error);
+        clientLogger.error('Failed to auto-match courses', error, { action: 'AcademicHistoryPage.autoMatch' });
       } finally {
         setAutoMatchLoading(false);
       }
@@ -680,7 +681,7 @@ export default function AcademicHistoryPage() {
         requirementsStructure = program.requirements as RequirementStructure;
       }
     } catch (error) {
-      console.error('Failed to parse program requirements:', error);
+      clientLogger.error('Failed to parse program requirements', error, { action: 'AcademicHistoryPage.calculateProgramProgress', programId });
     }
 
     if (!requirementsStructure?.programRequirements) {
@@ -1124,7 +1125,7 @@ export default function AcademicHistoryPage() {
                           <Info size={14} className="text-[var(--muted-foreground)]" />
                         </div>
                       </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
+                      <TooltipContent className="max-w-xs">
                         <p className="text-xs">
                           Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use &quot;Change Requirements&quot; to manually adjust if needed.
                         </p>
@@ -1597,13 +1598,12 @@ export default function AcademicHistoryPage() {
       {snackbar.open && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in slide-in-from-bottom-4">
           <div
-            className={`flex min-w-[300px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${
-              snackbar.severity === 'success'
+            className={`flex min-w-[300px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${snackbar.severity === 'success'
                 ? 'border-green-200 bg-green-50 text-green-900'
                 : snackbar.severity === 'error'
-                ? 'border-red-200 bg-red-50 text-red-900'
-                : 'border-blue-200 bg-blue-50 text-blue-900'
-            }`}
+                  ? 'border-red-200 bg-red-50 text-red-900'
+                  : 'border-blue-200 bg-blue-50 text-blue-900'
+              }`}
           >
             <p className="font-body-semi flex-1 text-sm font-medium">{snackbar.message}</p>
             <button

@@ -1,37 +1,31 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Box, Button, Typography, Alert, Paper, Collapse, IconButton, CircularProgress } from "@mui/material";
-import { Plus, Trash2, Settings } from "lucide-react";
+import { Box, Typography, Paper, CircularProgress } from "@mui/material";
+
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
-import ScheduleGenerator, { type Course } from "./schedule-generator";
+
 import EventManager from "./event-manager";
 import ClassInfoDialog from "./class-info-dialog";
-import SemesterResultsTable from "./semester-results-table";
-import { encodeAccessIdClient } from "@/lib/utils/access-id";
-import { CalendarExportButtons } from "@/components/dashboard/calendar/CalendarExportButtons";
-import type { CourseScheduleRow } from "@/components/dashboard/calendar/scheduleTableMockData";
+
+
 
 // New Integrated Components
 import TermSelector from "./TermSelector";
-import SchedulePreferencesDialog from "./SchedulePreferencesDialog";
 import CourseSelectionDialog from "./CourseSelectionDialog";
 import ScheduleGenerationPanel from "./ScheduleGenerationPanel";
+import { CalendarExportButtons } from "@/components/dashboard/calendar/CalendarExportButtons";
 
 // Services
 import {
   getActiveScheduleAction,
   createScheduleAction,
-  setActiveScheduleAction,
   addBlockedTimeAction,
   updateBlockedTimeAction,
   deleteBlockedTimeAction,
   updateSchedulePreferencesAction,
   getScheduleWithCourseDetailsAction,
-  addCourseSelectionAction,
-  updateCourseSelectionAction,
-  deleteCourseSelectionAction,
-  getCourseSectionsAction
+  addCourseSelectionAction
 } from "@/lib/services/server-actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -101,8 +95,6 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     event?: SchedulerEvent;
   }>({ isOpen: false });
 
-  const [prefDialog, setPrefDialog] = useState(false);
-
   const [courseSelectionDialog, setCourseSelectionDialog] = useState<{
     open: boolean;
     courseCode: string;
@@ -167,7 +159,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
             // Map days string (e.g. "MWF") to numbers
             const dayMap: Record<string, number> = { "M": 1, "T": 2, "W": 3, "Th": 4, "F": 5, "S": 6 };
             // Simple parser (robust one is needed for edge cases)
-            let currentDays: number[] = [];
+            const currentDays: number[] = [];
             if (meetings.days.includes("Th")) {
               currentDays.push(4);
               meetings.days = meetings.days.replace("Th", "");
@@ -274,7 +266,17 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
           const payload = mapToBlocked(evt);
           const res = await addBlockedTimeAction(activeScheduleId, payload);
           if (res.success && res.blockedTimeId) {
-            setPersonalEvents(prev => [...prev, { ...evt as SchedulerEvent, id: res.blockedTimeId! }]);
+            const newEvent: SchedulerEvent = {
+              id: res.blockedTimeId,
+              title: evt.title,
+              dayOfWeek: evt.dayOfWeek,
+              startTime: evt.startTime,
+              endTime: evt.endTime,
+              type: evt.type || "personal",
+              status: evt.status || "blocked",
+              category: evt.category,
+            };
+            setPersonalEvents(prev => [...prev, newEvent]);
           }
         }
       } else if ('id' in eventData && eventData.id) {
@@ -282,18 +284,38 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
         const payload = mapToBlocked(eventData);
         const res = await updateBlockedTimeAction(activeScheduleId, eventData.id, payload);
         if (res.success) {
-          setPersonalEvents(prev => prev.map(e => e.id === eventData.id ? (eventData as SchedulerEvent) : e));
+          const updatedEvent: SchedulerEvent = {
+            id: eventData.id,
+            title: eventData.title,
+            dayOfWeek: eventData.dayOfWeek,
+            startTime: eventData.startTime,
+            endTime: eventData.endTime,
+            type: eventData.type,
+            status: eventData.status,
+            category: eventData.category,
+          };
+          setPersonalEvents(prev => prev.map(e => e.id === eventData.id ? updatedEvent : e));
         }
       } else {
         // Add single new
         const payload = mapToBlocked(eventData);
         const res = await addBlockedTimeAction(activeScheduleId, payload);
         if (res.success && res.blockedTimeId) {
-          setPersonalEvents(prev => [...prev, { ...eventData as SchedulerEvent, id: res.blockedTimeId! }]);
+          const newEvent: SchedulerEvent = {
+            id: res.blockedTimeId,
+            title: eventData.title,
+            dayOfWeek: eventData.dayOfWeek,
+            startTime: eventData.startTime,
+            endTime: eventData.endTime,
+            type: eventData.type || "personal",
+            status: eventData.status || "blocked",
+            category: eventData.category,
+          };
+          setPersonalEvents(prev => [...prev, newEvent]);
         }
       }
-    } catch (e) {
-      console.error("Failed to save blocked time", e);
+    } catch (error) {
+      console.error("Failed to save blocked time", error);
       setError("Failed to save event.");
     }
   };
@@ -304,10 +326,11 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
       const res = await deleteBlockedTimeAction(activeScheduleId, eventId);
       if (res.success) {
         setPersonalEvents(prev => prev.filter(e => e.id !== eventId));
-        setEventDialog({ isOpen: false, isEdit: false }); // Close dialog
+        // Close dialog and clear all state
+        setEventDialog({ isOpen: false, isEdit: false, event: undefined, selectedSlot: undefined });
       }
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error("Failed to delete event", error);
     }
   };
 
@@ -338,41 +361,13 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     try {
       setPreferences(prev => ({ ...prev, ...newPrefs })); // Optimistic
       await updateSchedulePreferencesAction(activeScheduleId, newPrefs);
-    } catch (e) {
-      console.error("Failed to update preferences", e);
+    } catch (error) {
+      console.error("Failed to update preferences", error);
     }
   };
 
   // --- UI Wrappers ---
   const allEvents = [...courseEvents, ...personalEvents];
-
-  const getEventColor = (event: SchedulerEvent) => {
-    if (event.type === "personal") {
-      switch (event.category) {
-        case "Work": return "var(--action-cancel)";
-        case "Club": return "var(--action-info)";
-        case "Sports": return "var(--action-edit)";
-        case "Study": return "var(--primary)";
-        case "Family": return "var(--hover-gray)";
-        default: return "var(--hover-green)";
-      }
-    }
-    return "var(--primary)";
-  };
-
-  const getEventBackgroundColor = (event: SchedulerEvent) => {
-    if (event.type === "personal") {
-      switch (event.category) {
-        case "Work": return "rgba(244, 67, 54, 0.1)";
-        case "Club": return "rgba(25, 118, 210, 0.1)";
-        case "Sports": return "rgba(253, 204, 74, 0.1)";
-        case "Study": return "var(--primary-15)";
-        case "Family": return "rgba(63, 63, 70, 0.1)";
-        default: return "rgba(6, 201, 108, 0.1)";
-      }
-    }
-    return "var(--primary-15)";
-  };
 
   // Extract terms from active grad plan
   const gradPlanTerms = (() => {
@@ -454,24 +449,6 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
         </Box>
 
 
-        {/* Action Buttons Row */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<Settings size={16} />}
-              onClick={() => setPrefDialog(true)}
-              disabled={!activeScheduleId}
-            >
-              Preferences
-            </Button>
-          </Box>
-
-          <Box>
-            {/* Export / Print */}
-          </Box>
-        </Box>
-
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" }, gap: 2 }}>
           {/* Left Panel - Schedule Generation or Instruction */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -481,6 +458,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                   termName={selectedTermName}
                   termIndex={selectedTermIndex}
                   gradPlanDetails={activeGradPlan?.plan_details ? (typeof activeGradPlan.plan_details === 'string' ? JSON.parse(activeGradPlan.plan_details) : activeGradPlan.plan_details) as any : null}
+                  gradPlanId={activeGradPlan?.id}
                   universityId={universityId}
                   existingPersonalEvents={personalEvents.map(e => ({
                     id: e.id,
@@ -497,8 +475,29 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                     }
                   }}
                   onEventsChange={(events) => {
-                    // Update calendar in real-time
-                    events.forEach(evt => handleEventSave(evt));
+                    // Find NEW events that don't exist in personalEvents yet
+                    const existingCount = personalEvents.length;
+                    const newEventsFromPanel = events.slice(existingCount); // Get only the new events added
+
+                    // Convert BlockedTime format to SchedulerEvent format
+                    const schedulerEvents: Array<Omit<SchedulerEvent, 'id'>> = newEventsFromPanel.map(evt => ({
+                      title: evt.title,
+                      category: evt.category,
+                      dayOfWeek: evt.day_of_week === 7 ? 0 : evt.day_of_week,
+                      startTime: evt.start_time,
+                      endTime: evt.end_time,
+                      type: 'personal' as const,
+                      status: 'blocked' as const,
+                    }));
+
+                    // Save new events (as an array or individually)
+                    if (schedulerEvents.length > 0) {
+                      if (schedulerEvents.length === 1) {
+                        handleEventSave(schedulerEvents[0]);
+                      } else {
+                        handleEventSave(schedulerEvents);
+                      }
+                    }
                   }}
                   onPreferencesChange={(prefs) => {
                     handlePreferencesSave(prefs);
@@ -526,12 +525,12 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
             ) : (
               <SchedulerCalendar
                 events={allEvents}
-                onPersonalEventClick={(evt) => setEventDialog({ isOpen: true, event: evt, isEdit: true })}
+                onPersonalEventClick={(evt) => setEventDialog({ isOpen: true, event: evt, selectedSlot: undefined, isEdit: true })}
                 onClassEventClick={(evt) => setClassInfoDialog({ isOpen: true, event: evt })}
                 onEventDrop={handleEventDrop}
-                onSlotSelect={(day, start, end) => setEventDialog({ isOpen: true, selectedSlot: { dayOfWeek: day, startTime: start, endTime: end }, isEdit: false })}
-                slotMinTime={preferences.earliest_class_time || "08:00:00"}
-                slotMaxTime={preferences.latest_class_time || "19:00:00"}
+                onSlotSelect={(day, start, end) => setEventDialog({ isOpen: true, event: undefined, selectedSlot: { dayOfWeek: day, startTime: start, endTime: end }, isEdit: false })}
+                slotMinTime={preferences.earliest_class_time || "06:00:00"}
+                slotMaxTime={preferences.latest_class_time || "24:00:00"}
                 gradPlanEditUrl={`/grad-plan`}
                 exportRef={calendarExportRef}
                 headerActions={<CalendarExportButtons calendarRef={calendarExportRef} semester="Schedule" tableRows={[]} showEditButton={false} />}
@@ -545,7 +544,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
       {/* Dialogs */}
       <EventManager
         open={eventDialog.isOpen}
-        onClose={() => setEventDialog({ isOpen: false, isEdit: false })}
+        onClose={() => setEventDialog({ isOpen: false, isEdit: false, event: undefined, selectedSlot: undefined })}
         onSave={handleEventSave}
         onDelete={handleEventDelete}
         event={eventDialog.event}
@@ -560,13 +559,6 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
         courses={[]} // Pass real courses if needed for reference
         allEvents={allEvents}
         onReplaceClass={() => { }} // TODO: Implement replace logic
-      />
-
-      <SchedulePreferencesDialog
-        open={prefDialog}
-        onClose={() => setPrefDialog(false)}
-        onSave={handlePreferencesSave}
-        initialPreferences={preferences}
       />
 
       {/* CourseSelectionDialog would be triggered by an "Add Course" button usually, not exposed yet in UI above but ready */}

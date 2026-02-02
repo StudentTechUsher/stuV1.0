@@ -15,6 +15,7 @@ interface ScheduleGenerationPanelProps {
   termName: string;
   termIndex: number;
   gradPlanDetails: GradPlanDetails | null;
+  gradPlanId?: string;
   universityId: number;
   existingPersonalEvents?: BlockedTime[];
   existingPreferences?: SchedulePreferences;
@@ -35,6 +36,7 @@ export default function ScheduleGenerationPanel({
   termName,
   termIndex,
   gradPlanDetails,
+  gradPlanId,
   universityId,
   existingPersonalEvents = [],
   existingPreferences = {},
@@ -50,7 +52,7 @@ export default function ScheduleGenerationPanel({
     totalCredits: 0,
   });
 
-  // Initialize state
+  // Initialize state when term or grad plan changes (reset to step 1)
   useEffect(() => {
     const courses = getCoursesForTerm(gradPlanDetails, termIndex);
     const courseCodes = courses.map(c => c.code);
@@ -65,7 +67,19 @@ export default function ScheduleGenerationPanel({
       preferences: { ...existingPreferences },
       totalCredits,
     });
-  }, [termIndex, gradPlanDetails, existingPersonalEvents, existingPreferences]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termIndex, gradPlanDetails]); // Only reset when term or plan changes
+
+  // Update data without resetting currentStep when preferences or events change
+  useEffect(() => {
+    const existingEventsWithoutId = existingPersonalEvents.map(({ id: _id, ...rest }) => rest);
+
+    setState(prev => ({
+      ...prev,
+      personalEvents: existingEventsWithoutId,
+      preferences: { ...existingPreferences },
+    }));
+  }, [existingPersonalEvents, existingPreferences]);
 
   const handleStepChange = (step: 1 | 2 | 3 | 4) => {
     setState({
@@ -157,6 +171,8 @@ export default function ScheduleGenerationPanel({
             selectedCourses={state.selectedCourses}
             onCoursesChange={handleCoursesChange}
             totalCredits={state.totalCredits}
+            universityId={universityId}
+            gradPlanId={gradPlanId}
             onNext={handleNext}
             onBack={handleBack}
           />

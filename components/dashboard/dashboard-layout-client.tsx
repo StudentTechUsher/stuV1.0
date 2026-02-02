@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
 import { Sidebar } from '@/components/layout/sidebar';
 import ChatbotDrawer from '@/components/ai-chat/chatbot-drawer';
 import GradPlanRealtimeListener from '@/components/dashboard/grad-plan-realtime-listener';
+import { signOut } from '@/lib/utils/auth-client';
 import type { NavItem } from '@/app/(dashboard)/layout';
 import type { Role } from '@/lib/mock-role';
 
@@ -51,15 +50,19 @@ export default function DashboardLayoutClient({
   role,
   userId,
 }: Readonly<DashboardLayoutClientProps>) {
-  const router = useRouter();
   const [sidebarWidth, setSidebarWidth] = useState(COLLAPSED_WIDTH);
   const [chatOpen, setChatOpen] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      router.push('/login');
+      const result = await signOut();
+      if (result.success) {
+        // Use window.location for a hard redirect that clears all client state
+        window.location.href = '/login';
+      } else {
+        console.error('Sign out failed:', result.error);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }

@@ -201,6 +201,7 @@ export default function GenerateScheduleDialog({
               selectedCourses={state.selectedCourses}
               onCoursesChange={handleCoursesChange}
               totalCredits={state.totalCredits}
+              universityId={universityId}
               onNext={handleNext}
               onBack={handleBack}
             />

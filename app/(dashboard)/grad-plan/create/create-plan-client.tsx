@@ -41,6 +41,7 @@ import { type ProgramSuggestionsInput, programSuggestionsToolDefinition, buildPr
 import { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 import { updateProfileForChatbotAction, fetchUserCoursesAction, getAiPromptAction, organizeCoursesIntoSemestersAction, ensureStudentRecordAction } from '@/lib/services/server-actions';
 import { findMostRecentTerm } from '@/lib/utils/termCalculation';
+import { clientLogger } from '@/lib/client-logger';
 
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -158,7 +159,7 @@ export default function CreatePlanClient({
           }
         }
       } catch (error) {
-        console.error('Error fetching courses for last term:', error);
+        clientLogger.error('Error fetching courses for last term', error, { action: 'getGeneratePlanConfirmationToolData' });
       }
     }
 
@@ -443,7 +444,7 @@ export default function CreatePlanClient({
       // Refresh student data from API after updates (e.g., graduation date changes)
       router.refresh();
     } catch (error) {
-      console.error('Failed to refresh student data:', error);
+      clientLogger.error('Failed to refresh student data', error, { action: 'handleStudentDataRefresh' });
     }
   };
 
@@ -464,7 +465,7 @@ export default function CreatePlanClient({
             updatedStudentType = resolveStudentType(data?.data?.student_type);
           }
         } catch (error) {
-          console.error('Failed to refresh student type after profile check:', error);
+          clientLogger.error('Failed to refresh student type after profile check', error, { action: 'handleToolComplete', toolType });
         }
 
         setConversationState(prev => {
@@ -671,7 +672,7 @@ export default function CreatePlanClient({
             }
           }
         } catch (error) {
-          console.error('Error fetching program names:', error);
+          clientLogger.error('Error fetching program names', error, { action: 'handleToolComplete', toolType });
         }
 
         const primaryProgramsCount = selectedPrograms.filter(p => p.programType !== 'general_education').length;
@@ -1092,7 +1093,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
         }, 1000);
       }
     } catch (error) {
-      console.error('Error handling tool completion:', error);
+      clientLogger.error('Error handling tool completion', error, { action: 'handleToolComplete', toolType });
       setMessages(prev => [
         ...prev,
         {
@@ -1655,7 +1656,9 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
       setIsProcessing(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.warn('Error sending message (non-fatal)', error);
+      // We don't report this as a critical error to PostHog via clientLogger right now as retry might succeed
+      // clientLogger.error('Error sending message', error);
       setMessages(prev => [
         ...prev,
         {
@@ -1778,7 +1781,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
         router.push(`/grad-plan/${result.accessId}`);
       }, 1500);
     } catch (error) {
-      console.error('Error generating graduation plan:', error);
+      clientLogger.error('Error generating graduation plan', error, { action: 'startPlanGeneration' });
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       setMessages([

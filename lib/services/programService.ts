@@ -1,5 +1,6 @@
 import { ProgramRow } from "@/types/program";
 import { db } from "@/lib/database";
+import { logError } from "@/lib/logger";
 
 // Custom error types for better error handling
 export class ProgramNotFoundError extends Error {
@@ -30,14 +31,14 @@ export class CourseFlowSaveError extends Error {
  * @returns
  */
 export async function fetchProgramsByUniversity(universityId: number): Promise<ProgramRow[]> {
-    const { data, error } = await db
+  const { data, error } = await db
     .from('program')
     .select('id, university_id, name, program_type, version, created_at, modified_at, requirements, is_general_ed, target_total_credits')
     .eq('university_id', universityId)
     .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return (data ?? []) as ProgramRow[];
+  if (error) throw error;
+  return (data ?? []) as ProgramRow[];
 }
 
 /**
@@ -65,18 +66,18 @@ export async function fetchProgramById(programId: string): Promise<ProgramRow> {
 
 export default async function GetProgramsForUniversity(university_id: number): Promise<ProgramRow[]> {
 
-    const { data, error } = await db
-      .from('program')
-      .select('*')
-      .eq('university_id', university_id)
-      .eq('is_general_ed', false);
+  const { data, error } = await db
+    .from('program')
+    .select('*')
+    .eq('university_id', university_id)
+    .eq('is_general_ed', false);
 
-    if (error) {
-      console.error('❌ Error fetching programs:', error);
-      return [];
-    }
+  if (error) {
+    logError('Error fetching programs', error, { action: 'GetProgramsForUniversity', errorHint: `UniversityID: ${university_id}` });
+    return [];
+  }
 
-    return (data || []) as ProgramRow[];
+  return (data || []) as ProgramRow[];
 }
 
 export async function GetMajorsForUniversity(university_id: number): Promise<ProgramRow[]> {
@@ -88,7 +89,7 @@ export async function GetMajorsForUniversity(university_id: number): Promise<Pro
     .eq('is_general_ed', false);
 
   if (error) {
-    console.error('❌ Error fetching majors:', error);
+    logError('Error fetching majors', error, { action: 'GetMajorsForUniversity', errorHint: `UniversityID: ${university_id}` });
     return [];
   }
 
@@ -96,18 +97,18 @@ export async function GetMajorsForUniversity(university_id: number): Promise<Pro
 }
 
 export async function GetGenEdsForUniversity(university_id: number): Promise<ProgramRow[]> {
-    const { data, error } = await db
-      .from('program')
-      .select('*')
-      .eq('university_id', university_id)
-      .eq('is_general_ed', true);
+  const { data, error } = await db
+    .from('program')
+    .select('*')
+    .eq('university_id', university_id)
+    .eq('is_general_ed', true);
 
-    if (error) {
-      console.error('❌ Error fetching general education programs:', error);
-      return [];
-    }
+  if (error) {
+    logError('Error fetching general education programs', error, { action: 'GetGenEdsForUniversity', errorHint: `UniversityID: ${university_id}` });
+    return [];
+  }
 
-    return (data || []) as ProgramRow[];
+  return (data || []) as ProgramRow[];
 }
 
 /**
@@ -115,12 +116,12 @@ export async function GetGenEdsForUniversity(university_id: number): Promise<Pro
  * Deletes a program by its ID
  */
 export async function deleteProgram(id: string): Promise<void> {
-    const { error } = await db
-        .from('program')
-        .delete()
-        .eq('id', id);
+  const { error } = await db
+    .from('program')
+    .delete()
+    .eq('id', id);
 
-    if (error) throw error;
+  if (error) throw error;
 }
 
 /**
@@ -190,7 +191,7 @@ export async function GetMinorsForUniversity(university_id: number): Promise<Pro
     .eq('is_general_ed', false);
 
   if (error) {
-    console.error('❌ Error fetching minors:', error);
+    logError('Error fetching minors', error, { action: 'GetMinorsForUniversity', errorHint: `UniversityID: ${university_id}` });
     return [];
   }
   return (data || []) as ProgramRow[];
@@ -230,13 +231,9 @@ export async function fetchPrograms(options?: {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Database error in fetchPrograms:', {
-        error,
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        options
+      logError('Database error in fetchPrograms', error, {
+        action: 'fetchPrograms',
+        errorHint: JSON.stringify({ code: error.code, details: error.details, hint: error.hint, options })
       });
       throw new ProgramFetchError('Failed to fetch programs', error);
     }

@@ -2,6 +2,7 @@
 import { supabase } from "../supabase";
 import { GetMajorsForUniversity } from '../services/programService';
 import { getVerifiedUser } from "../supabase/auth";
+import { logError } from "@/lib/logger";
 // encodeAccessId no longer needed here after persistence refactor
 import { InsertGeneratedGradPlan, InsertAiChatExchange } from './aiDbService';
 import { insertMilestonesIntoPlan, type MilestoneInput } from './milestoneInsertionService';
@@ -76,17 +77,17 @@ async function runAutoPlanValidation(args: {
         output_tokens: outputTokens
       });
       if (insertError) {
-        console.error("⚠️ Error storing auto plan validation response:", insertError);
+        logError("Error storing auto plan validation response", insertError, { action: 'runAutoPlanValidation' });
       }
     } catch (storageError) {
-      console.error("⚠️ Exception storing auto plan validation response:", storageError);
+      logError("Exception storing auto plan validation response", storageError, { action: 'runAutoPlanValidation' });
     }
 
     if (!validationResult.success) {
       console.warn("⚠️ Auto plan validation failed:", validationResult.message);
     }
   } catch (validationError) {
-    console.error("⚠️ Auto plan validation exception:", validationError);
+    logError("Auto plan validation exception", validationError, { action: 'runAutoPlanValidation' });
   }
 }
 
@@ -226,16 +227,16 @@ export async function executeJsonPrompt(config: AiPromptConfig): Promise<OpenAIJ
       body: JSON.stringify(payload),
     });
   } catch (networkErr) {
-    console.error(`❌ Network error for ${prompt_name}:`, networkErr);
+    logError(`Network error for ${prompt_name}`, networkErr, { action: 'executeJsonPrompt', model });
     return { success: false, message: `Network error calling OpenAI for ${prompt_name}: ${networkErr instanceof Error ? networkErr.message : 'unknown error'}` };
   }
 
   const requestId = resp.headers.get("x-request-id") || resp.headers.get("request-id");
   if (!resp.ok) {
     const errBody = await resp.text();
-    console.error(`❌ OpenAI error for ${prompt_name} (${resp.status}):`, trunc(errBody, 500));
+    logError(`OpenAI error for ${prompt_name}`, new Error(errBody), { action: 'executeJsonPrompt', model, httpStatus: resp.status, errorHint: trunc(errBody, 500) });
     let errorMessage = `OpenAI API error (${resp.status})`;
-    if ([502,503,504].includes(resp.status)) {
+    if ([502, 503, 504].includes(resp.status)) {
       errorMessage = `OpenAI temporarily unavailable (${resp.status}). Retry later.`;
     } else if (resp.status === 429) {
       errorMessage = `OpenAI rate limit exceeded (${resp.status}). Slow down or retry later.`;
@@ -270,7 +271,7 @@ export async function executeJsonPrompt(config: AiPromptConfig): Promise<OpenAIJ
   try {
     parsedJson = JSON.parse(aiText);
   } catch (e) {
-    console.error("Error parsing JSON from OpenAI response:", e);
+    logError("Error parsing JSON from OpenAI response", e, { action: 'executeJsonPrompt', model, errorHint: trunc(aiText) });
     return { success: false, message: "Invalid JSON returned by model", rawText: trunc(aiText), requestId, usage: aiResponse.usage };
   }
 
@@ -281,11 +282,11 @@ export async function executeJsonPrompt(config: AiPromptConfig): Promise<OpenAIJ
 type OrganizePromptInput =
   | string
   | {
-      prompt_name?: string;
-      prompt: string;
-      model?: string;
-      max_output_tokens?: number;
-    };
+    prompt_name?: string;
+    prompt: string;
+    model?: string;
+    max_output_tokens?: number;
+  };
 
 export async function OrganizeCoursesIntoSemesters_ServerAction(
   coursesData: unknown,
@@ -296,7 +297,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     // Get the current user from session
     const user = await getVerifiedUser();
     if (!user) {
-      console.error("❌ Auth error: user not authenticated");
+      logError("Auth error: user not authenticated", new Error("UserNotAuthenticated"), { action: 'OrganizeCoursesIntoSemesters_ServerAction' });
       throw new Error("User not authenticated");
     }
 
@@ -421,19 +422,19 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     // Store the raw JSON string
     try {
       const tStore = Date.now();
-  const outputTokens = aiResult.usage?.completion_tokens || 0; // Default to 0 instead of null
-      const { error: insertError } = await supabase.from("ai_responses").insert({ 
-        user_id: user.id, 
+      const outputTokens = aiResult.usage?.completion_tokens || 0; // Default to 0 instead of null
+      const { error: insertError } = await supabase.from("ai_responses").insert({
+        user_id: user.id,
         response: aiText,
         user_prompt: normalized.prompt,
         output_tokens: outputTokens
       });
       const storeMs = Date.now() - tStore;
       if (insertError) {
-        console.error("⚠️ Error storing AI response:", insertError, "| took:", storeMs, "ms");
+        logError("Error storing AI response", insertError, { action: 'OrganizeCoursesIntoSemesters_ServerAction' });
       }
     } catch (storageError) {
-      console.error("⚠️ Exception storing AI response:", storageError);
+      logError("Exception storing AI response", storageError, { action: 'OrganizeCoursesIntoSemesters_ServerAction' });
     }
 
     if (selectionMode === 'AUTO') {
@@ -452,14 +453,14 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       .single();
 
     if (studentError || !studentData?.id) {
-      console.error('Error fetching student_id from students table:', studentError);
+      logError('Error fetching student_id from students table', studentError, { action: 'OrganizeCoursesIntoSemesters_ServerAction', userId: user.id });
       throw new Error('Could not find student record');
     }
 
     // Persist generated plan via helper (store structured object/array, not raw JSON string)
     let planData: unknown = semesterPlan;
     if (typeof planData === 'string') {
-      try { planData = JSON.parse(planData); } catch {/* leave as string if it can't parse */}
+      try { planData = JSON.parse(planData); } catch {/* leave as string if it can't parse */ }
     }
 
     // Add metadata to plan data before storing
@@ -472,8 +473,8 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       planData,
       programsInPlan: Array.isArray(cd.selectedPrograms)
         ? cd.selectedPrograms
-            .map((p: string | number) => Number(p))
-            .filter((n: number) => !Number.isNaN(n))
+          .map((p: string | number) => Number(p))
+          .filter((n: number) => !Number.isNaN(n))
         : [],
       isActive: false,
       userId: user.id,
@@ -486,7 +487,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       accessId,
     };
   } catch (error) {
-    console.error("🛑 Error generating semester plan:", error instanceof Error ? error.message : error, error);
+    logError("Error generating semester plan", error, { action: 'OrganizeCoursesIntoSemesters_ServerAction' });
     return {
       success: false,
       // Bubble the specific error message to help you debug locally (adjust if you prefer generic)
@@ -545,7 +546,7 @@ export async function AdvisorOrganizeExistingPlan_ServerAction(args: {
     });
 
     if (error) {
-      console.error('❌ Edge function advisorCreateGradPlan error:', error);
+      logError('Edge function advisorCreateGradPlan error', error, { action: 'AdvisorOrganizeExistingPlan_ServerAction' });
       return { success: false, message: 'Edge function invocation failed' };
     }
 
@@ -559,7 +560,7 @@ export async function AdvisorOrganizeExistingPlan_ServerAction(args: {
 
     return { success: true, message: 'Revised plan generated', revisedPlan, rawText };
   } catch (err) {
-    console.error('🛑 AdvisorOrganizeExistingPlan_ServerAction error:', err);
+    logError('AdvisorOrganizeExistingPlan_ServerAction error', err, { action: 'AdvisorOrganizeExistingPlan_ServerAction' });
     return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
@@ -583,7 +584,7 @@ export async function GetMajorPivotCareerSuggestions_ServerAction(args: {
   completedCourses: Array<{ code: string; title: string; credits?: number; grade?: string; tags?: string[] }>;
   priorIds?: string[]; // previously shown option ids (kebab-case)
   reRequest?: boolean; // true if user clicked "None of these"
-}): Promise<{ success: boolean; message: string; options?: Array<{ id: string; title: string; rationale: string }>; rawText?: string; requestId?: string }>{
+}): Promise<{ success: boolean; message: string; options?: Array<{ id: string; title: string; rationale: string }>; rawText?: string; requestId?: string }> {
   try {
     const user = await getVerifiedUser();
     if (!user) return { success: false, message: 'User not authenticated' };
@@ -627,10 +628,10 @@ ${reRequest ? '- Provide NEW options not overlapping prior ids: ' + priorIds.joi
         output_tokens: aiResult.usage?.completion_tokens || 0,
       });
       if (insertErr) {
-        console.error('⚠️ Failed to log career suggestions AI response:', insertErr);
+        logError('Failed to log career suggestions AI response', insertErr, { action: 'GetMajorPivotCareerSuggestions_ServerAction' });
       }
     } catch (logErr) {
-      console.error('⚠️ Exception while logging career suggestions AI response:', logErr);
+      logError('Exception while logging career suggestions AI response', logErr, { action: 'GetMajorPivotCareerSuggestions_ServerAction' });
     }
 
     if (!aiResult.success) {
@@ -663,7 +664,7 @@ ${reRequest ? '- Provide NEW options not overlapping prior ids: ' + priorIds.joi
         return {
           id,
           title: String(o.title ?? 'Untitled Option'),
-            rationale: String(o.rationale ?? 'No rationale provided'),
+          rationale: String(o.rationale ?? 'No rationale provided'),
         };
       });
 
@@ -675,7 +676,7 @@ ${reRequest ? '- Provide NEW options not overlapping prior ids: ' + priorIds.joi
       requestId: aiResult.requestId ?? undefined,
     };
   } catch (err) {
-    console.error('GetMajorPivotCareerSuggestions_ServerAction error:', err);
+    logError('GetMajorPivotCareerSuggestions_ServerAction error', err, { action: 'GetMajorPivotCareerSuggestions_ServerAction' });
     return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
@@ -694,7 +695,7 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
   whyLikeMajor: string;
   targetIndustry: string;
   completedCourses: Array<{ code: string; title: string; credits?: number; grade?: string; tags?: string[] }>;
-}): Promise<{ success: boolean; message: string; options?: Array<{ id: string; title: string; rationale: string }>; rawText?: string; requestId?: string }>{
+}): Promise<{ success: boolean; message: string; options?: Array<{ id: string; title: string; rationale: string }>; rawText?: string; requestId?: string }> {
   try {
     const user = await getVerifiedUser();
     if (!user) return { success: false, message: 'User not authenticated' };
@@ -719,9 +720,9 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
         response: aiResult.rawText || aiResult.message,
         output_tokens: aiResult.usage?.completion_tokens || 0,
       });
-      if (insertErr) console.error('⚠️ Failed to log adjacent career suggestions AI response:', insertErr);
+      if (insertErr) logError('Failed to log adjacent career suggestions AI response', insertErr, { action: 'GetAdjacentCareerSuggestions_ServerAction' });
     } catch (logErr) {
-      console.error('⚠️ Exception logging adjacent career suggestions AI response:', logErr);
+      logError('Exception logging adjacent career suggestions AI response', logErr, { action: 'GetAdjacentCareerSuggestions_ServerAction' });
     }
 
     if (!aiResult.success) {
@@ -732,9 +733,9 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
       return { success: false, message: 'Model returned unexpected shape', rawText: aiResult.rawText, requestId: aiResult.requestId ?? undefined };
     }
 
-    const options = parsed.options.slice(0,5).map((o) => {
+    const options = parsed.options.slice(0, 5).map((o) => {
       const title = String(o.title ?? 'Untitled Option');
-      let id: string = typeof o.id === 'string' ? o.id : title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      let id: string = typeof o.id === 'string' ? o.id : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       if (!id) id = 'option';
       return { id, title, rationale: String(o.rationale ?? 'No rationale provided') };
     });
@@ -747,7 +748,7 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
       requestId: aiResult.requestId ?? undefined,
     };
   } catch (err) {
-    console.error('GetAdjacentCareerSuggestions_ServerAction error:', err);
+    logError('GetAdjacentCareerSuggestions_ServerAction error', err, { action: 'GetAdjacentCareerSuggestions_ServerAction' });
     return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
@@ -899,9 +900,9 @@ Return JSON now.`;
         response: aiResult.rawText || aiResult.message,
         output_tokens: aiResult.usage?.completion_tokens || 0,
       });
-      if (insertErr) console.error('⚠️ Failed to log career enrichment AI response:', insertErr);
+      if (insertErr) logError('Failed to log career enrichment AI response', insertErr, { action: 'EnrichCareerData_ServerAction' });
     } catch (logErr) {
-      console.error('⚠️ Exception logging career enrichment AI response:', logErr);
+      logError('Exception logging career enrichment AI response', logErr, { action: 'EnrichCareerData_ServerAction' });
     }
 
     if (!aiResult.success) {
@@ -946,11 +947,11 @@ Return JSON now.`;
       },
       bestMajors: Array.isArray(parsed.bestMajors)
         ? parsed.bestMajors
-            .filter((major): major is { id?: string; name?: string } => !!major && typeof major === 'object')
-            .map((major, index) => ({
-              id: typeof major.id === 'string' && major.id.trim() !== '' ? major.id : `major-${index + 1}`,
-              name: typeof major.name === 'string' && major.name.trim() !== '' ? major.name : 'Pending Major Name',
-            }))
+          .filter((major): major is { id?: string; name?: string } => !!major && typeof major === 'object')
+          .map((major, index) => ({
+            id: typeof major.id === 'string' && major.id.trim() !== '' ? major.id : `major-${index + 1}`,
+            name: typeof major.name === 'string' && major.name.trim() !== '' ? major.name : 'Pending Major Name',
+          }))
         : [],
       locationHubs: Array.isArray(parsed.locationHubs) ? parsed.locationHubs : [],
       salaryUSD: {
@@ -972,11 +973,11 @@ Return JSON now.`;
       relatedCareers: Array.isArray(parsed.relatedCareers) ? parsed.relatedCareers : [],
       links: Array.isArray(parsed.links)
         ? parsed.links
-            .filter((link): link is { label?: string; url?: string } => !!link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() !== '')
-            .map((link, index) => ({
-              label: typeof link.label === 'string' && link.label.trim() !== '' ? link.label : `Resource ${index + 1}`,
-              url: link.url!,
-            }))
+          .filter((link): link is { label?: string; url?: string } => !!link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() !== '')
+          .map((link, index) => ({
+            label: typeof link.label === 'string' && link.label.trim() !== '' ? link.label : `Resource ${index + 1}`,
+            url: link.url!,
+          }))
         : []
     };
 
@@ -988,7 +989,7 @@ Return JSON now.`;
       requestId: aiResult.requestId ?? undefined
     };
   } catch (err) {
-    console.error('EnrichCareerData_ServerAction error:', err);
+    logError('EnrichCareerData_ServerAction error', err, { action: 'EnrichCareerData_ServerAction' });
     return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
@@ -1197,9 +1198,9 @@ Return JSON now.`;
         response: aiResult.rawText || aiResult.message,
         output_tokens: aiResult.usage?.completion_tokens || 0,
       });
-      if (insertErr) console.error('⚠️ Failed to log major enrichment AI response:', insertErr);
+      if (insertErr) logError('Failed to log major enrichment AI response', insertErr, { action: 'EnrichMajorData_ServerAction' });
     } catch (logErr) {
-      console.error('⚠️ Exception logging major enrichment AI response:', logErr);
+      logError('Exception logging major enrichment AI response', logErr, { action: 'EnrichMajorData_ServerAction' });
     }
 
     if (!aiResult.success) {
@@ -1256,11 +1257,11 @@ Return JSON now.`;
       overview: typeof parsed.overview === 'string' ? parsed.overview : '',
       topCareers: Array.isArray(parsed.topCareers)
         ? parsed.topCareers
-            .filter((career): career is { slug?: string; title?: string } => !!career && typeof career === 'object')
-            .map((career, index) => ({
-              slug: typeof career.slug === 'string' && career.slug.trim() !== '' ? career.slug : `career-${index + 1}`,
-              title: typeof career.title === 'string' && career.title.trim() !== '' ? career.title : 'Pending Career Title',
-            }))
+          .filter((career): career is { slug?: string; title?: string } => !!career && typeof career === 'object')
+          .map((career, index) => ({
+            slug: typeof career.slug === 'string' && career.slug.trim() !== '' ? career.slug : `career-${index + 1}`,
+            title: typeof career.title === 'string' && career.title.trim() !== '' ? career.title : 'Pending Career Title',
+          }))
         : [],
       careerOutlook: typeof parsed.careerOutlook === 'string' ? parsed.careerOutlook : '',
       totalCredits: typeof parsed.totalCredits === 'number' ? parsed.totalCredits : 120,
@@ -1273,17 +1274,17 @@ Return JSON now.`;
         : [],
       courseEquivalencies: Array.isArray(parsed.courseEquivalencies)
         ? parsed.courseEquivalencies
-            .filter((course): course is { institutionCourse?: string; equivalentCourses?: string[]; notes?: string } => !!course && typeof course === 'object')
-            .map((course, index) => ({
-              institutionCourse:
-                typeof course.institutionCourse === 'string' && course.institutionCourse.trim() !== ''
-                  ? course.institutionCourse
-                  : `Course ${index + 1}`,
-              equivalentCourses: Array.isArray(course.equivalentCourses)
-                ? course.equivalentCourses.filter((eq): eq is string => typeof eq === 'string' && eq.trim() !== '')
-                : [],
-              ...(typeof course.notes === 'string' && course.notes.trim() !== '' ? { notes: course.notes } : {}),
-            }))
+          .filter((course): course is { institutionCourse?: string; equivalentCourses?: string[]; notes?: string } => !!course && typeof course === 'object')
+          .map((course, index) => ({
+            institutionCourse:
+              typeof course.institutionCourse === 'string' && course.institutionCourse.trim() !== ''
+                ? course.institutionCourse
+                : `Course ${index + 1}`,
+            equivalentCourses: Array.isArray(course.equivalentCourses)
+              ? course.equivalentCourses.filter((eq): eq is string => typeof eq === 'string' && eq.trim() !== '')
+              : [],
+            ...(typeof course.notes === 'string' && course.notes.trim() !== '' ? { notes: course.notes } : {}),
+          }))
         : [],
       prerequisites: Array.isArray(parsed.prerequisites)
         ? parsed.prerequisites.filter((item): item is string => typeof item === 'string')
@@ -1321,11 +1322,11 @@ Return JSON now.`;
       advisingContact: typeof parsed.advisingContact === 'string' ? parsed.advisingContact : undefined,
       links: Array.isArray(parsed.links)
         ? parsed.links
-            .filter((link): link is { label?: string; url?: string } => !!link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() !== '')
-            .map((link, index) => ({
-              label: typeof link.label === 'string' && link.label.trim() !== '' ? link.label : `Resource ${index + 1}`,
-              url: link.url!,
-            }))
+          .filter((link): link is { label?: string; url?: string } => !!link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() !== '')
+          .map((link, index) => ({
+            label: typeof link.label === 'string' && link.label.trim() !== '' ? link.label : `Resource ${index + 1}`,
+            url: link.url!,
+          }))
         : []
     };
 
@@ -1337,7 +1338,7 @@ Return JSON now.`;
       requestId: aiResult.requestId ?? undefined
     };
   } catch (err) {
-    console.error('EnrichMajorData_ServerAction error:', err);
+    logError('EnrichMajorData_ServerAction error', err, { action: 'EnrichMajorData_ServerAction' });
     return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
@@ -1361,7 +1362,7 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
   form: { whyMajor: string; notWorking: string; partsLiked: string; wantCareerHelp: boolean; consideredCareer: string; };
   completedCourses: Array<{ code: string; title: string; credits?: number; grade?: string; tags?: string[] }>;
   universityId?: number; // optionally restrict to this university's majors
-}): Promise<{ success: boolean; message: string; majors?: Array<{ code: string; name: string; rationale: string }>; rawText?: string; requestId?: string }>{
+}): Promise<{ success: boolean; message: string; majors?: Array<{ code: string; name: string; rationale: string }>; rawText?: string; requestId?: string }> {
   try {
     const user = await getVerifiedUser();
     if (!user) return { success: false, message: 'User not authenticated' };
@@ -1394,7 +1395,7 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
     const reflectionBlock = `REFLECTION_INPUTS:\nWHY_MAJOR: ${form.whyMajor || 'N/A'}\nNOT_WORKING: ${form.notWorking || 'N/A'}\nPARTS_LIKED: ${form.partsLiked || 'N/A'}\nCONSIDERED_CAREER: ${form.consideredCareer || 'N/A'}\n`;
     const coursesBlock = 'COMPLETED_COURSES:\n' + completedCourses.map(c => `- ${c.code}: ${c.title}${c.tags?.length ? ' [' + c.tags.join(',') + ']' : ''}`).join('\n');
 
-  const prompt = `You are an academic advising assistant. A student selected a target career option you previously suggested: "${selectedCareerTitle}" (id: ${selectedCareerId}). Their current major is ${currentMajor}. Based on their reflections and completed courses, recommend 2 or 3 plausible existing academic majors they should consider pivoting to that strategically support that career.\nReturn ONLY valid JSON: { "majors": [ { "code": string, "name": string, "rationale": string } ], "message": string }.\nRules:\n- majors array length: 2 or 3 (never more)\n- code: short lowercase slug (letters, digits, hyphens) derived from the name\n- name: must exactly match one of the allowed majors listed below${majorsCatalogSnippet ? ' (do NOT invent new majors)' : ''}\n- rationale: concise (<= 110 chars) citing alignment to the selected career and their retained interests.\n- If no strong match exists, pick the closest academically sound options.\n- If uncertain about legitimacy of a major, exclude it.\n- Do not wrap JSON in markdown fences.\n\nCURRENT_MAJOR: ${currentMajor}\nSELECTED_CAREER_TITLE: ${selectedCareerTitle}\n${reflectionBlock}\n${coursesBlock}\n${majorsCatalogSnippet ? '\n' + majorsCatalogSnippet + '\n' : ''}\nReturn JSON now.`;
+    const prompt = `You are an academic advising assistant. A student selected a target career option you previously suggested: "${selectedCareerTitle}" (id: ${selectedCareerId}). Their current major is ${currentMajor}. Based on their reflections and completed courses, recommend 2 or 3 plausible existing academic majors they should consider pivoting to that strategically support that career.\nReturn ONLY valid JSON: { "majors": [ { "code": string, "name": string, "rationale": string } ], "message": string }.\nRules:\n- majors array length: 2 or 3 (never more)\n- code: short lowercase slug (letters, digits, hyphens) derived from the name\n- name: must exactly match one of the allowed majors listed below${majorsCatalogSnippet ? ' (do NOT invent new majors)' : ''}\n- rationale: concise (<= 110 chars) citing alignment to the selected career and their retained interests.\n- If no strong match exists, pick the closest academically sound options.\n- If uncertain about legitimacy of a major, exclude it.\n- Do not wrap JSON in markdown fences.\n\nCURRENT_MAJOR: ${currentMajor}\nSELECTED_CAREER_TITLE: ${selectedCareerTitle}\n${reflectionBlock}\n${coursesBlock}\n${majorsCatalogSnippet ? '\n' + majorsCatalogSnippet + '\n' : ''}\nReturn JSON now.`;
 
     const aiResult = await executeJsonPrompt({
       prompt_name: 'majors_for_selected_career',
@@ -1411,9 +1412,9 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
         response: aiResult.rawText || aiResult.message,
         output_tokens: aiResult.usage?.completion_tokens || 0,
       });
-      if (insertErr) console.error('⚠️ Failed to log majors-for-career AI response:', insertErr);
+      if (insertErr) logError('Failed to log majors-for-career AI response', insertErr, { action: 'GetMajorsForCareerSelection_ServerAction' });
     } catch (logErr) {
-      console.error('⚠️ Exception logging majors-for-career AI response:', logErr);
+      logError('Exception logging majors-for-career AI response', logErr, { action: 'GetMajorsForCareerSelection_ServerAction' });
     }
 
     if (!aiResult.success) {
@@ -1445,7 +1446,7 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
       requestId: aiResult.requestId ?? undefined,
     };
   } catch (err) {
-    console.error('GetMajorsForCareerSelection_ServerAction error:', err);
+    logError('GetMajorsForCareerSelection_ServerAction error', err, { action: 'GetMajorsForCareerSelection_ServerAction' });
     return { success: false, message: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
@@ -1500,27 +1501,27 @@ JSON Shape:
     const parsed = aiResult.parsedJson as MinorAuditResponse;
     const outMinors: Array<{ id: string; name: string; reason: string }> = Array.isArray(parsed?.minors)
       ? parsed.minors.map((m) => {
-          let idCandidate: string | undefined;
-          if (typeof m.id === 'string' && m.id.trim()) {
-            idCandidate = m.id.trim();
-          } else if (typeof m.name === 'string') {
-            idCandidate = m.name
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/(^-|-$)/g, '');
-          }
-          if (!(idCandidate?.length)) {
-            idCandidate = 'minor';
-          }
-          const name = String(m.name || m.id || 'Unknown Minor').slice(0, 80);
-          const reason = String(m.reason || m.rationale || '').slice(0, 220);
-          return { id: idCandidate, name, reason };
-        })
+        let idCandidate: string | undefined;
+        if (typeof m.id === 'string' && m.id.trim()) {
+          idCandidate = m.id.trim();
+        } else if (typeof m.name === 'string') {
+          idCandidate = m.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+        }
+        if (!(idCandidate?.length)) {
+          idCandidate = 'minor';
+        }
+        const name = String(m.name || m.id || 'Unknown Minor').slice(0, 80);
+        const reason = String(m.reason || m.rationale || '').slice(0, 220);
+        return { id: idCandidate, name, reason };
+      })
       : [];
     const message = typeof parsed?.message === 'string' ? parsed.message : 'Potential minors you may be close to completing.';
-  return { success: true, message, minors: outMinors, rawText: aiResult.rawText ?? undefined, requestId: aiResult.requestId ?? undefined };
+    return { success: true, message, minors: outMinors, rawText: aiResult.rawText ?? undefined, requestId: aiResult.requestId ?? undefined };
   } catch (err) {
-    console.error('Minor audit AI error:', err);
+    logError('Minor audit AI error', err, { action: 'GetNearCompletionMinorAudit_ServerAction' });
     return { success: false, message: 'Failed to run minor completion audit' };
   }
 }
@@ -1537,12 +1538,12 @@ export async function ChatbotSendMessage_ServerAction(args: {
   message: string;
   sessionId?: string;
   model?: string;
-}): Promise<{ success: boolean; reply: string; sessionId: string; confidence?: number; requestId?: string; error?: string }>{
+}): Promise<{ success: boolean; reply: string; sessionId: string; confidence?: number; requestId?: string; error?: string }> {
   try {
     const user = await getVerifiedUser(); // may be null if not required; leaving as requirement aligns with RLS
     if (!user) return { success: false, reply: '', sessionId: args.sessionId || '', error: 'User not authenticated' };
 
-    const sessionId = args.sessionId && args.sessionId.trim() ? args.sessionId : `sess_${user.id}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    const sessionId = args.sessionId && args.sessionId.trim() ? args.sessionId : `sess_${user.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const userMessage = (args.message || '').trim();
     if (!userMessage) return { success: false, reply: '', sessionId, error: 'Empty message' };
 
@@ -1584,7 +1585,7 @@ Return valid JSON only with shape: { "reply": string, "category": "student" | "n
         outputTokens: aiResult.usage?.completion_tokens || 0,
       });
     } catch (logErr) {
-      console.error('Failed to insert chat exchange:', logErr);
+      logError('Failed to insert chat exchange', logErr, { action: 'ChatbotSendMessage_ServerAction' });
     }
 
     return { success: true, reply, sessionId, confidence, requestId: aiResult.requestId ?? undefined };
@@ -1685,10 +1686,10 @@ export async function chatCompletion(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
+      logError('OpenAI API error', new Error(errorText), {
+        action: 'chatCompletion',
+        httpStatus: response.status,
+        errorHint: JSON.stringify({ statusText: response.statusText })
       });
       throw new OpenAIChatError(`OpenAI request failed with status ${response.status}: ${errorText}`);
     }
@@ -1845,7 +1846,7 @@ async function fetchUserProgramContext(userId: string): Promise<{
 
     return { genEdPrograms, userPrograms, universityId };
   } catch (error) {
-    console.error('Error fetching user program context:', error);
+    logError('Error fetching user program context', error, { action: 'fetchUserProgramContext' });
     return { genEdPrograms: [], userPrograms: [], universityId: null };
   }
 }
@@ -2000,7 +2001,7 @@ export async function parseTranscriptCourses_ServerAction(args: {
     });
 
     if (!aiResult.success || !aiResult.rawText) {
-      console.error('❌ AI parsing failed:', aiResult.message);
+      logError('AI parsing failed', new Error(aiResult.message), { action: 'parseTranscriptCourses_ServerAction' });
       return {
         success: false,
         error: aiResult.message || 'Failed to parse transcript',
@@ -2029,10 +2030,10 @@ export async function parseTranscriptCourses_ServerAction(args: {
           userId: userId || 'anonymous',
         });
       } else {
-        console.error('❌ Failed to save to database:', saveResult.error);
+        logError('Failed to save to database', new Error(saveResult.error || 'Unknown DB error'), { action: 'parseTranscriptCourses_ServerAction' });
       }
     } catch (dbError) {
-      console.error('❌ Exception while saving transcript parsing to database:', dbError);
+      logError('Exception while saving transcript parsing to database', dbError, { action: 'parseTranscriptCourses_ServerAction' });
       // Don't fail the entire operation if DB save fails
     }
 
@@ -2097,10 +2098,10 @@ export async function parseTranscriptCourses_ServerAction(args: {
             courseCount: upsertResult.courseCount,
           });
         } else {
-          console.error('❌ Failed to save courses to user_courses table');
+          logError('Failed to save courses to user_courses table', new Error('UpsertFailed'), { action: 'parseTranscriptCourses_ServerAction' });
         }
       } catch (saveError) {
-        console.error('❌ Exception while saving courses to user_courses table:', saveError);
+        logError('Exception while saving courses to user_courses table', saveError, { action: 'parseTranscriptCourses_ServerAction' });
         // Don't fail the entire operation if course save fails
       }
     }
@@ -2113,7 +2114,7 @@ export async function parseTranscriptCourses_ServerAction(args: {
       sessionId,
     };
   } catch (error) {
-    console.error('parseTranscriptCourses_ServerAction error:', error);
+    logError('parseTranscriptCourses_ServerAction error', error, { action: 'parseTranscriptCourses_ServerAction' });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to parse transcript',
@@ -2133,8 +2134,8 @@ function extractCoursesFromResponse(content: string): { courses: ParsedTranscrip
   const items = Array.isArray(parsed)
     ? parsed
     : parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>).courses)
-    ? (parsed as Record<string, unknown>).courses
-    : null;
+      ? (parsed as Record<string, unknown>).courses
+      : null;
 
   if (!items) {
     throw new TranscriptParsingError('AI response did not contain a course list');
@@ -2410,10 +2411,10 @@ export async function chatCompletionWithTools(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
+      logError('OpenAI API error', new Error(errorText), {
+        action: 'chatCompletionWithTools',
+        httpStatus: response.status,
+        errorHint: JSON.stringify({ statusText: response.statusText })
       });
       throw new OpenAIChatError(`OpenAI request failed with status ${response.status}: ${errorText}`);
     }

@@ -3,8 +3,9 @@
  */
 
 interface GradPlanCourse {
-  course_code: string;
-  title?: string;
+  code?: string;
+  course_code?: string; // Support both formats
+  title?: string | null;
   credits?: number;
   [key: string]: unknown;
 }
@@ -32,11 +33,15 @@ export function getCoursesForTerm(
     return [];
   }
 
-  return planDetails.plan[termIndex].courses.map(course => ({
-    code: course.course_code,
-    title: course.title || course.course_code,
-    credits: course.credits || 3
-  }));
+  return planDetails.plan[termIndex].courses.map(course => {
+    // Support both 'code' (grad plan format) and 'course_code' (alternative format)
+    const courseCode = course.code || course.course_code || '';
+    return {
+      code: courseCode,
+      title: course.title || courseCode,
+      credits: course.credits || 3
+    };
+  });
 }
 
 /**

@@ -10,6 +10,7 @@ export type ServerEventProperties = {
   error_hint?: string;
   model?: string;
   text_length?: number;
+  byte_count?: number;
   start_date?: string;
   end_date?: string;
   feature_flag?: string;

@@ -281,7 +281,7 @@ export default function SchedulerCalendar({
               editable
               eventResizableFromStart
               eventDurationEditable
-              events={events.map(event => {
+              events={events.filter(event => event.startTime && event.endTime).map(event => {
                 // Convert to generic weekly format - use a fixed week
                 const baseDate = new Date(2024, 0, 1); // January 1, 2024 (Monday)
                 const eventDate = new Date(baseDate);

@@ -12,6 +12,7 @@ import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/
 import { sendGradPlanApprovalEmail } from '@/lib/services/emailService';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { clientLogger } from '@/lib/client-logger';
 import type { Course, Term } from '@/components/grad-planner/types';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
 import { buildPlanProgress } from '@/components/progress-overview/planProgressAdapter';
@@ -146,11 +147,11 @@ export default function ApproveGradPlanPage() {
   const formatSuggestionsForAdvisorNotes = (suggestions: Record<string, string>): string => {
     const entries = Object.entries(suggestions).filter(([, value]) => value.trim() !== '');
     if (entries.length === 0) return '';
-    
+
     return entries
       .map(([termKey, suggestion]) => {
         // Convert termKey to readable format (e.g., "term-1" -> "Term 1", "2" -> "Term 2")
-        const termLabel = termKey.startsWith('term-') 
+        const termLabel = termKey.startsWith('term-')
           ? `Term ${termKey.replace('term-', '')}`
           : `Term ${termKey}`;
         return `${termLabel}: ${suggestion.trim()}`;
@@ -164,9 +165,9 @@ export default function ApproveGradPlanPage() {
       try {
         // Get the current user session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+
         if (sessionError || !session?.user) {
-          console.error('Error getting session:', sessionError);
+          clientLogger.error('Error getting session', sessionError, { action: 'ApproveGradPlanPage.checkUserRole' });
           router.push('/home');
           return;
         }
@@ -179,14 +180,14 @@ export default function ApproveGradPlanPage() {
           .maybeSingle();
 
         if (profileError) {
-          console.error('Error fetching user profile:', profileError);
+          clientLogger.error('Error fetching user profile', profileError, { action: 'ApproveGradPlanPage.checkUserRole', userId: session.user.id });
           router.push('/home');
           return;
         }
 
         // Check if user is an advisor (role_id = 2)
         const role: Role = ROLE_MAP[profile?.role_id ?? "3"];
-        
+
         if (role !== "advisor") {
           router.push('/home');
           return;
@@ -201,7 +202,7 @@ export default function ApproveGradPlanPage() {
         // User is an advisor, allow access
         setIsCheckingRole(false);
       } catch (error) {
-        console.error('Error checking user role:', error);
+        clientLogger.error('Error checking user role', error, { action: 'ApproveGradPlanPage.checkUserRole' });
         router.push('/home');
       }
     }
@@ -230,9 +231,9 @@ export default function ApproveGradPlanPage() {
 
         // Fetch the detailed grad plan data using gradPlanId
         const planData = await fetchGradPlanById(decodeResult.gradPlanId);
-        
+
         if (!active) return;
-        
+
         if (!planData) {
           throw new Error('Graduation plan not found or no longer pending approval');
         }
@@ -436,7 +437,7 @@ export default function ApproveGradPlanPage() {
             console.warn('⚠️ Could not resolve target_user_id (profile_id) from student_id for notification.');
           }
         } catch (notifyErr) {
-          console.error('Notification dispatch failed (non-blocking):', notifyErr);
+          console.warn('Notification dispatch failed (non-blocking):', notifyErr);
         }
         // Redirect to approval list after short delay so user sees snackbar
         setTimeout(() => router.push('/approve-grad-plans'), 1100);
@@ -444,7 +445,7 @@ export default function ApproveGradPlanPage() {
         showSnackbar(result.error || 'Failed to save changes', 'error');
       }
     } catch (e) {
-      console.error('Save error', e);
+      clientLogger.error('Save error', e, { action: 'ApproveGradPlanPage.handleSave', planId: gradPlan.id });
       showSnackbar('Unexpected error while saving plan.', 'error');
     } finally {
       setIsSaving(false);
@@ -480,11 +481,11 @@ export default function ApproveGradPlanPage() {
               targetUserId = studentRow.profile_id;
             }
           }
-            if (targetUserId) {
-              void createNotifForGradPlanApproved(targetUserId, advisorUserId);
-            } else {
-              console.warn('⚠️ Could not resolve target_user_id for approval notification.');
-            }
+          if (targetUserId) {
+            void createNotifForGradPlanApproved(targetUserId, advisorUserId);
+          } else {
+            console.warn('⚠️ Could not resolve target_user_id for approval notification.');
+          }
 
           // Send approval email to student
           if (targetUserId) {
@@ -502,14 +503,14 @@ export default function ApproveGradPlanPage() {
             }
           }
         } catch (notifyErr) {
-          console.error('Approval notification dispatch failed (non-blocking):', notifyErr);
+          console.warn('Approval notification dispatch failed (non-blocking):', notifyErr);
         }
         setTimeout(() => router.push('/approve-grad-plans'), 2000);
       } else {
         showSnackbar(`Failed to approve plan: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (error) {
-      console.error('Error approving graduation plan:', error);
+      clientLogger.error('Error approving graduation plan', error, { action: 'ApproveGradPlanPage.handleApprove', planId: gradPlan.id });
       showSnackbar('An unexpected error occurred while approving the plan.', 'error');
     } finally {
       setIsProcessing(false);
@@ -750,91 +751,91 @@ export default function ApproveGradPlanPage() {
             }}
           />
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontFamily: '"Red Hat Display", sans-serif',
-              fontWeight: 700,
-              color: '#0a1f1a',
-              letterSpacing: '0.04em',
-            }}
-          >
-            Advisor Suggestions
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Add optional notes for specific terms. Saved suggestions notify the student automatically.
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2 }}>
-            {(editablePlan || []).map((term, idx) => {
-              const termKey = `term-${idx + 1}`;
-              const has = Object.prototype.hasOwnProperty.call(suggestions, termKey);
-              return (
-                <Box
-                  key={termKey}
-                  sx={{
-                    borderRadius: '7px',
-                    border: '1px solid',
-                    borderColor: has
-                      ? 'color-mix(in srgb, var(--primary) 38%, transparent)'
-                      : 'color-mix(in srgb, rgba(10,31,26,0.12) 40%, transparent)',
-                    backgroundColor: has
-                      ? 'color-mix(in srgb, var(--primary) 10%, white)'
-                      : '#ffffff',
-                    p: 2.5,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1.5,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5 }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ fontWeight: 700, color: '#0a1f1a', letterSpacing: '0.06em' }}
-                    >
-                      Term {term?.term || idx + 1}
-                    </Typography>
-                    {has ? (
-                      <IconButton size="small" onClick={() => removeSuggestion(termKey)} sx={{ color: 'var(--action-cancel)' }}>
-                        <Remove fontSize="small" />
-                      </IconButton>
-                    ) : (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Add />}
-                        onClick={() => addSuggestion(termKey)}
-                        sx={{
-                          borderRadius: '7px',
-                          borderColor: '#0a1f1a',
-                          color: '#0a1f1a',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          '&:hover': {
-                            borderColor: '#043322',
-                            backgroundColor: 'rgba(10,31,26,0.06)',
-                          },
-                        }}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontFamily: '"Red Hat Display", sans-serif',
+                fontWeight: 700,
+                color: '#0a1f1a',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Advisor Suggestions
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Add optional notes for specific terms. Saved suggestions notify the student automatically.
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2 }}>
+              {(editablePlan || []).map((term, idx) => {
+                const termKey = `term-${idx + 1}`;
+                const has = Object.prototype.hasOwnProperty.call(suggestions, termKey);
+                return (
+                  <Box
+                    key={termKey}
+                    sx={{
+                      borderRadius: '7px',
+                      border: '1px solid',
+                      borderColor: has
+                        ? 'color-mix(in srgb, var(--primary) 38%, transparent)'
+                        : 'color-mix(in srgb, rgba(10,31,26,0.12) 40%, transparent)',
+                      backgroundColor: has
+                        ? 'color-mix(in srgb, var(--primary) 10%, white)'
+                        : '#ffffff',
+                      p: 2.5,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: 700, color: '#0a1f1a', letterSpacing: '0.06em' }}
                       >
-                        Suggest Edit
-                      </Button>
+                        Term {term?.term || idx + 1}
+                      </Typography>
+                      {has ? (
+                        <IconButton size="small" onClick={() => removeSuggestion(termKey)} sx={{ color: 'var(--action-cancel)' }}>
+                          <Remove fontSize="small" />
+                        </IconButton>
+                      ) : (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<Add />}
+                          onClick={() => addSuggestion(termKey)}
+                          sx={{
+                            borderRadius: '7px',
+                            borderColor: '#0a1f1a',
+                            color: '#0a1f1a',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            '&:hover': {
+                              borderColor: '#043322',
+                              backgroundColor: 'rgba(10,31,26,0.06)',
+                            },
+                          }}
+                        >
+                          Suggest Edit
+                        </Button>
+                      )}
+                    </Box>
+                    {has && (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        placeholder="Share guidance for this term..."
+                        value={suggestions[termKey] || ''}
+                        onChange={(e) => updateSuggestion(termKey, e.target.value)}
+                      />
                     )}
                   </Box>
-                  {has && (
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      placeholder="Share guidance for this term..."
-                      value={suggestions[termKey] || ''}
-                      onChange={(e) => updateSuggestion(termKey, e.target.value)}
-                    />
-                  )}
-                </Box>
-              );
-            })}
+                );
+              })}
+            </Box>
           </Box>
-        </Box>
 
           <Alert severity={unsavedChanges ? 'warning' : 'info'} sx={{ borderRadius: '7px' }}>
             {unsavedChanges

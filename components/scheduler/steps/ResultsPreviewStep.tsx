@@ -121,7 +121,7 @@ export default function ResultsPreviewStep({
       {!isLoading && !error && offerings.length === 0 && (
         <Alert severity="info">
           No course sections found for the selected courses in {termName}.
-          This could mean offerings haven't been published yet or the courses aren't available this term.
+          This could mean offerings haven&apos;t been published yet or the courses aren&apos;t available this term.
         </Alert>
       )}
 

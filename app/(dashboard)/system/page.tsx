@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Check, AlertCircle, X } from 'lucide-react';
 import { StuLoader } from '@/components/ui/StuLoader';
 import { SELECTION_MODES, SELECTION_MODE_DESCRIPTIONS, type SelectionMode } from '@/lib/selectionMode';
+import { clientLogger } from '@/lib/client-logger';
 
 export default function SystemPage() {
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('MANUAL');
@@ -42,7 +43,7 @@ export default function SystemPage() {
         const settingsData = await settingsRes.json();
         setSelectionMode(settingsData.selection_mode || 'MANUAL');
       } catch (err) {
-        console.error('Error fetching data:', err);
+        clientLogger.error('Error fetching data', err, { action: 'SystemPage.fetchData' });
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
@@ -75,7 +76,7 @@ export default function SystemPage() {
 
       setSnackbar({ open: true, message: 'Settings saved successfully!', severity: 'success' });
     } catch (err) {
-      console.error('Error saving settings:', err);
+      clientLogger.error('Error saving settings', err, { action: 'SystemPage.handleSave', universityId });
       const message = err instanceof Error ? err.message : 'Failed to save settings';
       setError(message);
       setSnackbar({ open: true, message, severity: 'error' });
@@ -176,11 +177,10 @@ export default function SystemPage() {
             {SELECTION_MODES.map((mode, index) => (
               <div
                 key={mode}
-                className={`${
-                  index < SELECTION_MODES.length - 1
+                className={`${index < SELECTION_MODES.length - 1
                     ? 'border-b border-[var(--border)] pb-3'
                     : ''
-                } ${mode === selectionMode ? 'opacity-100' : 'opacity-60'}`}
+                  } ${mode === selectionMode ? 'opacity-100' : 'opacity-60'}`}
               >
                 <div className="flex items-start gap-2">
                   {mode === selectionMode && (
@@ -227,11 +227,10 @@ export default function SystemPage() {
       {snackbar.open && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in slide-in-from-bottom-4">
           <div
-            className={`flex min-w-[300px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${
-              snackbar.severity === 'success'
+            className={`flex min-w-[300px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg ${snackbar.severity === 'success'
                 ? 'border-green-200 bg-green-50 text-green-900'
                 : 'border-red-200 bg-red-50 text-red-900'
-            }`}
+              }`}
           >
             <p className="font-body-semi flex-1 text-sm font-medium">{snackbar.message}</p>
             <button

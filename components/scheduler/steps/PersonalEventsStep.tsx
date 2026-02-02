@@ -13,10 +13,9 @@ import {
   Checkbox,
   FormControlLabel,
   FormGroup,
-  IconButton,
   Paper,
 } from '@mui/material';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { BlockedTime } from '@/lib/services/scheduleService';
 
 interface PersonalEventsStepProps {
@@ -73,10 +72,6 @@ export default function PersonalEventsStep({
     });
   };
 
-  const handleDeleteEvent = (index: number) => {
-    onEventsChange(events.filter((_event, i) => i !== index));
-  };
-
   const handleDayToggle = (day: number) => {
     setFormData({
       ...formData,
@@ -86,32 +81,6 @@ export default function PersonalEventsStep({
     });
   };
 
-  const getEventColor = (category: string) => {
-    switch (category) {
-      case 'Work': return 'var(--action-cancel)';
-      case 'Club': return 'var(--action-info)';
-      case 'Sports': return 'var(--action-edit)';
-      case 'Study': return 'var(--primary)';
-      case 'Family': return 'var(--hover-gray)';
-      default: return 'var(--hover-green)';
-    }
-  };
-
-  const getEventBackgroundColor = (category: string) => {
-    switch (category) {
-      case 'Work': return 'rgba(244, 67, 54, 0.1)';
-      case 'Club': return 'rgba(25, 118, 210, 0.1)';
-      case 'Sports': return 'rgba(253, 204, 74, 0.1)';
-      case 'Study': return 'var(--primary-15)';
-      case 'Family': return 'rgba(63, 63, 70, 0.1)';
-      default: return 'rgba(6, 201, 108, 0.1)';
-    }
-  };
-
-  const getDayName = (dayNum: number) => {
-    return dayNames[dayNum - 1] || 'Unknown';
-  };
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
@@ -119,7 +88,7 @@ export default function PersonalEventsStep({
           Add Personal Events
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Block off times when you're unavailable for classes (work, clubs, etc.)
+          Block off times when you&apos;re unavailable for classes (work, clubs, etc.)
         </Typography>
       </Box>
 
@@ -235,48 +204,10 @@ export default function PersonalEventsStep({
               '&:hover': { borderColor: 'var(--hover-green)', bgcolor: 'var(--primary-15)' },
             }}
           >
-            Add Event
+            Insert into Scheduler
           </Button>
         </Box>
       </Paper>
-
-      {/* Events List */}
-      {events.length > 0 && (
-        <Box>
-          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
-            Added Events ({events.length})
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {events.map((event, index) => (
-              <Box
-                key={index}
-                sx={{
-                  p: 2,
-                  bgcolor: getEventBackgroundColor(event.category),
-                  borderRadius: 2,
-                  borderLeft: `3px solid ${getEventColor(event.category)}`,
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {event.title}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {event.category} • {getDayName(event.day_of_week)} • {event.start_time} - {event.end_time}
-                  </Typography>
-                </Box>
-                <IconButton onClick={() => handleDeleteEvent(index)} size="small">
-                  <Trash2 size={18} />
-                </IconButton>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      )}
 
       {/* Next Button */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
