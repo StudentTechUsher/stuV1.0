@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StuLoader } from "@/components/ui/StuLoader"
 import { clientLogger } from "@/lib/client-logger"
 
+// Define types locally or import if shared
 interface UserProfile {
   id: string
   role_id: number
@@ -29,7 +30,7 @@ export function UsersTable() {
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -251,8 +252,8 @@ export function UsersTable() {
                 <div>
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${user.role_id === 2
-                        ? 'border-[#2196f3] bg-[color-mix(in_srgb,#2196f3_8%,transparent)] text-[#2196f3]'
-                        : 'border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] text-[var(--primary)]'
+                      ? 'border-[#2196f3] bg-[color-mix(in_srgb,#2196f3_8%,transparent)] text-[#2196f3]'
+                      : 'border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] text-[var(--primary)]'
                       }`}
                   >
                     {user.role_id === 2 ? (
