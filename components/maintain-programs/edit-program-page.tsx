@@ -123,7 +123,7 @@ export default function EditProgramPage({ program }: Readonly<EditProgramPagePro
     setSnackbarOpen(false);
   };
 
-  const programTypes = ['major', 'minor', 'emphasis', 'general_education'];
+  const programTypes = ['major', 'minor', 'honors', 'emphasis', 'general_education'];
 
   return (
     <div className="min-h-screen bg-[var(--background)] p-4 sm:p-6">

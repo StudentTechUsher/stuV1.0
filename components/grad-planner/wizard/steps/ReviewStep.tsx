@@ -127,7 +127,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               Settings
             </h3>
             <div className="space-y-2">
-              {state.studentType === 'undergraduate' && (
+              {(state.studentType === 'undergraduate' || state.studentType === 'honor') && (
                 <div>
                   <p className="text-xs font-body text-muted-foreground">
                     We&apos;ll try to fulfill these specific courses.

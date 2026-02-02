@@ -55,6 +55,7 @@ interface GradPlanClientProps {
     id: string;
     profile_id: string;
     university_id: number;
+    admission_year?: number | null;
     [key: string]: unknown;
   } | null;
   allGradPlans: GradPlanRecord[];
@@ -600,6 +601,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         onClose={handleProgramSelectionClose}
         onNext={handleProgramSelectionNext}
         universityId={studentRecord?.university_id || 0}
+        studentAdmissionYear={studentRecord?.admission_year ?? null}
       />
 
       {/* Step 2: Course Selection Dialog */}
@@ -610,7 +612,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           selectedProgramIds={
             programSelections.isGraduateStudent
               ? programSelections.graduateProgramIds
-              : [...programSelections.majorIds, ...programSelections.minorIds]
+              : [
+                ...programSelections.majorIds,
+                ...programSelections.minorIds,
+                ...(programSelections.honorsProgramIds ?? []),
+              ]
           }
           genEdProgramIds={programSelections.genEdIds}
           genEdStrategy={programSelections.genEdStrategy}

@@ -160,7 +160,7 @@ export function PlanOverview({
             className="inline-flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--muted-foreground)_45%,transparent)] bg-[color-mix(in_srgb,var(--muted)_26%,transparent)] px-4 py-2 text-sm font-semibold text-[color-mix(in_srgb,var(--foreground)_84%,var(--muted-foreground)_16%)] shadow-[0_24px_60px_-44px_rgba(8,35,24,0.45)] transition-all duration-150 hover:-translate-y-[2px] hover:bg-[color-mix(in_srgb,var(--muted)_32%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foreground)]"
           >
             <ViewIcon size={18} strokeWidth={2} aria-hidden="true" />
-            {isSpaceView ? 'Return to Detail View' : 'Zoom Out'}
+            {isSpaceView ? 'Detail View' : 'Zoom Out'}
           </button>
         </div>
       </div>

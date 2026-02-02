@@ -13,7 +13,7 @@ import CourseSearch from '@/components/grad-plan/CourseSearch';
 import type { CourseOffering } from '@/lib/services/courseOfferingService';
 
 interface CourseSelectionScreenProps {
-  studentType: 'undergraduate' | 'graduate';
+  studentType: 'undergraduate' | 'honor' | 'graduate';
   universityId: number;
   selectedProgramIds: number[];
   genEdProgramIds?: number[];

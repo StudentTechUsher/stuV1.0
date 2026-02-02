@@ -17,7 +17,7 @@ export type SchedulerEvent = {
   startTime: string; // "09:00"
   endTime: string; // "10:30"
   type: "class" | "personal";
-  status?: "registered" | "waitlisted" | "blocked";
+  status?: "registered" | "waitlisted" | "blocked" | "planned" | "dropped";
   course_code?: string;
   professor?: string;
   location?: string;
@@ -39,6 +39,7 @@ type Props = {
   gradPlanEditUrl?: string;
   exportRef?: RefObject<HTMLDivElement | null>;
   headerActions?: ReactNode;
+  termName?: string | null;
 };
 
 
@@ -54,6 +55,7 @@ export default function SchedulerCalendar({
   gradPlanEditUrl,
   exportRef,
   headerActions,
+  termName,
 }: Props) {
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -159,7 +161,7 @@ export default function SchedulerCalendar({
       >
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
           <Typography variant="h5" className="font-header" sx={{ color: "white", fontWeight: 700 }}>
-            Weekly Schedule
+            {termName ? `Weekly Schedule for ${termName}` : 'Weekly Schedule'}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", color: "white" }}>
             {/* Total Credits Counter */}
@@ -279,7 +281,7 @@ export default function SchedulerCalendar({
               editable
               eventResizableFromStart
               eventDurationEditable
-              events={events.map(event => {
+              events={events.filter(event => event.startTime && event.endTime).map(event => {
                 // Convert to generic weekly format - use a fixed week
                 const baseDate = new Date(2024, 0, 1); // January 1, 2024 (Monday)
                 const eventDate = new Date(baseDate);
@@ -321,18 +323,18 @@ export default function SchedulerCalendar({
               select={handleSlotSelect}
               eventClick={handleEventClick}
               eventChange={handleEventChange}
-            eventContent={(arg) => (
-              <div style={{ padding: "2px 6px", lineHeight: 1.1 }}>
-                <div style={{ fontWeight: 700, fontSize: "9px" }}>
-                  {arg.event.extendedProps.course_code || arg.event.title}
-                </div>
-                {arg.event.extendedProps.location && (
-                  <div style={{ fontSize: "8px", opacity: 0.9 }}>
-                    {arg.event.extendedProps.location}
+              eventContent={(arg) => (
+                <div style={{ padding: "2px 6px", lineHeight: 1.1 }}>
+                  <div style={{ fontWeight: 700, fontSize: "9px" }}>
+                    {arg.event.extendedProps.course_code || arg.event.title}
                   </div>
-                )}
-              </div>
-            )}
+                  {arg.event.extendedProps.location && (
+                    <div style={{ fontSize: "8px", opacity: 0.9 }}>
+                      {arg.event.extendedProps.location}
+                    </div>
+                  )}
+                </div>
+              )}
             />
           </Box>
 

@@ -1,13 +1,13 @@
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 
-export type RouteContext = 
+export type RouteContext =
   | 'graduation_planning'
-  | 'career_exploration' 
+  | 'career_exploration'
   | 'advisor_review'
   | 'inbox'
   | 'pathfinder'
-  | 'semester_scheduling'
+  | 'course_scheduling'
   | 'academic_history'
   | 'general';
 
@@ -19,7 +19,7 @@ export function useRouteContext(): RouteContext {
     if (pathname.includes('/pathfinder')) return 'career_exploration';
     if (pathname.includes('/approve-grad-plans')) return 'advisor_review';
     if (pathname.includes('/inbox')) return 'inbox';
-    if (pathname.includes('/semester-scheduler')) return 'semester_scheduling';
+    if (pathname.includes('/course-scheduler')) return 'course_scheduling';
     if (pathname.includes('/academic-history')) return 'academic_history';
     return 'general';
   }, [pathname]);
@@ -33,7 +33,7 @@ export function getRouteContextDescription(context: RouteContext): string {
     advisor_review: 'reviewing and managing student graduation plans',
     inbox: 'viewing notifications and messages',
     pathfinder: 'exploring career and academic pathways',
-    semester_scheduling: 'planning semester course schedules',
+    course_scheduling: 'planning semester course schedules',
     academic_history: 'reviewing academic progress and completed courses',
     general: 'navigating the academic planning system',
   };

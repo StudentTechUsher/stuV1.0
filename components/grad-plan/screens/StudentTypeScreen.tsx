@@ -6,7 +6,7 @@ import WizardFormLayout from '../WizardFormLayout';
 import OptionTile from '../OptionTile';
 
 interface StudentTypeScreenProps {
-  onSubmit: (studentType: 'undergraduate' | 'graduate') => void;
+  onSubmit: (studentType: 'undergraduate' | 'honor' | 'graduate') => void;
   onBack: () => void;
   isLoading?: boolean;
 }
@@ -16,7 +16,7 @@ export default function StudentTypeScreen({
   onBack,
   isLoading = false,
 }: Readonly<StudentTypeScreenProps>) {
-  const [selected, setSelected] = useState<'undergraduate' | 'graduate' | null>(null);
+  const [selected, setSelected] = useState<'undergraduate' | 'honor' | 'graduate' | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +58,13 @@ export default function StudentTypeScreen({
           description="Pursuing a bachelor's degree"
           selected={selected === 'undergraduate'}
           onClick={() => setSelected('undergraduate')}
+          disabled={isLoading}
+        />
+        <OptionTile
+          title="Honors"
+          description="Undergraduate honors student with additional requirements"
+          selected={selected === 'honor'}
+          onClick={() => setSelected('honor')}
           disabled={isLoading}
         />
         <OptionTile

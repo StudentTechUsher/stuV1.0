@@ -159,7 +159,7 @@ export default function CalendarPanelClient({
               semester={semester}
             />
             {showSchedulerButton && (
-              <Link href="/semester-scheduler" passHref>
+              <Link href="/course-scheduler" passHref>
                 <Button
                   variant="contained"
                   size="small"

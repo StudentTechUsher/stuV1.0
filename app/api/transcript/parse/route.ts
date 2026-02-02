@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
-import { parseTranscriptFromBuffer } from '@/lib/transcript/processor';
+import {
+  parseByuTranscriptWithOpenAI,
+  parseByuTranscriptPdfWithOpenAI,
+  deduplicateByuCourses,
+  type ByuTranscriptParseResult,
+} from '@/lib/transcript/byuTranscriptParserOpenAI';
 import { logError, logInfo } from '@/lib/logger';
 import { calculateGpaFromCourses } from '@/lib/services/gpaCalculationService';
 import { updateStudentGpa } from '@/lib/services/studentService';
-import { fetchUserCoursesArray } from '@/lib/services/userCoursesService';
+import { randomUUID } from 'crypto';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -22,6 +28,103 @@ function deriveStatus(grade: string | null): 'completed' | 'withdrawn' | 'in-pro
     return 'withdrawn';
   }
   return 'completed';
+}
+
+async function upsertParsedTranscript(options: {
+  result: ByuTranscriptParseResult;
+  userId: string;
+  supabase: SupabaseClient;
+  usedOcr: boolean;
+}) {
+  const { result, userId, supabase, usedOcr } = options;
+
+  if (!result.success || result.courses.length === 0) {
+    return { report: null };
+  }
+
+  const dedupedCourses = deduplicateByuCourses(result.courses);
+
+  const coursesJson = dedupedCourses.map((course) => {
+    const grade = course.grade.trim() === '' ? null : course.grade;
+    return {
+      id: randomUUID(),
+      subject: course.subject,
+      number: course.number,
+      title: course.title,
+      credits: course.credits,
+      grade,
+      term: course.term,
+      tags: [],
+      origin: 'parsed',
+      status: deriveStatus(grade),
+    };
+  });
+
+  const { data: existingRecord } = await supabase
+    .from('user_courses')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingRecord) {
+    await supabase
+      .from('user_courses')
+      .update({ courses: coursesJson })
+      .eq('user_id', userId);
+  } else {
+    await supabase
+      .from('user_courses')
+      .insert({ user_id: userId, courses: coursesJson });
+  }
+
+  try {
+    let gpa: number | null = null;
+
+    if (result.gpa !== null && result.gpa !== undefined) {
+      gpa = result.gpa;
+      logInfo('Using extracted GPA from transcript', {
+        userId,
+        action: usedOcr ? 'use_extracted_gpa_pdf_mode' : 'use_extracted_gpa_text_mode',
+      });
+    } else {
+      gpa = calculateGpaFromCourses(dedupedCourses);
+      logInfo('Calculated GPA from courses (no GPA found in transcript)', {
+        userId,
+        action: usedOcr ? 'calculate_gpa_pdf_mode' : 'calculate_gpa_text_mode',
+      });
+    }
+
+    await updateStudentGpa(supabase, userId, gpa);
+    logInfo('Updated student GPA after transcript parse', {
+      userId,
+      action: usedOcr ? 'update_gpa_pdf_mode' : 'update_gpa_text_mode',
+    });
+  } catch (error) {
+    logError('Failed to update student GPA after transcript parse', error, {
+      userId,
+      action: usedOcr ? 'update_gpa_pdf_mode' : 'update_gpa_text_mode',
+    });
+  }
+
+  const termsDetected = Array.from(new Set(dedupedCourses.map((course) => course.term)));
+
+  return {
+    report: {
+      success: true,
+      courses_found: dedupedCourses.length,
+      courses_upserted: dedupedCourses.length,
+      terms_detected: termsDetected,
+      unknown_lines: 0,
+      total_lines: 0,
+      used_ocr: usedOcr,
+      used_llm: false,
+      used_byu_parser: true,
+      confidence_stats: { avg: 1.0, min: 1.0, max: 1.0, low_confidence_count: 0 },
+      validation_report: result.validationReport,
+      errors: [],
+      timestamp: new Date().toISOString(),
+    },
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -49,107 +152,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Text must be at least 100 characters' }, { status: 400 });
       }
 
-      // Parse text directly using BYU parser
-      const { parseByuTranscriptWithOpenAI } = await import('@/lib/transcript/byuTranscriptParserOpenAI');
-      const { deduplicateByuCourses } = await import('@/lib/transcript/byuTranscriptParserOpenAI');
-      const { randomUUID } = await import('crypto');
-
       const byuResult = await parseByuTranscriptWithOpenAI(text, user.id);
+      const result = await upsertParsedTranscript({
+        result: byuResult,
+        userId: user.id,
+        supabase,
+        usedOcr: false,
+      });
 
-      if (byuResult.success && byuResult.courses.length > 0) {
-        const dedupedCourses = deduplicateByuCourses(byuResult.courses);
-
-        // Convert to DB format with status derivation
-        const coursesJson = dedupedCourses.map((course) => {
-          const grade = course.grade.trim() === '' ? null : course.grade;
-          return {
-            id: randomUUID(),
-            subject: course.subject,
-            number: course.number,
-            title: course.title,
-            credits: course.credits,
-            grade,
-            term: course.term,
-            tags: [],
-            origin: 'parsed',
-            status: deriveStatus(grade),
-          };
-        });
-
-        // Check if user has existing record
-        const { data: existingRecord } = await supabase
-          .from('user_courses')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (existingRecord) {
-          await supabase
-            .from('user_courses')
-            .update({ courses: coursesJson })
-            .eq('user_id', user.id);
-        } else {
-          await supabase
-            .from('user_courses')
-            .insert({ user_id: user.id, courses: coursesJson });
-        }
-
-        // Save GPA from transcript (prefer extracted GPA over calculated)
-        try {
-          let gpa: number | null = null;
-
-          // Use extracted GPA if available, otherwise calculate from courses
-          if (byuResult.gpa !== null && byuResult.gpa !== undefined) {
-            gpa = byuResult.gpa;
-            logInfo('Using extracted GPA from transcript', {
-              userId: user.id,
-              action: 'use_extracted_gpa_text_mode',
-            });
-          } else {
-            gpa = calculateGpaFromCourses(dedupedCourses);
-            logInfo('Calculated GPA from courses (no GPA found in transcript)', {
-              userId: user.id,
-              action: 'calculate_gpa_text_mode',
-            });
-          }
-
-          await updateStudentGpa(supabase, user.id, gpa);
-          logInfo('Updated student GPA after text transcript parse', {
-            userId: user.id,
-            action: 'update_gpa_text_mode',
-          });
-        } catch (error) {
-          // Log error but don't fail the request
-          // GPA update is not critical to transcript upload success
-          logError('Failed to update student GPA (text mode)', error, {
-            userId: user.id,
-            action: 'update_gpa_text_mode',
-          });
-        }
-
-        const termsDetected = Array.from(new Set(dedupedCourses.map(c => c.term)));
-
-        return NextResponse.json({
-          success: true,
-          report: {
-            success: true,
-            courses_found: dedupedCourses.length,
-            courses_upserted: dedupedCourses.length,
-            terms_detected: termsDetected,
-            unknown_lines: 0,
-            total_lines: 0,
-            used_ocr: false,
-            used_llm: false,
-            used_byu_parser: true,
-            confidence_stats: { avg: 1.0, min: 1.0, max: 1.0, low_confidence_count: 0 },
-            validation_report: byuResult.validationReport,
-            errors: [],
-            timestamp: new Date().toISOString(),
-          },
-        });
-      } else {
+      if (!result.report) {
         return NextResponse.json({ error: 'No courses found in text' }, { status: 422 });
       }
+
+      return NextResponse.json({ success: true, report: result.report });
     } catch (error) {
       logError('Text parsing failed', error, { userId: user.id, action: 'transcript_parse_text' });
       return NextResponse.json(
@@ -159,7 +174,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Handle PDF upload (original logic)
+  // Handle PDF upload
   const contentType = request.headers.get('content-type') ?? '';
   const isMultipart = contentType.includes('multipart/form-data');
 
@@ -212,59 +227,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Use BYU parser by default (can be overridden with query param ?useByuParser=false)
-    const url = new URL(request.url);
-    const useByuParser = url.searchParams.get('useByuParser') !== 'false'; // Default to true
-
-    const report = await parseTranscriptFromBuffer({
+    const byuResult = await parseByuTranscriptPdfWithOpenAI(buffer, fileName, user.id);
+    const result = await upsertParsedTranscript({
+      result: byuResult,
       userId: user.id,
-      fileBuffer: buffer,
-      fileName,
-      useByuParser, // Enable BYU-specific OpenAI parser
-      supabaseClient: supabase,
+      supabase,
+      usedOcr: true,
     });
 
-    if (!report.success) {
-      return NextResponse.json(
-        { success: false, report },
-        { status: 422 }
-      );
+    if (!result.report) {
+      return NextResponse.json({ error: 'No courses found in transcript' }, { status: 422 });
     }
 
-    // Save GPA from transcript (prefer extracted GPA over calculated)
-    try {
-      let gpa: number | null = null;
-
-      // Use extracted GPA from report if available, otherwise calculate from courses
-      if (report.gpa !== null && report.gpa !== undefined) {
-        gpa = report.gpa;
-        logInfo('Using extracted GPA from transcript', {
-          userId: user.id,
-          action: 'use_extracted_gpa_pdf_mode',
-        });
-      } else {
-        const savedCourses = await fetchUserCoursesArray(supabase, user.id);
-        gpa = calculateGpaFromCourses(savedCourses);
-        logInfo('Calculated GPA from courses (no GPA found in transcript)', {
-          userId: user.id,
-          action: 'calculate_gpa_pdf_mode',
-        });
-      }
-
-      await updateStudentGpa(supabase, user.id, gpa);
-      logInfo('Updated student GPA after PDF transcript parse', {
-        userId: user.id,
-        action: 'update_gpa_pdf_mode',
-      });
-    } catch (error) {
-      // Log error but don't fail the request
-      logError('Failed to update student GPA (PDF mode)', error, {
-        userId: user.id,
-        action: 'update_gpa_pdf_mode',
-      });
-    }
-
-    return NextResponse.json({ success: true, report });
+    return NextResponse.json({ success: true, report: result.report });
   } catch (error) {
     logError('Transcript parse route failed', error, {
       userId: user.id,

@@ -73,7 +73,7 @@ export class EscalationService {
         action: 'contact_advisor',
         urgency: 'medium'
       },
-      semester_scheduling: {
+      course_scheduling: {
         reason: 'Detailed scheduling conflicts need advisor assistance',
         action: 'schedule_meeting',
         urgency: 'medium'

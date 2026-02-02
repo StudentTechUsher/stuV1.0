@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { StuLoader } from '@/components/ui/StuLoader';
 import { SELECTION_MODES, SELECTION_MODE_DESCRIPTIONS, type SelectionMode } from '@/lib/selectionMode';
+import { clientLogger } from '@/lib/client-logger';
 
 export default function AdminSettingsPage() {
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('MANUAL');
@@ -53,7 +54,7 @@ export default function AdminSettingsPage() {
         const settingsData = await settingsRes.json();
         setSelectionMode(settingsData.selection_mode || 'MANUAL');
       } catch (err) {
-        console.error('Error fetching data:', err);
+        clientLogger.error('Error fetching data', err, { action: 'AdminSettingsPage.fetchData' });
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
@@ -86,7 +87,7 @@ export default function AdminSettingsPage() {
 
       setSnackbar({ open: true, message: 'Settings saved successfully!', severity: 'success' });
     } catch (err) {
-      console.error('Error saving settings:', err);
+      clientLogger.error('Error saving settings', err, { action: 'AdminSettingsPage.handleSave', universityId });
       const message = err instanceof Error ? err.message : 'Failed to save settings';
       setError(message);
       setSnackbar({ open: true, message, severity: 'error' });

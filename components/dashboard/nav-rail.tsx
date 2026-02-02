@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSelectedLayoutSegment, useRouter } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Divider from "@mui/material/Divider";
-import { supabase } from "@/lib/supabaseClient";
 import { useUniversityTheme } from "@/contexts/university-theme-context";
+import { signOut } from "@/lib/utils/auth-client";
 
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
@@ -74,14 +74,18 @@ export default function NavRail({
 }: Readonly<Props>) {
   const [isExpanded, setIsExpanded] = useState(false);
   const seg = useSelectedLayoutSegment();
-  const router = useRouter();
   const { university } = useUniversityTheme();
   const currentWidth = isExpanded ? expandedWidth : compactWidth;
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      router.push("/login");
+      const result = await signOut();
+      if (result.success) {
+        // Use window.location for a hard redirect that clears all client state
+        window.location.href = "/login";
+      } else {
+        console.error("Sign out failed:", result.error);
+      }
     } catch (error) {
       console.error("Error signing out:", error);
     }

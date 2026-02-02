@@ -316,7 +316,7 @@ Key guidelines:
 - Suggest relevant majors, minors, and course options
 - Connect interests to potential career directions`,
       
-      semester_scheduling: `
+      course_scheduling: `
 - Help balance course loads and timing
 - Consider prerequisites and course availability
 - Suggest backup options for full courses`,
@@ -401,7 +401,7 @@ Key guidelines:
       career_exploration: "You've been exploring many career options! An advisor can help you create a more detailed plan that aligns with your interests and goals. Would you like to connect with career services?",
       advisor_review: "For detailed plan reviews and approvals, it's best to work directly with an advisor. They can provide the official guidance you need.",
       pathfinder: "I see you're exploring different academic pathways. An advisor can help you create a personalized plan that matches your interests and career goals.",
-      semester_scheduling: "For complex scheduling decisions and course planning, an advisor can provide detailed guidance specific to your program requirements.",
+      course_scheduling: "For complex scheduling decisions and course planning, an advisor can provide detailed guidance specific to your program requirements.",
       inbox: "If you have questions about important notifications or deadlines, an advisor can provide clarification and assistance.",
       academic_history: "For detailed review of your academic progress and planning, an advisor can provide comprehensive guidance.",
       general: "I notice you have several ongoing questions. An advisor can provide more comprehensive, personalized assistance. Would you like help connecting with your advisor?"

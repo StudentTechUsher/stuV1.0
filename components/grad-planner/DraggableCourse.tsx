@@ -31,6 +31,14 @@ export function DraggableCourse({
 }: Readonly<DraggableCourseProps>) {
   const courseId = `course-${termIndex}-${courseIndex}`;
 
+  const courseIdentifier = `${course.code}-${course.title}`;
+  const hasMoved = movedCourses.has(courseIdentifier);
+  const isCompleted = course.isCompleted || false;
+  const isWithdrawn = course.status === 'Withdrawn';
+
+  // Disable dragging for completed or withdrawn courses
+  const isDraggingDisabled = !isEditMode || isCompleted || isWithdrawn;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: courseId,
     data: {
@@ -38,7 +46,7 @@ export function DraggableCourse({
       termIndex,
       courseIndex,
     },
-    disabled: !isEditMode,
+    disabled: isDraggingDisabled,
   });
 
   const style = transform
@@ -48,10 +56,6 @@ export function DraggableCourse({
         opacity: isDragging ? 0 : 1,
       }
     : undefined;
-
-  const courseIdentifier = `${course.code}-${course.title}`;
-  const hasMoved = movedCourses.has(courseIdentifier);
-  const isCompleted = course.isCompleted || false;
 
   return (
     <div
@@ -63,15 +67,17 @@ export function DraggableCourse({
         'group relative flex flex-col gap-4 rounded-[7px] border p-4 text-sm shadow-[0_38px_88px_-56px_rgba(8,35,24,0.55)] transition-all duration-200 ease-out',
         isCompleted
           ? 'border-green-200 bg-green-50/50'
+          : isWithdrawn
+          ? 'border-gray-300 bg-gray-100/60'
           : 'border-[color-mix(in_srgb,var(--border)_82%,transparent_18%)] bg-white/95',
-        isEditMode
+        isEditMode && !isCompleted && !isWithdrawn
           ? 'cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:border-[color-mix(in_srgb,var(--primary)_42%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_6%,#ffffff_94%)] hover:shadow-[0_32px_68px_-48px_rgba(18,249,135,0.45)]'
           : 'cursor-default',
         hasMoved && 'border-[var(--action-edit)] shadow-[0_30px_62px_-46px_rgba(253,204,74,0.55)]'
       )}
     >
       <div className="flex items-start gap-3">
-        {isEditMode && (
+        {isEditMode && !isCompleted && !isWithdrawn && (
           <span
             className="mt-1 flex h-8 w-8 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--primary)_26%,transparent)] bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] text-[color-mix(in_srgb,var(--foreground)_75%,var(--primary)_25%)] transition-colors duration-200 group-hover:bg-[color-mix(in_srgb,var(--primary)_18%,transparent)]"
             aria-hidden="true"
@@ -104,12 +110,31 @@ export function DraggableCourse({
                   Completed
                 </span>
               )}
+              {isWithdrawn && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-gray-500/40 bg-gray-200 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M4.93 4.93l14.14 14.14" />
+                  </svg>
+                  Withdrawn
+                </span>
+              )}
               <h4 className="font-body-semi text-base font-semibold leading-5 text-[color-mix(in_srgb,var(--foreground)_90%,var(--primary)_10%)]">
                 {course.title}
               </h4>
             </div>
 
-            {isEditMode && (
+            {isEditMode && !isCompleted && !isWithdrawn && (
               <button
                 type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-[color-mix(in_srgb,var(--primary)_60%,var(--foreground)_40%)] transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
@@ -141,7 +166,7 @@ export function DraggableCourse({
         </div>
       </div>
 
-      {isEditMode && (
+      {isEditMode && !isCompleted && !isWithdrawn && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--muted)_38%,transparent)] bg-[color-mix(in_srgb,var(--muted)_18%,transparent)] px-3 py-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color-mix(in_srgb,var(--muted-foreground)_72%,var(--foreground)_28%)]">

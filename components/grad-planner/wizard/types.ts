@@ -11,7 +11,7 @@ export interface Elective {
 export interface WizardState {
   currentStep: number;
   studentName: string;
-  studentType: 'undergraduate' | 'graduate' | 'other' | null;
+  studentType: 'undergraduate' | 'honor' | 'graduate' | 'other' | null;
   selectedPrograms: string[];
   genEdStrategy: 'early' | 'balanced' | 'flexible' | null;
   planMode: 'AUTO' | 'MANUAL' | null;

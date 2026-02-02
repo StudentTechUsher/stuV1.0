@@ -198,7 +198,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/grad-plan",           segment: "grad-plan",          label: "Graduation Planner",   icon: "planner" },
         { href: "/sandbox",             segment: "sandbox",            label: "Plan Sandbox",         icon: "sandbox" },
         { href: "/academic-history",    segment: "academic-history",   label: "Academic History",     icon: "history" },
-        { href: "/semester-scheduler",  segment: "semester-scheduler", label: "Schedule Semester",    icon: "semester" },
+        { href: "/course-scheduler",  segment: "course-scheduler", label: "Schedule Courses",    icon: "semester" },
         { href: "/pathfinder",          segment: "pathfinder",         label: "Pathfinder",           icon: "map" },
         { href: "/profile",             segment: "profile",            label: "Profile",              icon: "profile" },
       ];
@@ -248,7 +248,7 @@ function getNavItems(role: Role, pendingCount = 0, unreadInboxCount = 0): NavIte
         { href: "/grad-plan",           segment: "grad-plan",             label: "Graduation Planner",     icon: "planner" },
         { href: "/sandbox",             segment: "sandbox",               label: "Plan Sandbox",           icon: "sandbox" },
         { href: "/academic-history",    segment: "academic-history",      label: "Academic History",       icon: "history" },
-        { href: "/semester-scheduler",  segment: "semester-scheduler",    label: "Schedule Semester",      icon: "semester" },
+        { href: "/course-scheduler",  segment: "course-scheduler",    label: "Schedule Courses",      icon: "semester" },
         { href: "/pathfinder",          segment: "pathfinder",            label: "Pathfinder",             icon: "map" },
         { href: "/program-flow",        segment: "program-flow",          label: "Program Flow",           icon: "programFlow" },
         { href: "/system",              segment: "system",                label: "System",                 icon: "system" },

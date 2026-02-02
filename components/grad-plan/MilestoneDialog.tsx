@@ -23,7 +23,7 @@ import { Calendar, Clock, GraduationCap } from 'lucide-react';
 
 export interface Milestone {
   id?: string;
-  type: 'internship' | 'study_abroad' | 'research' | 'study_break' | 'custom';
+  type: 'internship' | 'study_abroad' | 'research' | 'study_break' | 'honors_thesis' | 'custom';
   title: string;
   timing: 'beginning' | 'middle' | 'before_last_year' | 'after_graduation' | 'specific_term';
   term?: string;
@@ -44,6 +44,7 @@ const MILESTONE_TYPE_LABELS: Record<Milestone['type'], string> = {
   study_abroad: 'Study Abroad',
   research: 'Research Project',
   study_break: 'Study Break',
+  honors_thesis: 'Honors Thesis',
   custom: 'Custom Milestone',
 };
 
@@ -246,6 +247,8 @@ function getDefaultTitle(type: Milestone['type']): string {
       return 'Research Project';
     case 'study_break':
       return 'Study Break';
+    case 'honors_thesis':
+      return 'Honors Thesis';
     case 'custom':
       return 'Custom Milestone';
   }

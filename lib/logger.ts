@@ -20,6 +20,7 @@ interface LogContext {
   endDate?: string;     // ISO timestamps are safe
   model?: string;       // AI model name (safe)
   textLength?: number;  // Text/content length in characters (safe)
+  byteCount?: number;   // Byte counts (safe)
   // NEVER include: student data, course info, grades, names, emails, file content
 }
 
@@ -66,6 +67,7 @@ function buildPosthogProperties(context?: LogContext): ServerEventProperties {
     error_hint: context.errorHint,
     model: context.model,
     text_length: context.textLength,
+    byte_count: context.byteCount,
     start_date: context.startDate,
     end_date: context.endDate,
   };

@@ -42,7 +42,7 @@ interface ToolRendererProps {
     hasActivePlan?: boolean;
     hasCourses?: boolean;
     hasTranscript?: boolean;
-    studentType?: 'undergraduate' | 'graduate';
+    studentType?: 'undergraduate' | 'honor' | 'graduate';
     universityId?: number;
     selectedProgramIds?: number[];
     genEdProgramIds?: number[];
@@ -75,6 +75,7 @@ interface ToolRendererProps {
   onToolSkip?: () => void;
   onCareerPathfinderClick?: () => void;
   onProgramPathfinderClick?: () => void;
+  onStudentDataChanged?: () => void;
 }
 
 export default function ToolRenderer({
@@ -84,6 +85,7 @@ export default function ToolRenderer({
   onToolSkip,
   onCareerPathfinderClick,
   onProgramPathfinderClick,
+  onStudentDataChanged,
 }: Readonly<ToolRendererProps>) {
   switch (toolType) {
     case 'profile_update':
@@ -237,6 +239,7 @@ export default function ToolRenderer({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           academicTerms={toolData.academicTerms as any}
           onComplete={(data) => onToolComplete(data)}
+          onStudentDataChanged={onStudentDataChanged}
         />
       );
 
@@ -245,6 +248,7 @@ export default function ToolRenderer({
         <MilestonesAndConstraintsStep
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           distribution={toolData.distribution as any}
+          studentType={toolData.studentType}
           onComplete={(data) => onToolComplete(data)}
         />
       );

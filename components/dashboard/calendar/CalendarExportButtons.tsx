@@ -17,7 +17,7 @@ interface CalendarExportButtonsProps {
 
 /**
  * Export buttons for calendar widget
- * - Edit icon → routes to /semester-scheduler
+ * - Edit icon → routes to /course-scheduler
  * - Download Calendar (PNG) → exports calendar visual
  * - Download Full Schedule (PDF) → calendar image + course table
  */
@@ -232,7 +232,7 @@ export function CalendarExportButtons({
       <div className="flex items-center gap-1">
         {showEditButton && (
           <Tooltip title="Edit Schedule" arrow>
-            <Link href="/semester-scheduler">
+            <Link href="/course-scheduler">
               <IconButton
                 size="small"
                 sx={{

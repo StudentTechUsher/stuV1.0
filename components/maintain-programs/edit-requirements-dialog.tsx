@@ -193,7 +193,7 @@ export default function EditRequirementsDialog({ open, row, onClose, onSave, uni
         setSnackbarOpen(false);
     };
 
-    const programTypes = ['major', 'minor', 'emphasis', 'general_education'];
+    const programTypes = ['major', 'minor', 'honors', 'emphasis', 'general_education'];
 
     return (
         <>

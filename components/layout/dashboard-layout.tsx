@@ -1,8 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
 import { Sidebar } from './sidebar';
+import { signOut } from '@/lib/utils/auth-client';
 import type { NavItem as BaseNavItem } from '@/app/(dashboard)/layout';
 
 type NavItem = BaseNavItem & {
@@ -15,12 +14,15 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, items }: DashboardLayoutProps) {
-  const router = useRouter();
-
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      router.push('/login');
+      const result = await signOut();
+      if (result.success) {
+        // Use window.location for a hard redirect that clears all client state
+        window.location.href = '/login';
+      } else {
+        console.error('Sign out failed:', result.error);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -44,7 +46,7 @@ function classifyItemSection(href: string, index: number, totalItems: number): '
   // Primary: Dashboard, Inbox, and core navigation (first ~7-8 items)
   // Secondary: Admin/system items
 
-  const primaryRoutes = ['/', '/inbox', '/grad-plan', '/sandbox', '/academic-history', '/semester-scheduler', '/pathfinder', '/approve-grad-plans', '/advisees', '/maintain-programs', '/program-flow', '/appointments', '/admin/forecast'];
+  const primaryRoutes = ['/', '/inbox', '/grad-plan', '/sandbox', '/academic-history', '/course-scheduler', '/pathfinder', '/approve-grad-plans', '/advisees', '/maintain-programs', '/program-flow', '/appointments', '/admin/forecast'];
 
   if (primaryRoutes.some(route => href.startsWith(route))) {
     return 'primary';

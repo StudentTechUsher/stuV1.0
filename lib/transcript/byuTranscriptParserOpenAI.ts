@@ -113,6 +113,107 @@ const ByuTranscriptResponseSchema = z.object({
   ),
 });
 
+const BYU_TRANSCRIPT_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    gpa: {
+      type: ['number', 'null'],
+      description: 'Overall undergraduate GPA from transcript (e.g., 3.75), or null if not found',
+    },
+    terms: {
+      type: 'array',
+      description: 'Array of academic terms/semesters',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          term: {
+            type: 'string',
+            description: 'Term label (e.g., Fall Semester 2023)',
+          },
+          courses: {
+            type: 'array',
+            description: 'Courses taken in this term',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                subject: {
+                  type: 'string',
+                  description:
+                    'Course subject code, uppercase letters with optional spaces, max 8 characters (e.g., CS, MATH, REL A, A HTG, C S, EC EN)',
+                },
+                number: {
+                  type: 'string',
+                  description:
+                    'Course number, 3 digits optionally followed by letter (e.g., 142, 112R)',
+                },
+                title: {
+                  type: 'string',
+                  description: 'Course title',
+                },
+                credits: {
+                  type: 'number',
+                  description: 'Course credit hours (decimal number)',
+                },
+                grade: {
+                  type: 'string',
+                  description:
+                    'Letter grade (A, A-, B+, etc.) or empty string for concurrent/in-progress courses without grades',
+                },
+              },
+              required: ['subject', 'number', 'title', 'credits', 'grade'],
+            },
+          },
+        },
+        required: ['term', 'courses'],
+      },
+    },
+  },
+  required: ['gpa', 'terms'],
+} as const;
+
+const BYU_TRANSCRIPT_PROMPT = `Extract ALL courses AND the overall GPA from this BYU academic transcript.
+
+**IMPORTANT INSTRUCTIONS:**
+
+1. **GPA Extraction:**
+   - Look for the overall undergraduate GPA on the transcript (often labeled as "Undergraduate GPA", "Cumulative GPA", or "Overall GPA")
+   - Extract the numerical value (e.g., 3.75, 3.50, 2.80)
+   - If no GPA is found on the transcript, return null for the gpa field
+
+2. **Course Code Pattern:** BYU course codes follow this pattern:
+   - Subject: Uppercase letters with optional internal spaces, max 8 characters total (e.g., "CS", "MATH", "REL A", "A HTG", "C S", "EC EN", "ME EN")
+   - Number: 3 digits, optionally followed by a letter (e.g., "142", "112R", "275")
+
+3. **Credits:** Extract the decimal credit value for each course (e.g., 3.0, 4.0, 1.5)
+
+4. **Grades:**
+   - Extract letter grades as they appear: A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F
+   - Special grades: P (Pass), I (Incomplete), W (Withdrawn), CR (Credit), NC (No Credit), T (Transfer)
+   - For concurrent enrollment or in-progress courses with no grade yet, use empty string
+
+5. **Terms:** Group courses by the term/semester they were taken (e.g., "Fall Semester 2023", "Winter Semester 2024")
+
+6. **What to include:**
+   - All regular courses
+   - Transfer credits (if shown)
+   - AP/IB credits (if shown)
+   - Concurrent enrollment courses
+
+7. **What to skip from course extraction:**
+   - GPA summary lines (extract GPA separately in the gpa field)
+   - Total credit lines
+   - Header/footer information
+   - Administrative notes
+
+Return the data in JSON format with:
+- gpa: the overall undergraduate GPA (number) or null if not found
+- terms: array of terms, where each term contains an array of courses
+
+Extract every course you can find. Be thorough and precise.`;
+
 export type ByuCourse = z.infer<typeof ByuCourseSchema>;
 export type ByuTranscriptResponse = z.infer<typeof ByuTranscriptResponseSchema>;
 
@@ -173,6 +274,148 @@ export class ByuTranscriptValidationError extends Error {
     super(message);
     this.name = 'ByuTranscriptValidationError';
   }
+}
+
+type OpenAIResponseContent = {
+  type?: string;
+  text?: string;
+};
+
+type OpenAIResponseOutput = {
+  content?: OpenAIResponseContent[];
+};
+
+function extractResponseOutputText(result: unknown): string {
+  if (!result || typeof result !== 'object') {
+    return '';
+  }
+
+  const outputText = (result as { output_text?: unknown }).output_text;
+  if (typeof outputText === 'string' && outputText.trim().length > 0) {
+    return outputText;
+  }
+
+  const output = (result as { output?: unknown }).output;
+  if (!Array.isArray(output)) {
+    return '';
+  }
+
+  const chunks: string[] = [];
+  for (const item of output as OpenAIResponseOutput[]) {
+    if (!item?.content || !Array.isArray(item.content)) continue;
+    for (const part of item.content) {
+      if (part?.type === 'output_text' && typeof part.text === 'string') {
+        chunks.push(part.text);
+      }
+    }
+  }
+
+  return chunks.join('');
+}
+
+function parseByuTranscriptJson(content: string, userId: string): ByuTranscriptResponse {
+  let rawJson: unknown;
+  try {
+    rawJson = JSON.parse(content.trim());
+  } catch (error) {
+    logError('Failed to parse OpenAI JSON response', error, {
+      userId,
+      action: 'byu_transcript_json_parse',
+    });
+
+    throw new ByuTranscriptParseError(
+      'Failed to parse OpenAI response as JSON',
+      error
+    );
+  }
+
+  const validationResult = ByuTranscriptResponseSchema.safeParse(rawJson);
+
+  if (!validationResult.success) {
+    logError('Invalid response structure from OpenAI', validationResult.error, {
+      userId,
+      action: 'byu_transcript_response_validation',
+    });
+
+    throw new ByuTranscriptParseError(
+      `OpenAI returned invalid response structure: ${validationResult.error.issues[0]?.message || 'Unknown error'}`
+    );
+  }
+
+  return validationResult.data;
+}
+
+async function uploadPdfForResponses(
+  pdfBuffer: Buffer,
+  fileName: string,
+  apiKey: string,
+  userId: string
+): Promise<string> {
+  const formData = new FormData();
+  const blob = new Blob([new Uint8Array(pdfBuffer)], { type: 'application/pdf' });
+  formData.append('file', blob, fileName || 'transcript.pdf');
+  formData.append('purpose', 'user_data');
+
+  const response = await fetch('https://api.openai.com/v1/files', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logError('OpenAI file upload failed for transcript', new Error(errorText), {
+      userId,
+      action: 'byu_transcript_pdf_upload_failed',
+      httpStatus: response.status,
+    });
+    throw new ByuTranscriptParseError(
+      `OpenAI file upload failed: ${response.status} - ${errorText}`
+    );
+  }
+
+  const result = await response.json();
+  const fileId = (result as { id?: string }).id;
+
+  if (!fileId) {
+    throw new ByuTranscriptParseError('OpenAI file upload did not return a file id');
+  }
+
+  return fileId;
+}
+
+async function deleteOpenAiFile(fileId: string, apiKey: string, userId: string) {
+  await fetch(`https://api.openai.com/v1/files/${fileId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  }).catch((error) =>
+    logError('Failed to delete OpenAI file', error, {
+      userId,
+      action: 'byu_transcript_pdf_delete_failed',
+    })
+  );
+}
+
+function shouldRetryWithFileId(errorText: string): boolean {
+  try {
+    const parsed = JSON.parse(errorText) as {
+      error?: { message?: string; param?: string; code?: string };
+    };
+    const param = parsed.error?.param ?? '';
+    const message = parsed.error?.message ?? '';
+    const code = parsed.error?.code ?? '';
+    if (param.includes('file_data')) return true;
+    if (message.includes('file_data')) return true;
+    if (code === 'invalid_value' && (param || message)) return true;
+  } catch {
+    // ignore JSON parse errors
+  }
+
+  return errorText.includes('file_data');
 }
 
 /**
@@ -281,111 +524,6 @@ export async function parseByuTranscriptWithOpenAI(
       textLength: transcriptText.length,
     });
 
-    // Define the JSON schema for structured output
-    // Note: With strict mode, all properties must be in 'required' array
-    // So we make grade required but allow empty string for in-progress courses
-    const schema = {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        gpa: {
-          type: ['number', 'null'],
-          description: 'Overall undergraduate GPA from transcript (e.g., 3.75), or null if not found',
-        },
-        terms: {
-          type: 'array',
-          description: 'Array of academic terms/semesters',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              term: {
-                type: 'string',
-                description: 'Term label (e.g., Fall Semester 2023)',
-              },
-              courses: {
-                type: 'array',
-                description: 'Courses taken in this term',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    subject: {
-                      type: 'string',
-                      description:
-                        'Course subject code, uppercase letters with optional spaces, max 8 characters (e.g., CS, MATH, REL A, A HTG, C S, EC EN)',
-                    },
-                    number: {
-                      type: 'string',
-                      description:
-                        'Course number, 3 digits optionally followed by letter (e.g., 142, 112R)',
-                    },
-                    title: {
-                      type: 'string',
-                      description: 'Course title',
-                    },
-                    credits: {
-                      type: 'number',
-                      description: 'Course credit hours (decimal number)',
-                    },
-                    grade: {
-                      type: 'string',
-                      description:
-                        'Letter grade (A, A-, B+, etc.) or empty string for concurrent/in-progress courses without grades',
-                    },
-                  },
-                  required: ['subject', 'number', 'title', 'credits', 'grade'],
-                },
-              },
-            },
-            required: ['term', 'courses'],
-          },
-        },
-      },
-      required: ['gpa', 'terms'],
-    };
-
-    // Construct the prompt with BYU-specific instructions
-    const userPrompt = `Extract ALL courses AND the overall GPA from this BYU academic transcript.
-
-**IMPORTANT INSTRUCTIONS:**
-
-1. **GPA Extraction:**
-   - Look for the overall undergraduate GPA on the transcript (often labeled as "Undergraduate GPA", "Cumulative GPA", or "Overall GPA")
-   - Extract the numerical value (e.g., 3.75, 3.50, 2.80)
-   - If no GPA is found on the transcript, return null for the gpa field
-
-2. **Course Code Pattern:** BYU course codes follow this pattern:
-   - Subject: Uppercase letters with optional internal spaces, max 8 characters total (e.g., "CS", "MATH", "REL A", "A HTG", "C S", "EC EN", "ME EN")
-   - Number: 3 digits, optionally followed by a letter (e.g., "142", "112R", "275")
-
-3. **Credits:** Extract the decimal credit value for each course (e.g., 3.0, 4.0, 1.5)
-
-4. **Grades:**
-   - Extract letter grades as they appear: A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F
-   - Special grades: P (Pass), I (Incomplete), W (Withdrawn), CR (Credit), NC (No Credit), T (Transfer)
-   - For concurrent enrollment or in-progress courses with no grade yet, use empty string
-
-5. **Terms:** Group courses by the term/semester they were taken (e.g., "Fall Semester 2023", "Winter Semester 2024")
-
-6. **What to include:**
-   - All regular courses
-   - Transfer credits (if shown)
-   - AP/IB credits (if shown)
-   - Concurrent enrollment courses
-
-7. **What to skip from course extraction:**
-   - GPA summary lines (extract GPA separately in the gpa field)
-   - Total credit lines
-   - Header/footer information
-   - Administrative notes
-
-Return the data in JSON format with:
-- gpa: the overall undergraduate GPA (number) or null if not found
-- terms: array of terms, where each term contains an array of courses
-
-Extract every course you can find. Be thorough and precise.`;
-
     // Make the API request with text instead of file
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -403,7 +541,7 @@ Extract every course you can find. Be thorough and precise.`;
           },
           {
             role: 'user',
-            content: userPrompt + '\n\nTranscript text:\n' + transcriptText,
+            content: BYU_TRANSCRIPT_PROMPT + '\n\nTranscript text:\n' + transcriptText,
           },
         ],
         response_format: {
@@ -411,7 +549,7 @@ Extract every course you can find. Be thorough and precise.`;
           json_schema: {
             name: 'byu_transcript_extraction',
             strict: true,
-            schema,
+            schema: BYU_TRANSCRIPT_JSON_SCHEMA,
           },
         },
         temperature: 0, // Deterministic output
@@ -445,46 +583,7 @@ Extract every course you can find. Be thorough and precise.`;
       throw new ByuTranscriptParseError('No content returned from OpenAI API');
     }
 
-    // Parse the JSON response
-    let parsedResponse: ByuTranscriptResponse;
-    try {
-      const rawJson = JSON.parse(content);
-
-      // Log what we got from OpenAI
-      console.log('OpenAI returned:', JSON.stringify(rawJson, null, 2));
-
-      const validationResult = ByuTranscriptResponseSchema.safeParse(rawJson);
-
-      if (!validationResult.success) {
-        console.error('OpenAI response validation failed:', validationResult.error);
-        console.error('Raw JSON:', JSON.stringify(rawJson, null, 2));
-        console.error('Validation errors:', validationResult.error.issues);
-
-        logError('Invalid response structure from OpenAI', validationResult.error, {
-          userId,
-          action: 'byu_transcript_response_validation',
-        });
-
-        throw new ByuTranscriptParseError(
-          `OpenAI returned invalid response structure: ${validationResult.error.issues[0]?.message || 'Unknown error'}`
-        );
-      }
-
-      parsedResponse = validationResult.data;
-    } catch (error) {
-      console.error('Failed to parse OpenAI response:', error);
-      console.error('Content:', content?.substring(0, 500));
-
-      logError('Failed to parse OpenAI JSON response', error, {
-        userId,
-        action: 'byu_transcript_json_parse',
-      });
-
-      throw new ByuTranscriptParseError(
-        'Failed to parse OpenAI response as JSON',
-        error
-      );
-    }
+    const parsedResponse = parseByuTranscriptJson(content, userId);
 
     // Validate that we have terms with courses
     if (!parsedResponse || !parsedResponse.terms || !Array.isArray(parsedResponse.terms)) {
@@ -550,6 +649,231 @@ Extract every course you can find. Be thorough and precise.`;
     logError('Unexpected error during BYU transcript parsing', error, {
       userId,
       action: 'byu_transcript_parse_error',
+    });
+
+    throw new ByuTranscriptParseError(
+      'Unexpected error during BYU transcript parsing',
+      error
+    );
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own transcripts only)
+ *
+ * Parses a BYU transcript PDF using OpenAI's Responses API with file input.
+ * Returns structured JSON directly (single call for OCR + parsing).
+ */
+export async function parseByuTranscriptPdfWithOpenAI(
+  pdfBuffer: Buffer,
+  fileName: string,
+  userId: string
+): Promise<ByuTranscriptParseResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new ByuTranscriptParseError(
+      'OPENAI_API_KEY is not configured. Cannot parse BYU transcript.'
+    );
+  }
+
+  const model =
+    process.env.OPENAI_BYU_TRANSCRIPT_PDF_MODEL ??
+    process.env.OPENAI_TRANSCRIPT_PDF_MODEL ??
+    process.env.OPENAI_BYU_TRANSCRIPT_MODEL ??
+    process.env.OPENAI_TRANSCRIPT_MODEL ??
+    process.env.OPENAI_MODEL ??
+    'gpt-4o';
+
+  try {
+    logInfo('Starting BYU transcript parse with OpenAI (pdf)', {
+      userId,
+      action: 'byu_transcript_parse_pdf_start',
+      model,
+      byteCount: pdfBuffer.length,
+    });
+
+    const basePayload = {
+      model,
+      input: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: BYU_TRANSCRIPT_PROMPT,
+            },
+            {
+              type: 'input_file',
+              filename: fileName || 'transcript.pdf',
+              file_data: pdfBuffer.toString('base64'),
+            },
+          ],
+        },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'byu_transcript_extraction',
+          strict: true,
+          schema: BYU_TRANSCRIPT_JSON_SCHEMA,
+        },
+      },
+      temperature: 0,
+    };
+
+    let response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(basePayload),
+    });
+
+    let uploadedFileId: string | null = null;
+    if (!response.ok) {
+      const errorText = await response.text();
+      if (shouldRetryWithFileId(errorText)) {
+        logInfo('OpenAI rejected inline file_data, retrying with file_id', {
+          userId,
+          action: 'byu_transcript_openai_pdf_retry_file_id',
+        });
+
+        uploadedFileId = await uploadPdfForResponses(pdfBuffer, fileName, apiKey, userId);
+        const payloadWithFileId = {
+          ...basePayload,
+          input: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: BYU_TRANSCRIPT_PROMPT,
+                },
+                {
+                  type: 'input_file',
+                  file_id: uploadedFileId,
+                },
+              ],
+            },
+          ],
+        };
+
+        response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payloadWithFileId),
+        });
+      } else {
+        logError('OpenAI API request failed for BYU transcript (pdf)', new Error(errorText), {
+          userId,
+          action: 'byu_transcript_openai_pdf_request',
+          httpStatus: response.status,
+        });
+
+        throw new ByuTranscriptParseError(
+          `OpenAI API request failed: ${response.status} - ${errorText}`
+        );
+      }
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logError('OpenAI API request failed for BYU transcript (pdf)', new Error(errorText), {
+        userId,
+        action: 'byu_transcript_openai_pdf_request',
+        httpStatus: response.status,
+      });
+
+      if (uploadedFileId) {
+        await deleteOpenAiFile(uploadedFileId, apiKey, userId);
+      }
+
+      throw new ByuTranscriptParseError(
+        `OpenAI API request failed: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    if (uploadedFileId) {
+      await deleteOpenAiFile(uploadedFileId, apiKey, userId);
+    }
+    const content = extractResponseOutputText(result);
+    const usage = (result as { usage?: Record<string, number> }).usage;
+
+    if (!content) {
+      throw new ByuTranscriptParseError('No content returned from OpenAI API');
+    }
+
+    const parsedResponse = parseByuTranscriptJson(content, userId);
+
+    if (!parsedResponse || !parsedResponse.terms || !Array.isArray(parsedResponse.terms)) {
+      throw new ByuTranscriptParseError('No terms found in parsed response');
+    }
+
+    const rawCourses: Array<{ term: string } & Omit<ByuCourse, 'term'>> = [];
+    for (const termObj of parsedResponse.terms) {
+      if (!termObj.courses || !Array.isArray(termObj.courses)) {
+        continue;
+      }
+      for (const course of termObj.courses) {
+        rawCourses.push({
+          term: termObj.term,
+          subject: course.subject,
+          number: course.number,
+          title: course.title,
+          credits: course.credits,
+          grade: course.grade,
+        });
+      }
+    }
+
+    const { validCourses, validationReport } = validateByuCourses(rawCourses);
+
+    logInfo('BYU transcript parsing completed (pdf)', {
+      userId,
+      action: 'byu_transcript_parse_pdf_complete',
+      count: validationReport.totalParsed,
+    });
+
+    if (validationReport.invalidCourses > 0) {
+      logInfo('BYU transcript validation errors detected (pdf)', {
+        userId,
+        action: 'byu_transcript_validation_errors_pdf',
+        count: validationReport.invalidCourses,
+      });
+    }
+
+    const promptTokens = usage?.prompt_tokens ?? usage?.input_tokens ?? 0;
+    const completionTokens = usage?.completion_tokens ?? usage?.output_tokens ?? 0;
+    const totalTokens = usage?.total_tokens ?? promptTokens + completionTokens;
+
+    return {
+      success: true,
+      courses: validCourses,
+      gpa: parsedResponse.gpa ?? null,
+      validationReport,
+      rawResponse: parsedResponse,
+      usage: usage
+        ? {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+          }
+        : undefined,
+    };
+  } catch (error) {
+    if (error instanceof ByuTranscriptParseError) {
+      throw error;
+    }
+
+    logError('Unexpected error during BYU transcript parsing (pdf)', error, {
+      userId,
+      action: 'byu_transcript_parse_pdf_error',
     });
 
     throw new ByuTranscriptParseError(

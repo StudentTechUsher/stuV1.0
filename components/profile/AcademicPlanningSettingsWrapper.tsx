@@ -20,7 +20,7 @@ interface StudentPlanningData {
   est_grad_term: string | null;
   admission_year: number | null;
   is_transfer: boolean | null;
-  student_type: 'undergraduate' | 'graduate' | null;
+  student_type: 'undergraduate' | 'honor' | 'graduate' | null;
   work_status: 'not_working' | 'part_time' | 'full_time' | 'variable' | null;
   career_goals: string | null;
 }
@@ -44,7 +44,7 @@ export function AcademicPlanningSettingsWrapper({
     await updateGraduationTimelineAction(data);
   };
 
-  const handleUpdateStudentType = async (studentType: 'undergraduate' | 'graduate') => {
+  const handleUpdateStudentType = async (studentType: 'undergraduate' | 'honor' | 'graduate') => {
     await updateStudentTypeAction(studentType);
   };
 

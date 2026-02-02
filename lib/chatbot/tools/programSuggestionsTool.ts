@@ -193,15 +193,15 @@ export function getProgramSelectionConfirmationMessage(programName: string, prog
 /**
  * Fetches available programs from the database and formats them for RAG context
  * @param universityId - University ID to fetch programs for
- * @param studentType - Student type (undergraduate or graduate)
+ * @param studentType - Student type (undergraduate, honors, or graduate)
  * @returns Formatted array of available programs
  */
 export async function fetchAvailableProgramsForRAG(
   universityId: number,
-  studentType: 'undergraduate' | 'graduate'
+  studentType: 'undergraduate' | 'honor' | 'graduate'
 ): Promise<Array<{ name: string; type: string; description?: string }>> {
   try {
-    const programTypes = studentType === 'undergraduate'
+    const programTypes = studentType === 'undergraduate' || studentType === 'honor'
       ? ['major', 'minor', 'emphasis']
       : ['graduate'];
 

@@ -349,6 +349,7 @@ export default function EventManager({
           <Box>
             {isEdit && event?.type === "personal" && onDelete && (
               <Button
+                type="button"
                 onClick={handleDelete}
                 color="error"
                 className="font-body-semi"
@@ -362,10 +363,11 @@ export default function EventManager({
             )}
           </Box>
           <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={onClose} className="font-body-semi">
+            <Button type="button" onClick={onClose} className="font-body-semi">
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={handleSave}
               variant="contained"
               disabled={!formData.title.trim() || formData.daysOfWeek.length === 0}
@@ -375,7 +377,7 @@ export default function EventManager({
                 "&:hover": { bgcolor: "var(--hover-green)" },
               }}
             >
-              {isEdit ? "Update" : "Add"} Event
+              {isEdit ? "Update Event" : "Insert into Scheduler"}
             </Button>
           </Box>
         </Box>

@@ -54,7 +54,12 @@ function handleAuthRedirects(
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Auth pages - redirect to dashboard if logged in (excluding landing page)
+  // Redirect authenticated users from landing page to dashboard
+  if (pathname === '/' && session) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Auth pages - redirect to dashboard if logged in
   const authPages = ['/login', '/signup']
   const isAuthPage = authPages.includes(pathname)
 
@@ -68,7 +73,6 @@ function handleAuthRedirects(
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
-  const _pathname = request.nextUrl.pathname
 
   // Parse and set subdomain
   const host = request.headers.get('host')

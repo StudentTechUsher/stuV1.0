@@ -26,6 +26,7 @@ import {
   UserX,
   Clock,
   Calendar,
+  GraduationCap,
   X,
 } from 'lucide-react';
 import { MilestoneDialog, Milestone } from './MilestoneDialog';
@@ -33,6 +34,7 @@ import { SemesterAllocation } from '@/lib/services/gradPlanGenerationService';
 
 interface MilestonesAndConstraintsStepProps {
   distribution?: SemesterAllocation[];
+  studentType?: 'undergraduate' | 'honor' | 'graduate';
   onComplete: (data: {
     milestones: Milestone[];
     workConstraints: {
@@ -97,6 +99,7 @@ const WORK_STATUS_OPTIONS: Array<{
 
 export function MilestonesAndConstraintsStep({
   distribution,
+  studentType,
   onComplete,
   initialMilestones = [],
   initialWorkStatus,
@@ -110,6 +113,20 @@ export function MilestonesAndConstraintsStep({
   const [showMilestoneDialog, setShowMilestoneDialog] = useState(false);
   const [selectedMilestoneType, setSelectedMilestoneType] = useState<Milestone['type'] | null>(null);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+
+  const milestoneTypes = (() => {
+    const base = [...MILESTONE_TYPES];
+    if (studentType === 'honor') {
+      const insertIndex = base.findIndex((type) => type.id === 'study_break');
+      const honorsEntry = { id: 'honors_thesis' as const, label: 'Honors Thesis', icon: GraduationCap, color: '#0EA5E9' };
+      if (insertIndex >= 0) {
+        base.splice(insertIndex + 1, 0, honorsEntry);
+      } else {
+        base.push(honorsEntry);
+      }
+    }
+    return base;
+  })();
 
   // Convert distribution to available terms for milestone dialog
   const availableTerms = distribution?.map(d => ({ term: d.term, year: d.year })) || [];
@@ -175,7 +192,7 @@ export function MilestonesAndConstraintsStep({
 
         {/* Milestone Type Cards */}
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 1.5, mb: 3 }}>
-          {MILESTONE_TYPES.map((type) => {
+          {milestoneTypes.map((type) => {
             const Icon = type.icon;
             return (
               <Card
@@ -225,7 +242,7 @@ export function MilestonesAndConstraintsStep({
               Added Milestones:
             </Typography>
             {milestones.map((milestone) => {
-              const typeInfo = MILESTONE_TYPES.find(t => t.id === milestone.type);
+              const typeInfo = milestoneTypes.find(t => t.id === milestone.type);
               const Icon = typeInfo?.icon || Sparkles;
 
               return (
