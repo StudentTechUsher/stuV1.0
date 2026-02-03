@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 🚀 Quick Start
+
+**Working on the Course Selection Agent?** → See **[START_HERE.md](START_HERE.md)** for where to pick up!
+
 ## Getting Started
 
 First, run the development server:
