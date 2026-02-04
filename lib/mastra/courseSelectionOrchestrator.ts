@@ -231,7 +231,7 @@ export class CourseSelectionOrchestrator {
     this.currentPhase = 'awaiting_primary';
 
     // 4. Present options to user
-    return formatSectionListMessage(courseCode, this.state.currentCourse.title, rankedSections, 5);
+    return formatSectionListMessage(courseCode, this.state.currentCourse.title || courseCode, rankedSections, 5);
   }
 
   /**
@@ -297,7 +297,7 @@ export class CourseSelectionOrchestrator {
       if (this.state.currentCourse) {
         return formatSectionListMessage(
           this.state.currentCourse.code,
-          this.state.currentCourse.title,
+          this.state.currentCourse.title || this.state.currentCourse.code,
           this.state.currentCourse.rankedSections,
           5
         );

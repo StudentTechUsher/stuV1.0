@@ -129,17 +129,8 @@ export async function createSchedule(
     termIndex?: number
 ): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
     try {
-        // 1. Deactivate existing active schedule
-        // We do this first to ensure only one active schedule. 
-        // In a real txn we'd do this together, but with Supabase client we do sequentially.
-        // There is a race condition risk but low impact for single user context.
-        await supabase
-            .from('student_schedules')
-            .update({ is_active: false })
-            .eq('student_id', studentId)
-            .eq('is_active', true);
-
-        // 2. Insert new schedule
+        // Insert new schedule (inactive until setup is complete)
+        // Will be activated when user completes the generation process
         const { data, error } = await supabase
             .from('student_schedules')
             .insert({
@@ -147,7 +138,7 @@ export async function createSchedule(
                 grad_plan_id: gradPlanId,
                 term_name: termName,
                 term_index: termIndex,
-                is_active: true,
+                is_active: false, // Don't activate until user completes setup
                 blocked_times: [], // Initialize empty
                 preferences: {},   // Initialize empty
             })

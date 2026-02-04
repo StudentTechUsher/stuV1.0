@@ -77,7 +77,7 @@ function parseMeetingsJson(meetingsJson: Record<string, unknown> | null): Parsed
   // Could also be an array in some cases, so handle both
   const meetingsArray = Array.isArray(meetingsJson) ? meetingsJson : [meetingsJson];
 
-  return meetingsArray
+  const parsedMeetings: ParsedMeeting[] = meetingsArray
     .map((meeting) => {
       const days = meeting.days as string;
       const start = (meeting.start || meeting.start_time) as string;
@@ -88,15 +88,22 @@ function parseMeetingsJson(meetingsJson: Record<string, unknown> | null): Parsed
         return null;
       }
 
-      return {
+      const parsed: ParsedMeeting = {
         days,
         daysOfWeek: parseDaysString(days),
         startTime: start,
         endTime: end,
-        location,
       };
+
+      if (location) {
+        parsed.location = location;
+      }
+
+      return parsed;
     })
     .filter((m): m is ParsedMeeting => m !== null);
+
+  return parsedMeetings;
 }
 
 // ============================================================================
@@ -351,7 +358,7 @@ export async function rankSectionsByPreferences(
       // 4. Daily hours bonus (+5)
       if (preferences.max_daily_hours) {
         // Check if any day would exceed limit
-        const exceedsLimit = primaryMeeting.daysOfWeek.some((day) => {
+        const exceedsLimit = primaryMeeting.daysOfWeek.some((_day) => {
           const duration = calculateDuration(primaryMeeting.startTime, primaryMeeting.endTime);
           return duration / 60 > preferences.max_daily_hours!;
         });

@@ -191,7 +191,7 @@ export default function PreferencesStep({
             fontWeight: 600,
           }}
         >
-          Next: Preview Results
+          Generate Schedule
         </Button>
       </Box>
     </Box>

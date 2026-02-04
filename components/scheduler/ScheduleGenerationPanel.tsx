@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 import ScheduleGenerationTabs from './ScheduleGenerationTabs';
+import TermStep from './steps/TermStep';
 import PersonalEventsStep from './steps/PersonalEventsStep';
 import CourseConfirmationStep from './steps/CourseConfirmationStep';
 import PreferencesStep from './steps/PreferencesStep';
-import ResultsPreviewStep from './steps/ResultsPreviewStep';
 import { BlockedTime, SchedulePreferences } from '@/lib/services/scheduleService';
-import { CourseSection } from '@/lib/services/courseOfferingService';
 import { getCoursesForTerm, calculateTotalCredits, type GradPlanDetails } from '@/lib/utils/gradPlanHelpers';
 
 interface ScheduleGenerationPanelProps {
@@ -22,6 +21,17 @@ interface ScheduleGenerationPanelProps {
   onComplete: () => void;
   onEventsChange: (events: Omit<BlockedTime, 'id'>[]) => void;
   onPreferencesChange: (prefs: SchedulePreferences) => void;
+  onTermSelect?: (termName: string, index: number) => void;
+  gradPlanTerms?: Array<{
+    term: string;
+    notes?: string;
+    courses?: unknown[];
+    credits_planned?: number;
+    is_active?: boolean;
+    termPassed?: boolean;
+  }>;
+  selectedTermIndex?: number | null;
+  isLoading?: boolean;
 }
 
 interface ScheduleGenerationState {
@@ -43,6 +53,10 @@ export default function ScheduleGenerationPanel({
   onComplete,
   onEventsChange,
   onPreferencesChange,
+  onTermSelect,
+  gradPlanTerms = [],
+  selectedTermIndex = null,
+  isLoading = false,
 }: ScheduleGenerationPanelProps) {
   const [state, setState] = useState<ScheduleGenerationState>({
     currentStep: 1,
@@ -120,43 +134,37 @@ export default function ScheduleGenerationPanel({
     onPreferencesChange(preferences); // Propagate to parent
   };
 
-  const handleSave = (_offerings: CourseSection[]) => {
+  const handleCompletePreferences = () => {
+    // Preferences is now the final step, so complete the flow
     onComplete();
-  };
-
-  const handleStartOver = () => {
-    setState({
-      currentStep: 1,
-      personalEvents: existingPersonalEvents.map(({ id: _id, ...rest }) => rest),
-      selectedCourses: getCoursesForTerm(gradPlanDetails, termIndex).map(c => c.code),
-      preferences: { ...existingPreferences },
-      totalCredits: calculateTotalCredits(getCoursesForTerm(gradPlanDetails, termIndex)),
-    });
   };
 
   const gradPlanCourses = getCoursesForTerm(gradPlanDetails, termIndex);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Header */}
-      <Box>
-        <Typography variant="h6" className="font-header" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Generate Schedule
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          {termName}
-        </Typography>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Tabs - Fixed */}
+      <Box sx={{ flexShrink: 0 }}>
+        <ScheduleGenerationTabs
+          currentStep={state.currentStep}
+          onStepChange={handleStepChange}
+        />
       </Box>
 
-      {/* Tabs */}
-      <ScheduleGenerationTabs
-        currentStep={state.currentStep}
-        onStepChange={handleStepChange}
-      />
+      {/* Step Content - Scrollable */}
+      <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+        {state.currentStep === 1 && onTermSelect && (
+          <TermStep
+            terms={gradPlanTerms}
+            selectedTermIndex={selectedTermIndex}
+            selectedTermName={termName}
+            onTermSelect={onTermSelect}
+            onNext={handleNext}
+            isLoading={isLoading}
+          />
+        )}
 
-      {/* Step Content */}
-      <Box>
-        {state.currentStep === 1 && (
+        {state.currentStep === 2 && (
           <PersonalEventsStep
             events={state.personalEvents}
             onEventsChange={handleEventsChangeInternal}
@@ -164,7 +172,7 @@ export default function ScheduleGenerationPanel({
           />
         )}
 
-        {state.currentStep === 2 && (
+        {state.currentStep === 3 && (
           <CourseConfirmationStep
             termIndex={termIndex}
             gradPlanCourses={gradPlanCourses}
@@ -178,22 +186,11 @@ export default function ScheduleGenerationPanel({
           />
         )}
 
-        {state.currentStep === 3 && (
+        {state.currentStep === 4 && (
           <PreferencesStep
             preferences={state.preferences}
             onPreferencesChange={handlePreferencesChangeInternal}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        )}
-
-        {state.currentStep === 4 && (
-          <ResultsPreviewStep
-            termName={termName}
-            courseCodes={state.selectedCourses}
-            universityId={universityId}
-            onSave={handleSave}
-            onStartOver={handleStartOver}
+            onNext={handleCompletePreferences}
             onBack={handleBack}
           />
         )}
