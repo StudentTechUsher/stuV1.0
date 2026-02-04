@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Box, Typography, Paper, CircularProgress } from "@mui/material";
+import { Box, Typography, Paper, CircularProgress, Alert } from "@mui/material";
 
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
 
@@ -29,7 +29,8 @@ import {
 } from "@/lib/services/server-actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-import type { StudentSchedule, SchedulePreferences, BlockedTime, CourseSelection } from "@/lib/services/scheduleService";
+import type { SchedulePreferences, BlockedTime } from "@/lib/services/scheduleService";
+import type { GradPlanDetails } from "@/lib/utils/gradPlanHelpers";
 
 type GradPlan = {
   id: string;
@@ -75,7 +76,6 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
   const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const calendarExportRef = useRef<HTMLDivElement>(null);
-  const [showResults, setShowResults] = useState(false);
 
   // Term Selection State
   const [selectedTermIndex, setSelectedTermIndex] = useState<number | null>(null);
@@ -188,8 +188,6 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
       });
 
       setCourseEvents(events);
-      if (events.length > 0) setShowResults(true);
-
     } catch (err) {
       console.error("Error loading course details", err);
     } finally {
@@ -251,7 +249,9 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     }
 
     // Convert UI event to DB BlockedTime format
-    const mapToBlocked = (uievt: any): Omit<BlockedTime, 'id'> => ({
+    const mapToBlocked = (
+      uievt: Pick<SchedulerEvent, "title" | "category" | "dayOfWeek" | "startTime" | "endTime">
+    ): Omit<BlockedTime, 'id'> => ({
       title: uievt.title || 'Personal Event',
       category: uievt.category || 'Other',
       day_of_week: uievt.dayOfWeek === 0 ? 7 : uievt.dayOfWeek, // UI 0-6 (Sun-Sat) or 1-6? Calendar uses 0=Sun. DB uses? 1-6 usually.
@@ -424,6 +424,11 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
         <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
           Plan your optimal class schedule based on your graduation plan and personal commitments.
         </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
         {/* Active Grad Plan Display */}
         {activeGradPlan && (
@@ -457,7 +462,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                 <ScheduleGenerationPanel
                   termName={selectedTermName}
                   termIndex={selectedTermIndex}
-                  gradPlanDetails={activeGradPlan?.plan_details ? (typeof activeGradPlan.plan_details === 'string' ? JSON.parse(activeGradPlan.plan_details) : activeGradPlan.plan_details) as any : null}
+                  gradPlanDetails={activeGradPlan?.plan_details ? (typeof activeGradPlan.plan_details === 'string' ? JSON.parse(activeGradPlan.plan_details) : activeGradPlan.plan_details) as GradPlanDetails : null}
                   gradPlanId={activeGradPlan?.id}
                   universityId={universityId}
                   existingPersonalEvents={personalEvents.map(e => ({

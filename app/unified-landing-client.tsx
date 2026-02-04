@@ -48,7 +48,6 @@ function trackEvent(name: string, payload: TrackingPayload = {}) {
   tracker.gtag?.("event", name, payload)
   tracker.analytics?.track?.(name, payload)
   // Fallback console to ensure we can verify during QA
-  // eslint-disable-next-line no-console
   console.log(`[track] ${name}`, payload)
 }
 
@@ -342,7 +341,7 @@ export function UnifiedLandingClient() {
             <div className="space-y-4 text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Why stu.</p>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">
-                Imagine a campus where every student's pathway is clear.
+                Imagine a campus where every student&apos;s pathway is clear.
               </h2>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mx-auto max-w-3xl">
                 stu. reduces cognitive load for students, gives advisors time back, and gives leaders visibility into progress and demand.
@@ -665,7 +664,7 @@ export function UnifiedLandingClient() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Get started</p>
               <h2 className="font-header text-4xl md:text-5xl font-bold tracking-tight">See STU in action.</h2>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-                We'll tailor a walkthrough to your degree structure, advising model, and systems—so you can evaluate fit quickly and confidently.
+                We&apos;ll tailor a walkthrough to your degree structure, advising model, and systems—so you can evaluate fit quickly and confidently.
               </p>
               <div className="flex flex-wrap gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2">
@@ -682,7 +681,7 @@ export function UnifiedLandingClient() {
                 {/* TODO: Embed Calendly scheduling link if available - for now show email alternative */}
                 <p className="font-medium">Want to schedule directly?</p>
                 <Link href="mailto:hello@stuplanning.com" className="text-primary font-semibold underline-offset-4 hover:underline">
-                  Email hello@stuplanning.com and we'll coordinate a time.
+                  Email hello@stuplanning.com and we&apos;ll coordinate a time.
                 </Link>
               </div>
             </div>
@@ -745,7 +744,7 @@ export function UnifiedLandingClient() {
                 </Button>
                 {formStatus === "submitted" && (
                   <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 text-center">
-                    Thank you! We'll be in touch shortly.
+                    Thank you! We&apos;ll be in touch shortly.
                   </p>
                 )}
               </form>

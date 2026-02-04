@@ -21,32 +21,18 @@ interface EventCardProps {
   onDelete?: (eventId: string) => void;
 }
 
-// Helper function to get icon for event type
-const getEventIcon = (type: EventType) => {
-  switch (type) {
-    case 'Internship':
-      return WorkIcon;
-    case 'Major/Minor Application':
-      return EventIcon;
-    case 'Study Abroad':
-      return FlightTakeoffIcon;
-    case 'Research Project':
-      return ScienceIcon;
-    case 'Teaching Assistant':
-      return SchoolIcon;
-    case 'Co-op':
-      return BusinessCenterIcon;
-    case 'Sabbatical':
-      return SelfImprovementIcon;
-    case 'Apply for Graduate School':
-      return SchoolIcon;
-    case 'Apply for Graduation':
-      return SchoolIcon;
-    case 'Other':
-      return MoreHorizIcon;
-    default:
-      return EventIcon;
-  }
+const EVENT_TYPE_ICONS: Record<EventType, typeof EventIcon> = {
+  Internship: WorkIcon,
+  'Major/Minor Application': EventIcon,
+  'Religious Deferment (Mission)': EventIcon,
+  'Study Abroad': FlightTakeoffIcon,
+  'Research Project': ScienceIcon,
+  'Teaching Assistant': SchoolIcon,
+  'Co-op': BusinessCenterIcon,
+  Sabbatical: SelfImprovementIcon,
+  'Apply for Graduate School': SchoolIcon,
+  'Apply for Graduation': SchoolIcon,
+  Other: MoreHorizIcon,
 };
 
 // Helper function to get color for event type
@@ -85,7 +71,7 @@ export function EventCard({
   onDelete,
 }: Readonly<EventCardProps>) {
   const eventColor = getEventColor(event.type);
-  const EventIconComponent = getEventIcon(event.type);
+  const EventIconComponent = EVENT_TYPE_ICONS[event.type] ?? EventIcon;
   const tintedBackground = `color-mix(in srgb, ${eventColor} 70%, white)`;
   const borderColor = `color-mix(in srgb, ${eventColor}, transparent)`;
   const glowShadow = `${eventColor}33`;

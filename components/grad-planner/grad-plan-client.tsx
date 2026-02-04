@@ -23,7 +23,6 @@ import EditablePlanTitle from "@/components/EditablePlanTitle";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 import { updateGradPlanNameAction, deleteGradPlanAction } from '@/lib/services/server-actions';
-import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
 interface Term {
   term: string;
@@ -79,10 +78,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
   const [gradPlans, setGradPlans] = useState<GradPlanRecord[]>(allGradPlans);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
-  const [planNameInput, setPlanNameInput] = useState('');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
-  const [isSavingPlanName, setIsSavingPlanName] = useState(false);
-  const [isEditingPlanName, setIsEditingPlanName] = useState(false);
   const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
   // const [isRenaming, setIsRenaming] = useState(false);
   // const [renameInput, setRenameInput] = useState('');
@@ -105,16 +100,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       setSelectedGradPlan(activeGradPlan);
     }
   }, [activeGradPlan, selectedGradPlan]);
-
-  // Update planNameInput when selectedGradPlan changes
-  useEffect(() => {
-    if (selectedGradPlan) {
-      const currentName = typeof selectedGradPlan.plan_name === 'string'
-        ? selectedGradPlan.plan_name.trim()
-        : '';
-      setPlanNameInput(currentName);
-    }
-  }, [selectedGradPlan]);
 
   const handleGradPlanSelection = (event: SelectChangeEvent<string>) => {
     const selectedId = event.target.value;

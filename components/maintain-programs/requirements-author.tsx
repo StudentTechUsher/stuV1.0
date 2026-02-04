@@ -84,6 +84,19 @@ export default function RequirementsAuthor({
     }
   }, [initialRequirements]);
 
+  const calculateTotalMinCredits = React.useCallback((reqs: ProgramRequirement[]): number => {
+    let total = 0;
+    reqs.forEach((req) => {
+      if (req.type === 'allOf' || req.type === 'chooseNOf' || req.type === 'creditBucket') {
+        const courses = req.courses || [];
+        courses.forEach((course) => {
+          total += course.minCredits || course.credits;
+        });
+      }
+    });
+    return total;
+  }, []);
+
   // Notify parent of changes
   React.useEffect(() => {
     const structure: ProgramRequirementsStructure = {
@@ -95,20 +108,7 @@ export default function RequirementsAuthor({
       }
     };
     onChange(structure);
-  }, [requirements, onChange]);
-
-  const calculateTotalMinCredits = (reqs: ProgramRequirement[]): number => {
-    let total = 0;
-    reqs.forEach((req) => {
-      if (req.type === 'allOf' || req.type === 'chooseNOf' || req.type === 'creditBucket') {
-        const courses = req.courses || [];
-        courses.forEach((course) => {
-          total += course.minCredits || course.credits;
-        });
-      }
-    });
-    return total;
-  };
+  }, [requirements, onChange, calculateTotalMinCredits]);
 
   const handleAddRequirement = (type: RequirementType) => {
     const baseReq = {

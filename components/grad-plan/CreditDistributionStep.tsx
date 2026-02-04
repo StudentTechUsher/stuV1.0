@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -107,8 +107,6 @@ export function CreditDistributionStep({
     return primaryTermIds;
   });
 
-  const [error, setError] = useState<InvalidGraduationDateError | Error | null>(null);
-
   // Helper to determine if we should include secondary courses (for backward compatibility)
   const includeSecondaryCourses = academicTerms.terms.secondary.some(t =>
     selectedTermIds.includes(t.id)
@@ -169,12 +167,13 @@ export function CreditDistributionStep({
   }, [academicTerms, studentData, resolveTermLabel]);
 
   // Calculate distribution whenever strategy or selected terms change
-  const distribution = useMemo<SemesterAllocation[] | null>(() => {
-    if (!selectedStrategy) return null;
+  const distributionResult = useMemo(() => {
+    if (!selectedStrategy) {
+      return { distribution: null as SemesterAllocation[] | null, error: null as InvalidGraduationDateError | Error | null };
+    }
 
     try {
-      setError(null);
-      return calculateSemesterDistribution({
+      const distribution = calculateSemesterDistribution({
         totalCredits,
         strategy: selectedStrategy,
         selectedTermIds,
@@ -183,16 +182,16 @@ export function CreditDistributionStep({
         admissionTerm: studentData.admission_term,
         graduationDate: new Date(studentData.est_grad_date),
       });
+      return { distribution, error: null };
     } catch (err) {
       console.error('Failed to calculate credit distribution:', err);
       if (err instanceof InvalidGraduationDateError) {
-        setError(err);
-      } else if (err instanceof CreditDistributionError) {
-        setError(new Error(err.message));
-      } else {
-        setError(new Error('Failed to calculate credit distribution. Please check your profile settings.'));
+        return { distribution: null, error: err };
       }
-      return null;
+      if (err instanceof CreditDistributionError) {
+        return { distribution: null, error: new Error(err.message) };
+      }
+      return { distribution: null, error: new Error('Failed to calculate credit distribution. Please check your profile settings.') };
     }
   }, [
     selectedStrategy,
@@ -201,6 +200,8 @@ export function CreditDistributionStep({
     academicTerms,
     studentData,
   ]);
+
+  const { distribution, error } = distributionResult;
 
   // Calculate estimated completion for ALL strategies (for display on cards)
   const allStrategyCompletions = useMemo(() => {
@@ -244,9 +245,6 @@ export function CreditDistributionStep({
   ]);
 
   const handleDateUpdated = () => {
-    // Clear error to allow re-calculation
-    setError(null);
-
     // Notify parent to refresh student data
     if (onStudentDataChanged) {
       onStudentDataChanged();

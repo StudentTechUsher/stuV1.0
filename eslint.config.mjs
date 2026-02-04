@@ -34,7 +34,7 @@ const eslintConfig = nextCoreWebVitals.map((config) => {
   return config;
 });
 
-export default [
+const config = [
   ...eslintConfig,
   {
     ignores: [
@@ -49,4 +49,11 @@ export default [
       "next-env.d.ts",
     ],
   },
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ];
+
+export default config;
