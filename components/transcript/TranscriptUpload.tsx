@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { StuLoader } from "@/components/ui/StuLoader";
 
 type UploadStatus = "idle" | "extracting" | "extracted" | "failed";
@@ -18,9 +18,10 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
   const [aiParseError, setAiParseError] = useState<string | null>(null);
   // const [isAiParsing, setIsAiParsing] = useState(false);
   const [parsingMessageIndex, setParsingMessageIndex] = useState(0);
-  // PDF upload is currently disabled - defaulting to text paste mode
-  const [_uploadMode, _setUploadMode] = useState<'pdf' | 'text'>('text');
+  const [uploadMode, setUploadMode] = useState<'pdf' | 'text'>('pdf');
   const [pastedText, setPastedText] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const maxFileSizeBytes = 10 * 1024 * 1024;
 
   const parsingMessages = [
     'Reading your transcript PDF...',
@@ -42,7 +43,27 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
     return () => clearInterval(interval);
   }, [status, parsingMessages.length]);
 
-  const _handleFileUpload = async (file: File) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.type && file.type !== 'application/pdf') {
+      setError('Only PDF files are allowed');
+      return;
+    }
+
+    if (file.size > maxFileSizeBytes) {
+      setError('File size must be less than 10MB');
+      return;
+    }
+
+    void handleFileUpload(file);
+    event.target.value = '';
+  };
+
+  const handleFileUpload = async (file: File) => {
     setStatus("extracting");
     setError(null);
     setFileName(file.name);
@@ -51,18 +72,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
     // setIsAiParsing(true); // Start as parsing immediately
 
     try {
-      // Store the PDF file locally as a data URL for viewing later
-      const reader = new FileReader();
-      const pdfDataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      // Store PDF URL in sessionStorage for this session
-      sessionStorage.setItem('transcript_pdf_url', pdfDataUrl);
-
-      // Send PDF directly to the new BYU parser API
+      // Send PDF for OCR + parsing
       const formData = new FormData();
       formData.append('file', file);
 
@@ -193,8 +203,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
 
       {status === "idle" || status === "failed" ? (
         <>
-          {/* Mode Toggle - PDF upload temporarily disabled */}
-          {/* <div className="flex gap-2 mb-4 justify-center">
+          <div className="flex gap-2 mb-4 justify-center">
             <button
               onClick={() => setUploadMode('pdf')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -215,9 +224,8 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
             >
               Paste Text
             </button>
-          </div> */}
+          </div>
 
-          {/* PDF upload mode - temporarily disabled
           {uploadMode === 'pdf' ? (
             <>
               <div
@@ -248,26 +256,26 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
                 className="hidden"
               />
             </>
-          ) : ( */}
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground text-center">
-              Copy relevant text from your transcript and paste it below
-            </p>
-            <textarea
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste your transcript text here..."
-              className="w-full h-64 p-4 rounded-lg border border-border bg-background text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <button
-              onClick={handleTextPaste}
-              disabled={!pastedText || pastedText.trim().length < 100}
-              className="w-full py-3 px-4 rounded-lg bg-primary text-zinc-900 font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              Parse Transcript
-            </button>
-          </div>
-          {/* )} */}
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground text-center">
+                Copy relevant text from your transcript and paste it below
+              </p>
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste your transcript text here..."
+                className="w-full h-64 p-4 rounded-lg border border-border bg-background text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                onClick={handleTextPaste}
+                disabled={!pastedText || pastedText.trim().length < 100}
+                className="w-full py-3 px-4 rounded-lg bg-primary text-zinc-900 font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Parse Transcript
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <div className="py-8">
@@ -322,7 +330,6 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
         <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-left">
           <p className="text-sm text-destructive font-semibold">Parsing failed</p>
           <p className="text-sm text-destructive/80 mt-1">{error}</p>
-          {/* PDF upload mode suggestion - disabled since PDF mode is not available
           {uploadMode === 'pdf' && (
             <div className="mt-3 pt-3 border-t border-destructive/20">
               <p className="text-sm text-destructive/90 font-medium mb-2">💡 Try an alternative method:</p>
@@ -340,7 +347,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
                 Copy text directly from your PDF and paste it instead of uploading the file.
               </p>
             </div>
-          )} */}
+          )}
         </div>
       )}
 

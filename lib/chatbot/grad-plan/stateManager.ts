@@ -30,6 +30,7 @@ export function createInitialState(
     currentStep: ConversationStep.INITIALIZE,
     completedSteps: [],
     collectedData: {
+      studentType: null,
       selectedGenEdProgramId: null,
       selectedGenEdProgramName: null,
       hasTranscript: false,
@@ -211,12 +212,34 @@ export function getConversationProgress(state: ConversationState): ConversationP
 
   const collectedFields = [];
 
+  const formatStudentType = (type: string) => {
+    switch (type) {
+      case 'honor':
+        return 'Honors';
+      case 'undergraduate':
+        return 'Undergraduate';
+      case 'graduate':
+        return 'Graduate';
+      default:
+        return type;
+    }
+  };
+
   // General education requirements
   if (state.collectedData.selectedGenEdProgramName) {
     collectedFields.push({
       field: 'genEdRequirements',
       label: 'Gen Ed Requirements',
       value: state.collectedData.selectedGenEdProgramName,
+      completed: true,
+    });
+  }
+
+  if (state.collectedData.studentType) {
+    collectedFields.push({
+      field: 'studentType',
+      label: 'Student Type',
+      value: formatStudentType(state.collectedData.studentType),
       completed: true,
     });
   }

@@ -23,8 +23,10 @@ import {
   SemesterAllocation,
   AcademicTermsConfig,
   CreditDistributionError,
+  InvalidGraduationDateError,
   estimateCompletionTerm,
 } from '@/lib/services/gradPlanGenerationService';
+import { GraduationDateErrorBanner } from './GraduationDateErrorBanner';
 
 interface CreditDistributionStepProps {
   totalCredits: number;
@@ -44,6 +46,7 @@ interface CreditDistributionStepProps {
   }) => void;
   initialStrategy?: 'fast_track' | 'balanced' | 'explore';
   initialIncludeSecondary?: boolean;
+  onStudentDataChanged?: () => void;
 }
 
 const STRATEGIES = [
@@ -88,6 +91,7 @@ export function CreditDistributionStep({
   onComplete,
   initialStrategy,
   initialIncludeSecondary = false,
+  onStudentDataChanged,
 }: CreditDistributionStepProps) {
   const [selectedStrategy, setSelectedStrategy] = useState<'fast_track' | 'balanced' | 'explore' | null>(
     initialStrategy || null
@@ -102,8 +106,6 @@ export function CreditDistributionStep({
     }
     return primaryTermIds;
   });
-
-  const [error, setError] = useState<string | null>(null);
 
   // Helper to determine if we should include secondary courses (for backward compatibility)
   const includeSecondaryCourses = academicTerms.terms.secondary.some(t =>
@@ -165,12 +167,13 @@ export function CreditDistributionStep({
   }, [academicTerms, studentData, resolveTermLabel]);
 
   // Calculate distribution whenever strategy or selected terms change
-  const distribution = useMemo<SemesterAllocation[] | null>(() => {
-    if (!selectedStrategy) return null;
+  const distributionResult = useMemo(() => {
+    if (!selectedStrategy) {
+      return { distribution: null as SemesterAllocation[] | null, error: null as InvalidGraduationDateError | Error | null };
+    }
 
     try {
-      setError(null);
-      return calculateSemesterDistribution({
+      const distribution = calculateSemesterDistribution({
         totalCredits,
         strategy: selectedStrategy,
         selectedTermIds,
@@ -179,14 +182,16 @@ export function CreditDistributionStep({
         admissionTerm: studentData.admission_term,
         graduationDate: new Date(studentData.est_grad_date),
       });
+      return { distribution, error: null };
     } catch (err) {
       console.error('Failed to calculate credit distribution:', err);
-      if (err instanceof CreditDistributionError) {
-        setError(err.message);
-      } else {
-        setError('Failed to calculate credit distribution. Please check your profile settings.');
+      if (err instanceof InvalidGraduationDateError) {
+        return { distribution: null, error: err };
       }
-      return null;
+      if (err instanceof CreditDistributionError) {
+        return { distribution: null, error: new Error(err.message) };
+      }
+      return { distribution: null, error: new Error('Failed to calculate credit distribution. Please check your profile settings.') };
     }
   }, [
     selectedStrategy,
@@ -195,6 +200,8 @@ export function CreditDistributionStep({
     academicTerms,
     studentData,
   ]);
+
+  const { distribution, error } = distributionResult;
 
   // Calculate estimated completion for ALL strategies (for display on cards)
   const allStrategyCompletions = useMemo(() => {
@@ -237,6 +244,13 @@ export function CreditDistributionStep({
     getFallbackCompletion,
   ]);
 
+  const handleDateUpdated = () => {
+    // Notify parent to refresh student data
+    if (onStudentDataChanged) {
+      onStudentDataChanged();
+    }
+  };
+
   const handleContinue = () => {
     if (!selectedStrategy || !distribution) return;
 
@@ -260,11 +274,19 @@ export function CreditDistributionStep({
         Choose how you&apos;d like to distribute your {totalCredits} credits across semesters.
       </Typography>
 
-      {/* Error Alert */}
+      {/* Error Display */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        error instanceof InvalidGraduationDateError ? (
+          <GraduationDateErrorBanner
+            error={error}
+            studentData={studentData}
+            onDateUpdated={handleDateUpdated}
+          />
+        ) : (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error.message}
+          </Alert>
+        )
       )}
 
       {/* Total Credits and Courses */}

@@ -28,7 +28,7 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, studentName: action.payload };
 
     case 'SET_STUDENT_TYPE':
-      return { ...state, studentType: action.payload as 'undergraduate' | 'graduate' };
+      return { ...state, studentType: action.payload as 'undergraduate' | 'honor' | 'graduate' | 'other' };
 
     case 'SET_PROGRAMS':
       return { ...state, selectedPrograms: action.payload };

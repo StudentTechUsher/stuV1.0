@@ -8,6 +8,7 @@
 
 import { Resend } from 'resend';
 import { EmailConfigError, EmailSendError } from './errors/emailErrors';
+import { logError } from '@/lib/logger';
 
 export interface StudentSubmissionData {
   firstName: string;
@@ -111,7 +112,7 @@ export async function sendGradPlanCreatedEmail(data: GradPlanCreatedData) {
     console.log('   - Using API key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
 
     if (!apiKey) {
-      console.error('❌ Resend API key not configured - skipping email notification');
+      logError('Resend API key not configured - skipping email notification', new Error('ResendApiKeyMissing'), { action: 'sendGradPlanCreatedEmail' });
       return;
     }
 
@@ -121,10 +122,13 @@ export async function sendGradPlanCreatedEmail(data: GradPlanCreatedData) {
     // Validate required fields
     console.log('📧 Validating required fields...');
     if (!data.studentFirstName || !data.studentEmail || !data.planAccessId) {
-      console.error('❌ Missing required fields:', {
-        studentFirstName: !!data.studentFirstName,
-        studentEmail: !!data.studentEmail,
-        planAccessId: !!data.planAccessId
+      logError('Missing required fields for grad plan email', new Error('MissingRequiredFields'), {
+        action: 'sendGradPlanCreatedEmail',
+        errorHint: JSON.stringify({
+          studentFirstName: !!data.studentFirstName,
+          studentEmail: !!data.studentEmail,
+          planAccessId: !!data.planAccessId
+        })
       });
       throw new EmailSendError('Missing required fields: studentFirstName, studentEmail, and planAccessId are required');
     }
@@ -243,9 +247,9 @@ stuplanning.com
     console.log(`✅ Resend API response:`, result);
     console.log(`✅ Grad plan created email sent to ${data.studentEmail}`);
   } catch (error) {
-    console.error('Error sending grad plan created email:', error);
+    logError('Error sending grad plan created email', error, { action: 'sendGradPlanCreatedEmail' });
     if (error instanceof EmailSendError) {
-      console.error('Email send error:', error.message);
+      // already logged above, but keeping consistent structure
     }
   }
 }
@@ -266,7 +270,7 @@ export async function sendGradPlanApprovalEmail(data: GradPlanApprovalData) {
     console.log('   - Using API key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
 
     if (!apiKey) {
-      console.error('❌ Resend API key not configured - skipping email notification');
+      logError('Resend API key not configured - skipping approval email', new Error('ResendApiKeyMissing'), { action: 'sendGradPlanApprovalEmail' });
       return; // Don't throw error, just skip email
     }
 
@@ -276,10 +280,13 @@ export async function sendGradPlanApprovalEmail(data: GradPlanApprovalData) {
     // Validate required fields
     console.log('📧 Validating required fields...');
     if (!data.studentFirstName || !data.studentEmail || !data.planAccessId) {
-      console.error('❌ Missing required fields:', {
-        studentFirstName: !!data.studentFirstName,
-        studentEmail: !!data.studentEmail,
-        planAccessId: !!data.planAccessId
+      logError('Missing required fields for approval email', new Error('MissingRequiredFields'), {
+        action: 'sendGradPlanApprovalEmail',
+        errorHint: JSON.stringify({
+          studentFirstName: !!data.studentFirstName,
+          studentEmail: !!data.studentEmail,
+          planAccessId: !!data.planAccessId
+        })
       });
       throw new EmailSendError('Missing required fields: studentFirstName, studentEmail, and planAccessId are required');
     }
@@ -399,11 +406,7 @@ stuplanning.com
     console.log(`✅ Resend API response:`, result);
     console.log(`✅ Grad plan approval email sent to ${data.studentEmail}`);
   } catch (error) {
-    console.error('Error sending grad plan approval email:', error);
-    // Don't throw - we don't want to block the approval process if email fails
-    if (error instanceof EmailSendError) {
-      console.error('Email send error:', error.message);
-    }
+    logError('Error sending grad plan approval email', error, { action: 'sendGradPlanApprovalEmail' });
   }
 }
 

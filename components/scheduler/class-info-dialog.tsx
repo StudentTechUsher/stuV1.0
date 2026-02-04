@@ -29,6 +29,8 @@ type Props = {
   onReplaceClass: (oldEvent: SchedulerEvent, newCourse: Course) => void;
 };
 
+const pickRandom = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
+
 export default function ClassInfoDialog({ open, onClose, event, courses, allEvents, onReplaceClass }: Props) {
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [selectedAlternative, setSelectedAlternative] = useState("");
@@ -109,7 +111,7 @@ export default function ClassInfoDialog({ open, onClose, event, courses, allEven
   const handleAutoReplace = () => {
     const compatibleSections = alternativeSections.filter(course => !hasConflict(course));
     if (compatibleSections.length > 0) {
-      const randomSection = compatibleSections[Math.floor(Math.random() * compatibleSections.length)];
+      const randomSection = pickRandom(compatibleSections);
       onReplaceClass(event, randomSection);
       onClose();
     }

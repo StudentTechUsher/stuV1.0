@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StuLoader } from "@/components/ui/StuLoader"
+import { clientLogger } from "@/lib/client-logger"
 
+// Define types locally or import if shared
 interface UserProfile {
   id: string
   role_id: number
@@ -28,7 +30,7 @@ export function UsersTable() {
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createSupabaseBrowserClient()
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -53,7 +55,7 @@ export function UsersTable() {
         .order('created_at', { ascending: false })
 
       if (profileError) {
-        console.error('Error fetching profiles:', profileError)
+        clientLogger.error('Error fetching profiles', profileError, { action: 'UsersTable.fetchUsers' })
         return
       }
 
@@ -69,7 +71,7 @@ export function UsersTable() {
 
       setUsers(transformedProfiles)
     } catch (error) {
-      console.error('Error fetching users:', error)
+      clientLogger.error('Error fetching users', error, { action: 'UsersTable.fetchUsers' })
     } finally {
       setLoading(false)
     }
@@ -89,7 +91,7 @@ export function UsersTable() {
         .eq('id', userId)
 
       if (error) {
-        console.error('Error updating role:', error)
+        clientLogger.error('Error updating role', error, { action: 'UsersTable.handleRoleChange', userId })
         alert('Failed to update user role')
         return
       }
@@ -103,7 +105,7 @@ export function UsersTable() {
 
       alert('User role updated successfully!')
     } catch (error) {
-      console.error('Error updating role:', error)
+      clientLogger.error('Error updating role', error, { action: 'UsersTable.handleRoleChange', userId })
       alert('Failed to update user role')
     } finally {
       setUpdating(null)
@@ -249,19 +251,18 @@ export function UsersTable() {
                 {/* Current Role */}
                 <div>
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-                      user.role_id === 2
-                        ? 'border-[#2196f3] bg-[color-mix(in_srgb,#2196f3_8%,transparent)] text-[#2196f3]'
-                        : 'border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] text-[var(--primary)]'
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${user.role_id === 2
+                      ? 'border-[#2196f3] bg-[color-mix(in_srgb,#2196f3_8%,transparent)] text-[#2196f3]'
+                      : 'border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] text-[var(--primary)]'
+                      }`}
                   >
                     {user.role_id === 2 ? (
                       <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
                     ) : (
                       <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+                        <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
                       </svg>
                     )}
                     {ROLE_MAP[user.role_id as keyof typeof ROLE_MAP]}
@@ -273,8 +274,8 @@ export function UsersTable() {
                   {updating === user.id ? (
                     <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
                       <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
                       Updating...
                     </div>
@@ -290,7 +291,7 @@ export function UsersTable() {
                         <SelectItem value="3">
                           <div className="flex items-center gap-2">
                             <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+                              <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
                             </svg>
                             Student
                           </div>
@@ -298,7 +299,7 @@ export function UsersTable() {
                         <SelectItem value="2">
                           <div className="flex items-center gap-2">
                             <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                             </svg>
                             Advisor
                           </div>

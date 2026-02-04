@@ -142,7 +142,7 @@ export interface PlanGenerationData {
   estGradDate: string | null;
   estGradSem: string | null;
   careerGoals: string | null;
-  studentType: 'undergraduate' | 'graduate';
+  studentType: 'undergraduate' | 'honor' | 'graduate';
 
   // Transcript courses (already completed)
   transcriptCourses: Array<{

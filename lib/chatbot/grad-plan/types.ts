@@ -23,7 +23,7 @@ export enum ConversationStep {
 }
 
 // Student type selection
-export type StudentType = 'undergraduate' | 'graduate';
+export type StudentType = 'undergraduate' | 'honor' | 'graduate';
 
 // Course selection method
 export type CourseSelectionMethod = 'ai' | 'manual';
@@ -50,7 +50,7 @@ export interface ElectiveCourse {
 // Milestone in graduation plan
 export interface Milestone {
   id?: string;
-  type: 'internship' | 'study_abroad' | 'research' | 'study_break' | 'custom';
+  type: 'internship' | 'study_abroad' | 'research' | 'study_break' | 'honors_thesis' | 'custom';
   title: string;
   timing: 'beginning' | 'middle' | 'before_last_year' | 'after_graduation' | 'specific_term';
   term?: string;
@@ -75,7 +75,7 @@ export interface WorkConstraints {
 export interface ProgramSelection {
   programId: number;
   programName: string;
-  programType: 'major' | 'minor' | 'graduate' | 'general_education';
+  programType: 'major' | 'minor' | 'honors' | 'graduate' | 'general_education';
 }
 
 // Main conversation state
@@ -93,6 +93,9 @@ export interface ConversationState {
 
   // Collected data
   collectedData: {
+    // Student type (from profile)
+    studentType?: StudentType | null;
+
     // Gen Ed selection (still part of grad plan)
     selectedGenEdProgramId: number | null;
     selectedGenEdProgramName: string | null;

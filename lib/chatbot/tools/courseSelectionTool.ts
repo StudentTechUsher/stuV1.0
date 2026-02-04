@@ -120,7 +120,7 @@ export const courseSelectionToolDefinition = {
               },
               programType: {
                 type: 'string',
-                description: 'Program type (major, minor, graduate)',
+                description: 'Program type (major, minor, honors, graduate)',
               },
               requirements: {
                 type: 'array',

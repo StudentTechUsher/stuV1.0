@@ -11,7 +11,7 @@ import {
 } from '@/lib/chatbot/tools/programSelectionTool';
 
 interface ProgramSelectionScreenProps {
-  studentType: 'undergraduate' | 'graduate';
+  studentType: 'undergraduate' | 'honor' | 'graduate';
   universityId: number;
   onSubmit: (data: ProgramSelectionInput) => void;
   onBack: () => void;
@@ -32,6 +32,7 @@ export default function ProgramSelectionScreen({
   const [selectedMajors, setSelectedMajors] = useState<ProgramOption[]>([]);
   const [selectedMinors, setSelectedMinors] = useState<ProgramOption[]>([]);
   const [selectedGenEds, setSelectedGenEds] = useState<ProgramOption[]>([]);
+  const [selectedHonorsProgram, setSelectedHonorsProgram] = useState<ProgramOption | null>(null);
   const [majorSearchTerm, setMajorSearchTerm] = useState('');
   const [minorSearchTerm, setMinorSearchTerm] = useState('');
   const [genEdSearchTerm, setGenEdSearchTerm] = useState('');
@@ -49,7 +50,7 @@ export default function ProgramSelectionScreen({
 
   // Fetch programs based on student type
   useEffect(() => {
-    if (studentType === 'undergraduate') {
+    if (studentType !== 'graduate') {
       // Fetch majors
       setLoadingMajors(true);
       fetchProgramsByType(universityId, 'major')
@@ -82,6 +83,32 @@ export default function ProgramSelectionScreen({
     }
   }, [studentType, universityId]);
 
+  // Fetch honors program when applicable
+  useEffect(() => {
+    if (studentType !== 'honor') {
+      setSelectedHonorsProgram(null);
+      return;
+    }
+
+    fetchProgramsByType(universityId, 'honors')
+      .then((honorsPrograms) => {
+        if (!honorsPrograms || honorsPrograms.length === 0) {
+          setSelectedHonorsProgram(null);
+          return;
+        }
+        const sorted = [...honorsPrograms].sort((a, b) => {
+          const priorityA = a.priority ?? 0;
+          const priorityB = b.priority ?? 0;
+          return priorityB - priorityA;
+        });
+        setSelectedHonorsProgram(sorted[0] ?? null);
+      })
+      .catch((error) => {
+        console.error('Error fetching honors programs:', error);
+        setSelectedHonorsProgram(null);
+      });
+  }, [studentType, universityId]);
+
   // Filter programs based on search term
   const filterPrograms = (programs: ProgramOption[], searchTerm: string): ProgramOption[] => {
     if (!searchTerm.trim()) return programs;
@@ -98,18 +125,19 @@ export default function ProgramSelectionScreen({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (studentType === 'undergraduate') {
+    if (studentType !== 'graduate') {
       if (selectedMajors.length === 0) {
         alert('Please select at least one major');
         return;
       }
 
       onSubmit({
-        studentType: 'undergraduate',
+        studentType,
         programs: {
           majorIds: selectedMajors.map(m => m.id),
           minorIds: selectedMinors.map(m => m.id),
           genEdIds: selectedGenEds.map(g => g.id),
+          honorsProgramIds: selectedHonorsProgram ? [selectedHonorsProgram.id] : [],
         },
       });
     } else {
@@ -127,7 +155,7 @@ export default function ProgramSelectionScreen({
     }
   };
 
-  const isValid = studentType === 'undergraduate'
+  const isValid = studentType !== 'graduate'
     ? selectedMajors.length > 0
     : selectedGraduatePrograms.length > 0;
 
@@ -490,12 +518,12 @@ export default function ProgramSelectionScreen({
 
   return (
     <WizardFormLayout
-      title={studentType === 'undergraduate' ? "What's your major?" : 'Select your graduate program'}
-      subtitle={studentType === 'undergraduate'
+      title={studentType !== 'graduate' ? "What's your major?" : 'Select your graduate program'}
+      subtitle={studentType !== 'graduate'
         ? 'Choose the degree program(s) for your goal.'
         : 'Choose your graduate program(s).'}
     >
-      {studentType === 'undergraduate' ? renderUndergraduateContent() : renderGraduateContent()}
+      {studentType !== 'graduate' ? renderUndergraduateContent() : renderGraduateContent()}
     </WizardFormLayout>
   );
 }

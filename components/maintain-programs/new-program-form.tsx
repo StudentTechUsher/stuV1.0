@@ -170,6 +170,7 @@ export default function NewProgramForm({ universityId }: Readonly<NewProgramForm
   const programTypes = [
     { value: 'major', label: 'Major' },
     { value: 'minor', label: 'Minor' },
+    { value: 'honors', label: 'Honors' },
     { value: 'emphasis', label: 'Emphasis' },
     { value: 'general_education', label: 'General Education' },
     { value: 'graduate_no_gen_ed', label: 'Graduate (Masters/Doctoral)' }

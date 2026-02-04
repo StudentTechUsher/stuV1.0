@@ -1,16 +1,41 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const eslintConfig = nextCoreWebVitals.map((config) => {
+  if (config.name === "next") {
+    return {
+      ...config,
+      rules: {
+        ...config.rules,
+        "react/no-unescaped-entities": "warn",
+        "@next/next/no-img-element": "warn",
+        "jsx-a11y/alt-text": "warn",
+      },
+    };
+  }
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
+  if (config.name === "next/typescript") {
+    return {
+      ...config,
+      rules: {
+        ...config.rules,
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/no-unused-vars": [
+          "warn",
+          {
+            argsIgnorePattern: "^_",
+            varsIgnorePattern: "^_",
+            caughtErrorsIgnorePattern: "^_",
+          },
+        ],
+      },
+    };
+  }
+
+  return config;
 });
 
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+const config = [
+  ...eslintConfig,
   {
     ignores: [
       "node_modules/**",
@@ -26,20 +51,9 @@ const eslintConfig = [
   },
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        {
-          "argsIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "caughtErrorsIgnorePattern": "^_"
-        }
-      ],
-      "react/no-unescaped-entities": "warn",
-      "@next/next/no-img-element": "warn",
-      "jsx-a11y/alt-text": "warn",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
 ];
 
-export default eslintConfig;
+export default config;

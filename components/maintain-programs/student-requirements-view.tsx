@@ -62,7 +62,7 @@ export default function StudentRequirementsView({
     setExpandedReqs(newSet);
   };
 
-  const calculateProgress = (req: ProgramRequirement) => {
+  const calculateProgress = React.useCallback((req: ProgramRequirement) => {
     if (req.type === 'noteOnly') {
       return { completed: 0, total: 0, percentage: 100, isComplete: true, earnedCredits: 0, requiredCredits: 0 };
     }
@@ -101,7 +101,7 @@ export default function StudentRequirementsView({
     }
 
     return { completed: 0, total: 0, percentage: 0, isComplete: false, earnedCredits: 0, requiredCredits: 0 };
-  };
+  }, [localCompleted]);
 
   const getStatusColor = (req: ProgramRequirement) => {
     const progress = calculateProgress(req);
@@ -387,7 +387,7 @@ export default function StudentRequirementsView({
     const completed = requirements.filter((r) => calculateProgress(r).isComplete).length;
     const total = requirements.length;
     return { completed, total, percentage: total > 0 ? (completed / total) * 100 : 0 };
-  }, [requirements, localCompleted]);
+  }, [requirements, calculateProgress]);
 
   return (
     <Box>

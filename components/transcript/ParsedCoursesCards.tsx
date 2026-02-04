@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Paper, Chip, IconButton, Tooltip, TextField } from '@mui/material';
 import { Delete, School, Grade, Edit, Save, Cancel } from '@mui/icons-material';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { clientLogger } from '@/lib/client-logger';
 
 type ParsedCourse = {
   id?: string;
@@ -50,14 +51,14 @@ export default function ParsedCoursesCards({
         .order('number', { ascending: true });
 
       if (error) {
-        console.error('Load courses error:', error);
+        clientLogger.error('Load courses error', error, { action: 'ParsedCoursesCards.loadCourses', userId: userId || undefined });
         return;
       }
 
       setCourses(data || []);
       onCoursesLoaded?.(data?.length || 0);
     } catch (err) {
-      console.error('Load courses error:', err);
+      clientLogger.error('Load courses exception', err, { action: 'ParsedCoursesCards.loadCourses', userId: userId || undefined });
     } finally {
       setLoading(false);
     }
@@ -78,14 +79,14 @@ export default function ParsedCoursesCards({
         .eq('id', courseId);
 
       if (error) {
-        console.error('Delete error:', error);
+        clientLogger.error('Delete course error', error, { action: 'ParsedCoursesCards.handleDelete', courseId });
         return;
       }
 
       setCourses(courses.filter(c => c.id !== courseId));
       onCoursesLoaded?.(courses.length - 1);
     } catch (err) {
-      console.error('Delete error:', err);
+      clientLogger.error('Delete course exception', err, { action: 'ParsedCoursesCards.handleDelete', courseId });
     }
   };
 
@@ -120,7 +121,7 @@ export default function ParsedCoursesCards({
         .eq('id', courseId);
 
       if (error) {
-        console.error('Update error:', error);
+        clientLogger.error('Update course error', error, { action: 'ParsedCoursesCards.handleSaveEdit', courseId });
         alert('Failed to update course');
         return;
       }
@@ -135,7 +136,7 @@ export default function ParsedCoursesCards({
       setEditingId(null);
       setEditForm({});
     } catch (err) {
-      console.error('Update error:', err);
+      clientLogger.error('Update course exception', err, { action: 'ParsedCoursesCards.handleSaveEdit', courseId });
       alert('Failed to update course');
     }
   };

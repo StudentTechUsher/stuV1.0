@@ -23,7 +23,6 @@ import EditablePlanTitle from "@/components/EditablePlanTitle";
 import { PlusIcon } from 'lucide-react';
 import { encodeAccessIdClient } from '@/lib/utils/access-id';
 import { updateGradPlanNameAction, deleteGradPlanAction } from '@/lib/services/server-actions';
-import { validatePlanName } from '@/lib/utils/plan-name-validation';
 
 interface Term {
   term: string;
@@ -55,6 +54,7 @@ interface GradPlanClientProps {
     id: string;
     profile_id: string;
     university_id: number;
+    admission_year?: number | null;
     [key: string]: unknown;
   } | null;
   allGradPlans: GradPlanRecord[];
@@ -78,10 +78,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
 
   const [gradPlans, setGradPlans] = useState<GradPlanRecord[]>(allGradPlans);
   const [selectedGradPlan, setSelectedGradPlan] = useState<GradPlanRecord | null>(activeGradPlan);
-  const [planNameInput, setPlanNameInput] = useState('');
-  const [planNameError, setPlanNameError] = useState<string | null>(null);
-  const [isSavingPlanName, setIsSavingPlanName] = useState(false);
-  const [isEditingPlanName, setIsEditingPlanName] = useState(false);
   const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
   // const [isRenaming, setIsRenaming] = useState(false);
   // const [renameInput, setRenameInput] = useState('');
@@ -104,16 +100,6 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
       setSelectedGradPlan(activeGradPlan);
     }
   }, [activeGradPlan, selectedGradPlan]);
-
-  // Update planNameInput when selectedGradPlan changes
-  useEffect(() => {
-    if (selectedGradPlan) {
-      const currentName = typeof selectedGradPlan.plan_name === 'string'
-        ? selectedGradPlan.plan_name.trim()
-        : '';
-      setPlanNameInput(currentName);
-    }
-  }, [selectedGradPlan]);
 
   const handleGradPlanSelection = (event: SelectChangeEvent<string>) => {
     const selectedId = event.target.value;
@@ -600,6 +586,7 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
         onClose={handleProgramSelectionClose}
         onNext={handleProgramSelectionNext}
         universityId={studentRecord?.university_id || 0}
+        studentAdmissionYear={studentRecord?.admission_year ?? null}
       />
 
       {/* Step 2: Course Selection Dialog */}
@@ -610,7 +597,11 @@ export default function GradPlanClient({ user, studentRecord, allGradPlans, acti
           selectedProgramIds={
             programSelections.isGraduateStudent
               ? programSelections.graduateProgramIds
-              : [...programSelections.majorIds, ...programSelections.minorIds]
+              : [
+                ...programSelections.majorIds,
+                ...programSelections.minorIds,
+                ...(programSelections.honorsProgramIds ?? []),
+              ]
           }
           genEdProgramIds={programSelections.genEdIds}
           genEdStrategy={programSelections.genEdStrategy}

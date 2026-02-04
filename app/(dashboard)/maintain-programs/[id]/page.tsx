@@ -9,22 +9,23 @@ interface PageProps {
 }
 
 export default async function ProgramEditPage({ params }: Readonly<PageProps>) {
+  const { id } = await params;
+  const user = await getSessionUser();
+  const profile = await fetchMyProfile(user.id);
+
+  // Redirect students (role 3) to dashboard
+  if (profile.role_id === 3) {
+    redirect('/dashboard');
+  }
+
+  let program;
   try {
-    const { id } = await params;
-    const user = await getSessionUser();
-    const profile = await fetchMyProfile(user.id);
-
-    // Redirect students (role 3) to dashboard
-    if (profile.role_id === 3) {
-      redirect('/dashboard');
-    }
-
     // Fetch the program
-    const program = await fetchProgramById(id);
-
-    return <ProgramEditor program={program} />;
+    program = await fetchProgramById(id);
   } catch (error) {
     console.error('Failed to load program:', error);
     redirect('/maintain-programs');
   }
+
+  return <ProgramEditor program={program} />;
 }

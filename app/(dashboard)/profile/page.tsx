@@ -138,7 +138,7 @@ export default async function ProfilePage() {
               userId={user.id}
               currentStudentData={studentPlanningData ? {
                 ...studentPlanningData,
-                student_type: studentPlanningData.student_type as 'undergraduate' | 'graduate' | null,
+                student_type: studentPlanningData.student_type as 'undergraduate' | 'honor' | 'graduate' | null,
                 work_status: studentPlanningData.work_status as 'not_working' | 'part_time' | 'full_time' | 'variable' | null,
               } : null}
             />

@@ -26,11 +26,16 @@ interface ProgramOption {
   id: string;
   name: string;
   program_type: string;
+  applicable_start_year?: number | null;
+  applicable_end_year?: number | null;
+  priority?: number | null;
 }
 
 export interface ProgramSelections {
+  studentType: 'undergraduate' | 'honor' | 'graduate';
   majorIds: string[];
   minorIds: string[];
+  honorsProgramIds: string[];
   genEdIds: string[];
   genEdStrategy: 'early' | 'balanced';
   planMode: 'AUTO' | 'MANUAL';
@@ -44,27 +49,32 @@ interface ProgramSelectionDialogProps {
   onClose: () => void;
   onNext: (selections: ProgramSelections) => void;
   universityId: number;
+  studentAdmissionYear?: number | null;
 }
 
 export default function ProgramSelectionDialog({
   open,
   onClose,
   onNext,
-  universityId
+  universityId,
+  studentAdmissionYear,
 }: Readonly<ProgramSelectionDialogProps>) {
-  const [studentType, setStudentType] = useState<'undergraduate' | 'graduate'>('undergraduate');
+  const [studentType, setStudentType] = useState<'undergraduate' | 'honor' | 'graduate'>('undergraduate');
   const [majors, setMajors] = useState<ProgramOption[]>([]);
   const [minors, setMinors] = useState<ProgramOption[]>([]);
+  const [selectedHonorsProgram, setSelectedHonorsProgram] = useState<ProgramOption | null>(null);
   const [graduatePrograms, setGraduatePrograms] = useState<ProgramOption[]>([]);
   const [genEds, setGenEds] = useState<ProgramOption[]>([]);
   const [loadingMajors, setLoadingMajors] = useState(false);
   const [loadingMinors, setLoadingMinors] = useState(false);
+  const [loadingHonors, setLoadingHonors] = useState(false);
   const [loadingGraduatePrograms, setLoadingGraduatePrograms] = useState(false);
   const [loadingGenEds, setLoadingGenEds] = useState(false);
   const [loadingStudentTypes, setLoadingStudentTypes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableStudentTypes, setAvailableStudentTypes] = useState<{
     hasUndergraduate: boolean;
+    hasHonors: boolean;
     hasGraduate: boolean;
   } | null>(null);
 
@@ -88,9 +98,11 @@ export default function ProgramSelectionDialog({
         setAvailableStudentTypes(data);
 
         // Auto-select student type if only one is available
-        if (data.hasUndergraduate && !data.hasGraduate) {
+        if (data.hasUndergraduate && !data.hasHonors && !data.hasGraduate) {
           setStudentType('undergraduate');
-        } else if (data.hasGraduate && !data.hasUndergraduate) {
+        } else if (data.hasHonors && !data.hasUndergraduate && !data.hasGraduate) {
+          setStudentType('honor');
+        } else if (data.hasGraduate && !data.hasUndergraduate && !data.hasHonors) {
           setStudentType('graduate');
         }
       } catch (err) {
@@ -111,7 +123,7 @@ export default function ProgramSelectionDialog({
     const fetchPrograms = async () => {
       setError(null);
 
-      if (studentType === 'undergraduate') {
+      if (studentType !== 'graduate') {
         // Fetch majors
         setLoadingMajors(true);
         try {
@@ -175,14 +187,67 @@ export default function ProgramSelectionDialog({
     fetchPrograms();
   }, [open, universityId, studentType, availableStudentTypes]);
 
+  // Fetch honors program when honors student
+  useEffect(() => {
+    if (!open) return;
+    if (studentType !== 'honor') {
+      setSelectedHonorsProgram(null);
+      setLoadingHonors(false);
+      return;
+    }
+
+    const fetchHonorsPrograms = async () => {
+      setLoadingHonors(true);
+      try {
+        const honorsRes = await fetch(`/api/programs?type=honors&universityId=${universityId}`);
+        if (!honorsRes.ok) throw new Error('Failed to fetch honors programs');
+        const honorsData = await honorsRes.json();
+
+        const admissionYear = studentAdmissionYear ?? null;
+        const filtered = admissionYear
+          ? honorsData.filter((program: ProgramOption) => {
+            const start = program.applicable_start_year ?? null;
+            const end = program.applicable_end_year ?? null;
+            if (start !== null && admissionYear < start) return false;
+            if (end !== null && admissionYear > end) return false;
+            return true;
+          })
+          : honorsData;
+
+        const sorted = [...filtered].sort((a: ProgramOption, b: ProgramOption) => {
+          const priorityA = a.priority ?? 0;
+          const priorityB = b.priority ?? 0;
+          if (priorityA !== priorityB) return priorityB - priorityA;
+          const startA = a.applicable_start_year ?? 0;
+          const startB = b.applicable_start_year ?? 0;
+          return startB - startA;
+        });
+
+        setSelectedHonorsProgram(sorted[0] ?? null);
+      } catch (err) {
+        console.error('Error fetching honors programs:', err);
+        setSelectedHonorsProgram(null);
+      } finally {
+        setLoadingHonors(false);
+      }
+    };
+
+    fetchHonorsPrograms();
+  }, [open, studentType, universityId, studentAdmissionYear]);
+
   const handleNext = () => {
-    if (studentType === 'undergraduate' && selectedMajors.length === 0) {
+    if (studentType !== 'graduate' && selectedMajors.length === 0) {
       setError('Please select at least one major');
       return;
     }
 
     if (studentType === 'graduate' && selectedGraduatePrograms.length === 0) {
       setError('Please select at least one graduate program');
+      return;
+    }
+
+    if (studentType === 'honor' && !selectedHonorsProgram) {
+      setError('No honors program found for your admission year. Please contact your advisor.');
       return;
     }
 
@@ -193,9 +258,11 @@ export default function ProgramSelectionDialog({
     }
 
     onNext({
-      majorIds: studentType === 'undergraduate' ? selectedMajors.map(m => m.id) : [],
-      minorIds: studentType === 'undergraduate' ? selectedMinors.map(m => m.id) : [],
-      genEdIds: studentType === 'undergraduate' ? genEds.map(g => g.id) : [], // No GenEd for graduate students
+      studentType,
+      majorIds: studentType !== 'graduate' ? selectedMajors.map(m => m.id) : [],
+      minorIds: studentType !== 'graduate' ? selectedMinors.map(m => m.id) : [],
+      honorsProgramIds: studentType === 'honor' && selectedHonorsProgram ? [selectedHonorsProgram.id] : [],
+      genEdIds: studentType !== 'graduate' ? genEds.map(g => g.id) : [], // No GenEd for graduate students
       genEdStrategy,
       planMode,
       planName: nameValidation.sanitizedValue,
@@ -209,7 +276,9 @@ export default function ProgramSelectionDialog({
     setStudentType('undergraduate');
     setSelectedMajors([]);
     setSelectedMinors([]);
+    setSelectedHonorsProgram(null);
     setSelectedGraduatePrograms([]);
+    setLoadingHonors(false);
     setGenEdStrategy('balanced');
     setPlanMode('AUTO');
     setError(null);
@@ -218,14 +287,20 @@ export default function ProgramSelectionDialog({
     onClose();
   };
 
-  const isLoading = loadingMajors || loadingMinors || loadingGenEds || loadingGraduatePrograms || loadingStudentTypes;
+  const isLoading = loadingMajors || loadingMinors || loadingGenEds || loadingHonors || loadingGraduatePrograms || loadingStudentTypes;
+  const honorsReady = studentType !== 'honor' || !!selectedHonorsProgram;
   const canProceed = (
-    (studentType === 'undergraduate' && selectedMajors.length > 0) ||
+    (studentType !== 'graduate' && selectedMajors.length > 0 && honorsReady) ||
     (studentType === 'graduate' && selectedGraduatePrograms.length > 0)
   ) && !isLoading;
 
   // Determine if we should show the student type toggle
-  const showStudentTypeToggle = availableStudentTypes?.hasUndergraduate && availableStudentTypes?.hasGraduate;
+  const availableTypeCount = [
+    availableStudentTypes?.hasUndergraduate,
+    availableStudentTypes?.hasHonors,
+    availableStudentTypes?.hasGraduate,
+  ].filter(Boolean).length;
+  const showStudentTypeToggle = availableTypeCount > 1;
 
   return (
     <Dialog
@@ -292,14 +367,19 @@ export default function ProgramSelectionDialog({
                 <ToggleButton value="undergraduate" className="font-body-semi">
                   Undergraduate
                 </ToggleButton>
+                <ToggleButton value="honor" className="font-body-semi">
+                  Honors
+                </ToggleButton>
                 <ToggleButton value="graduate" className="font-body-semi">
                   Graduate
                 </ToggleButton>
               </ToggleButtonGroup>
               <Typography variant="caption" className="font-body" color="text.secondary">
-                {studentType === 'undergraduate'
-                  ? 'Undergraduate programs include majors, minors, and general education requirements'
-                  : 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
+                {studentType === 'graduate'
+                  ? 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
+                  : studentType === 'honor'
+                    ? 'Honors students follow undergraduate requirements plus an honors program'
+                    : 'Undergraduate programs include majors, minors, and general education requirements'
                 }
               </Typography>
             </Box>
@@ -310,20 +390,39 @@ export default function ProgramSelectionDialog({
               </Typography>
               <Box sx={{ p: 2, backgroundColor: '#f5f5f5', borderRadius: 2 }}>
                 <Typography variant="body2" className="font-body-semi">
-                  {studentType === 'undergraduate' ? 'Undergraduate' : 'Graduate'}
+                  {studentType === 'graduate'
+                    ? 'Graduate'
+                    : studentType === 'honor'
+                      ? 'Honors'
+                      : 'Undergraduate'}
                 </Typography>
                 <Typography variant="caption" className="font-body" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  {studentType === 'undergraduate'
-                    ? 'Undergraduate programs include majors, minors, and general education requirements'
-                    : 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
+                  {studentType === 'graduate'
+                    ? 'Graduate programs (Masters, PhD, etc.) do not include general education requirements'
+                    : studentType === 'honor'
+                      ? 'Honors students follow undergraduate requirements plus an honors program'
+                      : 'Undergraduate programs include majors, minors, and general education requirements'
                   }
                 </Typography>
               </Box>
             </Box>
           )}
 
+          {studentType === 'honor' && (
+            <Box sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'var(--border)', backgroundColor: 'var(--muted)' }}>
+              <Typography variant="body2" className="font-body-semi">
+                Honors program applied: {loadingHonors ? 'Loading...' : (selectedHonorsProgram?.name ?? 'Not found')}
+              </Typography>
+              {!loadingHonors && !selectedHonorsProgram && (
+                <Typography variant="caption" className="font-body" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                  We could not find an honors program for your admission year.
+                </Typography>
+              )}
+            </Box>
+          )}
+
           {/* Undergraduate Programs */}
-          {studentType === 'undergraduate' && (
+          {studentType !== 'graduate' && (
             <>
               {/* Majors Selection */}
               <Box>
