@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from 'react';
-import { Upload, Save, Download, RefreshCw, Grid3x3, List, Edit2, X, ExternalLink, FileText, Info } from 'lucide-react';
+import { Upload, Save, Download, RefreshCw, Grid3x3, List, Edit2, X, ExternalLink, FileText, Info, Maximize2, Minimize2 } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { StuLoader } from '@/components/ui/StuLoader';
 import TranscriptUpload from '@/components/transcript/TranscriptUpload';
@@ -22,9 +22,22 @@ import { GenEdSelector } from '@/components/academic-history/GenEdSelector';
 import { RequirementTag } from '@/components/academic-history/RequirementTag';
 import { RequirementOverrideDialog } from '@/components/academic-history/RequirementOverrideDialog';
 import { CircularProgress } from '@/components/academic-history/CircularProgress';
+import { AcademicActionsMenu } from '@/components/academic-history/AcademicActionsSection';
+import { TransferCreditsSection } from '@/components/academic-history/TransferCreditsSection';
+import { ExamCreditsSection } from '@/components/academic-history/ExamCreditsSection';
+import { EntranceExamsSection } from '@/components/academic-history/EntranceExamsSection';
+import { TermMetricsDisplay } from '@/components/academic-history/TermMetricsDisplay';
 import { GetGenEdsForUniversity, fetchProgramsBatch } from '@/lib/services/programService';
 import type { ProgramRow } from '@/types/program';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+// TODO: Replace with real data from Supabase once backend is implemented
+import {
+  DUMMY_TERM_METRICS,
+  DUMMY_TRANSFER_INSTITUTIONS,
+  DUMMY_EXAM_CREDITS,
+  DUMMY_ENTRANCE_EXAMS,
+  USE_DUMMY_DATA,
+} from '@/lib/dummy-data/academicHistory';
 
 interface GradPlan {
   id: string;
@@ -87,6 +100,7 @@ export default function AcademicHistoryPage() {
     severity: 'info',
   });
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('full');
+  const [viewDetail, setViewDetail] = useState<'compact' | 'detailed'>('compact'); // TODO: Persist to localStorage
   const [editingCourse, setEditingCourse] = useState<ParsedCourse | null>(null);
   const [editForm, setEditForm] = useState({
     subject: '',
@@ -1023,6 +1037,9 @@ export default function AcademicHistoryPage() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Academic Actions Menu */}
+          <AcademicActionsMenu />
+
           {/* View Transcript Button - only show if PDF exists */}
           {pdfUrl && (
             <button
@@ -1045,6 +1062,17 @@ export default function AcademicHistoryPage() {
           >
             {viewMode === 'compact' ? <List size={16} /> : <Grid3x3 size={16} />}
             <span className="hidden sm:inline">{viewMode === 'compact' ? 'Full View' : 'Compact'}</span>
+          </button>
+
+          {/* Detail View Toggle */}
+          <button
+            type="button"
+            onClick={() => setViewDetail(viewDetail === 'compact' ? 'detailed' : 'compact')}
+            className="group flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            title={viewDetail === 'compact' ? 'Switch to detailed view' : 'Switch to compact view'}
+          >
+            {viewDetail === 'compact' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+            <span className="hidden sm:inline">{viewDetail === 'compact' ? 'Detailed' : 'Compact'}</span>
           </button>
 
           {/* Save Button */}
@@ -1262,7 +1290,7 @@ export default function AcademicHistoryPage() {
                           <div key={program.id} className="flex flex-col items-center">
                             <CircularProgress
                               percentage={progress.percentage}
-                              size={70}
+                              size={80}
                               strokeWidth={6}
                               label={program.name}
                             />
@@ -1277,39 +1305,70 @@ export default function AcademicHistoryPage() {
                 )}
               </div>
 
+              {/* New Transcript Sections - Using Dummy Data */}
+              {/* TODO: Wire these to real data from Supabase once backend is implemented */}
+              {USE_DUMMY_DATA && (
+                <>
+                  {/* Transfer Credits Section */}
+                  <TransferCreditsSection institutions={DUMMY_TRANSFER_INSTITUTIONS} />
+
+                  {/* Exam Credits Section */}
+                  <ExamCreditsSection examCredits={DUMMY_EXAM_CREDITS} />
+
+                  {/* Entrance Exams Section */}
+                  <EntranceExamsSection exams={DUMMY_ENTRANCE_EXAMS} />
+                </>
+              )}
+
               {/* Term Containers */}
               <div className={viewMode === 'compact' ? `grid ${getGridCols(sortedTerms.length)} gap-6` : 'flex flex-col gap-6'}>
                 {sortedTerms.map((term) => {
                   const termCourses = coursesByTerm[term];
                   const termCredits = termCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
 
+                  // TODO: Get real term metrics from Supabase
+                  const termMetrics = USE_DUMMY_DATA
+                    ? DUMMY_TERM_METRICS.find((m) => m.term === term) || {
+                        term,
+                        hoursEarned: termCredits,
+                        hoursGraded: termCredits,
+                        termGpa: 0,
+                      }
+                    : { term, hoursEarned: termCredits, hoursGraded: termCredits, termGpa: 0 };
+
                   return (
-                    <div key={term} className={`rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md ${viewMode === 'full' ? 'overflow-hidden' : 'overflow-visible'}`}>
+                    <div key={term} className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
                       {/* Header */}
-                      <div className="border-b bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-4 py-2.5">
-                        <div className="flex flex-col gap-0.5">
-                          <h3 className="font-header text-sm font-bold text-zinc-100 dark:text-zinc-900">
-                            {term}
-                          </h3>
-                          <div className="flex items-center justify-between">
-                            <p className="font-body text-xs text-zinc-400 dark:text-zinc-600">
-                              {termCredits.toFixed(1)} cr
-                            </p>
-                            <span className="rounded bg-[var(--primary)] px-1.5 py-0.5 font-body-semi text-xs font-semibold text-zinc-900">
-                              {termCourses.length} course{termCourses.length !== 1 ? 's' : ''}
-                            </span>
+                      <div className="border-b bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-6 py-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-header text-lg font-bold text-zinc-100 dark:text-zinc-900">
+                              {term}
+                            </h3>
+                            {/* Display term metrics if available */}
+                            <TermMetricsDisplay
+                              hoursEarned={termMetrics.hoursEarned}
+                              hoursGraded={termMetrics.hoursGraded}
+                              termGpa={termMetrics.termGpa}
+                            />
                           </div>
+                          <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-zinc-900">
+                            {termCourses.length} course{termCourses.length !== 1 ? 's' : ''}
+                          </span>
                         </div>
                       </div>
 
                       {/* Courses Grid/Flex */}
-                      <div className="p-3 overflow-visible">
-                        <div className={viewMode === 'compact' ? 'flex flex-wrap gap-1.5' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'}>
-                          {termCourses.map((course) =>
-                            renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
-                          )}
+                      {/* Show courses in detailed view, or in full view mode regardless of viewDetail setting */}
+                      {(viewDetail === 'detailed' || viewMode === 'full') && (
+                        <div className="p-3 overflow-visible">
+                          <div className={viewMode === 'compact' ? 'flex flex-wrap gap-1.5' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'}>
+                            {termCourses.map((course) =>
+                              renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}

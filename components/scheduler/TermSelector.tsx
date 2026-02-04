@@ -1,14 +1,13 @@
-import { useState } from 'react';
 import {
     Box,
     Typography,
     Select,
     MenuItem,
     FormControl,
-    InputLabel,
     Chip,
     Paper
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import { Calendar } from 'lucide-react';
 
 interface Term {
@@ -28,7 +27,7 @@ interface TermSelectorProps {
 export default function TermSelector({
     terms,
     selectedTermIndex,
-    selectedYear,
+    selectedYear: _selectedYear,
     onTermSelect,
     isLoading = false
 }: TermSelectorProps) {
@@ -37,12 +36,7 @@ export default function TermSelector({
     const validTerms = terms.map((term, index) => ({ term, originalIndex: index }))
         .filter(t => t.term && t.term.term);
 
-    // Current selection label
-    const selectedTermLabel = selectedTermIndex !== null && validTerms.find(t => t.originalIndex === selectedTermIndex)
-        ? validTerms.find(t => t.originalIndex === selectedTermIndex)?.term.title || validTerms.find(t => t.originalIndex === selectedTermIndex)?.term.term
-        : '';
-
-    const handleChange = (event: any) => {
+    const handleChange = (event: SelectChangeEvent<number>) => {
         const index = Number(event.target.value);
         const termObj = terms[index];
         const name = termObj.title || termObj.term;

@@ -4,21 +4,22 @@ import { fetchMyProfile, getUserUniversityId } from '@/lib/services/profileServi
 import NewProgramForm from '@/components/maintain-programs/new-program-form';
 
 export default async function NewProgramPage() {
+  const user = await getSessionUser();
+  const profile = await fetchMyProfile(user.id);
+
+  // Redirect students (role 3) to dashboard
+  if (profile.role_id === 3) {
+    redirect('/dashboard');
+  }
+
+  let universityId;
   try {
-    const user = await getSessionUser();
-    const profile = await fetchMyProfile(user.id);
-
-    // Redirect students (role 3) to dashboard
-    if (profile.role_id === 3) {
-      redirect('/dashboard');
-    }
-
     // Get the user's university ID
-    const universityId = await getUserUniversityId(user.id);
-
-    return <NewProgramForm universityId={universityId} />;
+    universityId = await getUserUniversityId(user.id);
   } catch (error) {
     console.error('Failed to load new program page:', error);
     redirect('/maintain-programs');
   }
+
+  return <NewProgramForm universityId={universityId} />;
 }

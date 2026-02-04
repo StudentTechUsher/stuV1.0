@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -7,17 +7,12 @@ import {
     Button,
     Typography,
     Box,
-    Radio,
-    RadioGroup,
-    FormControlLabel,
     Card,
     CardContent,
     Chip,
     CircularProgress,
-    List,
-    ListItem
 } from '@mui/material';
-import { Clock, MapPin, User, AlertCircle } from 'lucide-react';
+import { Clock, User, AlertCircle } from 'lucide-react';
 import { getCourseSectionsAction } from '@/lib/services/server-actions';
 import type { CourseSection } from '@/lib/services/courseOfferingService';
 
@@ -48,17 +43,7 @@ export default function CourseSelectionDialog({
     const [backup1Id, setBackup1Id] = useState<number | null>(null);
     const [backup2Id, setBackup2Id] = useState<number | null>(null);
 
-    useEffect(() => {
-        if (open && courseCode && termName) {
-            loadSections();
-            // Reset selections
-            setPrimaryId(null);
-            setBackup1Id(null);
-            setBackup2Id(null);
-        }
-    }, [open, courseCode, termName]);
-
-    const loadSections = async () => {
+    const loadSections = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -70,7 +55,17 @@ export default function CourseSelectionDialog({
         } finally {
             setLoading(false);
         }
-    };
+    }, [courseCode, termName, universityId]);
+
+    useEffect(() => {
+        if (open && courseCode && termName) {
+            loadSections();
+            // Reset selections
+            setPrimaryId(null);
+            setBackup1Id(null);
+            setBackup2Id(null);
+        }
+    }, [open, courseCode, termName, loadSections]);
 
     const handleSave = () => {
         if (!primaryId) return;
