@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Box, Typography, Paper, CircularProgress, Alert } from "@mui/material";
 
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
@@ -14,6 +14,7 @@ import ClassInfoDialog from "./class-info-dialog";
 import TermSelector from "./TermSelector";
 import CourseSelectionDialog from "./CourseSelectionDialog";
 import ScheduleGenerationPanel from "./ScheduleGenerationPanel";
+import { AgentSchedulerWithSetup } from "./agent/AgentSchedulerWithSetup";
 import { CalendarExportButtons } from "@/components/dashboard/calendar/CalendarExportButtons";
 
 // Services
@@ -103,8 +104,9 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     universityId: number;
   }>({ open: false, courseCode: '', courseTitle: '', termName: '', universityId: 1 }); // Defaulting Univ ID to 1 for now
 
-  // Add state for university ID (could come from context or props)
+  // Add state for university ID and student ID (could come from context or props)
   const [universityId] = useState(1);
+  const [studentId, setStudentId] = useState<number | null>(null);
 
   // --- Initial Data Load ---
   useEffect(() => {
@@ -119,6 +121,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
           const { data: student } = await supabase.from('student').select('id').eq('profile_id', user.id).single();
 
           if (student) {
+            setStudentId(student.id); // Store student ID for agent
             const schedule = await getActiveScheduleAction(student.id);
             if (schedule) {
               setActiveScheduleId(schedule.schedule_id);
@@ -404,16 +407,54 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     console.log('Found plan array with', planArray.length, 'items');
 
     // Filter out events/milestones - only keep terms
-    const terms = planArray.filter((item): item is { term: string; notes?: string; courses?: unknown[]; credits_planned?: number; is_active?: boolean } => {
+    // Also filter out past terms (termPassed = true)
+    const terms = planArray.filter((item): item is { term: string; notes?: string; courses?: unknown[]; credits_planned?: number; is_active?: boolean; termPassed?: boolean } => {
       if (typeof item !== 'object' || item === null) return false;
       const candidate = item as Record<string, unknown>;
       // A term has a 'term' property but NOT 'type' and 'afterTerm' (which identify events)
-      return 'term' in candidate && !('type' in candidate && 'afterTerm' in candidate);
+      // Also exclude terms that have already passed
+      const isTerm = 'term' in candidate && !('type' in candidate && 'afterTerm' in candidate);
+      const hasPassed = candidate.termPassed === true;
+      return isTerm && !hasPassed;
     });
 
     console.log('Filtered to', terms.length, 'terms');
     return terms;
   })();
+
+  // Stable callback for calendar updates from agent
+  // Note: AgentSchedulerContainer uses SchedulerEvent from lib/mastra/types
+  const handleCalendarUpdate = useCallback((events: Array<{
+    id: string;
+    title: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    location?: string;
+    category?: 'Work' | 'Club' | 'Sports' | 'Study' | 'Family' | 'Other' | 'Course';
+    courseCode?: string;
+    sectionLabel?: string;
+    instructor?: string;
+  }>) => {
+    // Live calendar updates from agent - convert to scheduler's SchedulerEvent format
+    const courseEvts: SchedulerEvent[] = events
+      .filter(e => e.courseCode)
+      .map(e => ({
+        id: e.id,
+        title: e.title,
+        dayOfWeek: e.dayOfWeek,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        type: 'class' as const,
+        status: 'planned' as const,
+        course_code: e.courseCode!,
+        section: e.sectionLabel,
+        professor: e.instructor,
+        location: e.location,
+        credits: 3, // Default credits
+      }));
+    setCourseEvents(courseEvts);
+  }, []); // Empty deps - function is stable
 
   return (
     <Box sx={{ p: 2, display: "flex", flexDirection: "column" }}>
@@ -442,29 +483,39 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
           </Box>
         )}
 
-        {/* Term Selector */}
-        <Box sx={{ mb: 2 }}>
-          <TermSelector
-            terms={gradPlanTerms}
-            selectedTermIndex={selectedTermIndex}
-            selectedYear={null}
-            onTermSelect={handleTermSelect}
-            isLoading={isLoading}
-          />
-        </Box>
+        {/* Term Selector - Only show when schedule is active */}
+        {activeScheduleId && (
+          <Box sx={{ mb: 2 }}>
+            <TermSelector
+              terms={gradPlanTerms}
+              selectedTermIndex={selectedTermIndex}
+              selectedYear={null}
+              onTermSelect={handleTermSelect}
+              isLoading={isLoading}
+            />
+          </Box>
+        )}
 
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" }, gap: 2 }}>
-          {/* Left Panel - Schedule Generation or Instruction */}
+          {/* Left Panel - AI-Guided Schedule Generation */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {activeScheduleId && selectedTermName !== null && selectedTermIndex !== null ? (
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid var(--border)" }}>
-                <ScheduleGenerationPanel
+            {activeScheduleId && selectedTermName !== null && selectedTermIndex !== null && studentId ? (
+              <Paper elevation={0} sx={{ p: 0, borderRadius: 3, border: "1px solid var(--border)", height: "800px", overflow: "hidden" }}>
+                <AgentSchedulerWithSetup
+                  scheduleId={activeScheduleId}
+                  studentId={studentId}
+                  universityId={universityId}
                   termName={selectedTermName}
                   termIndex={selectedTermIndex}
-                  gradPlanDetails={activeGradPlan?.plan_details ? (typeof activeGradPlan.plan_details === 'string' ? JSON.parse(activeGradPlan.plan_details) : activeGradPlan.plan_details) as GradPlanDetails : null}
+                  gradPlanDetails={
+                    activeGradPlan?.plan_details
+                      ? (typeof activeGradPlan.plan_details === "string"
+                          ? JSON.parse(activeGradPlan.plan_details)
+                          : activeGradPlan.plan_details) as GradPlanDetails
+                      : null
+                  }
                   gradPlanId={activeGradPlan?.id}
-                  universityId={universityId}
                   existingPersonalEvents={personalEvents.map(e => ({
                     id: e.id,
                     title: e.title,
@@ -480,11 +531,10 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                     }
                   }}
                   onEventsChange={(events) => {
-                    // Find NEW events that don't exist in personalEvents yet
+                    // Handle new personal events from the wizard
                     const existingCount = personalEvents.length;
-                    const newEventsFromPanel = events.slice(existingCount); // Get only the new events added
+                    const newEventsFromPanel = events.slice(existingCount);
 
-                    // Convert BlockedTime format to SchedulerEvent format
                     const schedulerEvents: Array<Omit<SchedulerEvent, 'id'>> = newEventsFromPanel.map(evt => ({
                       title: evt.title,
                       category: evt.category,
@@ -495,7 +545,6 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                       status: 'blocked' as const,
                     }));
 
-                    // Save new events (as an array or individually)
                     if (schedulerEvents.length > 0) {
                       if (schedulerEvents.length === 1) {
                         handleEventSave(schedulerEvents[0]);
@@ -505,18 +554,50 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                     }
                   }}
                   onPreferencesChange={(prefs) => {
-                    handlePreferencesSave(prefs);
+                    setPreferences(prefs);
+                    if (activeScheduleId) {
+                      handlePreferencesSave(prefs);
+                    }
                   }}
+                  onCalendarUpdate={handleCalendarUpdate}
                 />
               </Paper>
             ) : (
-              <Paper elevation={0} sx={{ p: 5, borderRadius: 3, border: "1px solid var(--border)", textAlign: "center" }}>
-                <Typography variant="h6" className="font-header" sx={{ mb: 1, fontWeight: 700, color: "text.secondary" }}>
-                  Get Started
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Select a term from your graduation plan above to begin scheduling your classes.
-                </Typography>
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: "1px solid var(--border)" }}>
+                <Box sx={{ textAlign: "center", mb: 3 }}>
+                  <Box
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: '50%',
+                      bgcolor: 'var(--primary-15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto',
+                      mb: 2,
+                    }}
+                  >
+                    <Typography variant="h3" sx={{ fontSize: '2rem' }}>
+                      📚
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6" className="font-header" sx={{ mb: 1, fontWeight: 700 }}>
+                    Get Started
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Select a term from your graduation plan to begin scheduling your classes.
+                  </Typography>
+                </Box>
+
+                {/* Term Selector Inside Get Started */}
+                <TermSelector
+                  terms={gradPlanTerms}
+                  selectedTermIndex={selectedTermIndex}
+                  selectedYear={null}
+                  onTermSelect={handleTermSelect}
+                  isLoading={isLoading}
+                />
               </Paper>
             )}
           </Box>
