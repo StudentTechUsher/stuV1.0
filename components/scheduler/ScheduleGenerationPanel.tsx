@@ -7,8 +7,10 @@ import TermStep from './steps/TermStep';
 import PersonalEventsStep from './steps/PersonalEventsStep';
 import CourseConfirmationStep from './steps/CourseConfirmationStep';
 import PreferencesStep from './steps/PreferencesStep';
+import { AgentSchedulerWithSetup } from './agent/AgentSchedulerWithSetup';
 import { BlockedTime, SchedulePreferences } from '@/lib/services/scheduleService';
 import { getCoursesForTerm, calculateTotalCredits, type GradPlanDetails } from '@/lib/utils/gradPlanHelpers';
+import type { SchedulerEvent } from '@/lib/mastra/types';
 
 interface ScheduleGenerationPanelProps {
   termName: string;
@@ -32,6 +34,9 @@ interface ScheduleGenerationPanelProps {
   }>;
   selectedTermIndex?: number | null;
   isLoading?: boolean;
+  studentId?: number;
+  scheduleId?: string;
+  onCalendarUpdate?: (events: SchedulerEvent[]) => void;
 }
 
 interface ScheduleGenerationState {
@@ -57,6 +62,9 @@ export default function ScheduleGenerationPanel({
   gradPlanTerms = [],
   selectedTermIndex = null,
   isLoading = false,
+  studentId,
+  scheduleId,
+  onCalendarUpdate,
 }: ScheduleGenerationPanelProps) {
   const [state, setState] = useState<ScheduleGenerationState>({
     currentStep: 1,
@@ -65,6 +73,8 @@ export default function ScheduleGenerationPanel({
     preferences: {},
     totalCredits: 0,
   });
+
+  const [showAgent, setShowAgent] = useState(false);
 
   // Initialize state when term or grad plan changes (reset to step 1)
   useEffect(() => {
@@ -135,8 +145,8 @@ export default function ScheduleGenerationPanel({
   };
 
   const handleCompletePreferences = () => {
-    // Preferences is now the final step, so complete the flow
-    onComplete();
+    // Instead of calling onComplete immediately, show the agent
+    setShowAgent(true);
   };
 
   const gradPlanCourses = getCoursesForTerm(gradPlanDetails, termIndex);
@@ -195,6 +205,43 @@ export default function ScheduleGenerationPanel({
           />
         )}
       </Box>
+
+      {/* Agent Overlay */}
+      {showAgent && studentId && scheduleId && (
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          bgcolor: 'background.paper',
+          zIndex: 10
+        }}>
+          <AgentSchedulerWithSetup
+            termName={termName}
+            termIndex={termIndex}
+            universityId={universityId}
+            studentId={studentId}
+            scheduleId={scheduleId}
+            gradPlanDetails={gradPlanDetails}
+            gradPlanId={gradPlanId}
+            existingPersonalEvents={existingPersonalEvents.map(evt => ({
+              id: evt.id,
+              title: evt.title,
+              category: evt.category,
+              day_of_week: evt.day_of_week,
+              start_time: evt.start_time,
+              end_time: evt.end_time,
+            }))}
+            existingPreferences={state.preferences}
+            onComplete={() => {
+              setShowAgent(false);
+              onComplete(); // Activates schedule and loads courses
+            }}
+            onCalendarUpdate={onCalendarUpdate}
+          />
+        </Box>
+      )}
     </Box>
   );
 }

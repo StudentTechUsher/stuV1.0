@@ -476,6 +476,8 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                   termName={selectedTermName}
                   termIndex={selectedTermIndex}
                   universityId={universityId}
+                  studentId={studentId}
+                  scheduleId={activeScheduleId}
                   gradPlanDetails={
                     activeGradPlan?.plan_details
                       ? (typeof activeGradPlan.plan_details === "string"
@@ -529,6 +531,26 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                     if (activeScheduleId) {
                       handlePreferencesSave(prefs);
                     }
+                  }}
+                  onCalendarUpdate={(events) => {
+                    // Update course events from agent selections
+                    // Convert from mastra SchedulerEvent to scheduler-calendar SchedulerEvent
+                    const courseEventsFromAgent = events
+                      .filter(e => e.category === 'Course')
+                      .map(e => ({
+                        id: e.id,
+                        title: e.title,
+                        dayOfWeek: e.dayOfWeek,
+                        startTime: e.startTime,
+                        endTime: e.endTime,
+                        type: 'class' as const,
+                        status: 'planned' as const,
+                        course_code: e.courseCode,
+                        professor: e.instructor,
+                        location: e.location,
+                        section: e.sectionLabel,
+                      }));
+                    setCourseEvents(courseEventsFromAgent);
                   }}
                   onTermSelect={handleTermSelect}
                   gradPlanTerms={gradPlanTerms}
