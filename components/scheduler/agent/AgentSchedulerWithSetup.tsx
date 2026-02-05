@@ -18,6 +18,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import CloseIcon from '@mui/icons-material/Close';
 
 import { CourseSelectionOrchestrator } from '@/lib/mastra/courseSelectionOrchestrator';
 import { SectionSelectionCard } from './SectionSelectionCard';
@@ -49,6 +50,7 @@ interface AgentSchedulerWithSetupProps {
   existingPreferences: SchedulePreferences;
   onComplete?: () => void;
   onCalendarUpdate?: (events: SchedulerEvent[]) => void;
+  onExit?: () => void;
 }
 
 /**
@@ -70,6 +72,7 @@ export function AgentSchedulerWithSetup({
   existingPreferences,
   onComplete,
   onCalendarUpdate,
+  onExit,
 }: AgentSchedulerWithSetupProps) {
   // State
   const [orchestrator, setOrchestrator] = useState<CourseSelectionOrchestrator | null>(null);
@@ -83,6 +86,7 @@ export function AgentSchedulerWithSetup({
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previousCalendarEventsRef = useRef<string>('');
 
   // Extract courses from grad plan
   const extractCoursesFromGradPlan = useCallback((): string[] => {
@@ -173,7 +177,14 @@ export function AgentSchedulerWithSetup({
   useEffect(() => {
     if (orchestrator && onCalendarUpdate) {
       const events = orchestrator.getCalendarEvents();
-      onCalendarUpdate(events);
+      const eventsKey = JSON.stringify(events.map(e => e.id).sort());
+
+      // Only call onCalendarUpdate if events actually changed
+      if (eventsKey !== previousCalendarEventsRef.current) {
+        console.log('Calendar events changed, updating parent');
+        previousCalendarEventsRef.current = eventsKey;
+        onCalendarUpdate(events);
+      }
     }
   }, [orchestrator, currentMessage, onCalendarUpdate]);
 
@@ -232,7 +243,16 @@ export function AgentSchedulerWithSetup({
     const courseCodes = extractCoursesFromGradPlan();
 
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
+      <Box sx={{ p: 4, textAlign: 'center', position: 'relative' }}>
+        {/* Exit button */}
+        <IconButton
+          onClick={onExit}
+          sx={{ position: 'absolute', top: 8, right: 8 }}
+          title="Exit to preferences"
+        >
+          <CloseIcon />
+        </IconButton>
+
         <Box
           sx={{
             width: 80,
@@ -338,9 +358,19 @@ export function AgentSchedulerWithSetup({
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             AI Course Scheduler
           </Typography>
-          <IconButton size="small" onClick={handleRestart} disabled={isLoading}>
-            <RestartAltIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton
+              size="small"
+              onClick={onExit}
+              disabled={isLoading}
+              title="Exit to preferences"
+            >
+              <CloseIcon />
+            </IconButton>
+            <IconButton size="small" onClick={handleRestart} disabled={isLoading} title="Restart">
+              <RestartAltIcon />
+            </IconButton>
+          </Box>
         </Box>
 
         {/* Progress indicator */}

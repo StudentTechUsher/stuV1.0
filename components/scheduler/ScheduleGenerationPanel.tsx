@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box } from '@mui/material';
 import ScheduleGenerationTabs from './ScheduleGenerationTabs';
 import TermStep from './steps/TermStep';
@@ -10,7 +10,7 @@ import PreferencesStep from './steps/PreferencesStep';
 import { AgentSchedulerWithSetup } from './agent/AgentSchedulerWithSetup';
 import { BlockedTime, SchedulePreferences } from '@/lib/services/scheduleService';
 import { getCoursesForTerm, calculateTotalCredits, type GradPlanDetails } from '@/lib/utils/gradPlanHelpers';
-import type { SchedulerEvent } from '@/lib/mastra/types';
+import type { SchedulerEvent as MastraSchedulerEvent } from '@/lib/mastra/types';
 
 interface ScheduleGenerationPanelProps {
   termName: string;
@@ -36,11 +36,11 @@ interface ScheduleGenerationPanelProps {
   isLoading?: boolean;
   studentId?: number;
   scheduleId?: string;
-  onCalendarUpdate?: (events: SchedulerEvent[]) => void;
+  onAgentCalendarUpdate?: (events: MastraSchedulerEvent[]) => void;
 }
 
 interface ScheduleGenerationState {
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3 | 4 | 5;
   personalEvents: Omit<BlockedTime, 'id'>[];
   selectedCourses: string[];
   preferences: SchedulePreferences;
@@ -55,7 +55,7 @@ export default function ScheduleGenerationPanel({
   universityId,
   existingPersonalEvents = [],
   existingPreferences = {},
-  onComplete,
+  onComplete: _onComplete,
   onEventsChange,
   onPreferencesChange,
   onTermSelect,
@@ -64,7 +64,7 @@ export default function ScheduleGenerationPanel({
   isLoading = false,
   studentId,
   scheduleId,
-  onCalendarUpdate,
+  onAgentCalendarUpdate,
 }: ScheduleGenerationPanelProps) {
   const [state, setState] = useState<ScheduleGenerationState>({
     currentStep: 1,
@@ -74,11 +74,19 @@ export default function ScheduleGenerationPanel({
     totalCredits: 0,
   });
 
-  const [showAgent, setShowAgent] = useState(false);
+  // Refs to prevent agent re-initialization on parent re-renders
+  const scheduleIdRef = useRef(scheduleId);
+  const isAgentInitializedRef = useRef(false);
+
+  // Update ref when scheduleId changes
+  useEffect(() => {
+    scheduleIdRef.current = scheduleId;
+  }, [scheduleId]);
 
   // Initialize state when term or grad plan changes (reset to step 1)
   useEffect(() => {
-    const courses = getCoursesForTerm(gradPlanDetails, termIndex);
+    // Use term name instead of index to avoid mismatch with filtered terms
+    const courses = getCoursesForTerm(gradPlanDetails, termName);
     const courseCodes = courses.map(c => c.code);
     const totalCredits = calculateTotalCredits(courses);
 
@@ -92,7 +100,7 @@ export default function ScheduleGenerationPanel({
       totalCredits,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [termIndex, gradPlanDetails]); // Only reset when term or plan changes
+  }, [termName, gradPlanDetails]); // Only reset when term name or plan changes
 
   // Update data without resetting currentStep when preferences or events change
   useEffect(() => {
@@ -105,7 +113,7 @@ export default function ScheduleGenerationPanel({
     }));
   }, [existingPersonalEvents, existingPreferences]);
 
-  const handleStepChange = (step: 1 | 2 | 3 | 4) => {
+  const handleStepChange = (step: 1 | 2 | 3 | 4 | 5) => {
     setState({
       ...state,
       currentStep: step,
@@ -113,14 +121,14 @@ export default function ScheduleGenerationPanel({
   };
 
   const handleNext = () => {
-    const nextStep = (state.currentStep + 1) as 1 | 2 | 3 | 4;
-    if (nextStep <= 4) {
+    const nextStep = (state.currentStep + 1) as 1 | 2 | 3 | 4 | 5;
+    if (nextStep <= 5) {
       handleStepChange(nextStep);
     }
   };
 
   const handleBack = () => {
-    const prevStep = (state.currentStep - 1) as 1 | 2 | 3 | 4;
+    const prevStep = (state.currentStep - 1) as 1 | 2 | 3 | 4 | 5;
     if (prevStep >= 1) {
       handleStepChange(prevStep);
     }
@@ -145,21 +153,38 @@ export default function ScheduleGenerationPanel({
   };
 
   const handleCompletePreferences = () => {
-    // Instead of calling onComplete immediately, show the agent
-    setShowAgent(true);
+    // Validation
+    if (!scheduleId || !studentId) {
+      console.error('Missing required IDs:', { scheduleId, studentId });
+      return;
+    }
+
+    console.log('Starting inline agent with:', {
+      scheduleId,
+      termName,
+      termIndex,
+      preferences: state.preferences,
+      blockedTimes: state.personalEvents.length
+    });
+
+    // Move to Step 5 (agent) instead of navigating
+    setState(prev => ({ ...prev, currentStep: 5 }));
   };
 
-  const gradPlanCourses = getCoursesForTerm(gradPlanDetails, termIndex);
+  // Use term name instead of index to avoid mismatch with filtered terms
+  const gradPlanCourses = getCoursesForTerm(gradPlanDetails, termName);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Tabs - Fixed */}
-      <Box sx={{ flexShrink: 0 }}>
-        <ScheduleGenerationTabs
-          currentStep={state.currentStep}
-          onStepChange={handleStepChange}
-        />
-      </Box>
+      {/* Tabs - Fixed (hide when on step 5 - agent) */}
+      {state.currentStep !== 5 && (
+        <Box sx={{ flexShrink: 0 }}>
+          <ScheduleGenerationTabs
+            currentStep={state.currentStep as 1 | 2 | 3 | 4}
+            onStepChange={handleStepChange}
+          />
+        </Box>
+      )}
 
       {/* Step Content - Scrollable */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
@@ -185,6 +210,7 @@ export default function ScheduleGenerationPanel({
         {state.currentStep === 3 && (
           <CourseConfirmationStep
             termIndex={termIndex}
+            termName={termName}
             gradPlanCourses={gradPlanCourses}
             selectedCourses={state.selectedCourses}
             onCoursesChange={handleCoursesChange}
@@ -204,44 +230,49 @@ export default function ScheduleGenerationPanel({
             onBack={handleBack}
           />
         )}
-      </Box>
 
-      {/* Agent Overlay */}
-      {showAgent && studentId && scheduleId && (
-        <Box sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          bgcolor: 'background.paper',
-          zIndex: 10
-        }}>
-          <AgentSchedulerWithSetup
-            termName={termName}
-            termIndex={termIndex}
-            universityId={universityId}
-            studentId={studentId}
-            scheduleId={scheduleId}
-            gradPlanDetails={gradPlanDetails}
-            gradPlanId={gradPlanId}
-            existingPersonalEvents={existingPersonalEvents.map(evt => ({
-              id: evt.id,
-              title: evt.title,
-              category: evt.category,
-              day_of_week: evt.day_of_week,
-              start_time: evt.start_time,
-              end_time: evt.end_time,
-            }))}
-            existingPreferences={state.preferences}
-            onComplete={() => {
-              setShowAgent(false);
-              onComplete(); // Activates schedule and loads courses
-            }}
-            onCalendarUpdate={onCalendarUpdate}
-          />
-        </Box>
-      )}
+        {state.currentStep === 5 && studentId && scheduleIdRef.current && (
+          <Box>
+            <AgentSchedulerWithSetup
+              key={scheduleIdRef.current}
+              termName={termName}
+              termIndex={termIndex}
+              universityId={universityId}
+              studentId={studentId}
+              scheduleId={scheduleIdRef.current}
+              gradPlanDetails={gradPlanDetails}
+              gradPlanId={gradPlanId}
+              existingPersonalEvents={state.personalEvents.map(evt => ({
+                ...evt,
+                id: `temp-${Math.random()}`,
+              }))}
+              existingPreferences={state.preferences}
+              onCalendarUpdate={(newEvents) => {
+                // Pass to parent without triggering re-render
+                onAgentCalendarUpdate?.(newEvents);
+              }}
+              onComplete={() => {
+                // Agent done - reset to step 1
+                setState(prev => ({
+                  ...prev,
+                  currentStep: 1,
+                }));
+                isAgentInitializedRef.current = false;
+                _onComplete();
+              }}
+              onExit={() => {
+                // Exit agent - go back to step 4 (preferences)
+                console.log('Exiting agent, returning to preferences');
+                setState(prev => ({
+                  ...prev,
+                  currentStep: 4,
+                }));
+                isAgentInitializedRef.current = false;
+              }}
+            />
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }

@@ -24,16 +24,37 @@ export interface GradPlanDetails {
 
 /**
  * Extracts courses for a specific term from grad plan details
+ * @param planDetails - The graduation plan details
+ * @param termIndexOrName - Either a term index (number) or term name (string)
  */
 export function getCoursesForTerm(
   planDetails: GradPlanDetails | null | undefined,
-  termIndex: number
+  termIndexOrName: number | string
 ): { code: string; title: string; credits: number }[] {
-  if (!planDetails?.plan?.[termIndex]?.courses) {
+  if (!planDetails?.plan) {
+    console.warn('No plan details available');
     return [];
   }
 
-  return planDetails.plan[termIndex].courses.map(course => {
+  // Find the term by name or index
+  let termData: GradPlanTerm | undefined;
+
+  if (typeof termIndexOrName === 'string') {
+    // Find by term name
+    termData = planDetails.plan.find(term => term.term === termIndexOrName);
+    console.log('getCoursesForTerm - searching by name:', termIndexOrName, 'found:', !!termData);
+  } else {
+    // Use index
+    termData = planDetails.plan[termIndexOrName];
+    console.log('getCoursesForTerm - using index:', termIndexOrName, 'term:', termData?.term);
+  }
+
+  if (!termData?.courses) {
+    console.warn('No courses found for term:', termIndexOrName);
+    return [];
+  }
+
+  const courses = termData.courses.map(course => {
     // Support both 'code' (grad plan format) and 'course_code' (alternative format)
     const courseCode = course.code || course.course_code || '';
     return {
@@ -42,6 +63,9 @@ export function getCoursesForTerm(
       credits: course.credits || 3
     };
   });
+
+  console.log('Extracted courses for term', termData.term, ':', courses);
+  return courses;
 }
 
 /**

@@ -52,17 +52,62 @@ export async function getCourseOfferingsForCourse(
   termName: string,
   courseCode: string
 ): Promise<CourseSectionWithMeetings[]> {
-  // Call existing service (handles normalization, fetching, error handling)
-  const sections = await fetchCourseOfferingsForTerm(universityId, termName, [courseCode]);
-
-  // Enhance sections with parsed meeting times for easier access
-  return sections.map((section) => {
-    const parsedMeetings = parseMeetingsJson(section.meetings_json);
-    return {
-      ...section,
-      parsedMeetings,
-    };
+  console.log('🔍 [getCourseOfferingsForCourse] Starting fetch:', {
+    universityId,
+    termName,
+    courseCode,
+    timestamp: new Date().toISOString()
   });
+
+  try {
+    // Call existing service (handles normalization, fetching, error handling)
+    const sections = await fetchCourseOfferingsForTerm(universityId, termName, [courseCode]);
+
+    console.log('✅ [getCourseOfferingsForCourse] Fetched sections:', {
+      courseCode,
+      sectionCount: sections.length,
+      sections: sections.map(s => ({
+        id: s.offering_id,
+        section: s.section_label,
+        instructor: s.instructor,
+        waitlist: s.waitlist_count,
+        meetings: s.meetings_json
+      }))
+    });
+
+    if (sections.length === 0) {
+      console.warn('⚠️ [getCourseOfferingsForCourse] No sections found for course:', {
+        courseCode,
+        termName,
+        universityId
+      });
+    }
+
+    // Enhance sections with parsed meeting times for easier access
+    const enhancedSections = sections.map((section) => {
+      const parsedMeetings = parseMeetingsJson(section.meetings_json);
+      return {
+        ...section,
+        parsedMeetings,
+      };
+    });
+
+    console.log('✅ [getCourseOfferingsForCourse] Enhanced sections with parsed meetings:', {
+      courseCode,
+      enhancedCount: enhancedSections.length
+    });
+
+    return enhancedSections;
+  } catch (error) {
+    console.error('❌ [getCourseOfferingsForCourse] Error fetching course offerings:', {
+      courseCode,
+      termName,
+      universityId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    throw error;
+  }
 }
 
 /**
@@ -129,11 +174,22 @@ export async function checkSectionConflicts(
   currentCalendar: SchedulerEvent[],
   preferences: SchedulePreferences
 ): Promise<SectionConflictCheck> {
+  console.log('🔍 [checkSectionConflicts] Starting conflict check:', {
+    section: {
+      id: section.offering_id,
+      label: section.section_label,
+      course: section.course_code,
+      meetingCount: section.parsedMeetings?.length || 0
+    },
+    calendarEventCount: currentCalendar.length,
+    preferences: Object.keys(preferences)
+  });
+
   const conflicts: ConflictDetail[] = [];
 
   try {
     if (!section.parsedMeetings || section.parsedMeetings.length === 0) {
-      // No meeting times = no conflicts (online/async course)
+      console.log('ℹ️ [checkSectionConflicts] No meeting times (online/async course), no conflicts');
       return { hasConflict: false, conflicts: [] };
     }
 
@@ -221,12 +277,26 @@ export async function checkSectionConflicts(
       }
     }
 
-    return {
+    const result = {
       hasConflict: conflicts.length > 0,
       conflicts,
     };
+
+    if (result.hasConflict) {
+      console.log('⚠️ [checkSectionConflicts] Conflicts found:', {
+        conflictCount: conflicts.length,
+        conflictTypes: conflicts.map(c => c.conflictType)
+      });
+    } else {
+      console.log('✅ [checkSectionConflicts] No conflicts found');
+    }
+
+    return result;
   } catch (error) {
-    console.error('Error checking section conflicts:', error);
+    console.error('❌ [checkSectionConflicts] Error:', {
+      section: section.offering_id,
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw new ConflictDetectionError('Failed to check conflicts', error);
   }
 }

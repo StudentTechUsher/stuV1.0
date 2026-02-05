@@ -203,12 +203,8 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
   const handleTermSelect = async (termName: string, index: number) => {
     setSelectedTermIndex(index);
     setSelectedTermName(termName);
-
-    // Check if user has an active schedule for this term? 
-    // For MVP, we'll try to create one if it doesn't exist, or switch to it.
-    // Logic: Create new or Switch.
-
     setIsLoading(true);
+
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -217,29 +213,45 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
       const { data: student } = await supabase.from('student').select('id').eq('profile_id', user.id).single();
       if (!student) return;
 
-      // Try to create (or find)
-      const result = await createScheduleAction(student.id, termName, activeGradPlan?.id, index);
+      // Check for existing schedule first
+      const { data: existingSchedule } = await supabase
+        .from('student_schedules')
+        .select('schedule_id, is_active, blocked_times, preferences')
+        .eq('student_id', student.id)
+        .eq('term_name', termName)
+        .maybeSingle();
 
-      if (result.success && result.scheduleId) {
-        setActiveScheduleId(result.scheduleId);
-        // Clear current view
-        setPersonalEvents([]);
-        setCourseEvents([]);
-        setPreferences({});
-      } else if (result.error && result.error.includes("already exists")) {
-        // It exists, we likely need to fetch it specifically or handle the unique constraint better in service
-        // For now, let's assume createSchedule sets it active if it inserts, but if it fails we might need to find it.
-        // Wait, createSchedule attempts to insert. If unique constraint fails, we should FETCH that schedule and setActive.
-        // Simplified: The user likely wants to SWITCH to this term.
-        // Impl detail: We need a getScheduleByTerm method or similar, OR createSchedule should handle this.
-        // For this UI demo, we'll notify error if strict.
-        setError("Schedule for this term already exists. Please active it manually (Feature WIP).");
+      if (existingSchedule) {
+        // Load existing schedule
+        console.log('Loading existing schedule:', existingSchedule.schedule_id);
+        setActiveScheduleId(existingSchedule.schedule_id);
+        setPersonalEvents(existingSchedule.blocked_times.map(convertBlockedTimeToEvent));
+        setPreferences(existingSchedule.preferences);
+
+        // Load course selections
+        await loadScheduleCourses(existingSchedule.schedule_id);
+
+        // Set as active if not already
+        if (!existingSchedule.is_active) {
+          const { setActiveScheduleAction } = await import('@/lib/services/server-actions');
+          await setActiveScheduleAction(existingSchedule.schedule_id, student.id);
+        }
       } else {
-        setError(result.error || "Failed to create/select schedule for term");
+        // Create new schedule
+        const result = await createScheduleAction(student.id, termName, activeGradPlan?.id, index);
+
+        if (result.success && result.scheduleId) {
+          setActiveScheduleId(result.scheduleId);
+          setPersonalEvents([]);
+          setCourseEvents([]);
+          setPreferences({});
+        } else {
+          setError(result.error || 'Failed to create schedule');
+        }
       }
     } catch (e) {
-      console.error(e);
-      setError("An error occurred selecting the term.");
+      console.error('Error in handleTermSelect:', e);
+      setError('An error occurred selecting the term.');
     } finally {
       setIsLoading(false);
     }
@@ -369,6 +381,49 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
       console.error("Failed to update preferences", error);
     }
   };
+
+  // --- Handlers: Agent Calendar Updates ---
+  const handleAgentCalendarUpdate = useCallback((newEvents: Array<{
+    id: string;
+    title: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    location?: string;
+    category?: string;
+    courseCode?: string;
+    sectionLabel?: string;
+    instructor?: string;
+    offeringId?: number;
+  }>) => {
+    console.log('Agent adding events to calendar:', newEvents);
+
+    // Convert Mastra events to SchedulerEvent format
+    const convertedEvents: SchedulerEvent[] = newEvents.map(evt => ({
+      id: evt.id,
+      title: evt.title,
+      dayOfWeek: evt.dayOfWeek,
+      startTime: evt.startTime,
+      endTime: evt.endTime,
+      type: 'class' as const,
+      status: 'planned' as const,
+      course_code: evt.courseCode,
+      section: evt.sectionLabel,
+      professor: evt.instructor,
+      location: evt.location,
+    }));
+
+    setCourseEvents(prev => {
+      // Deduplicate by selection_id (format: "selection-id-daynum")
+      const existingIds = new Set(prev.map(e => e.id.split('-')[0]));
+      const uniqueNewEvents = convertedEvents.filter(e => {
+        const selectionId = e.id.split('-')[0];
+        return !existingIds.has(selectionId);
+      });
+
+      return [...prev, ...uniqueNewEvents];
+    });
+  }, []);
 
   // --- UI Wrappers ---
   const allEvents = [...courseEvents, ...personalEvents];
@@ -532,30 +587,11 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                       handlePreferencesSave(prefs);
                     }
                   }}
-                  onCalendarUpdate={(events) => {
-                    // Update course events from agent selections
-                    // Convert from mastra SchedulerEvent to scheduler-calendar SchedulerEvent
-                    const courseEventsFromAgent = events
-                      .filter(e => e.category === 'Course')
-                      .map(e => ({
-                        id: e.id,
-                        title: e.title,
-                        dayOfWeek: e.dayOfWeek,
-                        startTime: e.startTime,
-                        endTime: e.endTime,
-                        type: 'class' as const,
-                        status: 'planned' as const,
-                        course_code: e.courseCode,
-                        professor: e.instructor,
-                        location: e.location,
-                        section: e.sectionLabel,
-                      }));
-                    setCourseEvents(courseEventsFromAgent);
-                  }}
                   onTermSelect={handleTermSelect}
                   gradPlanTerms={gradPlanTerms}
                   selectedTermIndex={selectedTermIndex}
                   isLoading={isLoading}
+                  onAgentCalendarUpdate={handleAgentCalendarUpdate}
                 />
               </Paper>
             ) : (

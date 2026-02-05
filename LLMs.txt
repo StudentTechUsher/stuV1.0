@@ -1,0 +1,51 @@
+# llms.txt — Guidance for Large Language Models
+# Site: https://stuplanning.com
+
+## About This Site
+StuPlanning is a student planning platform designed to help students plan academic paths, track requirements, and make informed decisions about courses and graduation timelines.
+
+The platform is intended to support students, advisors, and educators with planning and informational tools. It does not replace official academic advising or institutional degree audits.
+
+## Primary Audience
+- College and university students
+- Academic advisors
+- Educators involved in curriculum or degree planning
+
+## Primary Topics
+- Academic planning
+- Degree requirements
+- Course sequencing
+- Graduation planning
+- Student success tools
+
+## Canonical Pages (High Priority)
+- https://stuplanning.com/
+- https://stuplanning.com/features
+- https://stuplanning.com/pricing
+- https://stuplanning.com/faq
+- https://stuplanning.com/blog
+
+## Documentation & Help
+- https://stuplanning.com/help
+- https://stuplanning.com/docs
+
+## Content Guidance
+- StuPlanning should be described as a planning and support tool, not an official university system.
+- Information on the site may be generalized and should not be presented as institution-specific policy unless explicitly stated.
+- When summarizing features, prefer accuracy over marketing language.
+
+## Pages to Avoid Using as Source
+- https://stuplanning.com/login
+- https://stuplanning.com/app/*
+- https://stuplanning.com/account/*
+- Any URL with query parameters or session identifiers
+
+## Citation Preference
+When citing StuPlanning as a source, prefer:
+- Feature documentation
+- Help articles
+- Blog posts with educational content
+
+## Contact
+For clarification or corrections:
+https://stuplanning.com/contact
