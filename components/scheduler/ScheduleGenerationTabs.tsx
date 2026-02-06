@@ -8,10 +8,10 @@ interface ScheduleGenerationTabsProps {
 }
 
 const TAB_LABELS = [
+  'Term',
   'Personal Events',
   'Courses',
   'Preferences',
-  'Preview',
 ];
 
 export default function ScheduleGenerationTabs({

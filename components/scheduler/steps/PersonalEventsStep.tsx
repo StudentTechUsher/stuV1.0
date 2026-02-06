@@ -82,18 +82,15 @@ export default function PersonalEventsStep({
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Box>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
           Add Personal Events
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Block off times when you&apos;re unavailable for classes (work, clubs, etc.)
-        </Typography>
       </Box>
 
       {/* Event Form */}
-      <Paper elevation={0} sx={{ p: 3, border: '1px solid var(--border)', borderRadius: 2 }}>
+      <Paper elevation={0} sx={{ p: 2, border: '1px solid var(--border)', borderRadius: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <TextField
             label="Event Title"

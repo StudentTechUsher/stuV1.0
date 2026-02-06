@@ -26,6 +26,7 @@ import type { CourseOffering } from '@/lib/services/courseOfferingService';
 
 interface CourseConfirmationStepProps {
   termIndex: number;
+  termName?: string;
   gradPlanCourses: { code: string; title: string; credits: number }[];
   selectedCourses: string[];
   onCoursesChange: (courses: string[]) => void;
@@ -44,6 +45,7 @@ export default function CourseConfirmationStep({
   universityId,
   gradPlanId,
   termIndex,
+  termName,
   onNext,
   onBack,
 }: CourseConfirmationStepProps) {
@@ -54,6 +56,15 @@ export default function CourseConfirmationStep({
     course: CourseOffering | null;
   }>({ open: false, course: null });
   const [isAddingToGradPlan, setIsAddingToGradPlan] = useState(false);
+
+  // Debug logging
+  console.log('CourseConfirmationStep rendered with:', {
+    termName,
+    termIndex,
+    gradPlanCoursesCount: gradPlanCourses.length,
+    gradPlanCourses,
+    selectedCourses
+  });
 
   const handleRemoveCourse = (courseCode: string) => {
     onCoursesChange(selectedCourses.filter(c => c !== courseCode));
