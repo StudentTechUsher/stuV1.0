@@ -1,4 +1,6 @@
 import { Metadata } from 'next'
+import { Suspense } from 'react'
+import { StuLoader } from '@/components/ui/StuLoader'
 import DemoPageClient from './demo-page-client'
 
 export const metadata: Metadata = {
@@ -24,5 +26,9 @@ export const metadata: Metadata = {
 }
 
 export default function DemoPage() {
-  return <DemoPageClient />
+  return (
+    <Suspense fallback={<StuLoader variant="page" text="Loading demo request form..." />}>
+      <DemoPageClient />
+    </Suspense>
+  )
 }

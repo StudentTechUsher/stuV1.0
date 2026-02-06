@@ -1,5 +1,7 @@
 import { UnifiedLandingClient } from './unified-landing-client-publishable'
 import { Metadata } from 'next'
+import { Suspense } from 'react'
+import { StuLoader } from '@/components/ui/StuLoader'
 import { getOrganizationSchema, getSoftwareSchema, getWebsiteSchema } from '@/lib/seo/structured-data'
 
 export const metadata: Metadata = {
@@ -48,7 +50,9 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
-      <UnifiedLandingClient />
+      <Suspense fallback={<StuLoader variant="page" text="Loading STU..." />}>
+        <UnifiedLandingClient />
+      </Suspense>
     </>
   )
 }
