@@ -191,7 +191,7 @@ export default function PreferencesStep({
             fontWeight: 600,
           }}
         >
-          Next: Preview Results
+          Review Sections
         </Button>
       </Box>
     </Box>

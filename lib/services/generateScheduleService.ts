@@ -42,11 +42,27 @@ export async function fetchCourseOfferingsForTerm(
   courseCodes: string[]
 ): Promise<CourseSection[]> {
   if (courseCodes.length === 0) {
+    console.warn('⚠️ [fetchCourseOfferingsForTerm] No course codes provided');
     return [];
   }
 
   // Normalize the term name to handle differences in naming conventions
   const normalizedTermName = normalizeTermName(termName);
+
+  console.log('🔍 [fetchCourseOfferingsForTerm] Querying database:', {
+    universityId,
+    originalTermName: termName,
+    normalizedTermName,
+    courseCodes,
+    query: {
+      table: 'course_offerings',
+      filters: {
+        university_id: universityId,
+        term_name: normalizedTermName,
+        course_codes: courseCodes
+      }
+    }
+  });
 
   const { data, error } = await supabase
     .from('course_offerings')
@@ -56,9 +72,20 @@ export async function fetchCourseOfferingsForTerm(
     .in('course_code', courseCodes);
 
   if (error) {
-    console.error('Failed to fetch course offerings:', error);
+    console.error('❌ [fetchCourseOfferingsForTerm] Database query failed:', {
+      error,
+      universityId,
+      normalizedTermName,
+      courseCodes
+    });
     throw new CourseOfferingFetchError('Failed to fetch offerings', error);
   }
+
+  console.log('✅ [fetchCourseOfferingsForTerm] Database query succeeded:', {
+    resultCount: data?.length || 0,
+    courseCodes,
+    foundCourses: data?.map(d => d.course_code) || []
+  });
 
   return (data || []) as CourseSection[];
 }

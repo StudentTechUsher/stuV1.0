@@ -119,6 +119,41 @@ export async function getActiveSchedule(studentId: number): Promise<StudentSched
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE
+ * Fetches a specific schedule by ID with all related data
+ * @param scheduleId - UUID of the schedule to fetch
+ * @returns Schedule with blocked_times, preferences, and course_selections, or null if not found
+ */
+export async function getScheduleById(scheduleId: string): Promise<StudentSchedule | null> {
+    const { data, error } = await supabase
+        .from('student_schedules')
+        .select('*')
+        .eq('schedule_id', scheduleId)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Error fetching schedule by ID:', error);
+        throw new ScheduleFetchError('Failed to fetch schedule', error);
+    }
+
+    if (!data) return null;
+
+    return {
+        schedule_id: data.schedule_id,
+        student_id: data.student_id,
+        grad_plan_id: data.grad_plan_id,
+        term_name: data.term_name,
+        term_index: data.term_index,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        blocked_times: data.blocked_times as BlockedTime[],
+        preferences: data.preferences as SchedulePreferences,
+        course_selections: []
+    };
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
  * Creates a new schedule for a student and sets it as active
  * Deactivates any existing active schedule
  */
@@ -129,17 +164,8 @@ export async function createSchedule(
     termIndex?: number
 ): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
     try {
-        // 1. Deactivate existing active schedule
-        // We do this first to ensure only one active schedule. 
-        // In a real txn we'd do this together, but with Supabase client we do sequentially.
-        // There is a race condition risk but low impact for single user context.
-        await supabase
-            .from('student_schedules')
-            .update({ is_active: false })
-            .eq('student_id', studentId)
-            .eq('is_active', true);
-
-        // 2. Insert new schedule
+        // Insert new schedule (inactive until setup is complete)
+        // Will be activated when user completes the generation process
         const { data, error } = await supabase
             .from('student_schedules')
             .insert({
@@ -147,7 +173,7 @@ export async function createSchedule(
                 grad_plan_id: gradPlanId,
                 term_name: termName,
                 term_index: termIndex,
-                is_active: true,
+                is_active: false, // Don't activate until user completes setup
                 blocked_times: [], // Initialize empty
                 preferences: {},   // Initialize empty
             })

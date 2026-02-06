@@ -162,14 +162,6 @@ export default function GenerateScheduleDialog({
     >
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h6" className="font-header" sx={{ fontWeight: 700 }}>
-              Generate Schedule
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {termName}
-            </Typography>
-          </Box>
           <IconButton onClick={onClose} size="small">
             <X size={20} />
           </IconButton>

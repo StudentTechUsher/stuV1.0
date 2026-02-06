@@ -179,6 +179,7 @@ function sanitizeEventProperties(properties?: Record<string, unknown>): Record<s
 
   const safe: Record<string, unknown> = {};
   const allowedKeys = [
+    // Core
     'action',
     'category',
     'label',
@@ -186,10 +187,29 @@ function sanitizeEventProperties(properties?: Record<string, unknown>): Record<s
     'duration',
     'count',
     'success',
+    'page_path',
+
+    // Marketing / conversion (non-PII)
+    'cta_source',
+    'cta_location',
+    'cta_label',
+    'cta_href',
+    'cta_target',
+    'form_id',
+
+    // Campaign attribution (non-PII)
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+
+    // Errors
     'error_type',
     'error_code',
     'http_status',
-    'page_path',
+
+    // Domain-safe IDs
     'university_id',
     'program_id',
     'course_id',
