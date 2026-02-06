@@ -10,11 +10,11 @@ const meta = {
         component: `
 # CreatePlanClient (Page Client)
 
-This is the main client for \\`/grad-plan/create\\`. It depends on authenticated session state, server-provided props, and API calls.
+This is the main client for /grad-plan/create. It depends on authenticated session state, server-provided props, and API calls.
 
 **In-app testing path:**
-1. \\`npm run dev\\`
-2. Navigate to \\`/grad-plan/create\\`
+1. npm run dev
+2. Navigate to /grad-plan/create
 
 This Storybook entry is documentation-only to avoid coupling to live data sources.
         `,

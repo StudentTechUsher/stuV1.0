@@ -7,10 +7,13 @@ import TermStep from './steps/TermStep';
 import PersonalEventsStep from './steps/PersonalEventsStep';
 import CourseConfirmationStep from './steps/CourseConfirmationStep';
 import PreferencesStep from './steps/PreferencesStep';
+import { SectionReviewStep } from './steps/SectionReviewStep';
 import { AgentSchedulerWithSetup } from './agent/AgentSchedulerWithSetup';
 import { BlockedTime, SchedulePreferences } from '@/lib/services/scheduleService';
 import { getCoursesForTerm, calculateTotalCredits, type GradPlanDetails } from '@/lib/utils/gradPlanHelpers';
 import type { SchedulerEvent as MastraSchedulerEvent } from '@/lib/mastra/types';
+import type { CalendarEvent } from '@/components/scheduler/test/InteractiveCalendar';
+import type { SectionSelection } from '@/components/scheduler/analysis/CourseAnalysisResults';
 
 interface ScheduleGenerationPanelProps {
   termName: string;
@@ -40,11 +43,16 @@ interface ScheduleGenerationPanelProps {
 }
 
 interface ScheduleGenerationState {
-  currentStep: 1 | 2 | 3 | 4 | 5;
+  currentStep: number; // 1, 2, 3, 4, 4.5, or 5
   personalEvents: Omit<BlockedTime, 'id'>[];
   selectedCourses: string[];
   preferences: SchedulePreferences;
   totalCredits: number;
+  sectionSelections: Array<{
+    courseCode: string;
+    sectionLabel: string;
+    rank: 'primary' | 'backup1' | 'backup2';
+  }>;
 }
 
 export default function ScheduleGenerationPanel({
@@ -72,6 +80,7 @@ export default function ScheduleGenerationPanel({
     selectedCourses: [],
     preferences: {},
     totalCredits: 0,
+    sectionSelections: [],
   });
 
   // Refs to prevent agent re-initialization on parent re-renders
@@ -98,6 +107,7 @@ export default function ScheduleGenerationPanel({
       selectedCourses: courseCodes,
       preferences: { ...existingPreferences },
       totalCredits,
+      sectionSelections: [],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [termName, gradPlanDetails]); // Only reset when term name or plan changes
@@ -113,7 +123,7 @@ export default function ScheduleGenerationPanel({
     }));
   }, [existingPersonalEvents, existingPreferences]);
 
-  const handleStepChange = (step: 1 | 2 | 3 | 4 | 5) => {
+  const handleStepChange = (step: number) => {
     setState({
       ...state,
       currentStep: step,
@@ -121,14 +131,22 @@ export default function ScheduleGenerationPanel({
   };
 
   const handleNext = () => {
-    const nextStep = (state.currentStep + 1) as 1 | 2 | 3 | 4 | 5;
+    let nextStep = state.currentStep + 1;
+    // Skip from 4 to 4.5 when moving forward
+    if (state.currentStep === 4) {
+      nextStep = 4.5;
+    }
     if (nextStep <= 5) {
       handleStepChange(nextStep);
     }
   };
 
   const handleBack = () => {
-    const prevStep = (state.currentStep - 1) as 1 | 2 | 3 | 4 | 5;
+    let prevStep = state.currentStep - 1;
+    // Skip from 4.5 to 4 when moving backward
+    if (state.currentStep === 4.5) {
+      prevStep = 4;
+    }
     if (prevStep >= 1) {
       handleStepChange(prevStep);
     }
@@ -153,13 +171,18 @@ export default function ScheduleGenerationPanel({
   };
 
   const handleCompletePreferences = () => {
+    // Move to Step 4.5 (section review)
+    setState(prev => ({ ...prev, currentStep: 4.5 }));
+  };
+
+  const handleSkipToAgent = () => {
     // Validation
     if (!scheduleId || !studentId) {
       console.error('Missing required IDs:', { scheduleId, studentId });
       return;
     }
 
-    console.log('Starting inline agent with:', {
+    console.log('Skipping to AI agent with:', {
       scheduleId,
       termName,
       termIndex,
@@ -167,7 +190,56 @@ export default function ScheduleGenerationPanel({
       blockedTimes: state.personalEvents.length
     });
 
-    // Move to Step 5 (agent) instead of navigating
+    // Move to Step 5 (agent) directly
+    setState(prev => ({ ...prev, currentStep: 5 }));
+  };
+
+  const handleSelectionsChange = (selections: SectionSelection[]) => {
+    setState({ ...state, sectionSelections: selections });
+  };
+
+  const convertToMastraEvents = (events: Omit<BlockedTime, 'id'>[]): CalendarEvent[] => {
+    return events.map(evt => ({
+      id: `temp-${Math.random()}`,
+      title: evt.title,
+      dayOfWeek: evt.day_of_week,
+      startTime: evt.start_time,
+      endTime: evt.end_time,
+      category: evt.category,
+    }));
+  };
+
+  const convertFromCalendarEvents = (events: CalendarEvent[]): Omit<BlockedTime, 'id'>[] => {
+    return events
+      .filter(e => e.category !== 'Course') // Exclude course events
+      .map(evt => ({
+        title: evt.title,
+        category: evt.category as 'Work' | 'Club' | 'Sports' | 'Study' | 'Family' | 'Other',
+        day_of_week: evt.dayOfWeek,
+        start_time: evt.startTime,
+        end_time: evt.endTime,
+      }));
+  };
+
+  const handleCalendarChangeFromReview = (events: CalendarEvent[]) => {
+    // Update internal state
+    const nonCourseEvents = convertFromCalendarEvents(events);
+    setState({ ...state, personalEvents: nonCourseEvents });
+
+    // Propagate to parent
+    onEventsChange(nonCourseEvents);
+  };
+
+  const handleReviewComplete = () => {
+    // Validation
+    if (!scheduleId || !studentId) {
+      console.error('Missing required IDs:', { scheduleId, studentId });
+      return;
+    }
+
+    console.log('Section review complete, moving to AI agent with selections:', state.sectionSelections);
+
+    // Move to Step 5 (agent)
     setState(prev => ({ ...prev, currentStep: 5 }));
   };
 
@@ -176,8 +248,8 @@ export default function ScheduleGenerationPanel({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Tabs - Fixed (hide when on step 5 - agent) */}
-      {state.currentStep !== 5 && (
+      {/* Tabs - Fixed (hide when on step 4.5 or 5) */}
+      {state.currentStep !== 4.5 && state.currentStep !== 5 && (
         <Box sx={{ flexShrink: 0 }}>
           <ScheduleGenerationTabs
             currentStep={state.currentStep as 1 | 2 | 3 | 4}
@@ -231,6 +303,23 @@ export default function ScheduleGenerationPanel({
           />
         )}
 
+        {state.currentStep === 4.5 && (
+          <SectionReviewStep
+            termName={termName}
+            universityId={universityId}
+            scheduleId={scheduleId || ''}
+            courseCodes={state.selectedCourses}
+            calendarEvents={convertToMastraEvents(state.personalEvents)}
+            preferences={state.preferences}
+            existingSelections={state.sectionSelections}
+            onSelectionsChange={handleSelectionsChange}
+            onCalendarChange={handleCalendarChangeFromReview}
+            onNext={handleReviewComplete}
+            onBack={handleBack}
+            onSkip={handleSkipToAgent}
+          />
+        )}
+
         {state.currentStep === 5 && studentId && scheduleIdRef.current && (
           <Box>
             <AgentSchedulerWithSetup
@@ -247,6 +336,7 @@ export default function ScheduleGenerationPanel({
                 id: `temp-${Math.random()}`,
               }))}
               existingPreferences={state.preferences}
+              existingSelections={state.sectionSelections}
               onCalendarUpdate={(newEvents) => {
                 // Pass to parent without triggering re-render
                 onAgentCalendarUpdate?.(newEvents);
@@ -261,11 +351,11 @@ export default function ScheduleGenerationPanel({
                 _onComplete();
               }}
               onExit={() => {
-                // Exit agent - go back to step 4 (preferences)
-                console.log('Exiting agent, returning to preferences');
+                // Exit agent - go back to step 4.5 (section review)
+                console.log('Exiting agent, returning to section review');
                 setState(prev => ({
                   ...prev,
-                  currentStep: 4,
+                  currentStep: 4.5,
                 }));
                 isAgentInitializedRef.current = false;
               }}

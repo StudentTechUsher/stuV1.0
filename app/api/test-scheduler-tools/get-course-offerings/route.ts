@@ -1,36 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCourseOfferingsForCourse } from '@/lib/mastra/tools/courseSelectionTools';
+import { validateCoursesForScheduling } from '@/lib/mastra/tools/courseSelectionTools';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { universityId, termName, courseCode } = body;
+    const { universityId, termName, courseCodes } = body;
 
     // Validate inputs
-    if (!universityId || !termName || !courseCode) {
+    if (!universityId || !termName || !courseCodes) {
       return NextResponse.json(
-        { error: 'Missing required fields: universityId, termName, courseCode' },
+        { error: 'Missing required fields: universityId, termName, courseCodes (array)' },
         { status: 400 }
       );
     }
 
-    console.log('🧪 [TEST API] Testing getCourseOfferingsForCourse:', {
+    if (!Array.isArray(courseCodes) || courseCodes.length === 0) {
+      return NextResponse.json(
+        { error: 'courseCodes must be a non-empty array' },
+        { status: 400 }
+      );
+    }
+
+    console.log('🧪 [TEST API] Testing validateCoursesForScheduling:', {
       universityId,
       termName,
-      courseCode,
+      courseCount: courseCodes.length,
+      courses: courseCodes,
     });
 
-    // Call the tool
-    const sections = await getCourseOfferingsForCourse(
+    // Call the validation tool
+    const results = await validateCoursesForScheduling(
       universityId,
       termName,
-      courseCode
+      courseCodes
     );
+
+    // Group results by status
+    const available = results.filter(r => r.status === 'available');
+    const notInTerm = results.filter(r => r.status === 'not_in_term');
+    const notFound = results.filter(r => r.status === 'not_found');
 
     return NextResponse.json({
       success: true,
-      sections,
-      count: sections.length,
+      summary: {
+        total: results.length,
+        available: available.length,
+        needsRescheduling: notInTerm.length,
+        notFound: notFound.length,
+      },
+      results: {
+        available,
+        notInTerm,
+        notFound,
+      },
+      allResults: results,
     });
   } catch (error) {
     console.error('❌ [TEST API] Error:', error);

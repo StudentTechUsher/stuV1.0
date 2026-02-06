@@ -12,7 +12,7 @@ export function LandingRoleValue({
 }: LandingRoleValueProps) {
   return (
     <section
-      className="border-b border-border/60 py-18 md:py-30"
+      className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-18 md:py-30 scroll-mt-28"
       id="solutions"
       style={{ backgroundColor: pageBg }}
     >

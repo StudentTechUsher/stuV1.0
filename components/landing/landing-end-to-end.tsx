@@ -17,7 +17,10 @@ export function LandingEndToEnd({
   onCtaClick,
 }: LandingEndToEndProps) {
   return (
-    <section className="border-b border-border/60 py-16 md:py-20" style={{ backgroundColor: pageBg }}>
+    <section
+      className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-16 md:py-20"
+      style={{ backgroundColor: pageBg }}
+    >
       <div className="container mx-auto max-w-4xl space-y-6 px-4 text-center md:px-8">
         <div className="inline-flex rounded-full bg-foreground px-4 py-2">
           <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: pageBg }}>

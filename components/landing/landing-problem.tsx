@@ -11,7 +11,10 @@ export function LandingProblem({
   pageBg = landingPageBg,
 }: LandingProblemProps) {
   return (
-    <section className="border-b border-border/60 bg-muted/30 py-18 md:py-30" id="product">
+    <section
+      className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 bg-muted/30 py-18 md:py-30 scroll-mt-28"
+      id="product"
+    >
       <div className="container mx-auto max-w-6xl px-4 md:px-8">
         <div className="grid gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
           <div className="space-y-4">

@@ -48,6 +48,11 @@ interface AgentSchedulerWithSetupProps {
     end_time: string;
   }>;
   existingPreferences: SchedulePreferences;
+  existingSelections?: Array<{
+    courseCode: string;
+    sectionLabel: string;
+    rank: 'primary' | 'backup1' | 'backup2';
+  }>;
   onComplete?: () => void;
   onCalendarUpdate?: (events: SchedulerEvent[]) => void;
   onExit?: () => void;
@@ -70,6 +75,7 @@ export function AgentSchedulerWithSetup({
   gradPlanId,
   existingPersonalEvents,
   existingPreferences,
+  existingSelections = [],
   onComplete,
   onCalendarUpdate,
   onExit,
@@ -144,6 +150,13 @@ export function AgentSchedulerWithSetup({
         existingCalendar: calendarEvents,
         preferences: existingPreferences,
       };
+
+      // Log pre-populated selections from Section Review step
+      if (existingSelections && existingSelections.length > 0) {
+        console.log('🔍 [AgentScheduler] User pre-selected sections:', existingSelections);
+        // TODO: Pass existingSelections to orchestrator context
+        // For now, the agent will discover these when checking the schedule
+      }
 
       // Create and start orchestrator
       const newOrchestrator = new CourseSelectionOrchestrator(sessionInput);

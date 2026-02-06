@@ -12,7 +12,10 @@ export function LandingImplementation({
   pageBg = landingPageBg,
 }: LandingImplementationProps) {
   return (
-    <section className="border-b border-border/60 py-18 md:py-30" style={{ backgroundColor: pageBg }}>
+    <section
+      className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-18 md:py-30"
+      style={{ backgroundColor: pageBg }}
+    >
       <div className="container mx-auto max-w-6xl grid gap-12 md:gap-16 px-4 md:grid-cols-[1.1fr_0.9fr] md:px-8">
         <div className="space-y-6">
           <div className="inline-flex rounded-full bg-foreground px-4 py-2">

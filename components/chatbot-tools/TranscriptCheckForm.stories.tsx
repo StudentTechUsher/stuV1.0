@@ -5,27 +5,27 @@ const meta = {
   component: () => null,
   parameters: {
     layout: 'centered',
-    docs: {
-      description: {
-        component: `
+	    docs: {
+	      description: {
+	        component: `
 # TranscriptCheckForm
 
 This component depends on authenticated user state, transcript uploads, and API calls. It is best exercised in the running app:
 
-1. \\`npm run dev\\`
-2. Navigate to \\`/grad-plan/create\\`
+1. \`npm run dev\`
+2. Navigate to \`/grad-plan/create\`
 3. Complete Profile Check to reach Transcript Check
 
 **Data dependencies:**
 - User auth session
 - Transcript upload pipeline
-- \\`fetchUserCoursesAction\\` / \\`fetchUserCoursesMetadataAction\\`
+- \`fetchUserCoursesAction\` / \`fetchUserCoursesMetadataAction\`
 
 This Storybook entry is documentation-only to avoid breaking production flows.
-        `,
-      },
-    },
-  },
+	        `,
+	      },
+	    },
+	  },
   tags: ['autodocs'],
 } satisfies Meta;
 

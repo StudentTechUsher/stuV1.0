@@ -5,15 +5,15 @@ const meta = {
   component: () => null,
   parameters: {
     layout: 'centered',
-    docs: {
-      description: {
-        component: `
+	    docs: {
+	      description: {
+	        component: `
 # CourseSelectionForm
 
 This step depends on program requirements, GenEd requirements, transcript data, and live course catalogs. It is best validated in the running app:
 
-1. \\`npm run dev\\`
-2. Navigate to \\`/grad-plan/create\\`
+1. \`npm run dev\`
+2. Navigate to \`/grad-plan/create\`
 3. Complete Program Selection to reach Course Selection
 
 **Data dependencies:**

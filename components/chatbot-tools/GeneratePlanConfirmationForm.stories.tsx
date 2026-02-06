@@ -38,5 +38,8 @@ export const ModeSelection: Story = {
     academicTerms,
     lastCompletedTerm: 'Spring 2026',
     preferredStartTerms: ['Fall'],
+    onSubmit: (data) => {
+      console.log('Submitted:', data);
+    },
   },
 };

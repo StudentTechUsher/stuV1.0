@@ -44,6 +44,10 @@ interface CreditDistributionStepProps {
     selectedTermIds: string[];
     suggestedDistribution: SemesterAllocation[];
   }) => void;
+  onUpdateGraduationTimeline: (data: {
+    est_grad_term: string;
+    est_grad_date: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   initialStrategy?: 'fast_track' | 'balanced' | 'explore';
   initialIncludeSecondary?: boolean;
   onStudentDataChanged?: () => void;
@@ -89,6 +93,7 @@ export function CreditDistributionStep({
   hasTranscript = true,
   academicTerms,
   onComplete,
+  onUpdateGraduationTimeline,
   initialStrategy,
   initialIncludeSecondary = false,
   onStudentDataChanged,
@@ -281,6 +286,7 @@ export function CreditDistributionStep({
             error={error}
             studentData={studentData}
             onDateUpdated={handleDateUpdated}
+            onUpdateGraduationTimeline={onUpdateGraduationTimeline}
           />
         ) : (
           <Alert severity="error" sx={{ mb: 3 }}>

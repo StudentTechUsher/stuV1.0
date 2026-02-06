@@ -19,6 +19,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
+    onSelectProgram: (programs) => {
+      console.log('Selected programs:', programs);
+    },
     suggestions: [
       {
         program_name: 'Computer Science',

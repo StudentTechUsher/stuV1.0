@@ -1,100 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCourseOfferingsForCourse, checkSectionConflicts } from '@/lib/mastra/tools/courseSelectionTools';
+import { analyzeCourseSections } from '@/lib/mastra/tools/courseSelectionTools';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { universityId, termName, courseCode, sectionId, calendarEvents } = body;
+    const { universityId, termName, courseCodes, calendarEvents, preferences } = body;
 
     // Validate inputs
-    if (!universityId || !termName || !courseCode || !sectionId) {
+    if (!universityId || !termName || !courseCodes) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: universityId, termName, courseCodes' },
         { status: 400 }
       );
     }
 
-    console.log('🧪 [TEST API] Testing checkSectionConflicts:', {
-      universityId,
-      termName,
-      courseCode,
-      sectionId,
-      sectionIdType: typeof sectionId,
-      calendarEventCount: calendarEvents?.length || 0,
-    });
-
-    // First, fetch the course sections to find the specific section
-    const sections = await getCourseOfferingsForCourse(
-      universityId,
-      termName,
-      courseCode
-    );
-
-    console.log('🔍 [TEST API] Available sections:', {
-      count: sections.length,
-      sections: sections.map(s => ({
-        offering_id: s.offering_id,
-        section_label: s.section_label,
-        instructor: s.instructor
-      }))
-    });
-
-    // Search by section_label (e.g., "001", "002") OR offering_id
-    const sectionIdStr = String(sectionId).trim();
-    let section = sections.find(s => s.section_label === sectionIdStr);
-
-    // If not found by label, try by offering_id (numeric)
-    if (!section && !isNaN(Number(sectionIdStr))) {
-      const numericId = parseInt(sectionIdStr, 10);
-      section = sections.find(s => s.offering_id === numericId);
-    }
-
-    // If still not found, try padding the input (e.g., "1" -> "001")
-    if (!section && !isNaN(Number(sectionIdStr))) {
-      const paddedLabel = sectionIdStr.padStart(3, '0');
-      section = sections.find(s => s.section_label === paddedLabel);
-      console.log(`🔍 [TEST API] Tried padded label "${paddedLabel}":`, !!section);
-    }
-
-    console.log('🔍 [TEST API] Section search result:', {
-      searchTerm: sectionIdStr,
-      found: !!section,
-      foundSection: section ? {
-        offering_id: section.offering_id,
-        section_label: section.section_label
-      } : null
-    });
-
-    if (!section) {
+    if (!Array.isArray(courseCodes) || courseCodes.length === 0) {
       return NextResponse.json(
-        {
-          error: `Section "${sectionIdStr}" not found for course ${courseCode}`,
-          hint: 'Enter section label (e.g., "001") or offering ID',
-          availableSections: sections.map(s => ({
-            section_label: s.section_label,
-            offering_id: s.offering_id,
-            instructor: s.instructor
-          }))
-        },
-        { status: 404 }
+        { error: 'courseCodes must be a non-empty array' },
+        { status: 400 }
       );
     }
 
-    // Check conflicts
-    const conflictCheck = await checkSectionConflicts(
-      section,
+    console.log('🧪 [TEST API] Testing analyzeCourseSections:', {
+      universityId,
+      termName,
+      courseCount: courseCodes.length,
+      courses: courseCodes,
+      calendarEventCount: calendarEvents?.length || 0,
+    });
+
+    // Analyze all courses
+    const analyses = await analyzeCourseSections(
+      universityId,
+      termName,
+      courseCodes,
       calendarEvents || [],
-      {} // Empty preferences for basic conflict check
+      preferences || {}
     );
+
+    // Format results for display
+    const formattedResults = analyses.map(analysis => ({
+      courseCode: analysis.courseCode,
+      courseName: analysis.courseName,
+      totalSections: analysis.sections.length,
+      sectionsWithConflicts: analysis.sections.filter(s => s.conflicts.hasConflict).length,
+      sectionsWithoutConflicts: analysis.sections.filter(s => !s.conflicts.hasConflict).length,
+      allHaveConflicts: analysis.allHaveConflicts,
+      bestSection: analysis.bestSection ? {
+        section_label: analysis.bestSection.section_label,
+        instructor: analysis.bestSection.instructor,
+        days: analysis.bestSection.parsedMeetings?.[0]?.days,
+        time: analysis.bestSection.parsedMeetings?.[0]
+          ? `${analysis.bestSection.parsedMeetings[0].startTime} - ${analysis.bestSection.parsedMeetings[0].endTime}`
+          : 'No meetings',
+        score: analysis.bestSection.ranking.score,
+        recommended: analysis.bestSection.ranking.recommended,
+      } : null,
+      sections: analysis.sections.map(s => ({
+        section_label: s.section_label,
+        instructor: s.instructor,
+        days: s.parsedMeetings?.[0]?.days,
+        time: s.parsedMeetings?.[0]
+          ? `${s.parsedMeetings[0].startTime} - ${s.parsedMeetings[0].endTime}`
+          : 'No meetings',
+        hasConflict: s.conflicts.hasConflict,
+        conflictCount: s.conflicts.conflicts.length,
+        score: s.ranking.score,
+        originalScore: s.ranking.originalScore,
+        recommended: s.ranking.recommended,
+        conflicts: s.conflicts.conflicts.map(c => ({
+          type: c.conflictType,
+          message: c.message,
+          conflictingWith: c.conflictingEvent.title,
+        })),
+      })),
+    }));
 
     return NextResponse.json({
       success: true,
-      section: {
-        id: section.offering_id,
-        label: section.section_label,
-        instructor: section.instructor,
-      },
-      conflictCheck,
+      analyses: formattedResults,
     });
   } catch (error) {
     console.error('❌ [TEST API] Error:', error);

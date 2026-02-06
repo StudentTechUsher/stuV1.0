@@ -5,15 +5,15 @@ const meta = {
   component: () => null,
   parameters: {
     layout: 'centered',
-    docs: {
-      description: {
-        component: `
+	    docs: {
+	      description: {
+	        component: `
 # ProgramSelectionForm
 
 Relies on program catalogs, GenEd filtering, and authenticated API calls. Use the running app to validate the full experience:
 
-1. \\`npm run dev\\`
-2. Navigate to \\`/grad-plan/create\\`
+1. \`npm run dev\`
+2. Navigate to \`/grad-plan/create\`
 3. Proceed to Program Selection after Transcript Check
 
 **Data dependencies:**

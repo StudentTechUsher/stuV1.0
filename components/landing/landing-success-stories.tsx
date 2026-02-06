@@ -17,7 +17,10 @@ export function LandingSuccessStories({
   onCtaClick,
 }: LandingSuccessStoriesProps) {
   return (
-    <section className="border-b border-border/60 py-18 md:py-30 bg-white" id="case-studies">
+    <section
+      className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-18 md:py-30 bg-white scroll-mt-28"
+      id="case-studies"
+    >
       <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">

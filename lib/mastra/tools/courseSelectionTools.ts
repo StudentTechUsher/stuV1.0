@@ -25,6 +25,7 @@ import {
   getTimeOfDay,
   timeRangesOverlap,
   calculateDuration,
+  normalizeTimeFormat,
   ConflictDetectionError,
   RankingError,
   NoValidSectionsError,
@@ -35,8 +36,147 @@ import { CourseSection } from '@/lib/services/courseOfferingService';
 import { addCourseSelection as addCourseSelectionService } from '@/lib/services/scheduleService';
 
 // ============================================================================
-// Tool 1: getCourseOfferingsForCourse
+// Tool 1: Validate Course Availability
 // ============================================================================
+
+export interface CourseValidationResult {
+  courseCode: string;
+  status: 'available' | 'not_in_term' | 'not_found';
+  targetTerm: string;
+  availableIn?: string; // If not in target term, which term is it available in?
+  sectionCount?: number;
+  message: string;
+}
+
+/**
+ * Validates that a list of courses are available in the target term
+ * For courses not available, searches future terms and suggests alternatives
+ *
+ * @param universityId - University ID
+ * @param targetTerm - Target term name (e.g., "Winter 2026")
+ * @param courseCodes - Array of course codes to validate (e.g., ["CS 450", "IS 455"])
+ * @returns Validation results for each course
+ */
+export async function validateCoursesForScheduling(
+  universityId: number,
+  targetTerm: string,
+  courseCodes: string[]
+): Promise<CourseValidationResult[]> {
+  console.log('🔍 [validateCoursesForScheduling] Starting validation:', {
+    universityId,
+    targetTerm,
+    courseCount: courseCodes.length,
+    courses: courseCodes,
+  });
+
+  const results: CourseValidationResult[] = [];
+
+  for (const courseCode of courseCodes) {
+    console.log(`🔍 [validateCoursesForScheduling] Checking ${courseCode}...`);
+
+    // Check if course exists in target term
+    const sectionsInTarget = await getCourseOfferingsForCourse(universityId, targetTerm, courseCode);
+
+    if (sectionsInTarget.length > 0) {
+      // Course is available in target term ✅
+      results.push({
+        courseCode,
+        status: 'available',
+        targetTerm,
+        sectionCount: sectionsInTarget.length,
+        message: `Available in ${targetTerm} (${sectionsInTarget.length} section${sectionsInTarget.length > 1 ? 's' : ''})`,
+      });
+      console.log(`✅ [validateCoursesForScheduling] ${courseCode} available in ${targetTerm}`);
+      continue;
+    }
+
+    // Course not in target term, search future terms
+    console.log(`⚠️ [validateCoursesForScheduling] ${courseCode} not found in ${targetTerm}, searching future terms...`);
+    const futureTerms = generateFutureTerms(targetTerm, 4); // Check next 4 terms
+    let foundInTerm: string | null = null;
+
+    for (const futureTerm of futureTerms) {
+      const sectionsInFuture = await getCourseOfferingsForCourse(universityId, futureTerm, courseCode);
+      if (sectionsInFuture.length > 0) {
+        foundInTerm = futureTerm;
+        console.log(`✅ [validateCoursesForScheduling] ${courseCode} found in ${futureTerm}`);
+        break;
+      }
+    }
+
+    if (foundInTerm) {
+      // Found in a future term
+      results.push({
+        courseCode,
+        status: 'not_in_term',
+        targetTerm,
+        availableIn: foundInTerm,
+        message: `Not available in ${targetTerm}, but offered in ${foundInTerm}`,
+      });
+    } else {
+      // Not found in any searched term
+      results.push({
+        courseCode,
+        status: 'not_found',
+        targetTerm,
+        message: `Not found in ${targetTerm} or next 4 terms. May be deprecated or incorrect code.`,
+      });
+      console.warn(`❌ [validateCoursesForScheduling] ${courseCode} not found in any searched terms`);
+    }
+  }
+
+  const summary = {
+    total: results.length,
+    available: results.filter(r => r.status === 'available').length,
+    notInTerm: results.filter(r => r.status === 'not_in_term').length,
+    notFound: results.filter(r => r.status === 'not_found').length,
+  };
+
+  console.log('✅ [validateCoursesForScheduling] Validation complete:', summary);
+
+  return results;
+}
+
+/**
+ * Generates future term names in order: Fall → Winter → Spring → Summer
+ * @param currentTerm - Current term (e.g., "Winter 2026")
+ * @param count - Number of future terms to generate
+ * @returns Array of future term names
+ */
+function generateFutureTerms(currentTerm: string, count: number): string[] {
+  const termOrder = ['Winter', 'Spring', 'Summer', 'Fall'];
+  const match = currentTerm.match(/^(Fall|Winter|Spring|Summer)\s+(\d{4})$/);
+
+  if (!match) {
+    console.warn(`⚠️ [generateFutureTerms] Invalid term format: ${currentTerm}`);
+    return [];
+  }
+
+  const currentSemester = match[1];
+  const currentYear = parseInt(match[2], 10);
+  const currentIndex = termOrder.indexOf(currentSemester);
+
+  if (currentIndex === -1) {
+    console.warn(`⚠️ [generateFutureTerms] Unknown semester: ${currentSemester}`);
+    return [];
+  }
+
+  const futureTerms: string[] = [];
+  let index = currentIndex;
+  let year = currentYear;
+
+  for (let i = 0; i < count; i++) {
+    // Move to next term
+    index = (index + 1) % termOrder.length;
+    if (index === 0) {
+      year++; // New year starts with Winter
+    }
+
+    futureTerms.push(`${termOrder[index]} ${year}`);
+  }
+
+  return futureTerms;
+}
 
 /**
  * Fetches all available sections for a single course
@@ -195,11 +335,29 @@ export async function checkSectionConflicts(
 
     // Check each meeting time against calendar
     for (const meeting of section.parsedMeetings) {
+      console.log('🔍 [checkSectionConflicts] Checking meeting:', {
+        days: meeting.days,
+        daysOfWeek: meeting.daysOfWeek,
+        startTime: meeting.startTime,
+        endTime: meeting.endTime,
+        normalizedStart: normalizeTimeFormat(meeting.startTime),
+        normalizedEnd: normalizeTimeFormat(meeting.endTime),
+      });
+
       for (const dayOfWeek of meeting.daysOfWeek) {
         // Find all events on this day
         const eventsOnDay = currentCalendar.filter((event) => event.dayOfWeek === dayOfWeek);
+        console.log(`🔍 [checkSectionConflicts] Events on ${getDayName(dayOfWeek)}:`, eventsOnDay.length);
 
         for (const event of eventsOnDay) {
+          console.log('🔍 [checkSectionConflicts] Comparing with event:', {
+            title: event.title,
+            eventStart: event.startTime,
+            eventEnd: event.endTime,
+            meetingStart: meeting.startTime,
+            meetingEnd: meeting.endTime,
+          });
+
           // Check time overlap
           if (timeRangesOverlap(meeting.startTime, meeting.endTime, event.startTime, event.endTime)) {
             conflicts.push({
@@ -299,6 +457,180 @@ export async function checkSectionConflicts(
     });
     throw new ConflictDetectionError('Failed to check conflicts', error);
   }
+}
+
+/**
+ * Checks conflicts for all sections of a course at once
+ * More efficient than checking sections one by one
+ *
+ * @param sections - All course sections to check
+ * @param currentCalendar - All events currently on calendar (personal + courses)
+ * @param preferences - User's schedule preferences
+ * @returns Array of conflict check results, one per section
+ */
+export async function checkAllSectionsConflicts(
+  sections: CourseSectionWithMeetings[],
+  currentCalendar: SchedulerEvent[],
+  preferences: SchedulePreferences
+): Promise<Array<{ section: CourseSectionWithMeetings; conflictCheck: SectionConflictCheck }>> {
+  console.log('🔍 [checkAllSectionsConflicts] Starting batch conflict check:', {
+    sectionCount: sections.length,
+    calendarEventCount: currentCalendar.length,
+  });
+
+  const results = [];
+
+  for (const section of sections) {
+    const conflictCheck = await checkSectionConflicts(section, currentCalendar, preferences);
+    results.push({
+      section,
+      conflictCheck,
+    });
+  }
+
+  const conflictingSections = results.filter(r => r.conflictCheck.hasConflict).length;
+  const clearSections = results.length - conflictingSections;
+
+  console.log('✅ [checkAllSectionsConflicts] Batch check complete:', {
+    total: results.length,
+    withConflicts: conflictingSections,
+    noConflicts: clearSections,
+  });
+
+  return results;
+}
+
+/**
+ * Analyzes all sections for multiple courses - combines conflict checking and ranking
+ * This is the primary tool for helping users choose course sections
+ *
+ * @param universityId - University ID
+ * @param termName - Term name
+ * @param courseCodes - Array of course codes to analyze
+ * @param currentCalendar - User's existing calendar events
+ * @param preferences - User's schedule preferences
+ * @returns Comprehensive analysis for each course with ranked sections
+ */
+export async function analyzeCourseSections(
+  universityId: number,
+  termName: string,
+  courseCodes: string[],
+  currentCalendar: SchedulerEvent[],
+  preferences: SchedulePreferences
+): Promise<CourseAnalysis[]> {
+  console.log('🔍 [analyzeCourseSections] Starting analysis:', {
+    universityId,
+    termName,
+    courseCount: courseCodes.length,
+    courses: courseCodes,
+    calendarEventCount: currentCalendar.length,
+  });
+
+  const analyses: CourseAnalysis[] = [];
+
+  for (const courseCode of courseCodes) {
+    console.log(`📚 [analyzeCourseSections] Analyzing ${courseCode}...`);
+
+    // Get all sections for this course
+    const sections = await getCourseOfferingsForCourse(universityId, termName, courseCode);
+
+    if (sections.length === 0) {
+      console.warn(`⚠️ [analyzeCourseSections] No sections found for ${courseCode}`);
+      analyses.push({
+        courseCode,
+        courseName: '',
+        sections: [],
+        bestSection: null,
+        alternativeSections: [],
+        allHaveConflicts: false,
+      });
+      continue;
+    }
+
+    // Analyze each section (conflicts + ranking)
+    const analyzedSections: AnalyzedSection[] = [];
+    for (const section of sections) {
+      // Check conflicts
+      const conflictCheck = await checkSectionConflicts(section, currentCalendar, preferences);
+
+      // Rank section
+      const ranked = await rankSectionsByPreferences([section], preferences);
+      const ranking = ranked[0];
+
+      // Adjust score based on conflicts
+      let adjustedScore = ranking.score;
+      if (conflictCheck.hasConflict) {
+        const timeOverlapConflicts = conflictCheck.conflicts.filter(c => c.conflictType === 'time_overlap');
+        if (timeOverlapConflicts.length > 0) {
+          adjustedScore -= 30; // Major penalty for hard conflicts
+        } else {
+          adjustedScore -= 10; // Minor penalty for soft conflicts (back-to-back, etc.)
+        }
+      }
+
+      analyzedSections.push({
+        ...section,
+        conflicts: conflictCheck,
+        ranking: {
+          score: Math.max(0, adjustedScore), // Don't go below 0
+          originalScore: ranking.score,
+          matchDetails: ranking.matchDetails,
+          recommended: !conflictCheck.hasConflict && ranking.score >= 70,
+        },
+      });
+    }
+
+    // Sort by adjusted score (best first)
+    analyzedSections.sort((a, b) => b.ranking.score - a.ranking.score);
+
+    // Find best section (highest score with no conflicts)
+    const bestSection = analyzedSections.find(s => !s.conflicts.hasConflict) || null;
+
+    // Find alternatives (next 2 best sections without conflicts, or top 2 if all have conflicts)
+    const alternativeSections = bestSection
+      ? analyzedSections.filter(s => !s.conflicts.hasConflict && s !== bestSection).slice(0, 2)
+      : analyzedSections.slice(0, 2);
+
+    analyses.push({
+      courseCode,
+      courseName: sections[0].title || '',
+      sections: analyzedSections,
+      bestSection,
+      alternativeSections,
+      allHaveConflicts: analyzedSections.every(s => s.conflicts.hasConflict),
+    });
+
+    console.log(`✅ [analyzeCourseSections] ${courseCode} analyzed:`, {
+      totalSections: analyzedSections.length,
+      withConflicts: analyzedSections.filter(s => s.conflicts.hasConflict).length,
+      bestSection: bestSection?.section_label || 'none',
+    });
+  }
+
+  console.log('✅ [analyzeCourseSections] Analysis complete:', {
+    coursesAnalyzed: analyses.length,
+  });
+
+  return analyses;
+}
+
+export interface AnalyzedSection extends CourseSectionWithMeetings {
+  conflicts: SectionConflictCheck;
+  ranking: {
+    score: number; // Adjusted score (0-100) accounting for conflicts
+    originalScore: number; // Original ranking score before conflict adjustment
+    matchDetails: SectionMatchDetails;
+    recommended: boolean; // True if no conflicts and score >= 70
+  };
+}
+
+export interface CourseAnalysis {
+  courseCode: string;
+  courseName: string;
+  sections: AnalyzedSection[];
+  bestSection: AnalyzedSection | null; // Highest ranked section with no conflicts
+  alternativeSections: AnalyzedSection[]; // Other good options
+  allHaveConflicts: boolean; // True if every section has conflicts
 }
 
 // ============================================================================
@@ -567,13 +899,19 @@ function getGapBetweenEvents(
   start2: string,
   end2: string
 ): number | null {
+  // Normalize all times to 24-hour format first
+  const normalizedStart1 = normalizeTimeFormat(start1);
+  const normalizedEnd1 = normalizeTimeFormat(end1);
+  const normalizedStart2 = normalizeTimeFormat(start2);
+  const normalizedEnd2 = normalizeTimeFormat(end2);
+
   const toMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  const end1Min = toMinutes(end1);
-  const start2Min = toMinutes(start2);
+  const end1Min = toMinutes(normalizedEnd1);
+  const start2Min = toMinutes(normalizedStart2);
 
   // If event1 ends before event2 starts
   if (end1Min <= start2Min) {
@@ -581,8 +919,8 @@ function getGapBetweenEvents(
   }
 
   // If event2 ends before event1 starts
-  const end2Min = toMinutes(end2);
-  const start1Min = toMinutes(start1);
+  const end2Min = toMinutes(normalizedEnd2);
+  const start1Min = toMinutes(normalizedStart1);
   if (end2Min <= start1Min) {
     return start1Min - end2Min;
   }

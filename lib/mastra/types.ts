@@ -209,6 +209,21 @@ export interface SchedulerEvent {
 }
 
 // ============================================================================
+// Section Selection Types (for SectionReviewStep)
+// ============================================================================
+
+/**
+ * User's section selection for a course
+ * Used in the Section Review step before AI agent
+ */
+export interface ReviewStepSectionSelection {
+  courseCode: string;
+  sectionLabel: string;
+  rank: 'primary' | 'backup1' | 'backup2';
+  offeringId?: number; // Set when saving to database
+}
+
+// ============================================================================
 // Agent Message Types
 // ============================================================================
 
@@ -352,6 +367,42 @@ export function getTimeOfDay(timeStr: string): TimeOfDay {
 }
 
 /**
+ * Normalizes time string to 24-hour format (HH:MM)
+ * Handles both 12-hour (e.g., "9:30 AM", "2 PM") and 24-hour (e.g., "09:30") formats
+ */
+export function normalizeTimeFormat(timeStr: string): string {
+  const trimmed = timeStr.trim();
+
+  // Already in 24-hour format (HH:MM)
+  if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+    const [hours, minutes] = trimmed.split(':');
+    const normalized = `${hours.padStart(2, '0')}:${minutes}`;
+    return normalized;
+  }
+
+  // 12-hour format with AM/PM
+  const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!match) {
+    console.warn(`⚠️ [normalizeTimeFormat] Unable to parse time: "${timeStr}", returning as-is`);
+    return trimmed;
+  }
+
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] || '00';
+  const period = match[3].toUpperCase();
+
+  // Convert to 24-hour format
+  if (period === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (period === 'AM' && hours === 12) {
+    hours = 0;
+  }
+
+  const normalized = `${hours.toString().padStart(2, '0')}:${minutes}`;
+  return normalized;
+}
+
+/**
  * Helper to check if two time ranges overlap
  */
 export function timeRangesOverlap(
@@ -360,16 +411,22 @@ export function timeRangesOverlap(
   start2: string,
   end2: string
 ): boolean {
+  // Normalize times to 24-hour format first
+  const normalizedStart1 = normalizeTimeFormat(start1);
+  const normalizedEnd1 = normalizeTimeFormat(end1);
+  const normalizedStart2 = normalizeTimeFormat(start2);
+  const normalizedEnd2 = normalizeTimeFormat(end2);
+
   // Convert to minutes since midnight for comparison
   const toMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  const start1Min = toMinutes(start1);
-  const end1Min = toMinutes(end1);
-  const start2Min = toMinutes(start2);
-  const end2Min = toMinutes(end2);
+  const start1Min = toMinutes(normalizedStart1);
+  const end1Min = toMinutes(normalizedEnd1);
+  const start2Min = toMinutes(normalizedStart2);
+  const end2Min = toMinutes(normalizedEnd2);
 
   // Check if ranges overlap
   return start1Min < end2Min && start2Min < end1Min;
@@ -379,10 +436,14 @@ export function timeRangesOverlap(
  * Helper to calculate duration in minutes
  */
 export function calculateDuration(startTime: string, endTime: string): number {
+  // Normalize times to 24-hour format first
+  const normalizedStart = normalizeTimeFormat(startTime);
+  const normalizedEnd = normalizeTimeFormat(endTime);
+
   const toMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  return toMinutes(endTime) - toMinutes(startTime);
+  return toMinutes(normalizedEnd) - toMinutes(normalizedStart);
 }

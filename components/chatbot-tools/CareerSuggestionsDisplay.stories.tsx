@@ -19,6 +19,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
+    onSelectCareer: (careerTitle: string) => {
+      console.log('Selected career:', careerTitle);
+    },
     suggestions: {
       summary: 'You enjoy problem-solving and working with data, with a preference for collaborative environments.',
       careers: [

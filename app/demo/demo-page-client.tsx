@@ -5,8 +5,32 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useMemo } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { useAnalytics } from "@/lib/hooks/useAnalytics"
+import { ANALYTICS_EVENTS } from "@/lib/services/analyticsService"
 
 export default function DemoPageClient() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { track, isReady } = useAnalytics()
+
+  const utmProperties = useMemo(() => {
+    const utm_source = searchParams.get("utm_source") || undefined
+    const utm_medium = searchParams.get("utm_medium") || undefined
+    const utm_campaign = searchParams.get("utm_campaign") || undefined
+    const utm_content = searchParams.get("utm_content") || undefined
+    const utm_term = searchParams.get("utm_term") || undefined
+
+    return {
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_term,
+    }
+  }, [searchParams])
+
   return (
     <div className="flex min-h-screen flex-col">
       <div className="container max-w-[600px] mx-auto px-4 py-16 flex flex-col items-center">
@@ -29,6 +53,23 @@ export default function DemoPageClient() {
               action="https://formsubmit.co/66b8aa7ea31d50fdc07b4ff95885e251"
               method="POST"
               className="space-y-4"
+              onSubmit={(event) => {
+                if (!isReady) return
+
+                event.preventDefault()
+                track(ANALYTICS_EVENTS.DEMO_FORM_SUBMITTED, {
+                  page_path: pathname,
+                  form_id: "demo_request",
+                  success: true,
+                  ...utmProperties,
+                })
+
+                // Give the analytics request a moment, then continue the POST.
+                // No PII is captured (we do NOT read form values).
+                window.setTimeout(() => {
+                  ;(event.currentTarget as HTMLFormElement).submit()
+                }, 150)
+              }}
             >
               <input type="hidden" name="_subject" value="New Demo Request from stu" />
               <input type="hidden" name="_template" value="table" />
@@ -107,6 +148,17 @@ export default function DemoPageClient() {
                 href="/signup"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  if (!isReady) return
+                  track(ANALYTICS_EVENTS.DEMO_TRY_FREE_CLICKED, {
+                    page_path: pathname,
+                    cta_location: "demo_page",
+                    cta_label: "Try stu. for FREE",
+                    cta_href: "/signup",
+                    cta_target: "_blank",
+                    ...utmProperties,
+                  })
+                }}
               >
                 <Button variant="primary" className="px-6 py-2.5 flex items-center gap-2">
                   Try

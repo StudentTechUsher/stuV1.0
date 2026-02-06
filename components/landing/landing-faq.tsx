@@ -2,10 +2,10 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { landingFaqs, landingPageBg } from "./landing-data"
-import type { LandingFaq } from "./landing-data"
+import type { LandingFaqItem } from "./landing-data"
 
 export type LandingFaqProps = {
-  faqs?: LandingFaq[]
+  faqs?: LandingFaqItem[]
   pageBg?: string
   ctaHref?: string
   ctaLabel?: string
@@ -22,7 +22,10 @@ export function LandingFaq({
   email = "hello@stuplanning.com",
 }: LandingFaqProps) {
   return (
-    <section className="border-b border-border/60 py-18 md:py-30 bg-white" id="faq">
+    <section
+      className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-18 md:py-30 bg-white scroll-mt-28"
+      id="faq"
+    >
       <div className="container mx-auto max-w-6xl space-y-12 md:space-y-16 px-4 md:px-8">
         <div className="space-y-4 md:w-2/3">
           <div className="inline-flex rounded-full bg-foreground px-4 py-2">

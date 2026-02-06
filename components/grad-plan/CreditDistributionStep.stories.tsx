@@ -11,6 +11,7 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {
     onComplete: { action: 'complete' },
+    onUpdateGraduationTimeline: { action: 'update graduation timeline' },
     onStudentDataChanged: { action: 'refresh student data' },
   },
 } satisfies Meta<typeof CreditDistributionStep>;
@@ -46,5 +47,9 @@ export const Default: Story = {
     hasTranscript: true,
     academicTerms,
     initialStrategy: 'balanced',
+    onUpdateGraduationTimeline: async () => ({ success: true }),
+    onComplete: (data) => {
+      console.log('Completed with:', data);
+    },
   },
 };

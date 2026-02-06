@@ -21,7 +21,8 @@
 
 "use client"
 
-import { useLayoutEffect } from "react"
+import { useLayoutEffect, useMemo } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   LandingDemoFormValues,
   LandingEndToEnd,
@@ -41,6 +42,8 @@ import {
   LandingSuccessStories,
   landingPageBg,
 } from "@/components/landing"
+import { useAnalytics } from "@/lib/hooks/useAnalytics"
+import { ANALYTICS_EVENTS } from "@/lib/services/analyticsService"
 
 type TrackingPayload = Record<string, string | number | undefined>
 
@@ -56,6 +59,26 @@ function trackEvent(name: string, payload: TrackingPayload = {}) {
 }
 
 export function UnifiedLandingClient() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { track, isReady } = useAnalytics()
+
+  const utmProperties = useMemo(() => {
+    const utm_source = searchParams.get("utm_source") || undefined
+    const utm_medium = searchParams.get("utm_medium") || undefined
+    const utm_campaign = searchParams.get("utm_campaign") || undefined
+    const utm_content = searchParams.get("utm_content") || undefined
+    const utm_term = searchParams.get("utm_term") || undefined
+
+    return {
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_term,
+    }
+  }, [searchParams])
+
   useLayoutEffect(() => {
     const htmlElement = document.documentElement
     htmlElement.style.scrollBehavior = "smooth"
@@ -66,6 +89,13 @@ export function UnifiedLandingClient() {
 
   const handleCtaClick = (source: string) => {
     trackEvent("cta_click", { source })
+    if (isReady) {
+      track(ANALYTICS_EVENTS.LANDING_CTA_CLICKED, {
+        page_path: pathname,
+        cta_source: source,
+        ...utmProperties,
+      })
+    }
   }
 
   const handleFormSubmit = (values: LandingDemoFormValues) => {

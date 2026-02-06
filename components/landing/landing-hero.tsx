@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Clock, GraduationCap, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { landingPageBg } from "./landing-data"
 
@@ -25,6 +25,27 @@ export function LandingHero({
   secondaryLabel = "See how it works",
   onCtaClick,
 }: LandingHeroProps) {
+  const stats = [
+    {
+      icon: Clock,
+      kicker: "Save Students Time",
+      headline: "Up to 80% faster",
+      detail: "Cut schedule planning time by up to 80%.",
+    },
+    {
+      icon: Users,
+      kicker: "Give Advisors Weeks Back",
+      headline: "50–75 hrs / year",
+      detail: "Shift transactional time to at-risk students.",
+    },
+    {
+      icon: GraduationCap,
+      kicker: "Graduation Impact",
+      headline: "+1–3 pp",
+      detail: "Designed to improve completion over time.",
+    },
+  ] as const
+
   return (
     <section
       className="border-b border-border/60 py-18 md:py-30"
@@ -57,6 +78,31 @@ export function LandingHero({
             >
               {secondaryLabel}
             </Link>
+          </div>
+
+          <div className="w-full pt-10 md:pt-12">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-5 md:grid-cols-3">
+              {stats.map((stat) => {
+                const Icon = stat.icon
+                return (
+                  <div
+                    key={stat.kicker}
+                    className="rounded-2xl border border-border/60 bg-background/80 p-6 md:p-7 text-left shadow-sm"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                      <span>{stat.kicker}</span>
+                    </div>
+                    <div className="mt-3 text-4xl font-bold tracking-tight text-foreground">
+                      {stat.headline}
+                    </div>
+                    <div className="mt-2 text-base leading-relaxed text-muted-foreground">
+                      {stat.detail}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>

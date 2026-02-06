@@ -170,12 +170,12 @@ export const landingOutcomes = [
   "Student satisfaction & engagement",
 ]
 
-export type LandingFaq = {
+export type LandingFaqItem = {
   q: string
   a: string
 }
 
-export const landingFaqs: LandingFaq[] = [
+export const landingFaqs: LandingFaqItem[] = [
   {
     q: "How long does implementation take?",
     a: "Most institutions launch a pilot in weeks. Full rollout depends on your degree audit, catalog complexity, and integration approach.",

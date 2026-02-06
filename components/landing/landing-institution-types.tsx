@@ -11,7 +11,7 @@ export function LandingInstitutionTypes({
   pageBg = landingPageBg,
 }: LandingInstitutionTypesProps) {
   return (
-    <section className="border-b border-border/60 py-18 md:py-24 bg-white">
+    <section className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-18 md:py-24 bg-white">
       <div className="container mx-auto max-w-6xl space-y-10 md:space-y-12 px-4 md:px-8">
         <div className="space-y-4 text-center">
           <div className="inline-flex rounded-full bg-foreground px-4 py-2">

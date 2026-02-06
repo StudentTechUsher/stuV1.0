@@ -13,6 +13,11 @@ export const ANALYTICS_EVENTS = {
   // Page views
   PAGE_VIEW: 'page_view',
 
+  // Marketing / conversion
+  LANDING_CTA_CLICKED: 'landing_cta_clicked',
+  DEMO_FORM_SUBMITTED: 'demo_form_submitted',
+  DEMO_TRY_FREE_CLICKED: 'demo_try_free_clicked',
+
   // User actions
   TRANSCRIPT_UPLOADED: 'transcript_uploaded',
   GRAD_PLAN_GENERATED: 'grad_plan_generated',

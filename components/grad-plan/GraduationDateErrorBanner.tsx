@@ -14,7 +14,6 @@ import {
   Stack,
 } from '@mui/material';
 import { InvalidGraduationDateError } from '@/lib/services/gradPlanGenerationService';
-import { updateGraduationTimelineAction } from '@/lib/services/server-actions';
 
 interface GraduationDateErrorBannerProps {
   error: InvalidGraduationDateError;
@@ -24,6 +23,10 @@ interface GraduationDateErrorBannerProps {
     est_grad_date: string;
   };
   onDateUpdated: () => void;
+  onUpdateGraduationTimeline: (data: {
+    est_grad_term: string;
+    est_grad_date: string;
+  }) => Promise<{ success: boolean; error?: string }>;
 }
 
 const TERMS = ['Fall', 'Winter', 'Spring', 'Summer'];
@@ -32,6 +35,7 @@ export function GraduationDateErrorBanner({
   error,
   studentData,
   onDateUpdated,
+  onUpdateGraduationTimeline,
 }: GraduationDateErrorBannerProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -141,7 +145,7 @@ export function GraduationDateErrorBanner({
       const day = new Date(selectedYear, month + 1, 0).getDate(); // Last day of month
       const newGradDate = new Date(selectedYear, month, day);
 
-      const result = await updateGraduationTimelineAction({
+      const result = await onUpdateGraduationTimeline({
         est_grad_term: selectedTerm,
         est_grad_date: newGradDate.toISOString(),
       });

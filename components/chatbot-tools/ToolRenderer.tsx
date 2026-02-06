@@ -239,6 +239,23 @@ export default function ToolRenderer({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           academicTerms={toolData.academicTerms as any}
           onComplete={(data) => onToolComplete(data)}
+          onUpdateGraduationTimeline={async (updates) => {
+            const response = await fetch('/api/student/planning-data', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updates),
+            });
+
+            if (!response.ok) {
+              const body = await response.json().catch(() => null);
+              return {
+                success: false,
+                error: body?.error || 'Failed to update graduation timeline',
+              };
+            }
+
+            return { success: true };
+          }}
           onStudentDataChanged={onStudentDataChanged}
         />
       );

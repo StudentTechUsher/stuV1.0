@@ -5,23 +5,23 @@ const meta = {
   component: () => null,
   parameters: {
     layout: 'centered',
-    docs: {
-      description: {
-        component: `
+	    docs: {
+	      description: {
+	        component: `
 # ToolRenderer
 
-ToolRenderer is the orchestrator for step-level tools in \\`/grad-plan/create\\`. It routes to UI components that depend on authenticated data and backend APIs.
+ToolRenderer is the orchestrator for step-level tools in \`/grad-plan/create\`. It routes to UI components that depend on authenticated data and backend APIs.
 
 **In-app testing path:**
-1. \\`npm run dev\\`
-2. Navigate to \\`/grad-plan/create\\`
+1. \`npm run dev\`
+2. Navigate to \`/grad-plan/create\`
 3. Progress through steps to see tool routing
 
 This Storybook entry is documentation-only.
-        `,
-      },
-    },
-  },
+	        `,
+	      },
+	    },
+	  },
   tags: ['autodocs'],
 } satisfies Meta;
 
