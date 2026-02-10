@@ -33,6 +33,8 @@ interface ActiveFeedbackPlanToolProps {
   workStatus?: string;
   milestones?: PlanMilestone[];
   onComplete: (result: { action: 'generate' | 'close'; draftPlan?: DraftPlan }) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function ActiveFeedbackPlanTool({
@@ -43,7 +45,10 @@ export default function ActiveFeedbackPlanTool({
   workStatus,
   milestones,
   onComplete,
+  readOnly,
+  reviewMode,
 }: Readonly<ActiveFeedbackPlanToolProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
   const initialPlan = useMemo(
     () => createDraftPlan({ courseData: [], suggestedDistribution, hasTranscript, academicTerms }),
     [suggestedDistribution, hasTranscript, academicTerms]
@@ -109,6 +114,7 @@ export default function ActiveFeedbackPlanTool({
   const nextPhase = getNextPhase(phase);
 
   const handleRunPhase = useCallback(async () => {
+    if (isReadOnly) return;
     setStreamError(null);
     setStatusMessage(null);
     setAlternatives([]);
@@ -215,6 +221,7 @@ export default function ActiveFeedbackPlanTool({
       setIsStreaming(false);
     }
   }, [
+    isReadOnly,
     courseData,
     suggestedDistribution,
     workStatus,
@@ -228,21 +235,23 @@ export default function ActiveFeedbackPlanTool({
   ]);
 
   const handleAdvancePhase = useCallback(() => {
+    if (isReadOnly) return;
     if (!nextPhase) return;
     setPhase(nextPhase);
     setHasPhaseResult(false);
     setStreamError(null);
-  }, [nextPhase]);
+  }, [nextPhase, isReadOnly]);
 
   useEffect(() => {
+    if (isReadOnly) return;
     if (hasAutoRun.current) return;
     if (!courseData) return;
     if (phase !== 'major_skeleton') return;
     hasAutoRun.current = true;
     void handleRunPhase();
-  }, [courseData, phase, handleRunPhase]);
+  }, [courseData, phase, handleRunPhase, isReadOnly]);
 
-  if (!courseData) {
+  if (!courseData && !isReadOnly) {
     return (
       <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
         <p className="text-sm text-muted-foreground">
@@ -255,7 +264,7 @@ export default function ActiveFeedbackPlanTool({
   const canFinalize = Boolean(completedPhases.gen_ed_fill);
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-5">
         <h3 className="text-xl font-semibold">Active Feedback Draft</h3>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
@@ -280,6 +289,7 @@ export default function ActiveFeedbackPlanTool({
             <Button
               variant="secondary"
               onClick={() => {
+                if (isReadOnly) return;
                 setDraftPlan(initialPlan);
                 setStatusMessage(null);
                 setAlternatives([]);
@@ -294,14 +304,14 @@ export default function ActiveFeedbackPlanTool({
                 setTermInputs({});
                 hasAutoRun.current = false;
               }}
-              disabled={isStreaming}
+              disabled={isStreaming || isReadOnly}
             >
               Reset Draft
             </Button>
             <Button
               variant="secondary"
               onClick={handleRunPhase}
-              disabled={isStreaming}
+              disabled={isStreaming || isReadOnly}
             >
               {hasPhaseResult ? `Re-run ${phaseLabel}` : `Run ${phaseLabel}`}
             </Button>
@@ -309,15 +319,18 @@ export default function ActiveFeedbackPlanTool({
               <Button
                 variant="secondary"
                 onClick={handleAdvancePhase}
-                disabled={!hasPhaseResult || isStreaming}
+                disabled={!hasPhaseResult || isStreaming || isReadOnly}
               >
                 Continue to {getPhaseLabel(nextPhase)}
               </Button>
             )}
             <Button
               variant="primary"
-              onClick={() => onComplete({ action: 'generate', draftPlan })}
-              disabled={isStreaming || !canFinalize}
+              onClick={() => {
+                if (isReadOnly) return;
+                onComplete({ action: 'generate', draftPlan });
+              }}
+              disabled={isStreaming || !canFinalize || isReadOnly}
             >
               Finalize Grad Plan
             </Button>
@@ -349,13 +362,13 @@ export default function ActiveFeedbackPlanTool({
               placeholder="Add a general instruction for the AI..."
               value={globalInput}
               onChange={(event) => setGlobalInput(event.target.value)}
-              disabled={isStreaming}
+              disabled={isStreaming || isReadOnly}
             />
             <Button
               variant="secondary"
               size="sm"
               onClick={handleAddGlobalNote}
-              disabled={isStreaming || !globalInput.trim()}
+              disabled={isStreaming || !globalInput.trim() || isReadOnly}
             >
               Add Note
             </Button>

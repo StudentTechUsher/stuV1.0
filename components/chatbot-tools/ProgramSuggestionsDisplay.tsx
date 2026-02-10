@@ -8,16 +8,25 @@ import type { ProgramSuggestion, ProgramSuggestionsInput } from '@/lib/chatbot/t
 interface ProgramSuggestionsDisplayProps {
   suggestions: ProgramSuggestionsInput;
   onSelectProgram: (programs: Array<{ programName: string; programType: string }>) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
+  variant?: 'default' | 'versionB';
 }
 
 export default function ProgramSuggestionsDisplay({
   suggestions,
   onSelectProgram,
+  readOnly,
+  reviewMode,
+  variant = 'default',
 }: Readonly<ProgramSuggestionsDisplayProps>) {
   const [selectedPrograms, setSelectedPrograms] = useState<Set<string>>(new Set());
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const isReadOnly = Boolean(readOnly || reviewMode);
+  const isVersionB = variant === 'versionB';
 
   const handleToggleSelect = (program: ProgramSuggestion) => {
+    if (isReadOnly) return;
     setSelectedPrograms(prev => {
       const newSet = new Set(prev);
       if (newSet.has(program.program_name)) {
@@ -30,6 +39,7 @@ export default function ProgramSuggestionsDisplay({
   };
 
   const handleSubmit = () => {
+    if (isReadOnly) return;
     const selectedProgramData = suggestions
       .filter(p => selectedPrograms.has(p.program_name))
       .map(p => ({
@@ -67,7 +77,7 @@ export default function ProgramSuggestionsDisplay({
   };
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -80,7 +90,7 @@ export default function ProgramSuggestionsDisplay({
       </div>
 
       {/* Program Cards */}
-      <div className="space-y-4">
+      <div className={isVersionB ? 'grid gap-4 md:grid-cols-2 xl:grid-cols-3 auto-rows-fr' : 'space-y-4'}>
         {sortedSuggestions.map((program, index) => {
           const isTopMatch = index === 0;
           const isSelected = selectedPrograms.has(program.program_name);
@@ -91,97 +101,101 @@ export default function ProgramSuggestionsDisplay({
               className={`p-5 border rounded-lg transition-all cursor-pointer ${isSelected
                 ? 'border-[var(--primary)] bg-[var(--primary-10)] shadow-md'
                 : 'border-gray-200 hover:border-[var(--primary)] hover:shadow-sm'
-                }`}
+                } ${isVersionB ? 'flex flex-col h-full min-h-[360px]' : ''}`}
               onClick={() => !isSubmitted && handleToggleSelect(program)}
             >
-              {/* Program Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold text-lg">{program.program_name}</h4>
-                    {isTopMatch && (
-                      <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700 border border-green-300">
-                        Top Match
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-md border ${getTypeColor(program.program_type)}`}>
-                      {program.program_type.charAt(0).toUpperCase() + program.program_type.slice(1)}
-                    </span>
-                    {program.estimated_credits && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Based on your interests in {program.reason || 'this field'}.
-                      </p>
-                    )}
-                  </div>
-                </div>
+              <div className={isVersionB ? 'flex flex-col h-full' : ''}>
+                <div className={isVersionB ? 'flex-1' : ''}>
+                  {/* Program Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-lg">{program.program_name}</h4>
+                        {isTopMatch && (
+                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700 border border-green-300">
+                            Top Match
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-md border ${getTypeColor(program.program_type)}`}>
+                          {program.program_type.charAt(0).toUpperCase() + program.program_type.slice(1)}
+                        </span>
+                        {program.estimated_credits && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Based on your interests in {program.reason || 'this field'}.
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Match Score */}
-                <div className="text-right ml-4">
-                  <div className={`text-2xl font-bold ${getMatchColor(program.match_score)}`}>
-                    {program.match_score}%
-                  </div>
-                  <div className="text-xs text-muted-foreground">Match</div>
-                </div>
-              </div>
-
-              {/* Reason */}
-              <div className="mb-3">
-                <p className="text-sm text-gray-700 leading-relaxed">{program.reason}</p>
-              </div>
-
-              {/* Career Alignment */}
-              {program.career_alignment && (
-                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <div className="flex items-start gap-2">
-                    <TrendingUp size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-blue-900 mb-1">Career Alignment</p>
-                      <p className="text-xs text-blue-800">{program.career_alignment}</p>
+                    {/* Match Score */}
+                    <div className="text-right ml-4">
+                      <div className={`text-2xl font-bold ${getMatchColor(program.match_score)}`}>
+                        {program.match_score}%
+                      </div>
+                      <div className="text-xs text-muted-foreground">Match</div>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* Typical Courses */}
-              {program.typical_courses && program.typical_courses.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-1 mb-2">
-                    <BookOpen size={14} className="text-gray-600" />
-                    <p className="text-xs font-semibold text-gray-700">Typical Courses:</p>
+                  {/* Reason */}
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-700 leading-relaxed">{program.reason}</p>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {program.typical_courses.slice(0, 4).map((course, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md border border-gray-200"
-                      >
-                        {course}
-                      </span>
-                    ))}
-                    {program.typical_courses.length > 4 && (
-                      <span className="px-2 py-1 text-xs text-gray-500">
-                        +{program.typical_courses.length - 4} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* Selection Indicator */}
-              <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-md border-2 ${isSelected
-                ? 'bg-green-50 border-green-500 text-green-700'
-                : 'bg-gray-50 border-zinc-300 dark:border-zinc-600 text-gray-600'
-                }`}>
-                {isSelected ? (
-                  <>
-                    <Check size={18} className="font-bold" />
-                    <span className="font-semibold">Selected</span>
-                  </>
-                ) : (
-                  <span className="font-medium">Click to Select</span>
-                )}
+                  {/* Career Alignment */}
+                  {program.career_alignment && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="flex items-start gap-2">
+                        <TrendingUp size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-blue-900 mb-1">Career Alignment</p>
+                          <p className="text-xs text-blue-800">{program.career_alignment}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Typical Courses */}
+                  {program.typical_courses && program.typical_courses.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 mb-2">
+                        <BookOpen size={14} className="text-gray-600" />
+                        <p className="text-xs font-semibold text-gray-700">Typical Courses:</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {program.typical_courses.slice(0, 4).map((course, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md border border-gray-200"
+                          >
+                            {course}
+                          </span>
+                        ))}
+                        {program.typical_courses.length > 4 && (
+                          <span className="px-2 py-1 text-xs text-gray-500">
+                            +{program.typical_courses.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Selection Indicator */}
+                <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-md border-2 ${isSelected
+                  ? 'bg-green-50 border-green-500 text-green-700'
+                  : 'bg-gray-50 border-zinc-300 dark:border-zinc-600 text-gray-600'
+                  } ${isVersionB ? 'mt-auto' : ''}`}>
+                  {isSelected ? (
+                    <>
+                      <Check size={18} className="font-bold" />
+                      <span className="font-semibold">Selected</span>
+                    </>
+                  ) : (
+                    <span className="font-medium">Click to Select</span>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -197,7 +211,7 @@ export default function ProgramSuggestionsDisplay({
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={isSubmitted}
+            disabled={isSubmitted || isReadOnly}
             className="w-full gap-2"
           >
             {isSubmitted ? (

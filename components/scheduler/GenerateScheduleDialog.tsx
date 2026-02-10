@@ -123,6 +123,10 @@ export default function GenerateScheduleDialog({
     setState({ ...state, selectedCourses: courses, totalCredits });
   };
 
+  const handleTotalCreditsChange = (totalCredits: number) => {
+    setState(prev => ({ ...prev, totalCredits }));
+  };
+
   const handlePreferencesChange = (preferences: SchedulePreferences) => {
     setState({ ...state, preferences });
   };
@@ -194,6 +198,7 @@ export default function GenerateScheduleDialog({
               onCoursesChange={handleCoursesChange}
               totalCredits={state.totalCredits}
               universityId={universityId}
+              onTotalCreditsChange={handleTotalCreditsChange}
               onNext={handleNext}
               onBack={handleBack}
             />

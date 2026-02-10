@@ -1,13 +1,15 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { ConversationStep } from '@/lib/chatbot/grad-plan/types';
+import { ConversationStep, type AgentStatus } from '@/lib/chatbot/grad-plan/types';
 import { getStepLabel } from '@/lib/chatbot/grad-plan/stateManager';
 
 interface ConversationProgressStepsProps {
   currentStep: ConversationStep;
   completedSteps: ConversationStep[];
   onStepClick?: (step: ConversationStep) => void;
+  agentStatus?: AgentStatus;
+  awaitingApprovalStep?: ConversationStep;
 }
 
 // Main visible steps for the progress indicator (NEW: reduced from 9 to 6 steps)
@@ -24,6 +26,8 @@ export default function ConversationProgressSteps({
   currentStep,
   completedSteps,
   onStepClick,
+  agentStatus,
+  awaitingApprovalStep,
 }: Readonly<ConversationProgressStepsProps>) {
   const getStepStatus = (step: ConversationStep): 'completed' | 'current' | 'upcoming' => {
     if (completedSteps.includes(step)) {
@@ -44,6 +48,7 @@ export default function ConversationProgressSteps({
   };
 
   const currentStepIndex = MAIN_STEPS.indexOf(currentStep);
+  const approvalStep = awaitingApprovalStep ?? (agentStatus === 'awaiting_approval' ? currentStep : undefined);
 
   return (
     <div className="w-full py-2 pb-8">
@@ -54,6 +59,11 @@ export default function ConversationProgressSteps({
             Step {Math.max(1, currentStepIndex + 1)} of {MAIN_STEPS.length}
           </p>
           <p className="text-sm font-semibold">{getStepLabel(currentStep)}</p>
+          {approvalStep === currentStep && (
+            <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              Awaiting approval
+            </span>
+          )}
         </div>
         <div className="w-full bg-muted rounded-full h-1.5">
           <div
@@ -73,6 +83,7 @@ export default function ConversationProgressSteps({
             const isCompleted = status === 'completed';
             const isCurrent = status === 'current';
             const isLast = index === MAIN_STEPS.length - 1;
+            const isAwaiting = approvalStep === step;
 
             return (
               <div key={step} className="flex items-center flex-1">
@@ -99,6 +110,11 @@ export default function ConversationProgressSteps({
                       <span className="text-xs font-bold">{index + 1}</span>
                     )}
                   </div>
+                  {isAwaiting && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white">
+                      !
+                    </span>
+                  )}
 
                   {/* Step label below */}
                   <p

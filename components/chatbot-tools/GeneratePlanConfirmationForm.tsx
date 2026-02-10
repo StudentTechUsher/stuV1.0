@@ -14,6 +14,8 @@ interface GeneratePlanConfirmationFormProps {
     | { action: 'generate'; mode: 'automatic' | 'active_feedback'; startTerm: string; startYear: number }
     | { action: 'review' }
   ) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function GeneratePlanConfirmationForm({
@@ -21,7 +23,10 @@ export default function GeneratePlanConfirmationForm({
   lastCompletedTerm,
   preferredStartTerms,
   onSubmit,
+  readOnly,
+  reviewMode,
 }: Readonly<GeneratePlanConfirmationFormProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
   const [selectedMode, setSelectedMode] = useState<'automatic' | 'active_feedback' | null>(null);
   const [showStartTermPrompt, setShowStartTermPrompt] = useState(false);
   const [startTerm, setStartTerm] = useState('');
@@ -85,17 +90,20 @@ export default function GeneratePlanConfirmationForm({
   }, [showStartTermPrompt, startTerm, startYear, nextTermCalculation]);
 
   const handleModeSelection = (mode: 'automatic' | 'active_feedback') => {
+    if (isReadOnly) return;
     setSelectedMode(mode);
     setShowStartTermPrompt(true);
     setStartTermError(null);
   };
 
   const handleBack = () => {
+    if (isReadOnly) return;
     setShowStartTermPrompt(false);
     setStartTermError(null);
   };
 
   const handleStartTermSubmit = () => {
+    if (isReadOnly) return;
     const parsedYear = Number.parseInt(startYear, 10);
     if (!startTerm || Number.isNaN(parsedYear)) {
       setStartTermError('Please select a start term and year to continue.');
@@ -119,7 +127,7 @@ export default function GeneratePlanConfirmationForm({
   // Show start term selection after mode is selected
   if (showStartTermPrompt && selectedMode) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-6">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Sparkles size={20} className="text-primary" />
@@ -203,7 +211,7 @@ export default function GeneratePlanConfirmationForm({
 
   // Initial mode selection screen
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Sparkles size={20} className="text-primary" />
@@ -221,6 +229,7 @@ export default function GeneratePlanConfirmationForm({
           className={`w-full h-auto items-start justify-start gap-3 p-4 shadow-lg text-left ${
             selectedMode === 'automatic' ? 'border border-[var(--primary)] bg-[var(--primary)]/10' : ''
           }`}
+          disabled={isReadOnly}
         >
           <div className="mt-0.5 flex size-9 items-center justify-center rounded-full bg-black/5 text-black dark:bg-white/10 dark:text-white">
             <Sparkles size={18} />
@@ -239,6 +248,7 @@ export default function GeneratePlanConfirmationForm({
           className={`w-full h-auto items-start justify-start gap-3 p-4 text-left ${
             selectedMode === 'active_feedback' ? 'border border-[var(--primary)] bg-[var(--primary)]/10' : ''
           }`}
+          disabled={isReadOnly}
         >
           <div className="mt-0.5 flex size-9 items-center justify-center rounded-full bg-black/5 text-black dark:bg-white/10 dark:text-white">
             <MessageSquare size={18} />
@@ -255,6 +265,7 @@ export default function GeneratePlanConfirmationForm({
           variant="secondary"
           onClick={() => onSubmit({ action: 'review' })}
           className="w-full gap-2 justify-start"
+          disabled={isReadOnly}
         >
           <Edit size={18} />
           Let me review my information first

@@ -53,3 +53,13 @@ export const MissingFields: Story = {
     onComplete: () => {},
   },
 };
+
+export const VersionB_ReadOnly: Story = {
+  args: {
+    userId: 'user-789',
+    onFetchStudentData: async () => completeStudentData,
+    onUpdateStudentData: async () => {},
+    onComplete: () => {},
+    readOnly: true,
+  },
+};

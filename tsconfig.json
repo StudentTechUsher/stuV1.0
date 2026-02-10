@@ -41,7 +41,6 @@
     "vitest.setup.ts",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/*.stories.tsx",
     "tests/**/*"
   ]
 }

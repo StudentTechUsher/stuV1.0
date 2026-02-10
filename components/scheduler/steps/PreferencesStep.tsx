@@ -16,6 +16,7 @@ interface PreferencesStepProps {
   onPreferencesChange: (prefs: SchedulePreferences) => void;
   onNext: () => void;
   onBack: () => void;
+  hasCourseIssues?: boolean;
 }
 
 const DAYS_OF_WEEK = [
@@ -31,6 +32,7 @@ export default function PreferencesStep({
   onPreferencesChange,
   onNext,
   onBack,
+  hasCourseIssues = false,
 }: PreferencesStepProps) {
   const handleDayToggle = (day: number) => {
     const currentPreferred = preferences.preferred_days || [];
@@ -183,7 +185,7 @@ export default function PreferencesStep({
         <Button
           variant="contained"
           onClick={onNext}
-          disabled={!isValid}
+          disabled={!isValid || hasCourseIssues}
           sx={{
             bgcolor: '#06C96C',
             color: 'black',

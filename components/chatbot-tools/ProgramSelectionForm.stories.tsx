@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import ProgramSelectionForm from './ProgramSelectionForm';
 
 const meta = {
   title: 'Grad Plan/Create/ProgramSelectionForm',
@@ -44,6 +45,19 @@ export const DocsOnly: Story = {
         npm run dev
         {'\n'}Open /grad-plan/create
       </pre>
+    </div>
+  ),
+};
+
+export const VersionB_ReadOnly: Story = {
+  render: () => (
+    <div style={{ maxWidth: 720 }}>
+      <ProgramSelectionForm
+        studentType="undergraduate"
+        universityId={1}
+        onSubmit={() => {}}
+        readOnly
+      />
     </div>
   ),
 };

@@ -144,16 +144,45 @@ export interface ToolResult {
   data?: unknown;
   error?: string;
   timestamp: Date;
+  toolCallId?: string;
 }
 
 // Chat message in the conversation
+export interface ToolCallPart {
+  type: 'tool-call';
+  toolName: string;
+  toolCallId: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolResultPart {
+  type: 'tool-result';
+  toolName: string;
+  toolCallId: string;
+  result: unknown;
+  isError?: boolean;
+}
+
+export type MessagePart = ToolCallPart | ToolResultPart;
+
 export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
+  id?: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   timestamp: Date;
   toolCall?: ToolCall;
   toolResult?: ToolResult;
+  parts?: MessagePart[];
+  toolType?: string;
+  toolData?: Record<string, unknown>;
+  decisionMeta?: {
+    title: string;
+    badges: string[];
+    evidence: string[];
+  };
+  showFeedback?: boolean;
+  feedbackReasons?: string[];
+  quickReplies?: string[];
 }
 
 // Tool call from OpenAI
@@ -192,3 +221,29 @@ export interface ValidationResult {
   errors: string[];
   warnings: string[];
 }
+
+export type AgentStatus = 'idle' | 'running' | 'paused' | 'awaiting_approval' | 'complete' | 'error';
+
+export type AgentLogItem = {
+  id: string;
+  ts: string;
+  type: 'tool' | 'check' | 'decision' | 'system';
+  label: string;
+  detail?: string;
+  status?: 'ok' | 'warn' | 'fail';
+};
+
+export type AgentCheck = {
+  id: string;
+  label: string;
+  status: 'ok' | 'warn' | 'fail';
+  evidence?: string[];
+};
+
+export type ConversationMetadata = {
+  conversationId: string;
+  lastUpdated: string;
+  currentStep: ConversationStep;
+  summary?: string;
+  status?: 'active' | 'paused' | 'complete' | 'error';
+};

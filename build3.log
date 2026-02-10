@@ -1,0 +1,47 @@
+
+> stuv1.0@0.1.0 storybook:build
+> storybook build
+
+
+┌  Building storybook v10.2.7
+│
+◇  Cleaning outputDir: storybook-static
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+▲  unable to find package.json for @mui/icons-material
+│
+●  Building preview..
+│
+■  Failed to build the preview
+│
+■  [38;2;241;97;97mError: Cannot find module 'ajv/dist/compile/codegen'
+│  Require stack:
+│  - ./node_modules/ajv-keywords/dist/definitions/typeof.js
+│  - ./node_modules/ajv-keywords/dist/keywords/typeof.js
+│  - ./node_modules/ajv-keywords/dist/keywords/index.js
+│  - ./node_modules/ajv-keywords/dist/index.js
+│  - ./node_modules/schema-utils/dist/validate.js
+│  - ./node_modules/schema-utils/dist/index.js
+│  - ./node_modules/webpack-dev-middleware/dist/index.js[39m
+│  at Module.<anonymous> (node:internal/modules/cjs/loader:1420:15)
+│  at ./node_modules/next/dist/server/require-hook.js:57:36
+│  at defaultResolveImpl (node:internal/modules/cjs/loader:1058:19)
+│  at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1063:22)
+│  at Module._load (node:internal/modules/cjs/loader:1226:37)
+│  at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+│  at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+│  at Module.<anonymous> (node:internal/modules/cjs/loader:1503:12)
+│  at mod.require (./node_modules/next/dist/server/require-hook.js:68:28)
+│  at require (node:internal/modules/helpers:152:16)
+│
+●  Storybook collects completely anonymous usage telemetry. We use it to
+│  shape Storybook's roadmap and prioritize features. You can learn more,
+│  including how to opt out, at ]8;;https://storybook.js.org/telemetryhttps://storybook.js.org/telemetry]8;;
+│
+●  Copying static files: public at storybook-static
+│
+└  Storybook exited with an error
+

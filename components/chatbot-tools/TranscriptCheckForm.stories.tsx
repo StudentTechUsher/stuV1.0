@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import TranscriptCheckForm from './TranscriptCheckForm';
 
 const meta = {
   title: 'Grad Plan/Create/TranscriptCheckForm',
-  component: () => null,
+  component: TranscriptCheckForm,
   parameters: {
     layout: 'centered',
 	    docs: {
@@ -44,6 +45,30 @@ export const DocsOnly: Story = {
         npm run dev
         {'\n'}Open /grad-plan/create
       </pre>
+    </div>
+  ),
+};
+
+export const Mocked: Story = {
+  args: {
+    hasCourses: true,
+    readOnly: false,
+  },
+  render: (args) => (
+    <div style={{ maxWidth: 520 }}>
+      <TranscriptCheckForm
+        hasCourses={args.hasCourses}
+        onSubmit={() => {}}
+        readOnly={args.readOnly}
+      />
+    </div>
+  ),
+};
+
+export const VersionB_ReadOnly: Story = {
+  render: () => (
+    <div style={{ maxWidth: 520 }}>
+      <TranscriptCheckForm hasCourses={false} onSubmit={() => {}} readOnly />
     </div>
   ),
 };

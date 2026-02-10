@@ -3,9 +3,31 @@
  * Handles saving and loading conversation state from localStorage and database
  */
 
-import { ConversationState } from './types';
+import { ConversationState, ConversationMetadata } from './types';
 
 const STORAGE_KEY_PREFIX = 'grad_plan_chatbot_';
+const METADATA_INDEX_KEY = 'grad_plan_conversations';
+
+const readConversationIndex = (): ConversationMetadata[] => {
+  try {
+    const serialized = localStorage.getItem(METADATA_INDEX_KEY);
+    if (!serialized) return [];
+    const parsed = JSON.parse(serialized);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as ConversationMetadata[];
+  } catch (error) {
+    console.error('Failed to read conversation metadata index:', error);
+    return [];
+  }
+};
+
+const writeConversationIndex = (items: ConversationMetadata[]): void => {
+  try {
+    localStorage.setItem(METADATA_INDEX_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('Failed to write conversation metadata index:', error);
+  }
+};
 
 /**
  * Save conversation state to localStorage
@@ -54,6 +76,7 @@ export function clearStateFromLocalStorage(conversationId: string): void {
   try {
     const key = `${STORAGE_KEY_PREFIX}${conversationId}`;
     localStorage.removeItem(key);
+    removeConversationMetadata(conversationId);
   } catch (error) {
     console.error('Failed to clear conversation state from localStorage:', error);
   }
@@ -72,6 +95,25 @@ export function getAllConversationIds(): string[] {
     console.error('Failed to get conversation IDs from localStorage:', error);
     return [];
   }
+}
+
+export function listConversationMetadata(): ConversationMetadata[] {
+  return readConversationIndex();
+}
+
+export function upsertConversationMetadata(metadata: ConversationMetadata): void {
+  const existing = readConversationIndex();
+  const next = [
+    metadata,
+    ...existing.filter(item => item.conversationId !== metadata.conversationId),
+  ].slice(0, 20);
+  writeConversationIndex(next);
+}
+
+export function removeConversationMetadata(conversationId: string): void {
+  const existing = readConversationIndex();
+  const next = existing.filter(item => item.conversationId !== conversationId);
+  writeConversationIndex(next);
 }
 
 /**

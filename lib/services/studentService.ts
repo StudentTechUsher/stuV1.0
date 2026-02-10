@@ -113,7 +113,7 @@ export async function fetchStudentGpa(
       throw new StudentFetchError('Failed to fetch student GPA', error);
     }
 
-    return data;
+  return data;
   } catch (error) {
     if (error instanceof StudentFetchError) {
       throw error;
@@ -344,6 +344,7 @@ export async function fetchStudentPlanningData(
   est_grad_date: string | null;
   est_grad_term: string | null;
   admission_year: number | null;
+  year_in_school: string | null;
   is_transfer: boolean | null;
   student_type: string | null;
   work_status: string | null;
@@ -352,7 +353,7 @@ export async function fetchStudentPlanningData(
   try {
     const { data, error } = await supabaseClient
       .from('student')
-      .select('est_grad_date, est_grad_term, admission_year, is_transfer, student_type, work_status, career_goals')
+      .select('est_grad_date, est_grad_term, admission_year, year_in_school, is_transfer, student_type, work_status, career_goals')
       .eq('profile_id', profileId)
       .maybeSingle();
 

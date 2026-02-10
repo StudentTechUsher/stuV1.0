@@ -28,6 +28,8 @@ interface ProgramRequirementsStructure {
 
 interface ClassicViewStandaloneProps {
   program: ProgramOption;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function ClassicViewStandalone({ program }: Readonly<ClassicViewStandaloneProps>) {

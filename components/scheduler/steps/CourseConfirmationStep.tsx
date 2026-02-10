@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -19,8 +19,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Tooltip,
 } from '@mui/material';
-import { Trash2, Plus, X } from 'lucide-react';
+import { AlertCircle, Trash2, Plus, X } from 'lucide-react';
 import CourseSearch from '@/components/grad-plan/CourseSearch';
 import type { CourseOffering } from '@/lib/services/courseOfferingService';
 
@@ -35,6 +36,8 @@ interface CourseConfirmationStepProps {
   gradPlanId?: string;
   onNext: () => void;
   onBack: () => void;
+  onCourseIssuesChange?: (hasIssues: boolean) => void;
+  onTotalCreditsChange?: (totalCredits: number) => void;
 }
 
 export default function CourseConfirmationStep({
@@ -48,6 +51,8 @@ export default function CourseConfirmationStep({
   termName,
   onNext,
   onBack,
+  onCourseIssuesChange,
+  onTotalCreditsChange,
 }: CourseConfirmationStepProps) {
   const [showCourseSearch, setShowCourseSearch] = useState(false);
   const [manuallyAddedCourses, setManuallyAddedCourses] = useState<Map<string, { code: string; title: string; credits: number }>>(new Map());
@@ -56,6 +61,12 @@ export default function CourseConfirmationStep({
     course: CourseOffering | null;
   }>({ open: false, course: null });
   const [isAddingToGradPlan, setIsAddingToGradPlan] = useState(false);
+  const [isValidatingCourses, setIsValidatingCourses] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationSummary, setValidationSummary] = useState<{
+    notInTerm: Array<{ courseCode: string; availableIn?: string }>;
+    notFound: Array<{ courseCode: string }>;
+  } | null>(null);
 
   // Debug logging
   console.log('CourseConfirmationStep rendered with:', {
@@ -117,7 +128,7 @@ export default function CourseConfirmationStep({
 
     if (addToGradPlan && gradPlanId) {
       const courseCredits = course.credits_decimal || 3;
-      const newTotalCredits = totalCredits + courseCredits;
+      const newTotalCredits = localTotalCredits + courseCredits;
 
       // Check if adding would exceed 18 credits
       if (newTotalCredits > 18) {
@@ -164,23 +175,100 @@ export default function CourseConfirmationStep({
     }
   };
 
-  const getCreditWarning = () => {
-    if (totalCredits < 12) {
+  const getCreditWarning = (credits: number) => {
+    if (credits < 12) {
       return {
         severity: 'warning' as const,
-        message: `You have ${totalCredits} credits selected. Full-time status typically requires 12+ credits.`,
+        message: `You have ${credits} credits selected. Full-time status typically requires 12+ credits.`,
       };
     }
-    if (totalCredits > 18) {
+    if (credits > 18) {
       return {
         severity: 'warning' as const,
-        message: `You have ${totalCredits} credits selected. This exceeds the typical maximum of 18 credits.`,
+        message: `You have ${credits} credits selected. This exceeds the typical maximum of 18 credits.`,
       };
     }
     return null;
   };
 
-  const warning = getCreditWarning();
+  const courseIssueMap = new Map<string, { status: 'not_in_term' | 'not_found'; availableIn?: string }>();
+  if (validationSummary) {
+    validationSummary.notInTerm.forEach(item => {
+      courseIssueMap.set(item.courseCode, { status: 'not_in_term', availableIn: item.availableIn });
+    });
+    validationSummary.notFound.forEach(item => {
+      courseIssueMap.set(item.courseCode, { status: 'not_found' });
+    });
+  }
+  const hasCourseIssues = courseIssueMap.size > 0;
+
+  useEffect(() => {
+    onCourseIssuesChange?.(hasCourseIssues);
+  }, [hasCourseIssues, onCourseIssuesChange]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const validateSelectedCourses = async () => {
+      if (!termName || selectedCourses.length === 0) {
+        setValidationSummary(null);
+        return;
+      }
+
+      setIsValidatingCourses(true);
+      setValidationError(null);
+
+      try {
+        const response = await fetch('/api/test-scheduler-tools/get-course-offerings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            universityId,
+            termName,
+            courseCodes: selectedCourses,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to validate courses');
+        }
+
+        const data = await response.json();
+        if (!isActive) return;
+
+        const notInTerm = (data?.results?.notInTerm || []).map((result: { courseCode: string; availableIn?: string }) => ({
+          courseCode: result.courseCode,
+          availableIn: result.availableIn,
+        }));
+        const notFound = (data?.results?.notFound || []).map((result: { courseCode: string }) => ({
+          courseCode: result.courseCode,
+        }));
+
+        if (notInTerm.length === 0 && notFound.length === 0) {
+          setValidationSummary(null);
+        } else {
+          setValidationSummary({ notInTerm, notFound });
+        }
+      } catch (err) {
+        console.error('❌ [CourseConfirmationStep] Validation error:', err);
+        if (isActive) {
+          setValidationError(err instanceof Error ? err.message : 'Failed to validate courses');
+          setValidationSummary(null);
+        }
+      } finally {
+        if (isActive) {
+          setIsValidatingCourses(false);
+        }
+      }
+    };
+
+    validateSelectedCourses();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedCourses, termName, universityId]);
 
   // Merge grad plan courses with manually added courses
   const allAvailableCourses = new Map<string, { code: string; title: string; credits: number }>();
@@ -199,6 +287,13 @@ export default function CourseConfirmationStep({
   const selectedCourseDetails = selectedCourses
     .map(code => allAvailableCourses.get(code))
     .filter((course): course is { code: string; title: string; credits: number } => course !== undefined);
+
+  const localTotalCredits = selectedCourseDetails.reduce((sum, course) => sum + course.credits, 0);
+  const warning = getCreditWarning(localTotalCredits);
+
+  useEffect(() => {
+    onTotalCreditsChange?.(localTotalCredits);
+  }, [localTotalCredits, onTotalCreditsChange]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -223,7 +318,7 @@ export default function CourseConfirmationStep({
         }}
       >
         <Typography variant="h3" sx={{ fontWeight: 800, color: '#06C96C' }}>
-          {totalCredits}
+          {localTotalCredits}
         </Typography>
         <Typography variant="body2" sx={{ color: '#059669', fontWeight: 600 }}>
           Total Credits
@@ -233,6 +328,18 @@ export default function CourseConfirmationStep({
       {warning && (
         <Alert severity={warning.severity}>
           {warning.message}
+        </Alert>
+      )}
+
+      {validationError && (
+        <Alert severity="error">
+          {validationError}
+        </Alert>
+      )}
+
+      {isValidatingCourses && (
+        <Alert severity="info">
+          Validating course availability for {termName}...
         </Alert>
       )}
 
@@ -291,12 +398,31 @@ export default function CourseConfirmationStep({
               </TableRow>
             </TableHead>
             <TableBody>
-              {selectedCourseDetails.map((course) => (
-                <TableRow key={course.code}>
+              {selectedCourseDetails.map((course) => {
+                const issue = courseIssueMap.get(course.code);
+                return (
+                  <TableRow key={course.code}>
                   <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {course.code}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {issue && (
+                        <Tooltip
+                          title={
+                            issue.status === 'not_in_term'
+                              ? `Not available for term${termName ? ` (${termName})` : ''}${issue.availableIn ? ` • Offered ${issue.availableIn}` : ''}`
+                              : 'Not available for term'
+                          }
+                          placement="top"
+                          arrow
+                        >
+                          <Box component="span" sx={{ display: 'inline-flex' }}>
+                            <AlertCircle size={16} color="#ef4444" />
+                          </Box>
+                        </Tooltip>
+                      )}
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {course.code}
+                      </Typography>
+                    </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -318,7 +444,8 @@ export default function CourseConfirmationStep({
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -343,7 +470,7 @@ export default function CourseConfirmationStep({
         <Button
           variant="contained"
           onClick={onNext}
-          disabled={selectedCourses.length === 0}
+          disabled={selectedCourses.length === 0 || hasCourseIssues || isValidatingCourses}
           sx={{
             bgcolor: '#06C96C',
             color: 'black',
@@ -385,7 +512,7 @@ export default function CourseConfirmationStep({
           </DialogContentText>
           <Alert severity="info" sx={{ mt: 2 }}>
             Credits: {confirmDialog.course?.credits_decimal || 3} |
-            New Total: {totalCredits + (confirmDialog.course?.credits_decimal || 3)} / 18
+            New Total: {localTotalCredits + (confirmDialog.course?.credits_decimal || 3)} / 18
           </Alert>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 2 }}>

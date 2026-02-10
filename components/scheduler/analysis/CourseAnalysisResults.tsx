@@ -69,6 +69,7 @@ interface CourseAnalysisResultsProps {
   selections?: SectionSelection[];
   onSelectSection?: (courseCode: string, sectionLabel: string, rank: 'primary' | 'backup1' | 'backup2') => void;
   onDeselectSection?: (courseCode: string, sectionLabel: string) => void;
+  allowBackups?: boolean;
 }
 
 function ScoreMeter({ score, compact = false }: { score: number; compact?: boolean }) {
@@ -313,12 +314,14 @@ function CourseAnalysisCard({
   selections = [],
   onSelectSection,
   onDeselectSection,
+  allowBackups = true,
 }: {
   analysis: CourseAnalysisData;
   compact?: boolean;
   selections?: SectionSelection[];
   onSelectSection?: (courseCode: string, sectionLabel: string, rank: 'primary' | 'backup1' | 'backup2') => void;
   onDeselectSection?: (courseCode: string, sectionLabel: string) => void;
+  allowBackups?: boolean;
 }) {
   // Get selections for this course
   const courseSelections = selections.filter(s => s.courseCode === analysis.courseCode);
@@ -346,13 +349,13 @@ function CourseAnalysisCard({
     // Ranks already used by other sections
     disabled.push(...usedRanks);
 
-    // Backup 1 is disabled if no primary selected yet
-    if (!hasPrimary) {
+    // Backup 1 is disabled if no primary selected yet or backups are not allowed
+    if (!hasPrimary || !allowBackups) {
       disabled.push('backup1');
     }
 
-    // Backup 2 is disabled if no backup 1 selected yet
-    if (!hasBackup1) {
+    // Backup 2 is disabled if no backup 1 selected yet or backups are not allowed
+    if (!hasBackup1 || !allowBackups) {
       disabled.push('backup2');
     }
 
@@ -460,6 +463,7 @@ export function CourseAnalysisResults({
   selections = [],
   onSelectSection,
   onDeselectSection,
+  allowBackups = true,
 }: CourseAnalysisResultsProps) {
   if (!analyses || analyses.length === 0) {
     return (
@@ -519,6 +523,7 @@ export function CourseAnalysisResults({
           selections={selections}
           onSelectSection={onSelectSection}
           onDeselectSection={onDeselectSection}
+          allowBackups={allowBackups}
         />
       ))}
     </Box>

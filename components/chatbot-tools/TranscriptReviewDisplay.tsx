@@ -28,13 +28,18 @@ interface ParsedCourse {
 interface TranscriptReviewDisplayProps {
   courses: ParsedCourse[];
   onConfirm: () => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function TranscriptReviewDisplay({
   courses,
   onConfirm,
+  readOnly,
+  reviewMode,
 }: Readonly<TranscriptReviewDisplayProps>) {
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const isReadOnly = Boolean(readOnly || reviewMode);
 
   // Group courses by term
   const coursesByTerm = useMemo(() => {
@@ -67,6 +72,7 @@ export default function TranscriptReviewDisplay({
   }, [courses]);
 
   const handleConfirm = () => {
+    if (isReadOnly) return;
     setIsConfirmed(true);
     onConfirm();
   };
@@ -83,7 +89,7 @@ export default function TranscriptReviewDisplay({
   };
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -206,12 +212,12 @@ export default function TranscriptReviewDisplay({
 
       {/* Confirm Button */}
       <div className="mt-6">
-        <Button
-          variant="primary"
-          onClick={handleConfirm}
-          disabled={isConfirmed}
-          className="w-full gap-2"
-        >
+      <Button
+        variant="primary"
+        onClick={handleConfirm}
+        disabled={isConfirmed || isReadOnly}
+        className="w-full gap-2"
+      >
           {isConfirmed ? (
             <>
               <CheckCircle2 size={18} />

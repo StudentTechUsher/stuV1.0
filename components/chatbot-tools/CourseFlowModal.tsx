@@ -12,9 +12,11 @@ interface CourseFlowModalProps {
   open: boolean;
   onClose: () => void;
   program: ProgramOption;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
-export default function CourseFlowModal({ open, onClose, program }: Readonly<CourseFlowModalProps>) {
+export default function CourseFlowModal({ open, onClose, program, readOnly, reviewMode }: Readonly<CourseFlowModalProps>) {
   return (
     <Dialog
       open={open}
@@ -49,6 +51,8 @@ export default function CourseFlowModal({ open, onClose, program }: Readonly<Cou
         <div className="flex-1 overflow-y-auto p-6">
           <ClassicViewStandalone
             program={program}
+            readOnly={readOnly}
+            reviewMode={reviewMode}
           />
         </div>
       </DialogContent>

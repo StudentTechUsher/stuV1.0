@@ -20,6 +20,8 @@ type NavItemWithSection = NavItem & {
 };
 
 const COLLAPSED_WIDTH = 70;
+const EXPANDED_WIDTH = 260;
+const SIDEBAR_STORAGE_KEY = 'stu-sidebar-expanded';
 
 const ROLE_PRESETS: Record<Role, { label: string; prompt: string }[]> = {
   student: [
@@ -68,24 +70,11 @@ export default function DashboardLayoutClient({
     }
   };
 
-  // Monitor sidebar width changes
+  // Initialize width from persisted sidebar state (for snappy first paint).
   useEffect(() => {
-    const checkSidebarWidth = () => {
-      const nav = document.querySelector('nav[aria-label="Main navigation"]') as HTMLElement;
-      if (nav) {
-        const width = nav.offsetWidth;
-        setSidebarWidth(width);
-      }
-    };
-
-    checkSidebarWidth();
-    const observer = new ResizeObserver(checkSidebarWidth);
-    const nav = document.querySelector('nav[aria-label="Main navigation"]');
-    if (nav) {
-      observer.observe(nav);
-    }
-
-    return () => observer.disconnect();
+    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    const isExpanded = saved === 'true';
+    setSidebarWidth(isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH);
   }, []);
 
   // Add section classification to items
@@ -103,10 +92,11 @@ export default function DashboardLayoutClient({
         onSignOut={handleSignOut}
         role={role}
         onOpenChat={() => setChatOpen(true)}
+        onWidthChange={setSidebarWidth}
       />
       <main
         ref={mainRef}
-        className="transition-all duration-200 ease-out min-h-screen"
+        className="transition-none min-h-screen"
         style={{ marginLeft: `${sidebarWidth}px` }}
       >
         {children}

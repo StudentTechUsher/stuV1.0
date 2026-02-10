@@ -69,6 +69,12 @@ interface CourseSelectionFormProps {
   studentInterests?: string | null;
   selectedMajorMinors?: string[];
   onSubmit: (data: CourseSelectionInput) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
+  mockMode?: boolean;
+  mockProgramsData?: ProgramRow[];
+  mockGenEdData?: ProgramRow[];
+  mockTranscriptCourses?: Array<{ code: string; title: string; credits: number }>;
 }
 
 // Color palette for requirement backgrounds
@@ -94,7 +100,15 @@ export default function CourseSelectionForm({
   studentInterests = null,
   selectedMajorMinors = [],
   onSubmit,
+  readOnly,
+  reviewMode,
+  mockMode,
+  mockProgramsData,
+  mockGenEdData,
+  mockTranscriptCourses,
 }: Readonly<CourseSelectionFormProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
+  const isMockMode = Boolean(mockMode);
   // Program data state
   const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
   const [genEdData, setGenEdData] = useState<ProgramRow[]>([]);
@@ -142,6 +156,15 @@ export default function CourseSelectionForm({
   const [autoMatches, setAutoMatches] = useState<CourseMatch[]>([]);
   const [autoMatchedKeys, setAutoMatchedKeys] = useState<Set<string>>(new Set());
   const [completedRequirementKeys, setCompletedRequirementKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!isMockMode) return;
+    setProgramsData(mockProgramsData ?? []);
+    setGenEdData(mockGenEdData ?? []);
+    setTranscriptCourses(mockTranscriptCourses ?? []);
+    setLoadingProgramData(false);
+    setDataLoadError(null);
+  }, [isMockMode, mockProgramsData, mockGenEdData, mockTranscriptCourses]);
 
   // Course preference dialog state
   const [preferenceDialogOpen, setPreferenceDialogOpen] = useState(false);
@@ -255,6 +278,7 @@ export default function CourseSelectionForm({
 
   // Fetch program data when component mounts
   useEffect(() => {
+    if (isReadOnly || isMockMode) return;
     async function fetchProgramData() {
       if (selectedProgramIds.length === 0 && genEdProgramIds.length === 0) return;
 
@@ -286,10 +310,11 @@ export default function CourseSelectionForm({
     }
 
     fetchProgramData();
-  }, [selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
+  }, [selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent, isReadOnly, isMockMode]);
 
   // Fetch user's transcript courses (only if user opted to use transcript)
   useEffect(() => {
+    if (isReadOnly || isMockMode) return;
     async function fetchTranscriptCourses() {
       if (!userId || !hasTranscript) return;
 
@@ -311,7 +336,7 @@ export default function CourseSelectionForm({
     }
 
     fetchTranscriptCourses();
-  }, [userId, hasTranscript]);
+  }, [userId, hasTranscript, isReadOnly, isMockMode]);
 
   // Auto-match transcript courses to requirements when data is available
   useEffect(() => {
@@ -1295,6 +1320,7 @@ export default function CourseSelectionForm({
 
       // Type assertion: AI mode intentionally has different shape than schema
       // We cast through 'unknown' to bypass strict type checking since AI mode is a special case
+      if (isReadOnly) return;
       onSubmit(aiModeData as unknown as CourseSelectionInput);
       return;
     }
@@ -1399,6 +1425,7 @@ export default function CourseSelectionForm({
       totalSelectedCredits,
     };
 
+    if (isReadOnly) return;
     onSubmit(courseSelectionData);
   };
 
@@ -1422,7 +1449,7 @@ export default function CourseSelectionForm({
   }
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-4">
         <h3 className="text-base font-semibold flex items-center gap-2">
           <BookOpen size={18} />
@@ -1775,6 +1802,7 @@ export default function CourseSelectionForm({
                               recommendations={recommendations}
                               dropdownCount={courses.length}
                               onCourseSelect={(courseCode) => handleCourseSelection(req.subtitle, 0, courseCode)}
+                              readOnly={isReadOnly}
                             />
                           </div>
                         )}
@@ -2049,6 +2077,7 @@ export default function CourseSelectionForm({
                                 recommendations={progRecommendations}
                                 dropdownCount={validCourses.length}
                                 onCourseSelect={(courseCode) => handleProgramCourseSelection(requirementKey, 0, courseCode)}
+                                readOnly={isReadOnly}
                               />
                             </div>
                           )}

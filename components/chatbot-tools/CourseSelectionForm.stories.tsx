@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import CourseSelectionForm from './CourseSelectionForm';
+import type { ProgramRow } from '@/types/program';
 
 const meta = {
   title: 'Grad Plan/Create/CourseSelectionForm',
@@ -45,6 +47,74 @@ export const DocsOnly: Story = {
         npm run dev
         {'\n'}Open /grad-plan/create
       </pre>
+    </div>
+  ),
+};
+
+const mockProgramsData: ProgramRow[] = [
+  {
+    id: '101',
+    university_id: 1,
+    name: 'Computer Science',
+    program_type: 'major',
+    version: 1,
+    created_at: new Date().toISOString(),
+    modified_at: null,
+    requirements: {
+      programRequirements: [
+        {
+          description: 'Complete 2 Courses',
+          requirementId: 1,
+          courses: [
+            { code: 'CS 101', title: 'Intro to CS', credits: 3 },
+            { code: 'CS 102', title: 'Data Structures', credits: 3 },
+            { code: 'CS 201', title: 'Algorithms', credits: 3 },
+          ],
+        },
+      ],
+    },
+  },
+];
+
+const mockGenEdData: ProgramRow[] = [
+  {
+    id: '201',
+    university_id: 1,
+    name: 'General Education',
+    program_type: 'general_education',
+    version: 1,
+    created_at: new Date().toISOString(),
+    modified_at: null,
+    requirements: [
+      {
+        subtitle: 'Written Communication',
+        blocks: [
+          { type: 'course', code: 'ENG 101', title: 'Composition', credits: { fixed: 3 } },
+          { type: 'course', code: 'ENG 102', title: 'Rhetoric', credits: { fixed: 3 } },
+        ],
+      },
+    ],
+  },
+];
+
+export const VersionB_ReadOnly: Story = {
+  render: () => (
+    <div style={{ maxWidth: 900 }}>
+      <CourseSelectionForm
+        studentType="undergraduate"
+        universityId={1}
+        selectedProgramIds={[101]}
+        genEdProgramIds={[201]}
+        hasTranscript
+        onSubmit={() => {}}
+        readOnly
+        mockMode
+        mockProgramsData={mockProgramsData}
+        mockGenEdData={mockGenEdData}
+        mockTranscriptCourses={[
+          { code: 'ENG 101', title: 'Composition', credits: 3 },
+        ]}
+      />
     </div>
   ),
 };

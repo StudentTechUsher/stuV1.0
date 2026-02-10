@@ -53,3 +53,10 @@ export const Default: Story = {
     },
   },
 };
+
+export const VersionB_ReadOnly: Story = {
+  args: {
+    ...Default.args,
+    readOnly: true,
+  },
+};

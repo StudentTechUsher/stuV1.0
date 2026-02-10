@@ -53,3 +53,18 @@ export const Default: Story = {
     ],
   },
 };
+
+export const VersionB_ReadOnly: Story = {
+  parameters: {
+    layout: 'fullscreen',
+  },
+  render: () => (
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+      <ProgramSuggestionsDisplay
+        {...(Default.args as typeof Default.args)}
+        readOnly
+        variant="versionB"
+      />
+    </div>
+  ),
+};

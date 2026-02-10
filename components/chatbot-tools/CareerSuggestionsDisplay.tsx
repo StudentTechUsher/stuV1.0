@@ -8,15 +8,21 @@ import { CareerSuggestionsInput, CareerSuggestion } from '@/lib/chatbot/tools/ca
 interface CareerSuggestionsDisplayProps {
   suggestions: CareerSuggestionsInput;
   onSelectCareer: (careerTitle: string) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function CareerSuggestionsDisplay({
   suggestions,
   onSelectCareer,
+  readOnly,
+  reviewMode,
 }: Readonly<CareerSuggestionsDisplayProps>) {
   const [selectedCareer, setSelectedCareer] = useState<string | null>(null);
+  const isReadOnly = Boolean(readOnly || reviewMode);
 
   const handleSelect = (career: CareerSuggestion) => {
+    if (isReadOnly) return;
     setSelectedCareer(career.title);
     onSelectCareer(career.title);
   };
@@ -25,7 +31,7 @@ export default function CareerSuggestionsDisplay({
   const sortedCareers = [...suggestions.careers].sort((a, b) => b.match_score - a.match_score);
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Briefcase size={20} />
@@ -122,7 +128,7 @@ export default function CareerSuggestionsDisplay({
               <Button
                 variant="primary"
                 onClick={() => handleSelect(career)}
-                disabled={isSelected}
+                disabled={isSelected || isReadOnly}
                 className="w-full gap-2"
               >
                 {isSelected ? (

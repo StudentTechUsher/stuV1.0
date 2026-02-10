@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react"
+import { ServicesSection } from '@/components/landing/services-section'
 
 type TrackingPayload = Record<string, string | number | undefined>
 
@@ -55,6 +56,7 @@ const navLinks = [
   { href: "#product", label: "Platform" },
   { href: "#solutions", label: "Solutions" },
   { href: "#case-studies", label: "Success Stories" },
+  { href: "#catalog", label: "Catalog" }, // Using "Catalog" as it's more descriptive for "Services Catalog"
 ]
 
 const faqs = [
@@ -211,9 +213,9 @@ export function UnifiedLandingClient() {
       <main id="main-content" className="flex-1">
         {/* Hero */}
         <section
-            className="border-b border-border/60 py-18 md:py-30"
-            style={{ backgroundColor: pageBg }}
-          >
+          className="border-b border-border/60 py-18 md:py-30"
+          style={{ backgroundColor: pageBg }}
+        >
           <div className="container mx-auto max-w-5xl px-4 md:px-10">
             <div className="flex min-h-[85vh] flex-col items-center text-center space-y-8">
               <div className="space-y-6 pt-8 md:pt-12">
@@ -399,6 +401,9 @@ export function UnifiedLandingClient() {
             </div>
           </div>
         </section>
+
+        {/* Services Catalog Section */}
+        <ServicesSection />
 
         {/* Product visual */}
         <section className="border-b border-border/60 py-16 md:py-24" style={{ backgroundColor: pageBg }}>

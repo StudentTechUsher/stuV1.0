@@ -8,6 +8,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { z } from 'zod';
 import {
   Box,
   Typography,
@@ -28,6 +29,7 @@ interface StudentPlanningData {
   est_grad_date: string | null;
   est_grad_term: string | null;
   admission_year: number | null;
+  year_in_school: string | null;
   student_type: 'undergraduate' | 'honor' | 'graduate' | null;
   career_goals: string | null;
   is_transfer: 'transfer' | 'freshman' | null;
@@ -39,6 +41,8 @@ interface ProfileCheckStepProps {
   onFetchStudentData: () => Promise<StudentPlanningData>;
   onUpdateStudentData: (data: Partial<StudentPlanningData>) => Promise<void>;
   onCareerPathfinderClick?: () => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 const REQUIRED_FIELDS = [
@@ -57,12 +61,16 @@ export function ProfileCheckStep({
   onFetchStudentData,
   onUpdateStudentData,
   onCareerPathfinderClick,
+  readOnly,
+  reviewMode,
 }: ProfileCheckStepProps) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
   const [loading, setLoading] = useState(true);
   const [studentData, setStudentData] = useState<StudentPlanningData | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<StudentPlanningData>>({});
+  const [gradYearInput, setGradYearInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +78,19 @@ export function ProfileCheckStep({
     if (!type) return '';
     if (type === 'honor') return 'Honors';
     return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  const formatAdmissionType = (value?: string | null) => {
+    if (!value) return 'Not set';
+    if (value === 'freshman') return 'Admitted as a freshman';
+    if (value === 'transfer') return 'Admitted as Transfer';
+    return value;
+  };
+
+  const deriveGradYear = (date?: string | null) => {
+    if (!date) return '';
+    const year = new Date(date).getFullYear();
+    return Number.isNaN(year) ? '' : String(year);
   };
 
   // Fetch student data on mount
@@ -87,6 +108,7 @@ export function ProfileCheckStep({
         // Auto-show edit form if fields are missing
         if (missing.length > 0) {
           setFormData(data);
+          setGradYearInput(deriveGradYear(data.est_grad_date));
           setIsEditing(true);
         }
       } catch (err) {
@@ -101,18 +123,42 @@ export function ProfileCheckStep({
   }, [userId, onFetchStudentData]);
 
   const handleSave = async () => {
+    if (isReadOnly) return;
     try {
       setSaving(true);
       setError(null);
 
+      const currentYear = new Date().getFullYear();
+      const gradYearSchema = z
+        .string()
+        .trim()
+        .refine(value => value.length > 0, { message: 'Estimated graduation year is required.' })
+        .transform(value => parseInt(value, 10))
+        .refine(value => !Number.isNaN(value), { message: 'Estimated graduation year must be a number.' })
+        .refine(value => value >= currentYear, {
+          message: `Estimated graduation year must be ${currentYear} or later.`,
+        });
+
+      const gradYearResult = gradYearSchema.safeParse(gradYearInput);
+      if (!gradYearResult.success) {
+        setError(gradYearResult.error.issues[0]?.message || 'Invalid graduation year.');
+        return;
+      }
+
+      const nextFormData: Partial<StudentPlanningData> = {
+        ...formData,
+        est_grad_date: `${gradYearResult.data}-01-01`,
+      };
+
       // Validate required fields
-      const stillMissing = REQUIRED_FIELDS.filter(field => !formData[field]);
+      const stillMissing = REQUIRED_FIELDS.filter(field => !nextFormData[field]);
       if (stillMissing.length > 0) {
         setError(`Please fill in: ${stillMissing.join(', ')}`);
         return;
       }
 
-      await onUpdateStudentData(formData);
+      setFormData(nextFormData);
+      await onUpdateStudentData(nextFormData);
 
       // Refetch to get updated data
       const updatedData = await onFetchStudentData();
@@ -128,7 +174,9 @@ export function ProfileCheckStep({
   };
 
   const handleEditClick = () => {
+    if (isReadOnly) return;
     setFormData(studentData || {});
+    setGradYearInput(deriveGradYear(studentData?.est_grad_date));
     setIsEditing(true);
   };
 
@@ -143,7 +191,7 @@ export function ProfileCheckStep({
   const isComplete = missingFields.length === 0;
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', ...(isReadOnly ? { pointerEvents: 'none', opacity: 0.8 } : {}) }}>
       {/* Error Alert */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -180,22 +228,12 @@ export function ProfileCheckStep({
 
                 <TextField
                   label="Estimated Graduation Year"
-                  type="number"
                   required
                   fullWidth
-                  value={
-                    formData.est_grad_date
-                      ? new Date(formData.est_grad_date).getFullYear()
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const year = parseInt(e.target.value);
-                    if (!isNaN(year)) {
-                      setFormData({ ...formData, est_grad_date: `${year}-01-01` });
-                    }
-                  }}
+                  value={gradYearInput}
+                  onChange={(e) => setGradYearInput(e.target.value)}
                   slotProps={{
-                    htmlInput: { min: new Date().getFullYear(), max: new Date().getFullYear() + 10 }
+                    htmlInput: { inputMode: 'numeric' }
                   }}
                 />
               </Box>
@@ -442,18 +480,63 @@ export function ProfileCheckStep({
           </CardContent>
         </Card>
       ) : isComplete ? (
-        <Card sx={{ mb: 3, border: '2px solid', borderColor: 'success.main' }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-              <CheckCircle size={32} color="green" />
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                  Profile Complete
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Your academic planning settings are ready. Review the details below or continue to
-                  program selection.
-                </Typography>
+        <Card
+          sx={{
+            mb: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            position: 'relative',
+            overflow: 'hidden',
+            bgcolor: 'background.paper',
+          }}
+        >
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: 4,
+              bgcolor: 'rgba(16, 185, 129, 0.35)',
+            }}
+          />
+          <CardContent sx={{ pl: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(16, 185, 129, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CheckCircle size={18} color="#059669" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.25 }}>
+                    Profile Complete
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Your academic planning settings are ready.
+                  </Typography>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 999,
+                  bgcolor: 'rgba(16, 185, 129, 0.12)',
+                  color: '#047857',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                }}
+              >
+                Complete
               </Box>
             </Box>
 
@@ -462,23 +545,12 @@ export function ProfileCheckStep({
               <Box
                 sx={{
                   mt: 3,
-                  p: 2,
-                  borderRadius: 1,
-                  bgcolor: 'action.hover',
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                   gap: 2,
                 }}
               >
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                    Graduation
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {studentData.est_grad_term} {new Date(studentData.est_grad_date!).getFullYear()}
-                  </Typography>
-                </Box>
-                <Box>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                     Admission Year
                   </Typography>
@@ -486,20 +558,36 @@ export function ProfileCheckStep({
                     {studentData.admission_year}
                   </Typography>
                 </Box>
-                <Box>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                    Student Type
+                    Graduation Year
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {formatStudentType(studentData.student_type)}
+                    {studentData.est_grad_term} {new Date(studentData.est_grad_date!).getFullYear()}
                   </Typography>
                 </Box>
-                <Box>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                     Admission Type
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                    {studentData.is_transfer || 'Not set'}
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {formatAdmissionType(studentData.is_transfer)}
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    Current Year in School
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {studentData.year_in_school || 'Not set'}
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    Career Goals
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {studentData.career_goals || 'Not set'}
                   </Typography>
                 </Box>
               </Box>
@@ -507,14 +595,12 @@ export function ProfileCheckStep({
 
             <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
               <Button
-                variant="outlined"
+                variant="text"
                 startIcon={<Edit size={16} />}
                 onClick={handleEditClick}
                 sx={{
-                  borderColor: '#0A0A0A',
                   color: '#0A0A0A',
                   '&:hover': {
-                    borderColor: '#1A1A1A',
                     bgcolor: 'rgba(10, 10, 10, 0.05)',
                   },
                 }}

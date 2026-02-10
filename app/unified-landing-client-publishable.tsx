@@ -42,6 +42,7 @@ import {
   LandingSuccessStories,
   landingPageBg,
 } from "@/components/landing"
+import { ServicesSection } from "@/components/landing/services-section"
 import { useAnalytics } from "@/lib/hooks/useAnalytics"
 import { ANALYTICS_EVENTS } from "@/lib/services/analyticsService"
 
@@ -128,6 +129,7 @@ export function UnifiedLandingClient() {
         <LandingReasons />
         <LandingRoleValue />
         <LandingPlatformOverview onCtaClick={handleCtaClick} />
+        <ServicesSection />
         <LandingEndToEnd onCtaClick={handleCtaClick} />
         <LandingSuccessStories onCtaClick={handleCtaClick} />
         <LandingInstitutionTypes />

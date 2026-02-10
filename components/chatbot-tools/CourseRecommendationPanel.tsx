@@ -7,13 +7,18 @@ interface CourseRecommendationPanelProps {
   recommendations: CourseRecommendation[];
   dropdownCount: number;
   onCourseSelect: (courseCode: string) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function CourseRecommendationPanel({
   recommendations,
   dropdownCount,
   onCourseSelect,
+  readOnly,
+  reviewMode,
 }: Readonly<CourseRecommendationPanelProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
   if (dropdownCount <= 3 || recommendations.length === 0) {
     return null; // Only show if more than 3 options
   }
@@ -48,7 +53,10 @@ export default function CourseRecommendationPanel({
               key={rec.courseId}
               className="bg-white border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm hover:border-gray-400"
               style={{ borderColor: 'var(--primary)' }}
-              onClick={() => onCourseSelect(rec.courseCode)}
+              onClick={() => {
+                if (isReadOnly) return;
+                onCourseSelect(rec.courseCode);
+              }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">

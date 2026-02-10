@@ -43,3 +43,13 @@ export const ModeSelection: Story = {
     },
   },
 };
+
+export const VersionB_ReadOnly: Story = {
+  args: {
+    academicTerms,
+    lastCompletedTerm: 'Spring 2026',
+    preferredStartTerms: ['Fall'],
+    onSubmit: () => {},
+    readOnly: true,
+  },
+};

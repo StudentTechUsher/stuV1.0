@@ -53,3 +53,19 @@ export const Default: Story = {
     },
   },
 };
+
+export const VersionB_ReadOnly: Story = {
+  args: {
+    ...Default.args,
+    readOnly: true,
+    variant: 'versionB',
+  },
+};
+
+export const VersionB_Validation: Story = {
+  args: {
+    ...Default.args,
+    initialStrategy: undefined,
+    variant: 'versionB',
+  },
+};

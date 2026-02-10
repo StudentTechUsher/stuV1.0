@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Typography, Paper, CircularProgress, Alert } from "@mui/material";
 
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
@@ -71,6 +71,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
   const [courseEvents, setCourseEvents] = useState<SchedulerEvent[]>([]);
+  const [previewEvents, setPreviewEvents] = useState<SchedulerEvent[]>([]);
   const [preferences, setPreferences] = useState<SchedulePreferences>({});
 
   // UI State
@@ -382,51 +383,8 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     }
   };
 
-  // --- Handlers: Agent Calendar Updates ---
-  const handleAgentCalendarUpdate = useCallback((newEvents: Array<{
-    id: string;
-    title: string;
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-    location?: string;
-    category?: string;
-    courseCode?: string;
-    sectionLabel?: string;
-    instructor?: string;
-    offeringId?: number;
-  }>) => {
-    console.log('Agent adding events to calendar:', newEvents);
-
-    // Convert Mastra events to SchedulerEvent format
-    const convertedEvents: SchedulerEvent[] = newEvents.map(evt => ({
-      id: evt.id,
-      title: evt.title,
-      dayOfWeek: evt.dayOfWeek,
-      startTime: evt.startTime,
-      endTime: evt.endTime,
-      type: 'class' as const,
-      status: 'planned' as const,
-      course_code: evt.courseCode,
-      section: evt.sectionLabel,
-      professor: evt.instructor,
-      location: evt.location,
-    }));
-
-    setCourseEvents(prev => {
-      // Deduplicate by selection_id (format: "selection-id-daynum")
-      const existingIds = new Set(prev.map(e => e.id.split('-')[0]));
-      const uniqueNewEvents = convertedEvents.filter(e => {
-        const selectionId = e.id.split('-')[0];
-        return !existingIds.has(selectionId);
-      });
-
-      return [...prev, ...uniqueNewEvents];
-    });
-  }, []);
-
   // --- UI Wrappers ---
-  const allEvents = [...courseEvents, ...personalEvents];
+  const allEvents = [...courseEvents, ...personalEvents, ...previewEvents];
 
   // Extract terms from active grad plan
   const gradPlanTerms = (() => {
@@ -522,11 +480,27 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
           </Box>
         )}
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" }, gap: 2 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" },
+            gap: 2,
+            alignItems: "stretch",
+          }}
+        >
           {/* Left Panel - AI-Guided Schedule Generation */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, height: "100%" }}>
             {activeScheduleId && selectedTermName !== null && selectedTermIndex !== null && studentId ? (
-              <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid var(--border)", display: "flex", flexDirection: "column", maxHeight: "800px" }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
                 <ScheduleGenerationPanel
                   termName={selectedTermName}
                   termIndex={selectedTermIndex}
@@ -591,7 +565,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                   gradPlanTerms={gradPlanTerms}
                   selectedTermIndex={selectedTermIndex}
                   isLoading={isLoading}
-                  onAgentCalendarUpdate={handleAgentCalendarUpdate}
+                  onSectionPreviewEventsChange={setPreviewEvents}
                 />
               </Paper>
             ) : (
