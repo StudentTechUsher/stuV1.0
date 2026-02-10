@@ -27,6 +27,10 @@ import { TransferCreditsSection } from '@/components/academic-history/TransferCr
 import { ExamCreditsSection } from '@/components/academic-history/ExamCreditsSection';
 import { EntranceExamsSection } from '@/components/academic-history/EntranceExamsSection';
 import { TermMetricsDisplay } from '@/components/academic-history/TermMetricsDisplay';
+import { CollapsibleProgressOverview } from '@/components/progress-overview/CollapsibleProgressOverview';
+import { convertToProgressCategories, calculateOverallProgress } from '@/components/progress-overview/academicHistoryProgressAdapter';
+import { SemesterCard } from '@/components/academic-history/SemesterCard';
+import { TransferCreditsCard } from '@/components/academic-history/TransferCreditsCard';
 import { GetGenEdsForUniversity, fetchProgramsBatch } from '@/lib/services/programService';
 import type { ProgramRow } from '@/types/program';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -1025,18 +1029,19 @@ export default function AcademicHistoryPage() {
   return (
     <div className="flex h-full max-w-full flex-col overflow-hidden p-4 sm:p-6">
       {/* Header Section */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <h1 className="font-header-bold mb-2 text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
-            Academic History
-          </h1>
-          <p className="font-body text-sm text-[var(--muted-foreground)]">
-            Your courses organized by semester.
-          </p>
-        </div>
+      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-gradient-to-br from-[color-mix(in_srgb,var(--primary)_3%,var(--background))] to-[var(--background)] p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-header text-3xl font-bold text-[var(--foreground)] mb-2">
+              Academic History
+            </h1>
+            <p className="font-body text-sm text-[var(--muted-foreground)]">
+              Your courses organized by semester.
+            </p>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Academic Actions Menu */}
           <AcademicActionsMenu />
 
@@ -1045,7 +1050,7 @@ export default function AcademicHistoryPage() {
             <button
               type="button"
               onClick={() => setShowPdfViewer(true)}
-              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+              className="flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--muted)_8%,transparent)] hover:shadow-md"
               title="View original transcript"
             >
               <FileText size={16} />
@@ -1057,29 +1062,29 @@ export default function AcademicHistoryPage() {
           <button
             type="button"
             onClick={() => setViewMode(viewMode === 'compact' ? 'full' : 'compact')}
-            className="group flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            className="group flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--muted)_8%,transparent)] hover:shadow-md"
             title={viewMode === 'compact' ? 'Switch to full view' : 'Switch to compact view'}
           >
             {viewMode === 'compact' ? <List size={16} /> : <Grid3x3 size={16} />}
-            <span className="hidden sm:inline">{viewMode === 'compact' ? 'Full View' : 'Compact'}</span>
+            <span className="hidden sm:inline">{viewMode === 'compact' ? 'Full View' : 'Compact View'}</span>
           </button>
 
           {/* Detail View Toggle */}
           <button
             type="button"
             onClick={() => setViewDetail(viewDetail === 'compact' ? 'detailed' : 'compact')}
-            className="group flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            className="group flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--muted)_8%,transparent)] hover:shadow-md"
             title={viewDetail === 'compact' ? 'Switch to detailed view' : 'Switch to compact view'}
           >
             {viewDetail === 'compact' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-            <span className="hidden sm:inline">{viewDetail === 'compact' ? 'Detailed' : 'Compact'}</span>
+            <span className="hidden sm:inline">{viewDetail === 'compact' ? 'Detailed View' : 'Compact View'}</span>
           </button>
 
           {/* Save Button */}
           <button
             type="button"
             onClick={saveToDatabase}
-            className="flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-zinc-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--hover-green)] hover:shadow-md"
+            className="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2 font-body-semi text-sm font-semibold text-zinc-900 shadow-sm transition-all duration-200 hover:bg-[var(--hover-green)] hover:shadow-md active:scale-95"
             title="Save courses to your profile"
           >
             <Save size={16} />
@@ -1090,7 +1095,7 @@ export default function AcademicHistoryPage() {
           <button
             type="button"
             onClick={() => setUploadDialogOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            className="flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--muted)_8%,transparent)] hover:shadow-md"
             title="Upload transcript PDF"
           >
             <Upload size={16} />
@@ -1101,7 +1106,7 @@ export default function AcademicHistoryPage() {
           <button
             type="button"
             onClick={exportJson}
-            className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+            className="flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_15%,transparent)] bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--muted)_8%,transparent)] hover:shadow-md"
             title="Copy JSON to clipboard"
           >
             <Download size={16} />
@@ -1112,12 +1117,13 @@ export default function AcademicHistoryPage() {
           <button
             type="button"
             onClick={() => setShowClearConfirm(true)}
-            className="flex items-center gap-2 rounded-lg border border-red-200 bg-[var(--card)] px-3 py-2 font-body-semi text-sm font-medium text-red-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400 hover:bg-red-50 hover:shadow-md"
+            className="flex items-center gap-2 rounded-xl border border-[color-mix(in_srgb,#ef4444_20%,transparent)] bg-[color-mix(in_srgb,#ef4444_5%,transparent)] px-3 py-2 font-body-semi text-sm font-medium text-red-600 shadow-sm transition-all duration-200 hover:bg-[color-mix(in_srgb,#ef4444_10%,transparent)] hover:border-[color-mix(in_srgb,#ef4444_30%,transparent)] hover:shadow-md"
             title="Clear all academic history"
           >
             <RefreshCw size={16} />
             <span className="hidden sm:inline">Clear</span>
           </button>
+        </div>
         </div>
       </div>
 
@@ -1125,60 +1131,84 @@ export default function AcademicHistoryPage() {
       {Boolean(universityId && userCourses.length) && (
         <>
           {activeGradPlan && gradPlanPrograms.length > 0 ? (
-            <div className="mb-6 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary)]/10">
-                  <span className="text-lg">🎓</span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
-                    Active Graduation Plan
-                  </p>
-                  <p className="font-body text-xs text-[var(--muted-foreground)]">
-                    Courses are automatically matched against: {gradPlanPrograms.map(p => p.name).join(', ')}
-                  </p>
+            <div className="mb-6 w-full overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[color-mix(in_srgb,var(--primary)_3%,var(--background))] shadow-sm">
+              {/* Header Section - Compact */}
+              <div className="border-b border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-gradient-to-r from-[color-mix(in_srgb,var(--primary)_8%,var(--background))] to-[color-mix(in_srgb,var(--primary)_4%,var(--background))] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15">
+                    <span className="text-lg">🎓</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-header text-sm font-bold text-[var(--foreground)]">
+                      Active Graduation Plan
+                    </h3>
+                    <p className="font-body text-xs text-[var(--muted-foreground)]">
+                      Matched against: {gradPlanPrograms.map(p => p.name).join(', ')}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="mt-4 grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs text-[var(--muted-foreground)] sm:grid-cols-3">
-                <div>
-                  <p className="font-body-semi text-[var(--foreground)]">Total Courses</p>
-                  <p className="font-body text-sm">{matchStatus.total}</p>
-                </div>
-                <div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1">
-                          <p className="font-body-semi text-[var(--foreground)]">Matched</p>
-                          <Info size={14} className="text-[var(--muted-foreground)]" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-xs">
-                          Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use &quot;Change Requirements&quot; to manually adjust if needed.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <p className="font-body text-sm text-green-600">{matchStatus.matched}</p>
-                </div>
-                <div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1">
-                          <p className="font-body-semi text-[var(--foreground)]">Unmatched</p>
-                          <Info size={14} className="text-[var(--muted-foreground)]" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-xs">
-                          Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use &quot;Change Requirements&quot; to manually assign if needed.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <p className="font-body text-sm text-red-600">{matchStatus.unmatched}</p>
+
+              {/* Metrics Grid - Compact */}
+              <div className="p-3">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {/* Total Courses */}
+                  <div className="flex flex-col rounded-lg border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] p-2.5 transition-all duration-200 hover:shadow-md">
+                    <p className="font-body-semi text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                      Total
+                    </p>
+                    <p className="font-black text-2xl text-[var(--foreground)] mt-1">
+                      {matchStatus.total}
+                    </p>
+                  </div>
+
+                  {/* Matched Courses */}
+                  <div className="flex flex-col rounded-lg border border-[color-mix(in_srgb,var(--primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--primary)_5%,transparent)] p-2.5 transition-all duration-200 hover:shadow-md">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-body-semi text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                        Matched
+                      </p>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info size={12} className="text-[var(--muted-foreground)] cursor-help flex-shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-xs">
+                              Courses automatically matched to program requirements. Auto-matching is limited in scope, so some courses may be incorrectly attributed. Use &quot;Change Requirements&quot; to manually adjust if needed.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <p className="font-black text-2xl text-[var(--primary)] mt-1">
+                      {matchStatus.matched}
+                    </p>
+                  </div>
+
+                  {/* Unmatched Courses */}
+                  <div className="flex flex-col rounded-lg border border-[color-mix(in_srgb,#ef4444_15%,transparent)] bg-[color-mix(in_srgb,#ef4444_5%,transparent)] p-2.5 transition-all duration-200 hover:shadow-md">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-body-semi text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                        Unmatched
+                      </p>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info size={12} className="text-[var(--muted-foreground)] cursor-help flex-shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-xs">
+                              Courses not matched to any program requirement. These may be electives or courses not applicable to your selected programs. Use &quot;Change Requirements&quot; to manually assign if needed.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <p className="font-black text-2xl text-red-600 mt-1">
+                      {matchStatus.unmatched}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1217,8 +1247,12 @@ export default function AcademicHistoryPage() {
             return { year, semester, raw: termString };
           };
 
-          // Group courses by term
-          const coursesByTerm = userCourses.reduce((acc, course) => {
+          // Separate transfer courses from regular courses
+          const transferCourses = userCourses.filter((c) => c.origin === 'transfer' || c.transfer);
+          const regularCourses = userCourses.filter((c) => !transferCourses.includes(c));
+
+          // Group regular courses (non-transfer) by term
+          const coursesByTerm = regularCourses.reduce((acc, course) => {
             const term = course.term || 'Unknown Term';
             if (!acc[term]) {
               acc[term] = [];
@@ -1257,53 +1291,27 @@ export default function AcademicHistoryPage() {
             return 'grid-cols-1'; // 1 per row
           };
 
+          // Convert academic history data to Progress Overview format
+          const progressCategories = convertToProgressCategories(
+            userCourses,
+            programsForProgress,
+            requirementOptions,
+            activeGradPlan,
+          );
+
+          const overallProgress = calculateOverallProgress(
+            userCourses,
+            programsForProgress,
+          );
+
           return (
             <>
-              {/* Summary Card */}
-              <div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">
-                <div className="border-b-2 bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-header text-lg font-bold text-zinc-100 dark:text-zinc-900">
-                        Academic Summary
-                      </h3>
-                      <p className="font-body text-xs text-zinc-300 dark:text-zinc-700">
-                        Total: {totalCredits.toFixed(1)} credits • {totalCourses} courses • {gpa !== null ? `${gpa.toFixed(2)} GPA` : 'GPA: N/A'}
-                      </p>
-                    </div>
-                    <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-zinc-900">
-                      {sortedTerms.length} semester{sortedTerms.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Program Progress Section */}
-                {programsForProgress.length > 0 && (
-                  <div className="border-t border-[var(--border)] px-6 py-4">
-                    <h4 className="font-body-semi mb-4 text-sm font-semibold text-[var(--foreground)]">
-                      Requirement Progress
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                      {programsForProgress.map((program) => {
-                        const progress = calculateProgramProgress(program.id);
-                        return (
-                          <div key={program.id} className="flex flex-col items-center">
-                            <CircularProgress
-                              percentage={progress.percentage}
-                              size={80}
-                              strokeWidth={6}
-                              label={program.name}
-                            />
-                            <p className="font-body mt-2 text-center text-xs text-[var(--muted-foreground)]">
-                              {progress.fulfilled} / {progress.total} requirements
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Progress Overview - Collapsible */}
+              <CollapsibleProgressOverview
+                categories={progressCategories}
+                overallProgress={overallProgress}
+                defaultExpanded={false}
+              />
 
               {/* New Transcript Sections - Using Dummy Data */}
               {/* TODO: Wire these to real data from Supabase once backend is implemented */}
@@ -1320,8 +1328,28 @@ export default function AcademicHistoryPage() {
                 </>
               )}
 
-              {/* Term Containers */}
-              <div className={viewMode === 'compact' ? `grid ${getGridCols(sortedTerms.length)} gap-6` : 'flex flex-col gap-6'}>
+              {/* Actual Transfer Credits from user courses */}
+              {transferCourses.length > 0 && (
+                <TransferCreditsCard
+                  courses={transferCourses}
+                  defaultExpanded={false}
+                  onEditCourse={(course) => {
+                    setEditingCourse(course);
+                    setEditForm({
+                      subject: course.subject,
+                      number: course.number,
+                      title: course.title,
+                      credits: String(course.credits || ''),
+                      grade: course.grade || '',
+                      term: course.term || '',
+                    });
+                  }}
+                  editable={true}
+                />
+              )}
+
+              {/* Term Containers - using new SemesterCard component */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sortedTerms.map((term) => {
                   const termCourses = coursesByTerm[term];
                   const termCredits = termCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
@@ -1337,39 +1365,29 @@ export default function AcademicHistoryPage() {
                     : { term, hoursEarned: termCredits, hoursGraded: termCredits, termGpa: 0 };
 
                   return (
-                    <div key={term} className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-                      {/* Header */}
-                      <div className="border-b bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 px-6 py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-header text-lg font-bold text-zinc-100 dark:text-zinc-900">
-                              {term}
-                            </h3>
-                            {/* Display term metrics if available */}
-                            <TermMetricsDisplay
-                              hoursEarned={termMetrics.hoursEarned}
-                              hoursGraded={termMetrics.hoursGraded}
-                              termGpa={termMetrics.termGpa}
-                            />
-                          </div>
-                          <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-zinc-900">
-                            {termCourses.length} course{termCourses.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Courses Grid/Flex */}
-                      {/* Show courses in detailed view, or in full view mode regardless of viewDetail setting */}
-                      {(viewDetail === 'detailed' || viewMode === 'full') && (
-                        <div className="p-3 overflow-visible">
-                          <div className={viewMode === 'compact' ? 'flex flex-wrap gap-1.5' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'}>
-                            {termCourses.map((course) =>
-                              renderCourseCard(course, 'rgba(18, 249, 135, 0.1)', 'var(--primary)')
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <SemesterCard
+                      key={term}
+                      term={term}
+                      courses={termCourses}
+                      metrics={{
+                        hoursEarned: termMetrics.hoursEarned,
+                        hoursGraded: termMetrics.hoursGraded,
+                        gpa: termMetrics.termGpa,
+                      }}
+                      defaultExpanded={false}
+                      onEditCourse={(course) => {
+                        setEditingCourse(course);
+                        setEditForm({
+                          subject: course.subject,
+                          number: course.number,
+                          title: course.title,
+                          credits: String(course.credits || ''),
+                          grade: course.grade || '',
+                          term: course.term || '',
+                        });
+                      }}
+                      editable={true}
+                    />
                   );
                 })}
               </div>
