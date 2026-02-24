@@ -551,6 +551,29 @@ function allocateTotals(
   return { completed, inProgress, planned, remaining: Math.max(remaining, 0) };
 }
 
+function inferRequirementType(requirement: ProgramRequirement): string {
+  // If type is explicitly set, use it (except allOf which might be a fallback)
+  if (requirement.type && requirement.type !== 'allOf') {
+    return requirement.type;
+  }
+
+  // Try to infer from description
+  if (requirement.description) {
+    const desc = requirement.description.toLowerCase();
+    // Check for "N of M" pattern
+    if (/\b(\d+)\s+(?:of|out of)\b/.test(desc)) {
+      return 'chooseNOf';
+    }
+    // Check for "N credits/hours" pattern
+    if (/\b(\d+)\s+(?:credit|hour)/.test(desc)) {
+      return 'creditBucket';
+    }
+  }
+
+  // Default to the requirement's type (likely 'allOf')
+  return requirement.type || 'allOf';
+}
+
 function computeTotalsForRequirement(
   requirement: ProgramRequirement,
   courses: OverviewCourse[]
@@ -564,12 +587,19 @@ function computeTotalsForRequirement(
     return { total: 1, completed: 0, inProgress: 0, planned: 0, remaining: 1, progress: 0 };
   }
 
-  if (requirement.type === 'creditBucket') {
+  // Infer the actual requirement type based on constraints or description
+  const effectiveType = inferRequirementType(requirement);
+
+  if (effectiveType === 'creditBucket') {
     // Try to get credits from constraints, or extract from description like "Complete 6 hours"
     let creditsRequired = requirement.constraints?.minTotalCredits;
+    let extractedFromDescription = false;
     if (!creditsRequired && requirement.description) {
       const match = requirement.description.match(/\b(\d+)\s+(?:hour|credit)/i);
-      creditsRequired = match ? parseInt(match[1], 10) : 0;
+      if (match) {
+        creditsRequired = parseInt(match[1], 10);
+        extractedFromDescription = true;
+      }
     }
     creditsRequired = creditsRequired ?? 0;
     const creditTotals = sumCreditsByStatus(courses);
@@ -582,6 +612,19 @@ function computeTotalsForRequirement(
       creditsRequired
     );
     const progress = allocated.completed + allocated.inProgress + allocated.planned;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CreditBucket]', {
+        description: requirement.description,
+        constraints: requirement.constraints,
+        creditsRequired,
+        extractedFromDescription,
+        creditTotals,
+        allocated,
+        courses: courses.length,
+      });
+    }
+
     return {
       total: creditsRequired,
       completed: allocated.completed,
@@ -592,12 +635,16 @@ function computeTotalsForRequirement(
     };
   }
 
-  if (requirement.type === 'chooseNOf') {
+  if (effectiveType === 'chooseNOf') {
     // Try to get N from constraints, or extract from description like "Complete 1 of 4"
     let requiredCount = requirement.constraints?.n;
+    let extractedFromDescription = false;
     if (!requiredCount && requirement.description) {
       const match = requirement.description.match(/\b(\d+)\s+(?:of|out of)\b/i);
-      requiredCount = match ? parseInt(match[1], 10) : courses.length;
+      if (match) {
+        requiredCount = parseInt(match[1], 10);
+        extractedFromDescription = true;
+      }
     }
     requiredCount = requiredCount ?? courses.length;
     const counts = countCoursesByStatus(courses);
@@ -610,6 +657,19 @@ function computeTotalsForRequirement(
       requiredCount
     );
     const progress = allocated.completed + allocated.inProgress + allocated.planned;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ChooseNOf]', {
+        description: requirement.description,
+        constraints: requirement.constraints,
+        requiredCount,
+        extractedFromDescription,
+        counts,
+        allocated,
+        courses: courses.length,
+      });
+    }
+
     return {
       total: requiredCount,
       completed: allocated.completed,
