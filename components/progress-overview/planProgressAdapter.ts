@@ -846,6 +846,20 @@ function toSubrequirement(
 ): Subrequirement {
   const status = getRequirementStatus(totals);
   logRequirementStatus(title, totals, status);
+
+  if (process.env.NODE_ENV === 'development') {
+    if (title.includes('Complete') || title.includes('Organizational') || title.includes('Ethics')) {
+      const creditsByStatus = courses.reduce<Record<string, number>>(
+        (acc, c) => {
+          acc[c.status] = (acc[c.status] || 0) + (c.credits || 0);
+          return acc;
+        },
+        {}
+      );
+      console.log(`[RequirementCredits] "${title}": status=${status}, credits={completed: ${creditsByStatus.completed || 0}, inProgress: ${creditsByStatus['in-progress'] || 0}, planned: ${creditsByStatus.planned || 0}, total: ${courses.reduce((s, c) => s + (c.credits || 0), 0)}}`);
+    }
+  }
+
   return {
     id,
     title,
@@ -1206,6 +1220,18 @@ export function buildPlanProgress(args: {
       const percentComplete = totalCredits > 0
         ? Math.round((totals.completed / totalCredits) * 100)
         : 0;
+
+      if (process.env.NODE_ENV === 'development' && name === 'Entrepreneurial Management (BS)') {
+        console.log(`[CategoryDebug] ${name}:`, {
+          totalCredits,
+          completed: totals.completed,
+          inProgress: totals.inProgress,
+          planned: totals.planned,
+          assignedCredits,
+          percentComplete,
+          calculation: `${totals.completed} / ${totalCredits} * 100 = ${percentComplete}%`,
+        });
+      }
 
       let color = CATEGORY_COLORS[name] || '#71717a';
       if (programsByName.has(name)) {
