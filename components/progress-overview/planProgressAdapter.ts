@@ -565,7 +565,13 @@ function computeTotalsForRequirement(
   }
 
   if (requirement.type === 'creditBucket') {
-    const creditsRequired = requirement.constraints?.minTotalCredits ?? 0;
+    // Try to get credits from constraints, or extract from title like "Complete 6 hours"
+    let creditsRequired = requirement.constraints?.minTotalCredits;
+    if (!creditsRequired && requirement.name) {
+      const match = requirement.name.match(/\b(\d+)\s+(?:hour|credit)/i);
+      creditsRequired = match ? parseInt(match[1], 10) : 0;
+    }
+    creditsRequired = creditsRequired ?? 0;
     const creditTotals = sumCreditsByStatus(courses);
     const allocated = allocateTotals(
       {
@@ -587,7 +593,13 @@ function computeTotalsForRequirement(
   }
 
   if (requirement.type === 'chooseNOf') {
-    const requiredCount = requirement.constraints?.n ?? courses.length;
+    // Try to get N from constraints, or extract from title like "Complete 1 of 4"
+    let requiredCount = requirement.constraints?.n;
+    if (!requiredCount && requirement.name) {
+      const match = requirement.name.match(/\b(\d+)\s+(?:of|out of)\b/i);
+      requiredCount = match ? parseInt(match[1], 10) : courses.length;
+    }
+    requiredCount = requiredCount ?? courses.length;
     const counts = countCoursesByStatus(courses);
     const allocated = allocateTotals(
       {
