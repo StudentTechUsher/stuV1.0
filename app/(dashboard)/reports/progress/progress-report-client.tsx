@@ -107,17 +107,20 @@ export function ProgressReportClient({
           }
         } else {
           setProgramsData([]);
-          setGenEdProgram(null);
         }
 
-        // Also fetch gen_ed program if not already fetched
-        if (!genEdProgram) {
-          const genEdRes = await fetch(`/api/programs?type=gen_ed&universityId=${universityId}`);
-          if (genEdRes.ok) {
-            const genEdData = await genEdRes.json();
-            if (Array.isArray(genEdData) && genEdData.length > 0 && isActive) {
-              setGenEdProgram(genEdData[0] as ProgramRow);
+        // Fetch gen_ed program separately if we have a universityId
+        if (universityId && isActive) {
+          try {
+            const genEdRes = await fetch(`/api/programs?type=gen_ed&universityId=${universityId}`);
+            if (genEdRes.ok) {
+              const genEdData = await genEdRes.json();
+              if (Array.isArray(genEdData) && genEdData.length > 0 && isActive) {
+                setGenEdProgram(genEdData[0] as ProgramRow);
+              }
             }
+          } catch (genEdError) {
+            console.error('Failed to load gen ed program:', genEdError);
           }
         }
       } catch (error) {
@@ -130,7 +133,7 @@ export function ProgressReportClient({
     return () => {
       isActive = false;
     };
-  }, [userProfile?.university_id, activePlan, genEdProgram]);
+  }, [userProfile?.university_id, activePlan]);
 
   // Handlers for expand/collapse
   const handleExpandAll = useCallback(() => {
