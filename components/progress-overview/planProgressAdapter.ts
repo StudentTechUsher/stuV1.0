@@ -1300,6 +1300,28 @@ export function buildPlanProgress(args: {
   const totalCourses = normalizedCourses.length;
   const completedCourses = normalizedCourses.filter((course) => course.status === 'completed').length;
 
+  if (process.env.NODE_ENV === 'development') {
+    const statusBreakdown = normalizedCourses.reduce<Record<string, number>>(
+      (acc, course) => {
+        acc[course.status] = (acc[course.status] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
+    console.log('[OverallProgress]', {
+      overallCompletedCredits,
+      overallInProgressCredits,
+      overallPlannedCredits,
+      totalCredits,
+      percentComplete: totalCredits > 0 ? Math.round((overallCompletedCredits / totalCredits) * 100) : 0,
+      totalCourses,
+      completedCourses,
+      statusBreakdown,
+      plannedCount: normalizedCourses.filter(c => c.status === 'planned').length,
+      notMatchedPlanned: normalizedCourses.filter(c => c.status === 'planned').map(c => `${c.code} (${c.credits}cr)`).slice(0, 5),
+    });
+  }
+
   const overallProgress: OverallProgress = {
     percentComplete: totalCredits > 0 ? Math.round((overallCompletedCredits / totalCredits) * 100) : 0,
     totalCredits,
