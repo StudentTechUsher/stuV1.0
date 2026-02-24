@@ -53,8 +53,18 @@ export function ProgressReportClient({
       const totalCourses = planData.reduce((n, t) => n + (t.courses?.length ?? 0), 0);
       console.log('[ProgressReport] Plan courses:', totalCourses);
       console.log('[ProgressReport] Transcript courses:', transcriptCourses.length);
-      console.log('[ProgressReport] Overall completion %:', result.overallProgress.percentComplete);
-      console.log('[ProgressReport] Categories:', result.categories.length);
+      console.log('[ProgressReport] Overall progress:', {
+        percentComplete: result.overallProgress.percentComplete,
+        completedCredits: result.overallProgress.completedCredits,
+        totalCredits: result.overallProgress.totalCredits,
+        inProgressCredits: result.overallProgress.inProgressCredits,
+        plannedCredits: result.overallProgress.plannedCredits,
+        remainingCredits: result.overallProgress.remainingCredits,
+      });
+      console.log('[ProgressReport] Categories:');
+      result.categories.forEach((cat, idx) => {
+        console.log(`  [${idx}] ${cat.name}: ${cat.percentComplete}% (${cat.completed}/${cat.totalCredits}cr)`);
+      });
     }
 
     return result;
