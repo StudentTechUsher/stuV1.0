@@ -664,6 +664,15 @@ function getRequirementStatus(totals: RequirementTotals): 'completed' | 'in-prog
   return 'not-started';
 }
 
+// DEBUG: Log requirements with potential status issues
+function logRequirementStatus(title: string, totals: RequirementTotals, status: ReturnType<typeof getRequirementStatus>) {
+  if (process.env.NODE_ENV === 'development') {
+    if (totals.progress > 0 && status !== 'completed') {
+      console.log(`[RequirementStatus] "${title}": status=${status}, completed=${totals.completed}/${totals.total} (progress=${totals.progress})`);
+    }
+  }
+}
+
 function summarizeRequirement(
   requirement: ProgramRequirement,
   normalizedCourses: NormalizedCourse[],
@@ -758,13 +767,15 @@ function toSubrequirement(
   totals: RequirementTotals,
   courses: OverviewCourse[]
 ): Subrequirement {
+  const status = getRequirementStatus(totals);
+  logRequirementStatus(title, totals, status);
   return {
     id,
     title,
     description,
     progress: totals.progress,
     total: totals.total,
-    status: getRequirementStatus(totals),
+    status,
     completed: totals.completed,
     inProgress: totals.inProgress,
     planned: totals.planned,
@@ -912,13 +923,15 @@ function buildRequirementsForProgram(
       }
     }
 
+    const status = getRequirementStatus(totals);
+    logRequirementStatus(title, totals, status);
     return {
       id: index + 1,
       title,
       description,
       progress: totals.progress,
       total: totals.total,
-      status: getRequirementStatus(totals),
+      status,
       completed: totals.completed,
       inProgress: totals.inProgress,
       planned: totals.planned,
