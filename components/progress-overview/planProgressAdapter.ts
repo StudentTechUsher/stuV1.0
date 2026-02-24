@@ -1193,6 +1193,38 @@ export function buildPlanProgress(args: {
     });
   });
 
+  // CRITICAL: Also explicitly add requirement courses to ensure all are counted
+  const coursesCounted = new Set<string>();
+  requirementsByCategory.forEach((requirements, categoryName) => {
+    const categoryTotal = categoryTotals.get(categoryName);
+    if (!categoryTotal) return;
+
+    requirements.forEach((requirement) => {
+      (requirement.courses || []).forEach((course) => {
+        const courseKey = normalizeCourseCode(course.code);
+        // Only count each course once per category
+        const uniqueKey = `${categoryName}-${courseKey}`;
+        if (coursesCounted.has(uniqueKey)) return;
+        coursesCounted.add(uniqueKey);
+
+        // Find the normalized course to get its actual status
+        const normalized = Array.from(courseMap.values()).find(
+          (c) => normalizeCourseCode(c.code) === courseKey
+        );
+
+        if (normalized) {
+          if (normalized.status === 'completed') {
+            categoryTotal.completed += normalized.credits;
+          } else if (normalized.status === 'in-progress') {
+            categoryTotal.inProgress += normalized.credits;
+          } else if (normalized.status === 'planned') {
+            categoryTotal.planned += normalized.credits;
+          }
+        }
+      });
+    });
+  });
+
   const programsByName = new Map(programs.map((program) => [program.name, program]));
   const programOrder = new Map(programs.map((program, index) => [program.name, index]));
   const programTabTypeByName = new Map<string, TabCategoryType>();
