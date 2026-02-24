@@ -11,10 +11,21 @@ interface RequirementRowProps {
   requirement: Requirement;
   categoryColor: string;
   number: number;
+  expandSignal?: { action: 'expand' | 'collapse'; version: number } | null;
 }
 
-export function RequirementRow({ requirement, categoryColor, number }: RequirementRowProps) {
+export function RequirementRow({ requirement, categoryColor, number, expandSignal }: RequirementRowProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
+
+  // Handle expand/collapse signals from parent
+  React.useEffect(() => {
+    if (!expandSignal) return;
+    if (expandSignal.action === 'expand') {
+      setIsExpanded(true);
+    } else if (expandSignal.action === 'collapse') {
+      setIsExpanded(false);
+    }
+  }, [expandSignal?.version, expandSignal?.action]);
   const { title, description, progress, total, status, courses, subrequirements, completed, inProgress, planned } = requirement;
 
   // Determine if this requirement has subrequirements or direct courses

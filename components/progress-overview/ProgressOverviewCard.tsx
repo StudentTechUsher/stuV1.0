@@ -10,6 +10,7 @@ export function ProgressOverviewCard({
   isExpandable: _isExpandable = true,
   defaultExpanded: _defaultExpanded = true,
   compact = false,
+  expandSignal,
 }: ProgressOverviewCardProps) {
 
   const {
@@ -178,6 +179,7 @@ export function ProgressOverviewCard({
               requirement={req}
               categoryColor={color}
               number={index + 1}
+              expandSignal={expandSignal}
             />
           ))}
         </div>

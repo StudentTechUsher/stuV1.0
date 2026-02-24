@@ -70,6 +70,7 @@ export interface ProgressOverviewCardProps {
   isExpandable?: boolean;
   defaultExpanded?: boolean;
   compact?: boolean; // Use compact sizing for sidebars/narrow spaces
+  expandSignal?: { action: 'expand' | 'collapse'; version: number } | null;
 }
 
 // Types for Main Progress Overview (overall degree summary)
