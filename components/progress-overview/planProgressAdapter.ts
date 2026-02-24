@@ -123,6 +123,11 @@ function normalizePlanStatus(course: {
     return 'completed';
   }
 
+  // If course has a grade, it's completed even if in active term
+  if (course.grade && course.grade.trim() !== '') {
+    return 'completed';
+  }
+
   if (statusLower === 'in progress' || gradeLower === 'in progress') {
     return 'in-progress';
   }
