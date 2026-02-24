@@ -565,10 +565,10 @@ function computeTotalsForRequirement(
   }
 
   if (requirement.type === 'creditBucket') {
-    // Try to get credits from constraints, or extract from title like "Complete 6 hours"
+    // Try to get credits from constraints, or extract from description like "Complete 6 hours"
     let creditsRequired = requirement.constraints?.minTotalCredits;
-    if (!creditsRequired && requirement.name) {
-      const match = requirement.name.match(/\b(\d+)\s+(?:hour|credit)/i);
+    if (!creditsRequired && requirement.description) {
+      const match = requirement.description.match(/\b(\d+)\s+(?:hour|credit)/i);
       creditsRequired = match ? parseInt(match[1], 10) : 0;
     }
     creditsRequired = creditsRequired ?? 0;
@@ -593,10 +593,10 @@ function computeTotalsForRequirement(
   }
 
   if (requirement.type === 'chooseNOf') {
-    // Try to get N from constraints, or extract from title like "Complete 1 of 4"
+    // Try to get N from constraints, or extract from description like "Complete 1 of 4"
     let requiredCount = requirement.constraints?.n;
-    if (!requiredCount && requirement.name) {
-      const match = requirement.name.match(/\b(\d+)\s+(?:of|out of)\b/i);
+    if (!requiredCount && requirement.description) {
+      const match = requirement.description.match(/\b(\d+)\s+(?:of|out of)\b/i);
       requiredCount = match ? parseInt(match[1], 10) : courses.length;
     }
     requiredCount = requiredCount ?? courses.length;
