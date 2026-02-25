@@ -432,6 +432,46 @@ export async function checkSectionConflicts(
             });
           }
         }
+
+        // Check preferred time window (earliest/latest)
+        if (preferences.earliest_class_time || preferences.latest_class_time) {
+          const normalizedStart = normalizeTimeFormat(meeting.startTime);
+          const normalizedEnd = normalizeTimeFormat(meeting.endTime);
+          const windowStart = preferences.earliest_class_time
+            ? normalizeTimeFormat(preferences.earliest_class_time)
+            : null;
+          const windowEnd = preferences.latest_class_time
+            ? normalizeTimeFormat(preferences.latest_class_time)
+            : null;
+
+          const toMinutes = (timeStr: string): number => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+          };
+
+          const startMin = toMinutes(normalizedStart);
+          const endMin = toMinutes(normalizedEnd);
+          const windowStartMin = windowStart ? toMinutes(windowStart) : null;
+          const windowEndMin = windowEnd ? toMinutes(windowEnd) : null;
+
+          const startsTooEarly = windowStartMin !== null && startMin < windowStartMin;
+          const endsTooLate = windowEndMin !== null && endMin > windowEndMin;
+
+          if (startsTooEarly || endsTooLate) {
+            const windowLabel = `${preferences.earliest_class_time || '—'}-${preferences.latest_class_time || '—'}`;
+            conflicts.push({
+              conflictingEvent: {
+                id: `time-window-${dayOfWeek}`,
+                title: 'Preferred Time Window',
+                dayOfWeek,
+                startTime: preferences.earliest_class_time || '00:00',
+                endTime: preferences.latest_class_time || '23:59',
+              },
+              conflictType: 'outside_time_window',
+              message: `Outside preferred time window (${windowLabel})`,
+            });
+          }
+        }
       }
     }
 

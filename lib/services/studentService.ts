@@ -30,6 +30,65 @@ export class StudentFetchError extends Error {
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
+ * Updates transcript-derived student identity fields
+ * @param supabaseClient - Supabase client (browser or server)
+ * @param profileId - The user's profile ID
+ * @param data - student_identifier and/or birthdate
+ * @returns Updated status
+ */
+export async function updateStudentIdentity(
+  supabaseClient: SupabaseClient,
+  profileId: string,
+  data: {
+    student_identifier?: string | null;
+    birthdate?: string | null;
+  }
+): Promise<{ success: boolean }> {
+  try {
+    const updateData: Record<string, unknown> = {};
+    if (data.student_identifier !== undefined) updateData.student_identifier = data.student_identifier;
+    if (data.birthdate !== undefined) updateData.birthdate = data.birthdate;
+
+    if (Object.keys(updateData).length === 0) {
+      return { success: true };
+    }
+
+    const { error } = await supabaseClient
+      .from('student')
+      .update(updateData)
+      .eq('profile_id', profileId);
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        logError('Student record not found when updating identity', error, {
+          userId: profileId,
+          action: 'update_student_identity',
+        });
+        throw new StudentNotFoundError(`Student record not found for profile ${profileId}`);
+      }
+      throw new StudentUpdateError('Failed to update student identity', error);
+    }
+
+    logInfo('Successfully updated student identity', {
+      userId: profileId,
+      action: 'update_student_identity',
+    });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof StudentNotFoundError || error instanceof StudentUpdateError) {
+      throw error;
+    }
+    logError('Unexpected error updating student identity', error, {
+      userId: profileId,
+      action: 'update_student_identity',
+    });
+    throw new StudentUpdateError('Unexpected error updating student identity', error);
+  }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE (own data only)
  * Updates the GPA for a student record
  * @param supabaseClient - Supabase client (browser or server)
  * @param profileId - The user's profile ID (from auth.users)
@@ -113,7 +172,7 @@ export async function fetchStudentGpa(
       throw new StudentFetchError('Failed to fetch student GPA', error);
     }
 
-    return data;
+  return data;
   } catch (error) {
     if (error instanceof StudentFetchError) {
       throw error;
@@ -344,6 +403,7 @@ export async function fetchStudentPlanningData(
   est_grad_date: string | null;
   est_grad_term: string | null;
   admission_year: number | null;
+  year_in_school: string | null;
   is_transfer: boolean | null;
   student_type: string | null;
   work_status: string | null;
@@ -352,7 +412,7 @@ export async function fetchStudentPlanningData(
   try {
     const { data, error } = await supabaseClient
       .from('student')
-      .select('est_grad_date, est_grad_term, admission_year, is_transfer, student_type, work_status, career_goals')
+      .select('est_grad_date, est_grad_term, admission_year, year_in_school, is_transfer, student_type, work_status, career_goals')
       .eq('profile_id', profileId)
       .maybeSingle();
 

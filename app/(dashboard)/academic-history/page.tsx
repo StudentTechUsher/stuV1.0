@@ -30,8 +30,11 @@ import { TermMetricsDisplay } from '@/components/academic-history/TermMetricsDis
 import { GetGenEdsForUniversity, fetchProgramsBatch } from '@/lib/services/programService';
 import type { ProgramRow } from '@/types/program';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-// TODO: Replace with real data from Supabase once backend is implemented
 import {
+  type TermMetrics,
+  type TransferInstitution,
+  type ExamCredit,
+  type EntranceExam,
   DUMMY_TERM_METRICS,
   DUMMY_TRANSFER_INSTITUTIONS,
   DUMMY_EXAM_CREDITS,
@@ -94,6 +97,10 @@ export default function AcademicHistoryPage() {
   const [userCourses, setUserCourses] = useState<ParsedCourse[]>([]);
   const [activeGradPlan, setActiveGradPlan] = useState<GradPlan | null>(null);
   const [gpa, setGpa] = useState<number | null>(null);
+  const [termMetrics, setTermMetrics] = useState<TermMetrics[]>([]);
+  const [transferInstitutions, setTransferInstitutions] = useState<TransferInstitution[]>([]);
+  const [examCredits, setExamCredits] = useState<ExamCredit[]>([]);
+  const [entranceExams, setEntranceExams] = useState<EntranceExam[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
     open: false,
     message: '',
@@ -188,14 +195,42 @@ export default function AcademicHistoryPage() {
         if (coursesRecord && coursesRecord.courses && coursesRecord.courses.length > 0) {
           setHasUserCourses(true);
           setUserCourses(coursesRecord.courses);
+          setTermMetrics(
+            Array.isArray(coursesRecord.term_metrics)
+              ? (coursesRecord.term_metrics as TermMetrics[])
+              : []
+          );
+          setTransferInstitutions(
+            Array.isArray(coursesRecord.transfer_credits)
+              ? (coursesRecord.transfer_credits as TransferInstitution[])
+              : []
+          );
+          setExamCredits(
+            Array.isArray(coursesRecord.exam_credits)
+              ? (coursesRecord.exam_credits as ExamCredit[])
+              : []
+          );
+          setEntranceExams(
+            Array.isArray(coursesRecord.entrance_exams)
+              ? (coursesRecord.entrance_exams as EntranceExam[])
+              : []
+          );
         } else {
           setHasUserCourses(false);
           setUserCourses([]);
+          setTermMetrics([]);
+          setTransferInstitutions([]);
+          setExamCredits([]);
+          setEntranceExams([]);
         }
       } catch (error) {
         clientLogger.error('Failed to fetch user courses', error, { action: 'AcademicHistoryPage.fetchUserCourses', userId });
         setHasUserCourses(false);
         setUserCourses([]);
+        setTermMetrics([]);
+        setTransferInstitutions([]);
+        setExamCredits([]);
+        setEntranceExams([]);
       } finally {
         setUserCoursesLoading(false);
       }
@@ -1245,6 +1280,11 @@ export default function AcademicHistoryPage() {
           const totalCredits = userCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
           const totalCourses = userCourses.length;
 
+          const resolvedTermMetrics = termMetrics.length > 0 ? termMetrics : (USE_DUMMY_DATA ? DUMMY_TERM_METRICS : []);
+          const resolvedTransferInstitutions = transferInstitutions.length > 0 ? transferInstitutions : (USE_DUMMY_DATA ? DUMMY_TRANSFER_INSTITUTIONS : []);
+          const resolvedExamCredits = examCredits.length > 0 ? examCredits : (USE_DUMMY_DATA ? DUMMY_EXAM_CREDITS : []);
+          const resolvedEntranceExams = entranceExams.length > 0 ? entranceExams : (USE_DUMMY_DATA ? DUMMY_ENTRANCE_EXAMS : []);
+
           // Determine grid columns based on total semesters (only for compact view)
           const getGridCols = (count: number): string => {
             if (viewMode === 'full') {
@@ -1305,19 +1345,15 @@ export default function AcademicHistoryPage() {
                 )}
               </div>
 
-              {/* New Transcript Sections - Using Dummy Data */}
-              {/* TODO: Wire these to real data from Supabase once backend is implemented */}
-              {USE_DUMMY_DATA && (
-                <>
-                  {/* Transfer Credits Section */}
-                  <TransferCreditsSection institutions={DUMMY_TRANSFER_INSTITUTIONS} />
-
-                  {/* Exam Credits Section */}
-                  <ExamCreditsSection examCredits={DUMMY_EXAM_CREDITS} />
-
-                  {/* Entrance Exams Section */}
-                  <EntranceExamsSection exams={DUMMY_ENTRANCE_EXAMS} />
-                </>
+              {/* Transcript Sections */}
+              {resolvedTransferInstitutions.length > 0 && (
+                <TransferCreditsSection institutions={resolvedTransferInstitutions} />
+              )}
+              {resolvedExamCredits.length > 0 && (
+                <ExamCreditsSection examCredits={resolvedExamCredits} />
+              )}
+              {resolvedEntranceExams.length > 0 && (
+                <EntranceExamsSection exams={resolvedEntranceExams} />
               )}
 
               {/* Term Containers */}
@@ -1327,14 +1363,12 @@ export default function AcademicHistoryPage() {
                   const termCredits = termCourses.reduce((sum, course) => sum + (course.credits || 0), 0);
 
                   // TODO: Get real term metrics from Supabase
-                  const termMetrics = USE_DUMMY_DATA
-                    ? DUMMY_TERM_METRICS.find((m) => m.term === term) || {
-                        term,
-                        hoursEarned: termCredits,
-                        hoursGraded: termCredits,
-                        termGpa: 0,
-                      }
-                    : { term, hoursEarned: termCredits, hoursGraded: termCredits, termGpa: 0 };
+                  const termMetric = resolvedTermMetrics.find((m) => m.term === term) || {
+                    term,
+                    hoursEarned: termCredits,
+                    hoursGraded: termCredits,
+                    termGpa: null,
+                  };
 
                   return (
                     <div key={term} className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm transition-shadow duration-200 hover:shadow-md">
@@ -1347,9 +1381,9 @@ export default function AcademicHistoryPage() {
                             </h3>
                             {/* Display term metrics if available */}
                             <TermMetricsDisplay
-                              hoursEarned={termMetrics.hoursEarned}
-                              hoursGraded={termMetrics.hoursGraded}
-                              termGpa={termMetrics.termGpa}
+                              hoursEarned={termMetric.hoursEarned}
+                              hoursGraded={termMetric.hoursGraded}
+                              termGpa={termMetric.termGpa}
                             />
                           </div>
                           <span className="rounded-lg bg-[var(--primary)] px-3 py-1.5 font-body-semi text-xs font-semibold text-zinc-900">

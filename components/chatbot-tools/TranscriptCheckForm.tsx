@@ -35,13 +35,18 @@ interface TranscriptCheckFormProps {
   hasCourses: boolean;
   onSubmit: (data: TranscriptCheckInput) => void;
   academicTerms?: AcademicTermsConfig;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function TranscriptCheckForm({
   hasCourses,
   onSubmit,
+  readOnly,
+  reviewMode,
 }: Readonly<TranscriptCheckFormProps>) {
   const { user } = useAuth();
+  const isReadOnly = Boolean(readOnly || reviewMode);
   const [showUpload, setShowUpload] = useState(false);
   const [hasUploaded, setHasUploaded] = useState(false);
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[] | null>(null);
@@ -51,6 +56,7 @@ export default function TranscriptCheckForm({
 
   // Fetch last updated date when component mounts if user has courses
   useEffect(() => {
+    if (isReadOnly) return;
     if (hasCourses && user?.id) {
       fetchUserCoursesMetadataAction(user.id)
         .then(result => {
@@ -62,13 +68,15 @@ export default function TranscriptCheckForm({
           console.error('Error fetching courses metadata:', error);
         });
     }
-  }, [hasCourses, user?.id]);
+  }, [hasCourses, user?.id, isReadOnly]);
 
   const handleUploadClick = () => {
+    if (isReadOnly) return;
     setShowUpload(true);
   };
 
   const handleSkip = () => {
+    if (isReadOnly) return;
     onSubmit({
       hasTranscript: true,
       wantsToUpload: false,
@@ -77,10 +85,12 @@ export default function TranscriptCheckForm({
   };
 
   const handleUpdateClick = () => {
+    if (isReadOnly) return;
     setShowUpload(true);
   };
 
   const handleUploadComplete = async () => {
+    if (isReadOnly) return;
     setHasUploaded(true);
     setShowUpload(false);
 
@@ -135,6 +145,7 @@ export default function TranscriptCheckForm({
   };
 
   const handleReviewConfirm = () => {
+    if (isReadOnly) return;
     setShowReview(false);
     onSubmit({
       hasTranscript: true,
@@ -144,10 +155,12 @@ export default function TranscriptCheckForm({
   };
 
   const handleCancelUpload = () => {
+    if (isReadOnly) return;
     setShowUpload(false);
   };
 
   const handleContinueWithoutTranscript = () => {
+    if (isReadOnly) return;
     onSubmit({
       hasTranscript: false,
       wantsToUpload: false,
@@ -158,7 +171,7 @@ export default function TranscriptCheckForm({
   // If loading courses after upload
   if (isLoadingCourses) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
@@ -175,6 +188,7 @@ export default function TranscriptCheckForm({
       <TranscriptReviewDisplay
         courses={parsedCourses}
         onConfirm={handleReviewConfirm}
+        readOnly={isReadOnly}
       />
     );
   }
@@ -182,7 +196,7 @@ export default function TranscriptCheckForm({
   // If showing upload interface
   if (showUpload) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Upload Transcript</h3>
           <Button
@@ -204,7 +218,7 @@ export default function TranscriptCheckForm({
   // If user has uploaded in this session
   if (hasUploaded) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="flex items-center gap-3 text-green-600">
           <Check size={24} />
           <div>
@@ -220,7 +234,7 @@ export default function TranscriptCheckForm({
 
   // Main options screen
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-4">
         <h3 className="text-lg font-semibold">Transcript Status</h3>
         <p className="text-sm text-muted-foreground">
@@ -260,6 +274,7 @@ export default function TranscriptCheckForm({
                 variant="primary"
                 onClick={handleUpdateClick}
                 className="flex-1 gap-2"
+                disabled={isReadOnly}
               >
                 <Upload size={18} />
                 Update Transcript
@@ -268,6 +283,7 @@ export default function TranscriptCheckForm({
                 variant="secondary"
                 onClick={handleSkip}
                 className="flex-1"
+                disabled={isReadOnly}
               >
                 Continue with Current
               </Button>
@@ -277,6 +293,7 @@ export default function TranscriptCheckForm({
               type="button"
               onClick={handleContinueWithoutTranscript}
               className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              disabled={isReadOnly}
             >
               Continue without transcript
             </button>
@@ -310,6 +327,7 @@ export default function TranscriptCheckForm({
               variant="primary"
               onClick={handleUploadClick}
               className="gap-2"
+              disabled={isReadOnly}
             >
               <Upload size={18} />
               Upload Transcript
@@ -319,6 +337,7 @@ export default function TranscriptCheckForm({
               type="button"
               onClick={handleContinueWithoutTranscript}
               className="text-sm text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground underline-offset-4 hover:underline transition-colors text-center"
+              disabled={isReadOnly}
             >
               Continue without transcript
             </button>

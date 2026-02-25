@@ -11,6 +11,7 @@ import {
 import type { ProgramRow } from '@/types/program';
 import CourseSearch from '@/components/grad-plan/CourseSearch';
 import type { CourseOffering } from '@/lib/services/courseOfferingService';
+import { isGradPlanQuickCourseSearchEnabled } from '@/lib/config/featureFlags';
 
 interface CourseSelectionScreenProps {
   studentType: 'undergraduate' | 'honor' | 'graduate';
@@ -45,6 +46,7 @@ export default function CourseSelectionScreen({
   onBack,
   isLoading = false,
 }: Readonly<CourseSelectionScreenProps>) {
+  const quickCourseSearchEnabled = isGradPlanQuickCourseSearchEnabled();
   // Program data state
   const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
   const [genEdData, setGenEdData] = useState<ProgramRow[]>([]);
@@ -241,52 +243,52 @@ export default function CourseSelectionScreen({
       subtitle="Choose from courses required for your degree."
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Quick Course Search - Top */}
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Quick Course Search</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Search for any course by code (e.g., TMA 101, CS 235) or name (e.g., Intro to Film)
-            </p>
-          </div>
-          <CourseSearch
-            universityId={universityId}
-            onSelect={handleQuickCourseSelect}
-            placeholder="Search by course code or name..."
-            size="medium"
-            fullWidth
-          />
-
-          {/* Quick Selected Courses */}
-          {quickSelectedCourses.length > 0 && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="text-sm font-semibold text-green-900 mb-2">
-                Selected from Search ({quickSelectedCourses.length})
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {quickSelectedCourses.map(course => (
-                  <div
-                    key={course.id}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-green-300 rounded-md text-sm"
-                  >
-                    <span className="font-medium text-gray-900">{course.code}</span>
-                    <span className="text-gray-600">—</span>
-                    <span className="text-gray-700">{course.title}</span>
-                    <span className="text-gray-500">({course.credits} cr)</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveQuickCourse(course.id)}
-                      className="ml-1 text-red-600 hover:text-red-800"
-                      aria-label="Remove course"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
+        {quickCourseSearchEnabled && (
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Quick Course Search</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Search for any course by code (e.g., TMA 101, CS 235) or name (e.g., Intro to Film)
+              </p>
             </div>
-          )}
-        </div>
+            <CourseSearch
+              universityId={universityId}
+              onSelect={handleQuickCourseSelect}
+              placeholder="Search by course code or name..."
+              size="medium"
+              fullWidth
+            />
+
+            {quickSelectedCourses.length > 0 && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="text-sm font-semibold text-green-900 mb-2">
+                  Selected from Search ({quickSelectedCourses.length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {quickSelectedCourses.map(course => (
+                    <div
+                      key={course.id}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-green-300 rounded-md text-sm"
+                    >
+                      <span className="font-medium text-gray-900">{course.code}</span>
+                      <span className="text-gray-600">—</span>
+                      <span className="text-gray-700">{course.title}</span>
+                      <span className="text-gray-500">({course.credits} cr)</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveQuickCourse(course.id)}
+                        className="ml-1 text-red-600 hover:text-red-800"
+                        aria-label="Remove course"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filter existing courses */}
         <div>
@@ -427,22 +429,23 @@ export default function CourseSelectionScreen({
           )}
         </div>
 
-        {/* Quick Course Search - Bottom */}
-        <div className="space-y-3 pt-4 border-t border-gray-200">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Quick Course Search</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Didn't find what you need above? Search all courses here.
-            </p>
+        {quickCourseSearchEnabled && (
+          <div className="space-y-3 pt-4 border-t border-gray-200">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Quick Course Search</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Didn&apos;t find what you need above? Search all courses here.
+              </p>
+            </div>
+            <CourseSearch
+              universityId={universityId}
+              onSelect={handleQuickCourseSelect}
+              placeholder="Search by course code or name..."
+              size="medium"
+              fullWidth
+            />
           </div>
-          <CourseSearch
-            universityId={universityId}
-            onSelect={handleQuickCourseSelect}
-            placeholder="Search by course code or name..."
-            size="medium"
-            fullWidth
-          />
-        </div>
+        )}
 
         {/* Buttons */}
         <div className="flex gap-3 justify-between pt-4">

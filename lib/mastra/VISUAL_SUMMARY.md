@@ -308,7 +308,7 @@ AgentSchedulerContainer
 │ Output: { success: true, selectionId: "uuid" }                     │
 │                                                                     │
 │ What it does:                                                       │
-│ • Saves to schedule_course_selections table                        │
+│ • Saves to student_schedules.course_selections (JSONB)             │
 │ • Sets status: 'planned' or 'waitlisted'                           │
 │ • Returns calendar event for UI update                             │
 │                                                                     │

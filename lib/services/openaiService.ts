@@ -1,5 +1,5 @@
 // Removed unused path & fs after refactor
-import { supabase } from "../supabase";
+import { supabaseAdmin } from "../supabaseAdmin";
 import { GetMajorsForUniversity } from '../services/programService';
 import { getVerifiedUser } from "../supabase/auth";
 import { logError } from "@/lib/logger";
@@ -70,7 +70,7 @@ async function runAutoPlanValidation(args: {
 
     try {
       const outputTokens = validationResult.usage?.completion_tokens || 0;
-      const { error: insertError } = await supabase.from("ai_responses").insert({
+      const { error: insertError } = await supabaseAdmin.from("ai_responses").insert({
         user_id: userId,
         response: validationResult.rawText || validationResult.message,
         user_prompt: AUTO_PLAN_VALIDATION_PROMPT_TEMPLATE,
@@ -423,7 +423,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     try {
       const tStore = Date.now();
       const outputTokens = aiResult.usage?.completion_tokens || 0; // Default to 0 instead of null
-      const { error: insertError } = await supabase.from("ai_responses").insert({
+      const { error: insertError } = await supabaseAdmin.from("ai_responses").insert({
         user_id: user.id,
         response: aiText,
         user_prompt: normalized.prompt,
@@ -446,7 +446,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     }
 
     // Get the student_id (number) from the students table using the profile_id (UUID)
-    const { data: studentData, error: studentError } = await supabase
+    const { data: studentData, error: studentError } = await supabaseAdmin
       .from('student')
       .select('id')
       .eq('profile_id', user.id)
@@ -535,7 +535,7 @@ export async function AdvisorOrganizeExistingPlan_ServerAction(args: {
     const effectivePrompt = `${basePrompt}\n\nCURRENT_PLAN_JSON:\n${planJson}\n\nADVISOR_NOTES:\n${notesSanitized}`;
 
     // Invoke edge function which encapsulates model call (so we reuse deployed logic / quotas)
-    const { data, error } = await supabase.functions.invoke('advisorCreateGradPlan', {
+    const { data, error } = await supabaseAdmin.functions.invoke('advisorCreateGradPlan', {
       body: {
         prompt: effectivePrompt,
         // Include structured fields separately for downstream observability or alternate parsing
@@ -621,7 +621,7 @@ ${reRequest ? '- Provide NEW options not overlapping prior ids: ' + priorIds.joi
 
     // Log prompt & (attempted) response to ai_responses table
     try {
-      const { error: insertErr } = await supabase.from('ai_responses').insert({
+      const { error: insertErr } = await supabaseAdmin.from('ai_responses').insert({
         user_id: user.id,
         user_prompt: prompt,
         response: aiResult.rawText || aiResult.message,
@@ -714,7 +714,7 @@ export async function GetAdjacentCareerSuggestions_ServerAction(args: {
 
     // Log prompt & response
     try {
-      const { error: insertErr } = await supabase.from('ai_responses').insert({
+      const { error: insertErr } = await supabaseAdmin.from('ai_responses').insert({
         user_id: user.id,
         user_prompt: prompt,
         response: aiResult.rawText || aiResult.message,
@@ -894,7 +894,7 @@ Return JSON now.`;
 
     // Log to ai_responses
     try {
-      const { error: insertErr } = await supabase.from('ai_responses').insert({
+      const { error: insertErr } = await supabaseAdmin.from('ai_responses').insert({
         user_id: user.id,
         user_prompt: prompt,
         response: aiResult.rawText || aiResult.message,
@@ -1192,7 +1192,7 @@ Return JSON now.`;
 
     // Log to ai_responses
     try {
-      const { error: insertErr } = await supabase.from('ai_responses').insert({
+      const { error: insertErr } = await supabaseAdmin.from('ai_responses').insert({
         user_id: user.id,
         user_prompt: prompt,
         response: aiResult.rawText || aiResult.message,
@@ -1406,7 +1406,7 @@ export async function GetMajorsForCareerSelection_ServerAction(args: {
 
     // Log prompt & response
     try {
-      const { error: insertErr } = await supabase.from('ai_responses').insert({
+      const { error: insertErr } = await supabaseAdmin.from('ai_responses').insert({
         user_id: user.id,
         user_prompt: prompt,
         response: aiResult.rawText || aiResult.message,

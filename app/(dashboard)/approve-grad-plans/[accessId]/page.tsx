@@ -7,9 +7,7 @@ import { CheckCircle, Save } from '@mui/icons-material';
 import { Add, Remove } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { StuLoader } from '@/components/ui/StuLoader';
-import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction, fetchProfileBasicInfoAction } from '@/lib/services/server-actions';
-import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
-import { sendGradPlanApprovalEmail } from '@/lib/services/emailService';
+import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction, fetchProfileBasicInfoAction, createNotifForGradPlanEditedAction, createNotifForGradPlanApprovedAction, sendGradPlanApprovalEmailAction } from '@/lib/services/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { clientLogger } from '@/lib/client-logger';
@@ -429,7 +427,7 @@ export default function ApproveGradPlanPage() {
             }
           }
           if (targetUserId) {
-            void createNotifForGradPlanEdited(targetUserId, advisorUserId, accessId, {
+            void createNotifForGradPlanEditedAction(targetUserId, advisorUserId, accessId, {
               movedCourses,
               hasSuggestions
             });
@@ -482,7 +480,7 @@ export default function ApproveGradPlanPage() {
             }
           }
           if (targetUserId) {
-            void createNotifForGradPlanApproved(targetUserId, advisorUserId);
+            void createNotifForGradPlanApprovedAction(targetUserId, advisorUserId);
           } else {
             console.warn('⚠️ Could not resolve target_user_id for approval notification.');
           }
@@ -494,7 +492,7 @@ export default function ApproveGradPlanPage() {
 
             if (studentProfile && studentProfile.email) {
               const accessId = params.accessId as string;
-              await sendGradPlanApprovalEmail({
+              await sendGradPlanApprovalEmailAction({
                 studentFirstName: studentProfile.fname || 'Student',
                 studentEmail: studentProfile.email,
                 planAccessId: accessId,

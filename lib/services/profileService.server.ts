@@ -367,6 +367,71 @@ export async function updateStudent(userId: string, updates: Record<string, stri
 }
 
 /**
+ * AUTHORIZATION: AUTHENTICATED USERS (own profile only)
+ * Updates profile name only if current name is missing or placeholder
+ * @param userId - The authenticated user's ID
+ * @param firstName - Parsed first name from transcript
+ * @param lastName - Parsed last name from transcript
+ */
+export async function updateProfileNameIfPlaceholder(
+  userId: string,
+  firstName?: string | null,
+  lastName?: string | null
+) {
+  try {
+    if (!firstName && !lastName) {
+      return;
+    }
+
+    const supabase = await createSupabaseServerComponentClient();
+
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('fname,lname')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new ProfileUpdateError('Failed to fetch profile', fetchError);
+    }
+
+    const currentFirst = profile?.fname?.trim() ?? '';
+    const currentLast = profile?.lname?.trim() ?? '';
+    const hasPlaceholderName =
+      !currentFirst ||
+      !currentLast ||
+      currentFirst.toLowerCase() === 'new' ||
+      currentLast.toLowerCase() === 'user';
+
+    if (!hasPlaceholderName) {
+      return;
+    }
+
+    const updates: Record<string, string> = {};
+    if (firstName) updates.fname = firstName;
+    if (lastName) updates.lname = lastName;
+
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (updateError) {
+      throw new ProfileUpdateError('Failed to update profile name', updateError);
+    }
+  } catch (error) {
+    if (error instanceof ProfileUpdateError) {
+      throw error;
+    }
+    throw new ProfileUpdateError('Unexpected error updating profile name', error);
+  }
+}
+
+/**
  * AUTHORIZATION: AUTHENTICATED USERS (completing their own onboarding)
  * Completes the onboarding process by setting university, role, and marking as onboarded
  * If no profile exists, creates one first

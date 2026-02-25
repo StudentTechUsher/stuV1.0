@@ -12,9 +12,9 @@
 
 export interface TermMetrics {
   term: string;
-  hoursEarned: number;
-  hoursGraded: number;
-  termGpa: number;
+  hoursEarned: number | null;
+  hoursGraded: number | null;
+  termGpa: number | null;
 }
 
 export const DUMMY_TERM_METRICS: TermMetrics[] = [

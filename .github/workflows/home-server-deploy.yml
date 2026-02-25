@@ -1,0 +1,188 @@
+name: Build And Deploy (Home Server)
+# Required GitHub secrets:
+# - HOME_SERVER_HOST
+# - HOME_SERVER_USER
+# - HOME_SERVER_SSH_KEY
+# - HOME_SERVER_GHCR_USERNAME
+# - HOME_SERVER_GHCR_TOKEN   (token with read:packages to pull from GHCR)
+# Optional GitHub secrets:
+# - HOME_SERVER_PORT         (defaults to 22)
+# - HOME_SERVER_DEPLOY_PATH  (defaults to /opt/stu)
+# - HOME_SERVER_KNOWN_HOSTS  (recommended; skips ssh-keyscan)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_image:
+    name: Build And Push Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_repo: ${{ steps.image_vars.outputs.image_repo }}
+      image_tag: ${{ steps.image_vars.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Resolve image coordinates
+        id: image_vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "image_repo=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runner
+          push: true
+          tags: |
+            ${{ steps.image_vars.outputs.image_repo }}:${{ steps.image_vars.outputs.image_tag }}
+            ${{ steps.image_vars.outputs.image_repo }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy_home_server:
+    name: Deploy On Home Server
+    runs-on: ubuntu-latest
+    needs: [build_image]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          HOME_SERVER_HOST: ${{ secrets.HOME_SERVER_HOST }}
+          HOME_SERVER_USER: ${{ secrets.HOME_SERVER_USER }}
+          HOME_SERVER_SSH_KEY: ${{ secrets.HOME_SERVER_SSH_KEY }}
+          HOME_SERVER_GHCR_USERNAME: ${{ secrets.HOME_SERVER_GHCR_USERNAME }}
+          HOME_SERVER_GHCR_TOKEN: ${{ secrets.HOME_SERVER_GHCR_TOKEN }}
+        run: |
+          set -euo pipefail
+          required_vars=(
+            HOME_SERVER_HOST
+            HOME_SERVER_USER
+            HOME_SERVER_SSH_KEY
+            HOME_SERVER_GHCR_USERNAME
+            HOME_SERVER_GHCR_TOKEN
+          )
+
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name:-}" ]; then
+              echo "Missing required GitHub secret: ${var_name}"
+              exit 1
+            fi
+          done
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          HOME_SERVER_SSH_KEY: ${{ secrets.HOME_SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$HOME_SERVER_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Add server host key
+        shell: bash
+        env:
+          HOME_SERVER_HOST: ${{ secrets.HOME_SERVER_HOST }}
+          HOME_SERVER_PORT: ${{ secrets.HOME_SERVER_PORT }}
+          HOME_SERVER_KNOWN_HOSTS: ${{ secrets.HOME_SERVER_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          port="${HOME_SERVER_PORT:-22}"
+          if [ -n "${HOME_SERVER_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$HOME_SERVER_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$port" -H "$HOME_SERVER_HOST" >> ~/.ssh/known_hosts
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload compose definition and registry token
+        shell: bash
+        env:
+          HOME_SERVER_HOST: ${{ secrets.HOME_SERVER_HOST }}
+          HOME_SERVER_USER: ${{ secrets.HOME_SERVER_USER }}
+          HOME_SERVER_PORT: ${{ secrets.HOME_SERVER_PORT }}
+          HOME_SERVER_DEPLOY_PATH: ${{ secrets.HOME_SERVER_DEPLOY_PATH }}
+          HOME_SERVER_GHCR_TOKEN: ${{ secrets.HOME_SERVER_GHCR_TOKEN }}
+        run: |
+          set -euo pipefail
+          port="${HOME_SERVER_PORT:-22}"
+          deploy_path="${HOME_SERVER_DEPLOY_PATH:-/opt/stu}"
+
+          ssh -p "$port" "${HOME_SERVER_USER}@${HOME_SERVER_HOST}" "mkdir -p '${deploy_path}'"
+          scp -P "$port" ./deploy/docker-compose.home.yml \
+            "${HOME_SERVER_USER}@${HOME_SERVER_HOST}:${deploy_path}/docker-compose.home.yml"
+
+          token_file="$(mktemp)"
+          trap 'rm -f "$token_file"' EXIT
+          printf '%s' "$HOME_SERVER_GHCR_TOKEN" > "$token_file"
+          scp -P "$port" "$token_file" \
+            "${HOME_SERVER_USER}@${HOME_SERVER_HOST}:${deploy_path}/.ghcr_token"
+
+      - name: Pull and restart container
+        shell: bash
+        env:
+          HOME_SERVER_HOST: ${{ secrets.HOME_SERVER_HOST }}
+          HOME_SERVER_USER: ${{ secrets.HOME_SERVER_USER }}
+          HOME_SERVER_PORT: ${{ secrets.HOME_SERVER_PORT }}
+          HOME_SERVER_DEPLOY_PATH: ${{ secrets.HOME_SERVER_DEPLOY_PATH }}
+          HOME_SERVER_GHCR_USERNAME: ${{ secrets.HOME_SERVER_GHCR_USERNAME }}
+          IMAGE_REPO: ${{ needs.build_image.outputs.image_repo }}
+          IMAGE_TAG: ${{ needs.build_image.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          port="${HOME_SERVER_PORT:-22}"
+          deploy_path="${HOME_SERVER_DEPLOY_PATH:-/opt/stu}"
+
+          ssh -p "$port" "${HOME_SERVER_USER}@${HOME_SERVER_HOST}" "
+            set -euo pipefail
+            cd '${deploy_path}'
+
+            if [ ! -f '.env.local' ]; then
+              echo 'Missing ${deploy_path}/.env.local on server. Create this file with production env vars.'
+              exit 1
+            fi
+
+            if [ ! -f '.ghcr_token' ]; then
+              echo 'Missing ${deploy_path}/.ghcr_token on server.'
+              exit 1
+            fi
+
+            docker login ghcr.io -u '${HOME_SERVER_GHCR_USERNAME}' --password-stdin < .ghcr_token
+            rm -f .ghcr_token
+
+            IMAGE_REPO='${IMAGE_REPO}' IMAGE_TAG='${IMAGE_TAG}' \
+              docker compose -f docker-compose.home.yml pull app
+            IMAGE_REPO='${IMAGE_REPO}' IMAGE_TAG='${IMAGE_TAG}' \
+              docker compose -f docker-compose.home.yml up -d --remove-orphans app
+
+            docker image prune -f
+          "

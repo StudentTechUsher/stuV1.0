@@ -24,6 +24,7 @@ export interface Database {
                     term_index: number | null
                     blocked_times: Json
                     preferences: Json
+                    course_selections: Json
                     created_at: string
                     updated_at: string
                     is_active: boolean
@@ -36,6 +37,7 @@ export interface Database {
                     term_index?: number | null
                     blocked_times?: Json
                     preferences?: Json
+                    course_selections?: Json
                     created_at?: string
                     updated_at?: string
                     is_active?: boolean
@@ -48,50 +50,10 @@ export interface Database {
                     term_index?: number | null
                     blocked_times?: Json
                     preferences?: Json
+                    course_selections?: Json
                     created_at?: string
                     updated_at?: string
                     is_active?: boolean
-                }
-            }
-            schedule_course_selections: {
-                Row: {
-                    selection_id: string
-                    schedule_id: string
-                    course_code: string
-                    requirement_type: string | null
-                    primary_offering_id: number | null
-                    backup_1_offering_id: number | null
-                    backup_2_offering_id: number | null
-                    status: 'planned' | 'registered' | 'waitlisted' | 'dropped'
-                    notes: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    selection_id?: string
-                    schedule_id: string
-                    course_code: string
-                    requirement_type?: string | null
-                    primary_offering_id?: number | null
-                    backup_1_offering_id?: number | null
-                    backup_2_offering_id?: number | null
-                    status?: 'planned' | 'registered' | 'waitlisted' | 'dropped'
-                    notes?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    selection_id?: string
-                    schedule_id?: string
-                    course_code?: string
-                    requirement_type?: string | null
-                    primary_offering_id?: number | null
-                    backup_1_offering_id?: number | null
-                    backup_2_offering_id?: number | null
-                    status?: 'planned' | 'registered' | 'waitlisted' | 'dropped'
-                    notes?: string | null
-                    created_at?: string
-                    updated_at?: string
                 }
             }
             course_offerings: {

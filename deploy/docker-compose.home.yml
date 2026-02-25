@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    image: ${IMAGE_REPO:?IMAGE_REPO is required}:${IMAGE_TAG:-latest}
+    container_name: stu-app
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.local

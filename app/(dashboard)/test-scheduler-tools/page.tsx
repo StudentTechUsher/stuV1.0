@@ -25,7 +25,7 @@ import {
 import { Search, AlertCircle, TrendingUp, Save } from 'lucide-react';
 import { CourseValidationResults } from '@/components/scheduler/validation/CourseValidationResults';
 import { CourseAnalysisResults, SectionSelection, SectionAnalysis } from '@/components/scheduler/analysis/CourseAnalysisResults';
-import { InteractiveCalendar, CalendarEvent } from '@/components/scheduler/test/InteractiveCalendar';
+import type { CalendarEvent } from '@/components/scheduler/test/InteractiveCalendar';
 
 interface TestResult {
   success: boolean;
@@ -628,7 +628,7 @@ export default function TestSchedulerToolsPage() {
                 Analyze All Sections
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Analyze all sections for multiple courses - checks conflicts AND ranks by preferences. Calendar updates automatically re-run the analysis.
+                Analyze all sections for multiple courses - checks conflicts AND ranks by preferences. Analysis re-runs automatically when selections change.
               </Typography>
 
               {/* Configuration Row */}
@@ -688,49 +688,34 @@ export default function TestSchedulerToolsPage() {
                 />
               </Box>
 
-              {/* Side-by-side Layout: Calendar Left, Results Right */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '40% 60%' }, gap: 3 }}>
-                {/* Interactive Calendar - Left Side */}
-                <Box>
-                  <Typography variant="body2" sx={{ mb: 2, fontWeight: 600 }}>
-                    📅 Your Calendar Events
-                  </Typography>
-                  <InteractiveCalendar
-                    events={calendarEvents}
-                    onChange={setCalendarEvents}
+              {/* Analysis Results */}
+              <Box>
+                <Typography variant="body2" sx={{ mb: 2, fontWeight: 600 }}>
+                  📊 Section Analysis Results
+                </Typography>
+                {result && result.success && (result.data as any).analyses ? (
+                  <CourseAnalysisResults
+                    analyses={(result.data as any).analyses}
                     compact
+                    selections={sectionSelections}
+                    onSelectSection={handleSelectSection}
+                    onDeselectSection={handleDeselectSection}
                   />
-                </Box>
-
-                {/* Analysis Results - Right Side */}
-                <Box>
-                  <Typography variant="body2" sx={{ mb: 2, fontWeight: 600 }}>
-                    📊 Section Analysis Results
-                  </Typography>
-                  {result && result.success && (result.data as any).analyses ? (
-                    <CourseAnalysisResults
-                      analyses={(result.data as any).analyses}
-                      compact
-                      selections={sectionSelections}
-                      onSelectSection={handleSelectSection}
-                      onDeselectSection={handleDeselectSection}
-                    />
-                  ) : (
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 4,
-                        border: '1px dashed var(--border)',
-                        borderRadius: 2,
-                        textAlign: 'center',
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Click "Analyze Sections" to see results here. Results will update automatically when you modify calendar events.
-                      </Typography>
-                    </Paper>
-                  )}
-                </Box>
+                ) : (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 4,
+                      border: '1px dashed var(--border)',
+                      borderRadius: 2,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      Click "Analyze Sections" to see results here. Results will update automatically when selections change.
+                    </Typography>
+                  </Paper>
+                )}
               </Box>
             </Box>
           )}

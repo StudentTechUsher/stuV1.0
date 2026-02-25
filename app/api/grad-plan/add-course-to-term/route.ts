@@ -1,6 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 
+type GradPlanTerm = {
+  term?: string;
+  title?: string;
+  courses?: Array<{ code?: string; course_code?: string; title?: string; credits?: number }>;
+  credits_planned?: number;
+  [key: string]: unknown;
+};
+
+type GradPlanDetails = {
+  plan?: GradPlanTerm[];
+  [key: string]: unknown;
+};
+
+const isTermItem = (item: unknown): item is GradPlanTerm => {
+  if (!item || typeof item !== 'object') return false;
+  const candidate = item as Record<string, unknown>;
+  const hasTerm = typeof candidate.term === 'string' || typeof candidate.title === 'string';
+  const isEvent = 'type' in candidate && 'afterTerm' in candidate;
+  return hasTerm && !isEvent;
+};
+
+const getCourseCode = (course: { code?: string; course_code?: string }) =>
+  course.code || course.course_code || '';
+
+const findTermIndex = (plan: GradPlanTerm[], termIndex?: number, termName?: string | null) => {
+  if (termName) {
+    const byName = plan.findIndex(
+      (item) => isTermItem(item) && (item.term === termName || item.title === termName)
+    );
+    if (byName !== -1) return byName;
+  }
+  if (termIndex !== undefined && termIndex !== null && plan[termIndex] && isTermItem(plan[termIndex])) {
+    return termIndex;
+  }
+  return -1;
+};
+
 export async function POST(request: NextRequest) {
   return handleAddCourseToTerm(request);
 }
@@ -16,11 +53,16 @@ async function handleAddCourseToTerm(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { gradPlanId, termIndex, course } = body;
+    const { gradPlanId, termIndex, termName, course } = body as {
+      gradPlanId?: string;
+      termIndex?: number;
+      termName?: string | null;
+      course?: { code?: string; title?: string; credits?: number };
+    };
 
-    if (!gradPlanId || termIndex === undefined || !course) {
+    if (!gradPlanId || !course) {
       return NextResponse.json(
-        { error: 'Missing required fields: gradPlanId, termIndex, course' },
+        { error: 'Missing required fields: gradPlanId, course' },
         { status: 400 }
       );
     }
@@ -55,11 +97,11 @@ async function handleAddCourseToTerm(request: NextRequest) {
     }
 
     // Parse plan_details
-    let planDetails;
+    let planDetails: GradPlanDetails;
     try {
       planDetails = typeof gradPlan.plan_details === 'string'
         ? JSON.parse(gradPlan.plan_details)
-        : gradPlan.plan_details;
+        : (gradPlan.plan_details as GradPlanDetails);
     } catch (error) {
       console.error('Failed to parse plan_details:', error);
       return NextResponse.json({ error: 'Invalid plan details format' }, { status: 500 });
@@ -70,19 +112,21 @@ async function handleAddCourseToTerm(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan structure' }, { status: 500 });
     }
 
-    // Check if term exists
-    if (!planDetails.plan[termIndex]) {
+    const plan = planDetails.plan;
+    const targetIndex = findTermIndex(plan, termIndex, termName);
+
+    if (targetIndex === -1) {
       return NextResponse.json({ error: 'Term not found' }, { status: 404 });
     }
 
     // Initialize courses array if it doesn't exist
-    if (!Array.isArray(planDetails.plan[termIndex].courses)) {
-      planDetails.plan[termIndex].courses = [];
+    if (!Array.isArray(plan[targetIndex].courses)) {
+      plan[targetIndex].courses = [];
     }
 
     // Check if course already exists in this term
-    const courseExists = planDetails.plan[termIndex].courses.some(
-      (c: { code: string }) => c.code === course.code
+    const courseExists = plan[targetIndex].courses.some(
+      (c: { code?: string; course_code?: string }) => getCourseCode(c) === course.code
     );
 
     if (courseExists) {
@@ -90,18 +134,18 @@ async function handleAddCourseToTerm(request: NextRequest) {
     }
 
     // Add the course to the term
-    planDetails.plan[termIndex].courses.push({
+    plan[targetIndex].courses.push({
       code: course.code,
       title: course.title,
       credits: course.credits,
     });
 
     // Update credits_planned for the term
-    const termCredits = planDetails.plan[termIndex].courses.reduce(
-      (sum: number, c: { credits: number }) => sum + (c.credits || 0),
+    const termCredits = plan[targetIndex].courses.reduce(
+      (sum: number, c: { credits?: number }) => sum + (c.credits || 0),
       0
     );
-    planDetails.plan[termIndex].credits_planned = termCredits;
+    plan[targetIndex].credits_planned = termCredits;
 
     // Update the grad plan in the database
     const { error: updateError } = await supabase

@@ -82,7 +82,7 @@ const courses = getCoursesForTerm(gradPlanDetails, termName); // Not termIndex
 - [ ] **Tab 4 (Save Selection):** Test database writes
   - Get a valid schedule_id from database
   - Use section IDs from Tab 1
-  - Verify: Selection saved to `schedule_course_selections` table
+  - Verify: Selection saved to `student_schedules.course_selections` (JSONB)
 
 ### Priority 3: Edge Cases
 - [ ] Test with course that has no offerings
@@ -198,7 +198,8 @@ ORDER BY created_at DESC;
 - Service: `lib/services/generateScheduleService.ts`
 
 **Database:**
-- Tables: `student_schedules`, `schedule_course_selections`, `course_offerings`
+- Tables: `student_schedules`, `course_offerings`
+- JSONB: `student_schedules.course_selections`
 - Types: `lib/database/types.ts`
 
 ## 💡 Tips for Tomorrow

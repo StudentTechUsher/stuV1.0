@@ -21,6 +21,7 @@ export const landingNavLinks: LandingNavLink[] = [
   { href: "#product", label: "Platform" },
   { href: "#solutions", label: "Solutions" },
   { href: "#case-studies", label: "Success Stories" },
+  { href: "#catalog", label: "Catalog" },
 ]
 
 export const landingPainPoints = [

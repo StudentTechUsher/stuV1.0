@@ -157,11 +157,14 @@ export const FormLayout: Story = {
  * Dark mode demonstration
  */
 export const DarkMode: Story = {
+  globals: {
+    colorMode: 'dark',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
   },
   render: () => (
-    <div className="dark p-8">
+    <div className="w-[420px] rounded-xl border border-border bg-background p-8">
       <div className="w-[300px] space-y-4">
         <div className="space-y-2">
           <Label htmlFor="dark-input">Course Name</Label>

@@ -50,22 +50,22 @@ export function CourseHistoryList({ courses, onSelectCourse, maxHeight, classNam
   return (
     <div
       className={
-        `flex flex-col border rounded-lg bg-white/70 backdrop-blur shadow-sm ` +
+        `flex flex-col rounded-lg border border-border dark:border-zinc-600 bg-card text-card-foreground shadow-sm ` +
         `overflow-y-auto overflow-x-hidden custom-scroll min-h-0 ` +
-        `focus:outline-none focus:ring-2 focus:ring-emerald-300 ${className || ''}`
+        `focus:outline-none focus:ring-2 focus:ring-ring/50 ${className || ''}`
       }
       style={style}
       aria-label="Course history"
     >
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur px-4 pt-4 pb-3 border-b border-emerald-100">
-        <h2 className="text-lg font-semibold text-gray-800">Completed Courses</h2>
-        <p className="text-xs text-gray-500">Showing {filtered.length} of {courses.length}</p>
+      <div className="sticky top-0 z-10 border-b border-border dark:border-zinc-600 bg-card px-4 pt-4 pb-3">
+        <h2 className="text-lg font-semibold text-foreground">Completed Courses</h2>
+        <p className="text-xs text-muted-foreground">Showing {filtered.length} of {courses.length}</p>
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search courses..."
-          className="mt-3 w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring focus:ring-emerald-300"
+          className="mt-3 w-full rounded-md border border-border dark:border-zinc-500 bg-background dark:bg-zinc-900/70 px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring"
         />
       </div>
       {/* List */}
@@ -75,25 +75,25 @@ export function CourseHistoryList({ courses, onSelectCourse, maxHeight, classNam
             <li key={c.id}>
               <button
                 onClick={() => onSelectCourse?.(c)}
-                className="w-full text-left rounded border border-gray-200 bg-gray-50 hover:bg-emerald-50 transition-colors px-3 py-2 group"
+                className="group w-full rounded border border-border dark:border-zinc-500 bg-background dark:bg-zinc-900/60 px-3 py-2 text-left transition-colors hover:bg-muted dark:hover:bg-zinc-800/70"
               >
                 <div className="flex items-start justify-between mb-1">
-                  <span className="font-medium text-gray-800 group-hover:text-emerald-700 text-sm">{c.code}</span>
-                  {c.grade && <span className="text-xs font-medium text-gray-500">{c.grade}</span>}
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary">{c.code}</span>
+                  {c.grade && <span className="text-xs font-medium text-muted-foreground">{c.grade}</span>}
                 </div>
-                <p className="text-xs text-gray-600 line-clamp-2">{c.title}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{c.title}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  <span className="inline-flex items-center rounded bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[10px] font-medium">{c.credits}cr</span>
-                  <span className="inline-flex items-center rounded bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10px] font-medium">{c.term}</span>
+                  <span className="inline-flex items-center rounded bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-medium text-[color-mix(in_srgb,var(--primary)_88%,var(--foreground)_12%)]">{c.credits}cr</span>
+                  <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{c.term}</span>
                   {c.tags?.map(t => (
-                    <span key={t} className="inline-flex items-center rounded bg-blue-100 text-blue-700 px-1.5 py-0.5 text-[10px] font-medium">{t}</span>
+                    <span key={t} className="inline-flex items-center rounded bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-medium text-[color-mix(in_srgb,var(--accent)_80%,var(--foreground)_20%)]">{t}</span>
                   ))}
                 </div>
               </button>
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="text-xs text-gray-500 py-4 text-center">No matches</li>
+            <li className="py-4 text-center text-xs text-muted-foreground">No matches</li>
           )}
         </ul>
       </div>

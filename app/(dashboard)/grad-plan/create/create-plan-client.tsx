@@ -10,12 +10,22 @@ import MarkdownMessage from '@/components/chatbot/MarkdownMessage';
 import { StuLoader } from '@/components/ui/StuLoader';
 import ConversationProgressSteps from '@/components/chatbot/ConversationProgressSteps';
 import ToolRenderer, { ToolType } from '@/components/chatbot-tools/ToolRenderer';
+import AgentStatusBar from '@/components/grad-plan/agentic/AgentStatusBar';
+import AgentActivityPanel from '@/components/grad-plan/agentic/AgentActivityPanel';
+import AgentChecksPanel from '@/components/grad-plan/agentic/AgentChecksPanel';
+import AgentControls from '@/components/grad-plan/agentic/AgentControls';
+import ResumeConversationPanel from '@/components/grad-plan/agentic/ResumeConversationPanel';
+import StepNavigatorPanel from '@/components/grad-plan/agentic/StepNavigatorPanel';
 import {
   ConversationState,
   ConversationStep,
   CourseSelection,
   CreditDistributionStrategy,
   Milestone,
+  AgentStatus,
+  AgentLogItem,
+  AgentCheck,
+  ConversationMetadata,
 } from '@/lib/chatbot/grad-plan/types';
 import {
   createInitialState,
@@ -27,6 +37,8 @@ import {
   generateConversationId,
   saveStateToLocalStorage,
   loadStateFromLocalStorage,
+  listConversationMetadata,
+  upsertConversationMetadata,
 } from '@/lib/chatbot/grad-plan/statePersistence';
 import { getNextStep } from '@/lib/chatbot/grad-plan/conversationState';
 import { navigateToStep } from '@/lib/chatbot/grad-plan/stepNavigation';
@@ -50,6 +62,13 @@ interface Message {
   toolType?: ToolType;
   toolData?: Record<string, unknown>;
   quickReplies?: string[];
+  decisionMeta?: {
+    title?: string;
+    badges?: string[];
+    evidence?: string[];
+  };
+  showFeedback?: boolean;
+  feedbackReasons?: string[];
 }
 
 interface CreatePlanClientProps {
@@ -68,6 +87,20 @@ interface CreatePlanClientProps {
   hasCourses: boolean;
   hasActivePlan: boolean;
   academicTerms: AcademicTermsConfig;
+  mockMode?: boolean;
+  mockMessages?: Message[];
+  mockActiveTool?: ToolType | null;
+  mockToolData?: Record<string, unknown>;
+  mockConversationState?: ConversationState;
+  mockAgent?: {
+    status?: AgentStatus;
+    logs?: AgentLogItem[];
+    checks?: AgentCheck[];
+    awaitingApprovalStep?: ConversationStep;
+    lastUpdated?: string;
+  };
+  mockResumeItems?: ConversationMetadata[];
+  variant?: 'default' | 'versionB';
 }
 
 const resolveStudentType = (value: unknown): 'undergraduate' | 'honor' | 'graduate' => {
@@ -86,12 +119,23 @@ export default function CreatePlanClient({
   hasCourses,
   hasActivePlan,
   academicTerms,
+  mockMode = false,
+  mockMessages,
+  mockActiveTool,
+  mockToolData,
+  mockConversationState,
+  mockAgent,
+  mockResumeItems,
+  variant = 'default',
 }: Readonly<CreatePlanClientProps>) {
   const router = useRouter();
+  const isVersionB = variant === 'versionB';
 
   // Initialize conversation state
   const [conversationState, setConversationState] = useState<ConversationState>(() => {
-    // Create initial state without accessing window (for SSR compatibility)
+    if (mockConversationState) {
+      return mockConversationState;
+    }
     const conversationId = generateConversationId();
     return createInitialState(
       conversationId,
@@ -102,6 +146,7 @@ export default function CreatePlanClient({
 
   // Load from localStorage on mount (client-side only)
   useEffect(() => {
+    if (mockMode) return;
     const params = new URLSearchParams(window.location.search);
     const urlConversationId = params.get('id');
 
@@ -111,7 +156,7 @@ export default function CreatePlanClient({
         setConversationState(saved);
       }
     }
-  }, []);
+  }, [mockMode]);
 
   // Seed student type from profile on initial load
   // After initial load, profile check updates take priority
@@ -127,16 +172,104 @@ export default function CreatePlanClient({
     }
   }, [conversationState.collectedData.studentType, conversationState.completedSteps, studentProfile.student_type]);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => (mockMode && mockMessages ? mockMessages : []));
   const [inputMessage, setInputMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeTool, setActiveTool] = useState<ToolType | null>(null);
+  const [activeTool, setActiveTool] = useState<ToolType | null>(() => (mockMode ? (mockActiveTool ?? null) : null));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastUserMessageRef = useRef<HTMLDivElement>(null);
   const lastAssistantMessageRef = useRef<HTMLDivElement>(null);
   const planGenerationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [planGenerationStage, setPlanGenerationStage] = useState<'generating' | 'validating'>('generating');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>(mockAgent?.status ?? 'idle');
+  const [agentLogs, setAgentLogs] = useState<AgentLogItem[]>(mockAgent?.logs ?? []);
+  const [agentChecks, setAgentChecks] = useState<AgentCheck[]>(mockAgent?.checks ?? []);
+  const [agentLastUpdated, setAgentLastUpdated] = useState<string>(mockAgent?.lastUpdated ?? new Date().toISOString());
+  const [awaitingApprovalStep, setAwaitingApprovalStep] = useState<ConversationStep | undefined>(mockAgent?.awaitingApprovalStep);
+  const [resumeItems, setResumeItems] = useState<ConversationMetadata[]>(mockResumeItems ?? []);
+  const feedbackReasons = ['Missing data', 'Needs adjustment', 'Not accurate', 'Other'];
+
+  const buildConversationSummary = (state: ConversationState) => {
+    const parts: string[] = [];
+    const programCount = state.collectedData.selectedPrograms?.length ?? 0;
+    if (programCount > 0) {
+      parts.push(`${programCount} program${programCount === 1 ? '' : 's'}`);
+    }
+    const credits = state.collectedData.totalSelectedCredits || 0;
+    if (credits > 0) {
+      parts.push(`${credits} credits`);
+    }
+    if (state.collectedData.hasTranscript) {
+      parts.push('Transcript attached');
+    }
+    return parts.length > 0 ? parts.join(' · ') : 'In progress';
+  };
+
+  const pushAgentLog = (entry: Omit<AgentLogItem, 'id' | 'ts'> & { id?: string; ts?: string }) => {
+    const nextEntry: AgentLogItem = {
+      id: entry.id ?? `log_${Date.now()}`,
+      ts: entry.ts ?? new Date().toISOString(),
+      type: entry.type,
+      label: entry.label,
+      detail: entry.detail,
+      status: entry.status,
+    };
+    setAgentLogs(prev => [nextEntry, ...prev].slice(0, 20));
+    setAgentLastUpdated(new Date().toISOString());
+  };
+
+  const upsertAgentCheck = (check: AgentCheck) => {
+    setAgentChecks(prev => {
+      const next = prev.filter(item => item.id !== check.id);
+      return [check, ...next].slice(0, 10);
+    });
+    setAgentLastUpdated(new Date().toISOString());
+  };
+
+  const handleAgentFeedback = (message: Message, value: 'up' | 'down', reason?: string) => {
+    pushAgentLog({
+      type: 'decision',
+      label: value === 'up' ? 'Positive feedback' : 'Needs review',
+      detail: reason ? `${reason}: ${message.content}` : message.content,
+      status: value === 'up' ? 'ok' : 'warn',
+    });
+  };
+
+  useEffect(() => {
+    if (!mockMode) return;
+    if (messages.length > 0) return;
+    const fallbackMessages: Message[] = [
+      {
+        role: 'assistant',
+        content: 'I reviewed your inputs and drafted a balanced schedule. I prioritized prerequisites, spaced heavy labs, and aligned milestones with your target graduation term.',
+        timestamp: new Date(),
+        decisionMeta: {
+          title: 'Decision card',
+          badges: ['Balanced load', 'Prereqs validated'],
+          evidence: ['Transcript match', 'Program requirements', 'Milestone timing'],
+        },
+        showFeedback: true,
+        feedbackReasons: ['Missing data', 'Needs adjustment', 'Too slow', 'Other'],
+      },
+    ];
+    const seededMessages = mockMessages && mockMessages.length > 0 ? mockMessages : fallbackMessages;
+    const toolMessage = mockActiveTool
+      ? {
+        role: 'tool' as const,
+        content: '',
+        timestamp: new Date(),
+        toolType: mockActiveTool,
+        toolData: mockToolData ?? {},
+      }
+      : null;
+    const hasTool = seededMessages.some(message => message.role === 'tool');
+    setMessages(hasTool || !toolMessage ? seededMessages : [...seededMessages, toolMessage]);
+    if (mockActiveTool !== undefined) {
+      setActiveTool(mockActiveTool ?? null);
+    }
+    setIsProcessing(false);
+  }, [mockMode, mockMessages, mockActiveTool, mockToolData, messages.length]);
 
   // Helper function to get tool data for plan generation confirmation
   const getGeneratePlanConfirmationToolData = async (): Promise<Record<string, unknown>> => {
@@ -171,6 +304,7 @@ export default function CreatePlanClient({
 
   // Initialize conversation on mount
   useEffect(() => {
+    if (mockMode) return;
     if (messages.length !== 0) return;
 
     let isMounted = true;
@@ -238,12 +372,34 @@ export default function CreatePlanClient({
     return () => {
       isMounted = false;
     };
-  }, [messages.length, studentProfile, hasActivePlan, user.id]);
+  }, [messages.length, studentProfile, hasActivePlan, user.id, mockMode]);
 
-  // Save state to localStorage whenever it changes
   useEffect(() => {
+    if (mockMode) return;
     saveStateToLocalStorage(conversationState);
-  }, [conversationState]);
+    const summary = buildConversationSummary(conversationState);
+    const status: ConversationMetadata['status'] =
+      agentStatus === 'paused'
+        ? 'paused'
+        : agentStatus === 'error'
+        ? 'error'
+        : agentStatus === 'complete'
+        ? 'complete'
+        : 'active';
+    upsertConversationMetadata({
+      conversationId: conversationState.conversationId,
+      lastUpdated: new Date().toISOString(),
+      currentStep: conversationState.currentStep,
+      summary,
+      status,
+    });
+    setResumeItems(listConversationMetadata());
+  }, [conversationState, agentStatus, mockMode]);
+
+  useEffect(() => {
+    if (mockMode) return;
+    setResumeItems(listConversationMetadata());
+  }, [mockMode]);
 
   // Auto-scroll when messages change
   // When AI responds, scroll so new content appears at top of window
@@ -268,6 +424,24 @@ export default function CreatePlanClient({
       inputRef.current?.focus();
     }
   }, [isProcessing, activeTool]);
+
+  useEffect(() => {
+    if (mockMode) return;
+    if (agentStatus === 'paused' || agentStatus === 'awaiting_approval') return;
+    if (isProcessing || activeTool) {
+      if (agentStatus !== 'running') {
+        setAgentStatus('running');
+      }
+    } else if (agentStatus !== 'idle') {
+      setAgentStatus('idle');
+    }
+  }, [isProcessing, activeTool, agentStatus, mockMode]);
+
+  useEffect(() => {
+    if (agentStatus === 'awaiting_approval') {
+      setAwaitingApprovalStep(conversationState.currentStep);
+    }
+  }, [agentStatus, conversationState.currentStep]);
 
   const handleStepNavigation = (targetStep: ConversationStep) => {
     // Navigate to the target step (this also resets dependent steps)
@@ -448,8 +622,74 @@ export default function CreatePlanClient({
     }
   };
 
+  const handleResumeConversation = (conversationId: string) => {
+    const saved = loadStateFromLocalStorage(conversationId);
+    if (!saved) return;
+    setConversationState(saved);
+    setMessages([
+      {
+        role: 'assistant',
+        content: `Resumed your saved session at the **${getStepLabel(saved.currentStep)}** step.`,
+        timestamp: new Date(),
+      },
+    ]);
+    setActiveTool(null);
+    setIsProcessing(false);
+    setAwaitingApprovalStep(undefined);
+    if (!mockMode) {
+      router.push(`/grad-plan/create?id=${conversationId}`);
+    }
+  };
+
+  const handleStartNewConversation = () => {
+    const conversationId = generateConversationId();
+    const initial = createInitialState(conversationId, studentProfile.id, studentProfile.university_id);
+    setConversationState(initial);
+    setMessages([]);
+    setActiveTool(null);
+    setIsProcessing(false);
+    setAwaitingApprovalStep(undefined);
+    if (!mockMode) {
+      router.push('/grad-plan/create');
+    }
+  };
+
+  const handleAgentPause = () => {
+    setAgentStatus('paused');
+    pushAgentLog({ type: 'system', label: 'Agent paused', status: 'warn' });
+  };
+
+  const handleAgentResume = () => {
+    setAgentStatus('running');
+    pushAgentLog({ type: 'system', label: 'Agent resumed', status: 'ok' });
+  };
+
+  const handleAgentCancel = () => {
+    setAgentStatus('error');
+    setIsProcessing(false);
+    setActiveTool(null);
+    pushAgentLog({ type: 'system', label: 'Agent canceled', status: 'fail' });
+  };
+
+  const handleAgentApprove = () => {
+    setAgentStatus('running');
+    setAwaitingApprovalStep(undefined);
+    pushAgentLog({ type: 'decision', label: 'Step approved', status: 'ok' });
+  };
+
+  const handleAgentReject = () => {
+    setAgentStatus('paused');
+    setAwaitingApprovalStep(undefined);
+    pushAgentLog({ type: 'decision', label: 'Step rejected', status: 'warn' });
+  };
+
   const handleToolComplete = async (toolType: ToolType, result: unknown) => {
     setIsProcessing(true);
+    pushAgentLog({
+      type: 'tool',
+      label: `Completed ${toolType.replace(/_/g, ' ')}`,
+      status: 'ok',
+    });
 
     try {
       if (toolType === 'profile_check') {
@@ -479,6 +719,12 @@ export default function CreatePlanClient({
           return updateState(updated, {
             step: getNextStep(updated),
           });
+        });
+        upsertAgentCheck({
+          id: 'profile_check',
+          label: 'Profile data verified',
+          status: 'ok',
+          evidence: ['Student record'],
         });
 
         // Remove the welcome message (first message) and add completion message
@@ -533,6 +779,12 @@ export default function CreatePlanClient({
           return updateState(updated, {
             step: getNextStep(updated),
           });
+        });
+        upsertAgentCheck({
+          id: 'transcript_check',
+          label: 'Transcript status confirmed',
+          status: transcriptData.hasTranscript ? 'ok' : 'warn',
+          evidence: transcriptData.hasTranscript ? ['Transcript attached'] : ['No transcript'],
         });
 
         // Add appropriate message based on their choice
@@ -697,6 +949,14 @@ export default function CreatePlanClient({
             step: getNextStep(updated),
           });
         });
+        upsertAgentCheck({
+          id: 'program_selection',
+          label: 'Programs selected',
+          status: 'ok',
+          evidence: [
+            `${selectedPrograms.length} program${selectedPrograms.length === 1 ? '' : 's'}`,
+          ],
+        });
 
         // Extract program IDs by type for course selection
         const majorMinorIds = selectedPrograms
@@ -714,6 +974,13 @@ export default function CreatePlanClient({
               role: 'assistant',
               content: programConfirmationMessage,
               timestamp: new Date(),
+              decisionMeta: {
+                title: 'Program decision',
+                badges: ['Program selection'],
+                evidence: [`${selectedPrograms.length} program${selectedPrograms.length === 1 ? '' : 's'}`],
+              },
+              showFeedback: true,
+              feedbackReasons,
             },
             {
               role: 'tool',
@@ -768,6 +1035,13 @@ export default function CreatePlanClient({
             step: ConversationStep.CREDIT_DISTRIBUTION,
           });
         });
+        const resolvedTotalCredits = courseData.totalSelectedCredits || countTotalCredits(courseData);
+        upsertAgentCheck({
+          id: 'course_selection',
+          label: 'Course selections validated',
+          status: 'ok',
+          evidence: [`${totalCourses} courses`, `${resolvedTotalCredits} credits`],
+        });
 
         // Add confirmation message
         const confirmationMessage = getCourseSelectionConfirmationMessage(programCount, totalCourses);
@@ -778,11 +1052,18 @@ export default function CreatePlanClient({
             role: 'assistant',
             content: confirmationMessage,
             timestamp: new Date(),
+            decisionMeta: {
+              title: 'Course decision',
+              badges: ['Course selection'],
+              evidence: [`${totalCourses} courses`, `${resolvedTotalCredits} credits`],
+            },
+            showFeedback: true,
+            feedbackReasons,
           },
         ]);
 
         // Calculate total credits for credit distribution
-        const totalCredits = courseData.totalSelectedCredits || countTotalCredits(courseData);
+        const totalCredits = resolvedTotalCredits;
 
         // Show credit distribution tool
         setTimeout(() => {
@@ -826,6 +1107,12 @@ export default function CreatePlanClient({
             step: getNextStep(updated),
           });
         });
+        upsertAgentCheck({
+          id: 'credit_distribution',
+          label: 'Credit distribution selected',
+          status: 'ok',
+          evidence: [creditData.type.replace('_', ' ')],
+        });
 
         setMessages(prev => [
           ...prev,
@@ -833,6 +1120,13 @@ export default function CreatePlanClient({
             role: 'assistant',
             content: 'Great! I\'ve saved your credit distribution preferences. Now let\'s add any important milestones or constraints.',
             timestamp: new Date(),
+            decisionMeta: {
+              title: 'Distribution decision',
+              badges: ['Credit strategy'],
+              evidence: [creditData.type.replace('_', ' ')],
+            },
+            showFeedback: true,
+            feedbackReasons,
           },
         ]);
 
@@ -878,6 +1172,15 @@ export default function CreatePlanClient({
             step: getNextStep(updated),
           });
         });
+        upsertAgentCheck({
+          id: 'milestones_constraints',
+          label: 'Milestones captured',
+          status: 'ok',
+          evidence: [
+            `${constraintsData.milestones.length} milestone${constraintsData.milestones.length === 1 ? '' : 's'}`,
+            constraintsData.workConstraints.workStatus.replace('_', ' '),
+          ],
+        });
 
         setMessages(prev => [
           ...prev,
@@ -885,6 +1188,13 @@ export default function CreatePlanClient({
             role: 'assistant',
             content: 'Perfect! I\'ve saved your milestones and work constraints.',
             timestamp: new Date(),
+            decisionMeta: {
+              title: 'Milestones decision',
+              badges: ['Constraints saved'],
+              evidence: [`${constraintsData.milestones.length} milestones`],
+            },
+            showFeedback: true,
+            feedbackReasons,
           },
         ]);
 
@@ -1282,6 +1592,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputMessage.trim();
     if (!textToSend || isProcessing) return;
+    if (agentStatus === 'paused' || agentStatus === 'awaiting_approval' || agentStatus === 'error') return;
 
     if (conversationState.currentStep === ConversationStep.PROGRAM_PATHFINDER) {
       const userMessageCount = messages.filter(m => m.role === 'user').length;
@@ -1307,6 +1618,19 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
+    if (mockMode) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Mock response captured. In production, the agent would continue the workflow here.',
+          timestamp: new Date(),
+          showFeedback: true,
+          feedbackReasons,
+        },
+      ]);
+      return;
+    }
     setIsProcessing(true);
 
     try {
@@ -1818,17 +2142,27 @@ One last question: On a scale of 1-10, how committed are you to this career path
     }, 1000);
   };
 
+  const conversationSummary = buildConversationSummary(conversationState);
+  const isAgentReadOnly = agentStatus === 'paused' || agentStatus === 'awaiting_approval' || agentStatus === 'error';
+
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Sticky Header with Progress Bar */}
       <div className="flex-shrink-0 bg-card border-b shadow-sm">
-        {/* Progress Steps */}
+        <AgentStatusBar
+          status={agentStatus}
+          currentStepLabel={getStepLabel(conversationState.currentStep)}
+          summary={conversationSummary}
+          lastUpdated={agentLastUpdated}
+        />
         <div className="max-w-7xl mx-auto px-6 py-1 flex justify-center">
           <div className="w-full max-w-4xl">
             <ConversationProgressSteps
               currentStep={conversationState.currentStep}
               completedSteps={conversationState.completedSteps}
               onStepClick={handleStepNavigation}
+              agentStatus={agentStatus}
+              awaitingApprovalStep={awaitingApprovalStep}
             />
           </div>
         </div>
@@ -1836,6 +2170,12 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
       {/* Main Content */}
       <div className="flex-1 max-w-[1920px] mx-auto px-6 py-2 w-full min-h-0 overflow-hidden">
+        <ResumeConversationPanel
+          items={resumeItems}
+          activeConversationId={conversationState.conversationId}
+          onResume={handleResumeConversation}
+          onStartNew={handleStartNewConversation}
+        />
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
           {/* Chat Area - Takes 3/4 on large screens */}
           <div className="lg:col-span-3 h-full min-h-0">
@@ -1872,17 +2212,54 @@ One last question: On a scale of 1-10, how committed are you to this career path
                     if (message.role === 'tool' && message.toolType) {
                       // Only render if this is the active tool
                       if (activeTool === message.toolType) {
+                        const toolHeaderLabel = getStepLabel(conversationState.currentStep);
                         return (
                           <div key={index} className="w-full">
-                            <ToolRenderer
-                              toolType={message.toolType}
-                              toolData={message.toolData || {}}
-                              onToolComplete={(result) => handleToolComplete(message.toolType!, result)}
-                              onToolSkip={handleToolSkip}
-                              onCareerPathfinderClick={handleCareerPathfinderClick}
-                              onProgramPathfinderClick={handleProgramPathfinderClick}
-                              onStudentDataChanged={handleStudentDataRefresh}
-                            />
+                            {isVersionB ? (
+                              <div className="rounded-2xl border border-border bg-white dark:bg-zinc-900 shadow-sm">
+                                <div className="flex items-center justify-between border-b border-border px-4 py-2">
+                                  <p className="text-xs font-semibold text-muted-foreground">
+                                    Step: <span className="text-foreground">{toolHeaderLabel}</span>
+                                  </p>
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Agent Tool
+                                  </span>
+                                </div>
+                                <div className="p-4">
+                                  <ToolRenderer
+                                    toolType={message.toolType}
+                                    toolData={message.toolData || {}}
+                                    onToolComplete={(result) => handleToolComplete(message.toolType!, result)}
+                                    onToolSkip={handleToolSkip}
+                                    onCareerPathfinderClick={handleCareerPathfinderClick}
+                                    onProgramPathfinderClick={handleProgramPathfinderClick}
+                                    onStudentDataChanged={handleStudentDataRefresh}
+                                    readOnly={isAgentReadOnly}
+                                    requiresApproval={agentStatus === 'awaiting_approval'}
+                                    onApprove={handleAgentApprove}
+                                    onReject={handleAgentReject}
+                                    agentStatus={agentStatus}
+                                    variant={variant}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <ToolRenderer
+                                toolType={message.toolType}
+                                toolData={message.toolData || {}}
+                                onToolComplete={(result) => handleToolComplete(message.toolType!, result)}
+                                onToolSkip={handleToolSkip}
+                                onCareerPathfinderClick={handleCareerPathfinderClick}
+                                onProgramPathfinderClick={handleProgramPathfinderClick}
+                                onStudentDataChanged={handleStudentDataRefresh}
+                                readOnly={isAgentReadOnly}
+                                requiresApproval={agentStatus === 'awaiting_approval'}
+                                onApprove={handleAgentApprove}
+                                onReject={handleAgentReject}
+                                agentStatus={agentStatus}
+                                variant={variant}
+                              />
+                            )}
                           </div>
                         );
                       }
@@ -1943,7 +2320,15 @@ One last question: On a scale of 1-10, how committed are you to this career path
                                 : 'bg-white dark:bg-zinc-900 dark:text-white border border-border shadow-sm'
                                 }`}
                             >
-                              {message.content && <MarkdownMessage content={message.content} />}
+                              {message.content && (
+                                <MarkdownMessage
+                                  content={message.content}
+                                  decisionMeta={message.decisionMeta}
+                                  showFeedback={message.showFeedback}
+                                  feedbackReasons={message.feedbackReasons ?? feedbackReasons}
+                                  onFeedback={(value, reason) => handleAgentFeedback(message, value, reason)}
+                                />
+                              )}
                               <p
                                 className={`text-xs mt-1 ${message.role === 'user' ? 'text-white/60' : 'text-muted-foreground dark:text-white/60'
                                   }`}
@@ -1958,7 +2343,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                         </div>
 
                         {/* Quick Reply Buttons - Only show on last message if not processing */}
-                        {hasQuickReplies && isLastMessage && !isProcessing && !activeTool && (
+                        {hasQuickReplies && isLastMessage && !isProcessing && !activeTool && !isAgentReadOnly && (
                           <div className="flex justify-start mt-2">
                             <div className="flex flex-wrap gap-2 max-w-[80%]">
                               {message.quickReplies!.map((reply, replyIndex) => (
@@ -2009,7 +2394,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      disabled={isProcessing}
+                      disabled={isProcessing || isAgentReadOnly}
                       inputRef={inputRef}
                       sx={{
                         '& .MuiOutlinedInput-root': {
@@ -2019,7 +2404,7 @@ One last question: On a scale of 1-10, how committed are you to this career path
                     />
                     <Button
                       onClick={() => handleSendMessage()}
-                      disabled={!inputMessage.trim() || isProcessing}
+                      disabled={!inputMessage.trim() || isProcessing || isAgentReadOnly}
                       variant="primary"
                       className="h-12 px-4"
                     >
@@ -2036,57 +2421,76 @@ One last question: On a scale of 1-10, how committed are you to this career path
 
           {/* Progress Sidebar - Takes 1/4 on large screens */}
           <div className="lg:col-span-1 h-full overflow-y-auto">
-            <div className="border rounded-xl bg-card shadow-sm p-4">
-              <h2 className="text-lg font-semibold mb-4">Grad Plan Context</h2>
+            <div className="space-y-4">
+              {isVersionB && (
+                <StepNavigatorPanel
+                  currentStep={conversationState.currentStep}
+                  completedSteps={conversationState.completedSteps}
+                  onStepClick={handleStepNavigation}
+                />
+              )}
+              <AgentActivityPanel items={agentLogs} />
+              <AgentChecksPanel checks={agentChecks} />
+              <AgentControls
+                status={agentStatus}
+                onPause={handleAgentPause}
+                onResume={handleAgentResume}
+                onCancel={handleAgentCancel}
+                onApprove={handleAgentApprove}
+                onReject={handleAgentReject}
+                awaitingApproval={agentStatus === 'awaiting_approval'}
+              />
+              <div className="border rounded-xl bg-card shadow-sm p-4">
+                <h2 className="text-lg font-semibold mb-4">Grad Plan Context</h2>
 
-              <div className="space-y-4">
-                {(() => {
-                  const progress = getConversationProgress(conversationState);
+                <div className="space-y-4">
+                  {(() => {
+                    const progress = getConversationProgress(conversationState);
 
-                  if (progress.collectedFields.length === 0) {
+                    if (progress.collectedFields.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground">
+                          We will keep track of your priorities. Start chatting to build your plan!
+                        </p>
+                      );
+                    }
+
                     return (
-                      <p className="text-sm text-muted-foreground">
-                        We will keep track of your priorities. Start chatting to build your plan!
-                      </p>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-3">
-                      {progress.collectedFields.map((field) => (
-                        <div key={field.field} className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                          <div className="flex items-start gap-2">
-                            <CheckCircle2 size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground">{field.label}</p>
-                              <p className="text-xs text-muted-foreground mt-1 break-words">
-                                {Array.isArray(field.value) ? (
-                                  field.value.filter(v => v).length > 0 ? (
-                                    field.value.filter(v => v).join(', ')
+                      <div className="space-y-3">
+                        {progress.collectedFields.map((field) => (
+                          <div key={field.field} className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground">{field.label}</p>
+                                <p className="text-xs text-muted-foreground mt-1 break-words">
+                                  {Array.isArray(field.value) ? (
+                                    field.value.filter(v => v).length > 0 ? (
+                                      field.value.filter(v => v).join(', ')
+                                    ) : (
+                                      `${field.value.length} program${field.value.length > 1 ? 's' : ''} selected`
+                                    )
                                   ) : (
-                                    `${field.value.length} program${field.value.length > 1 ? 's' : ''} selected`
-                                  )
-                                ) : (
-                                  field.value
-                                )}
-                              </p>
+                                    field.value
+                                  )}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
 
-                      {/* Current Step Indicator */}
-                      {conversationState.currentStep !== ConversationStep.COMPLETE && (
-                        <div className="mt-4 p-3 rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30">
-                          <p className="text-sm text-center">
-                            <span className="font-semibold text-green-800 dark:text-green-600">Current Step:</span>{' '}
-                            <span className="text-foreground">{progress.currentStepLabel}</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                        {conversationState.currentStep !== ConversationStep.COMPLETE && (
+                          <div className="mt-4 p-3 rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30">
+                            <p className="text-sm text-center">
+                              <span className="font-semibold text-green-800 dark:text-green-600">Current Step:</span>{' '}
+                              <span className="text-foreground">{progress.currentStepLabel}</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </div>

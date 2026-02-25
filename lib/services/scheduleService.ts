@@ -98,22 +98,13 @@ export async function getActiveSchedule(studentId: number): Promise<StudentSched
         return null;
     }
 
-    // Fetch course selections
-    const { data: selections, error: selectionsError } = await supabase
-        .from('schedule_course_selections')
-        .select('*')
-        .eq('schedule_id', schedule.schedule_id);
-
-    if (selectionsError) {
-        console.error('Error fetching course selections:', selectionsError);
-        throw new ScheduleFetchError('Failed to fetch course selections', selectionsError);
-    }
+    const selections = (schedule.course_selections as CourseSelection[]) || [];
 
     return {
         ...schedule,
         blocked_times: schedule.blocked_times || [],
         preferences: schedule.preferences || {},
-        course_selections: selections || [],
+        course_selections: selections,
     };
 }
 
@@ -148,7 +139,7 @@ export async function getScheduleById(scheduleId: string): Promise<StudentSchedu
         updated_at: data.updated_at,
         blocked_times: data.blocked_times as BlockedTime[],
         preferences: data.preferences as SchedulePreferences,
-        course_selections: []
+        course_selections: (data.course_selections as CourseSelection[]) || []
     };
 }
 
@@ -176,6 +167,7 @@ export async function createSchedule(
                 is_active: false, // Don't activate until user completes setup
                 blocked_times: [], // Initialize empty
                 preferences: {},   // Initialize empty
+                course_selections: [], // Initialize empty
             })
             .select('schedule_id')
             .single();
@@ -405,7 +397,7 @@ export async function updateSchedulePreferences(
     }
 }
 
-// ---- Course Selections (separate table) ----
+// ---- Course Selections (JSONB on student_schedules) ----
 
 /**
  * AUTHORIZATION: STUDENTS AND ABOVE
@@ -417,26 +409,78 @@ export async function addCourseSelection(
     courseSelection: Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>
 ): Promise<{ success: boolean; selectionId?: string; error?: string }> {
     try {
-        const { data, error } = await supabase
-            .from('schedule_course_selections')
-            .insert({
-                schedule_id: scheduleId,
-                course_code: courseSelection.course_code,
-                requirement_type: courseSelection.requirement_type,
-                primary_offering_id: courseSelection.primary_offering_id,
-                backup_1_offering_id: courseSelection.backup_1_offering_id,
-                backup_2_offering_id: courseSelection.backup_2_offering_id,
-                status: courseSelection.status,
-                notes: courseSelection.notes
-            })
-            .select('selection_id')
+        const { data: schedule, error: fetchError } = await supabase
+            .from('student_schedules')
+            .select('course_selections')
+            .eq('schedule_id', scheduleId)
             .single();
 
-        if (error) {
-            console.error('Error adding course selection:', error);
-            return { success: false, error: error.message };
+        if (fetchError || !schedule) {
+            return { success: false, error: 'Failed to fetch schedule' };
         }
-        return { success: true, selectionId: data.selection_id };
+
+        const selectionId = crypto.randomUUID();
+        const currentSelections = (schedule.course_selections as CourseSelection[]) || [];
+        const newSelection: CourseSelection = {
+            selection_id: selectionId,
+            course_code: courseSelection.course_code,
+            requirement_type: courseSelection.requirement_type,
+            primary_offering_id: courseSelection.primary_offering_id,
+            backup_1_offering_id: courseSelection.backup_1_offering_id,
+            backup_2_offering_id: courseSelection.backup_2_offering_id,
+            status: courseSelection.status,
+            notes: courseSelection.notes
+        };
+
+        const updatedSelections = [...currentSelections, newSelection];
+
+        const { error: updateError } = await supabase
+            .from('student_schedules')
+            .update({ course_selections: updatedSelections })
+            .eq('schedule_id', scheduleId);
+
+        if (updateError) {
+            console.error('Error adding course selection:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        return { success: true, selectionId };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown' };
+    }
+}
+
+/**
+ * AUTHORIZATION: STUDENTS AND ABOVE
+ * Replaces all course selections for a schedule
+ */
+export async function replaceCourseSelections(
+    scheduleId: string,
+    courseSelections: Array<Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const newSelections: CourseSelection[] = courseSelections.map(selection => ({
+            selection_id: crypto.randomUUID(),
+            course_code: selection.course_code,
+            requirement_type: selection.requirement_type,
+            primary_offering_id: selection.primary_offering_id,
+            backup_1_offering_id: selection.backup_1_offering_id,
+            backup_2_offering_id: selection.backup_2_offering_id,
+            status: selection.status,
+            notes: selection.notes,
+        }));
+
+        const { error: updateError } = await supabase
+            .from('student_schedules')
+            .update({ course_selections: newSelections })
+            .eq('schedule_id', scheduleId);
+
+        if (updateError) {
+            console.error('Error replacing course selections:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        return { success: true };
     } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown' };
     }
@@ -447,17 +491,44 @@ export async function addCourseSelection(
  * Updates course selection (change sections, status, notes)
  */
 export async function updateCourseSelection(
+    scheduleId: string,
     selectionId: string,
     updates: Partial<Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>>
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const { error } = await supabase
-            .from('schedule_course_selections')
-            .update(updates)
-            .eq('selection_id', selectionId);
+        const { data: schedule, error: fetchError } = await supabase
+            .from('student_schedules')
+            .select('course_selections')
+            .eq('schedule_id', scheduleId)
+            .single();
 
-        if (error) {
-            return { success: false, error: error.message };
+        if (fetchError || !schedule) {
+            return { success: false, error: 'Failed to fetch schedule' };
+        }
+
+        const currentSelections = (schedule.course_selections as CourseSelection[]) || [];
+        const index = currentSelections.findIndex(selection => selection.selection_id === selectionId);
+
+        if (index === -1) {
+            return { success: false, error: 'Selection not found' };
+        }
+
+        const updatedSelection: CourseSelection = {
+            ...currentSelections[index],
+            ...updates,
+            selection_id: selectionId
+        };
+
+        const updatedSelections = [...currentSelections];
+        updatedSelections[index] = updatedSelection;
+
+        const { error: updateError } = await supabase
+            .from('student_schedules')
+            .update({ course_selections: updatedSelections })
+            .eq('schedule_id', scheduleId);
+
+        if (updateError) {
+            return { success: false, error: updateError.message };
         }
         return { success: true };
     } catch (error) {
@@ -470,16 +541,34 @@ export async function updateCourseSelection(
  * Removes a course from the schedule
  */
 export async function deleteCourseSelection(
+    scheduleId: string,
     selectionId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const { error } = await supabase
-            .from('schedule_course_selections')
-            .delete()
-            .eq('selection_id', selectionId);
+        const { data: schedule, error: fetchError } = await supabase
+            .from('student_schedules')
+            .select('course_selections')
+            .eq('schedule_id', scheduleId)
+            .single();
 
-        if (error) {
-            return { success: false, error: error.message };
+        if (fetchError || !schedule) {
+            return { success: false, error: 'Failed to fetch schedule' };
+        }
+
+        const currentSelections = (schedule.course_selections as CourseSelection[]) || [];
+        const updatedSelections = currentSelections.filter(selection => selection.selection_id !== selectionId);
+
+        if (updatedSelections.length === currentSelections.length) {
+            return { success: false, error: 'Selection not found' };
+        }
+
+        const { error: updateError } = await supabase
+            .from('student_schedules')
+            .update({ course_selections: updatedSelections })
+            .eq('schedule_id', scheduleId);
+
+        if (updateError) {
+            return { success: false, error: updateError.message };
         }
         return { success: true };
     } catch (error) {
@@ -519,20 +608,10 @@ export async function getScheduleWithCourseDetails(
         ...schedule,
         blocked_times: schedule.blocked_times || [],
         preferences: schedule.preferences || {},
-        course_selections: [] // Populated below
+        course_selections: (schedule.course_selections as CourseSelection[]) || []
     };
 
-    // 2. Fetch selections
-    const { data: selections, error: selectionsError } = await supabase
-        .from('schedule_course_selections')
-        .select('*')
-        .eq('schedule_id', scheduleId);
-
-    if (selectionsError) {
-        throw new ScheduleFetchError('Failed to fetch selections', selectionsError);
-    }
-
-    typedSchedule.course_selections = selections || [];
+    const selections = typedSchedule.course_selections;
 
     // 3. Fetch course details for all referenced offerings
     const offeringIds = new Set<number>();

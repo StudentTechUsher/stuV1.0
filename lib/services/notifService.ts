@@ -1,4 +1,4 @@
-import { supabase } from '../supabase'
+import { supabaseAdmin } from "../supabaseAdmin";
 import { sendGradPlanApprovalEmail } from './emailService'
 
 /**
@@ -10,7 +10,7 @@ import { sendGradPlanApprovalEmail } from './emailService'
  */
 export async function getPendingGradPlansCount(): Promise<number> {
 	try {
-		const { count, error } = await supabase
+		const { count, error } = await supabaseAdmin
 			.from('grad_plan')
 			.select('*', { count: 'exact', head: true })
 			.eq('pending_approval', true)
@@ -74,7 +74,7 @@ export async function createNotification({
 			created_utc
 		}
 
-		const { data, error } = await supabase
+		const { data, error } = await supabaseAdmin
 			.from("notifications")
 			.insert(insertPayload)
 			.select("*")
@@ -176,7 +176,7 @@ export async function createNotifForGradPlanApproved(targetUserId: string, initi
 		}
 
 		// Fetch initiator's role to verify they're an advisor/admin
-		const { data: initiatorProfile, error: initiatorError } = await supabase
+		const { data: initiatorProfile, error: initiatorError } = await supabaseAdmin
 			.from('profiles')
 			.select('first_name, last_name, roles!inner(role_name)')
 			.eq('id', initiatorUserId)
@@ -199,7 +199,7 @@ export async function createNotifForGradPlanApproved(targetUserId: string, initi
 		const advisorName = `${initiatorProfile.first_name} ${initiatorProfile.last_name}`;
 
 		// Fetch student profile to get email and first name
-		const { data: profile, error: profileError } = await supabase
+		const { data: profile, error: profileError } = await supabaseAdmin
 			.from('profiles')
 			.select('email, first_name')
 			.eq('id', targetUserId)
@@ -210,7 +210,7 @@ export async function createNotifForGradPlanApproved(targetUserId: string, initi
 		}
 
 		// Fetch the most recent approved grad plan to get access_id
-		const { data: gradPlan, error: gradPlanError } = await supabase
+		const { data: gradPlan, error: gradPlanError } = await supabaseAdmin
 			.from('grad_plan')
 			.select('access_id')
 			.eq('user_id', targetUserId)
@@ -254,7 +254,7 @@ export async function createNotifForGradPlanApproved(targetUserId: string, initi
 
 export async function markSingleNotificationRead(notifId: string) {
 	try {
-		const { data, error } = await supabase
+		const { data, error } = await supabaseAdmin
 			.from("notifications")
 			.update({ is_read: true, read_utc: new Date().toISOString() })
 			.eq("id", notifId)
@@ -281,7 +281,7 @@ export async function markSingleNotificationRead(notifId: string) {
 export async function getUnreadNotificationsForUser(userId: string) {
 	try {
 		if (!userId) throw new Error('userId is required');
-		const { data, error } = await supabase
+		const { data, error } = await supabaseAdmin
 			.from('notifications')
 			.select('*')
 			.eq('target_user_id', userId)
@@ -305,7 +305,7 @@ export async function getUnreadNotificationsForUser(userId: string) {
 export async function getUnreadNotificationsCount(userId: string): Promise<number> {
 	try {
 		if (!userId) return 0;
-		const { count, error } = await supabase
+		const { count, error } = await supabaseAdmin
 			.from('notifications')
 			.select('*', { count: 'exact', head: true })
 			.eq('target_user_id', userId)
@@ -330,7 +330,7 @@ export async function getUnreadNotificationsCount(userId: string): Promise<numbe
 export async function getAllNotificationsForUser(userId: string) {
 	try {
 		if (!userId) throw new Error('userId is required');
-		const { data, error } = await supabase
+		const { data, error } = await supabaseAdmin
 			.from('notifications')
 			.select('*')
 			.eq('target_user_id', userId)
@@ -362,7 +362,7 @@ export async function markAllNotificationsRead(userId: string): Promise<{
 	try {
 		if (!userId) throw new Error('userId is required');
 
-		const { data, error } = await supabase
+		const { data, error } = await supabaseAdmin
 			.from('notifications')
 			.update({ is_read: true, read_utc: new Date().toISOString() })
 			.eq('target_user_id', userId)
@@ -400,7 +400,7 @@ export async function deleteNotification(
 		if (!userId) throw new Error('userId is required');
 
 		// Verify the notification belongs to this user before deleting
-		const { data: notif, error: fetchError } = await supabase
+		const { data: notif, error: fetchError } = await supabaseAdmin
 			.from('notifications')
 			.select('target_user_id')
 			.eq('id', notifId)
@@ -419,7 +419,7 @@ export async function deleteNotification(
 			return { success: false, error: 'Access denied: Notification belongs to another user' };
 		}
 
-		const { error: deleteError } = await supabase
+		const { error: deleteError } = await supabaseAdmin
 			.from('notifications')
 			.delete()
 			.eq('id', notifId);
@@ -453,7 +453,7 @@ export async function deleteAllReadNotifications(userId: string): Promise<{
 	try {
 		if (!userId) throw new Error('userId is required');
 
-		const { data, error } = await supabase
+		const { data, error } = await supabaseAdmin
 			.from('notifications')
 			.delete()
 			.eq('target_user_id', userId)

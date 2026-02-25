@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Typography, Paper, CircularProgress, Alert } from "@mui/material";
 
 import SchedulerCalendar, { type SchedulerEvent } from "./scheduler-calendar";
@@ -71,6 +71,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
   const [personalEvents, setPersonalEvents] = useState<SchedulerEvent[]>([]);
   const [courseEvents, setCourseEvents] = useState<SchedulerEvent[]>([]);
+  const [previewEvents, setPreviewEvents] = useState<SchedulerEvent[]>([]);
   const [preferences, setPreferences] = useState<SchedulePreferences>({});
 
   // UI State
@@ -382,51 +383,39 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
     }
   };
 
-  // --- Handlers: Agent Calendar Updates ---
-  const handleAgentCalendarUpdate = useCallback((newEvents: Array<{
-    id: string;
-    title: string;
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-    location?: string;
-    category?: string;
-    courseCode?: string;
-    sectionLabel?: string;
-    instructor?: string;
-    offeringId?: number;
-  }>) => {
-    console.log('Agent adding events to calendar:', newEvents);
-
-    // Convert Mastra events to SchedulerEvent format
-    const convertedEvents: SchedulerEvent[] = newEvents.map(evt => ({
-      id: evt.id,
-      title: evt.title,
-      dayOfWeek: evt.dayOfWeek,
-      startTime: evt.startTime,
-      endTime: evt.endTime,
-      type: 'class' as const,
-      status: 'planned' as const,
-      course_code: evt.courseCode,
-      section: evt.sectionLabel,
-      professor: evt.instructor,
-      location: evt.location,
-    }));
-
-    setCourseEvents(prev => {
-      // Deduplicate by selection_id (format: "selection-id-daynum")
-      const existingIds = new Set(prev.map(e => e.id.split('-')[0]));
-      const uniqueNewEvents = convertedEvents.filter(e => {
-        const selectionId = e.id.split('-')[0];
-        return !existingIds.has(selectionId);
-      });
-
-      return [...prev, ...uniqueNewEvents];
-    });
-  }, []);
-
   // --- UI Wrappers ---
-  const allEvents = [...courseEvents, ...personalEvents];
+  const allEvents = [...courseEvents, ...personalEvents, ...previewEvents];
+  const parseTimeToMinutes = (time?: string): number | null => {
+    if (!time) return null;
+    const [hours, minutes] = time.split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+  const formatMinutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:00`;
+  };
+  const earliestEventMinutes = allEvents.reduce((min, event) => {
+    const minutes = parseTimeToMinutes(event.startTime);
+    if (minutes === null) return min;
+    return Math.min(min, minutes);
+  }, Number.POSITIVE_INFINITY);
+  const latestEventMinutes = allEvents.reduce((max, event) => {
+    const minutes = parseTimeToMinutes(event.endTime);
+    if (minutes === null) return max;
+    return Math.max(max, minutes);
+  }, Number.NEGATIVE_INFINITY);
+  const preferenceStartMinutes = parseTimeToMinutes(preferences.earliest_class_time || '06:00');
+  const preferenceEndMinutes = parseTimeToMinutes(preferences.latest_class_time || '24:00');
+  const slotMinMinutes = Math.min(
+    preferenceStartMinutes ?? 6 * 60,
+    Number.isFinite(earliestEventMinutes) ? earliestEventMinutes : Number.POSITIVE_INFINITY
+  );
+  const slotMaxMinutes = Math.max(
+    preferenceEndMinutes ?? 24 * 60,
+    Number.isFinite(latestEventMinutes) ? latestEventMinutes : Number.NEGATIVE_INFINITY
+  );
 
   // Extract terms from active grad plan
   const gradPlanTerms = (() => {
@@ -484,9 +473,9 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
         <Typography variant="h4" sx={{ fontFamily: '"Red Hat Display", sans-serif', fontWeight: 800, mb: 1, fontSize: '2rem' }}>
           Course Scheduler
         </Typography>
-        <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
+        {/* <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
           Plan your optimal class schedule based on your graduation plan and personal commitments.
-        </Typography>
+        </Typography> */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -522,11 +511,27 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
           </Box>
         )}
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" }, gap: 2 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: "420px 1fr" },
+            gap: 2,
+            alignItems: "stretch",
+          }}
+        >
           {/* Left Panel - AI-Guided Schedule Generation */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, height: "100%" }}>
             {activeScheduleId && selectedTermName !== null && selectedTermIndex !== null && studentId ? (
-              <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid var(--border)", display: "flex", flexDirection: "column", maxHeight: "800px" }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
                 <ScheduleGenerationPanel
                   termName={selectedTermName}
                   termIndex={selectedTermIndex}
@@ -591,7 +596,7 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                   gradPlanTerms={gradPlanTerms}
                   selectedTermIndex={selectedTermIndex}
                   isLoading={isLoading}
-                  onAgentCalendarUpdate={handleAgentCalendarUpdate}
+                  onSectionPreviewEventsChange={setPreviewEvents}
                 />
               </Paper>
             ) : (
@@ -647,8 +652,8 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                 onClassEventClick={(evt) => setClassInfoDialog({ isOpen: true, event: evt })}
                 onEventDrop={handleEventDrop}
                 onSlotSelect={(day, start, end) => setEventDialog({ isOpen: true, event: undefined, selectedSlot: { dayOfWeek: day, startTime: start, endTime: end }, isEdit: false })}
-                slotMinTime={preferences.earliest_class_time || "06:00:00"}
-                slotMaxTime={preferences.latest_class_time || "24:00:00"}
+                slotMinTime={formatMinutesToTime(slotMinMinutes)}
+                slotMaxTime={formatMinutesToTime(slotMaxMinutes)}
                 gradPlanEditUrl={`/grad-plan`}
                 exportRef={calendarExportRef}
                 headerActions={<CalendarExportButtons calendarRef={calendarExportRef} semester="Schedule" tableRows={[]} showEditButton={false} />}

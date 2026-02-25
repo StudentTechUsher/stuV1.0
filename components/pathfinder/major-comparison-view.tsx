@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { MajorComparisonCard } from './major-comparison-card';
 import { StuLoader } from '@/components/ui/StuLoader';
-import type { MajorComparisonResult } from '@/lib/services/majorComparisonService';
+import type { MajorComparisonResult } from '@/types/major-comparison';
 import { PATHFINDER_COLORS } from './pathfinder-progress-ui';
 
 interface MajorComparisonViewProps {

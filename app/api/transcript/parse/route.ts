@@ -7,10 +7,14 @@ import {
   parseByuTranscriptPdfWithOpenAI,
   deduplicateByuCourses,
   type ByuTranscriptParseResult,
+  type TransferInstitution,
+  type ExamCredit,
+  type EntranceExam,
 } from '@/lib/transcript/byuTranscriptParserOpenAI';
 import { logError, logInfo } from '@/lib/logger';
 import { calculateGpaFromCourses } from '@/lib/services/gpaCalculationService';
-import { updateStudentGpa } from '@/lib/services/studentService';
+import { updateStudentGpa, updateStudentIdentity } from '@/lib/services/studentService';
+import { updateProfileNameIfPlaceholder } from '@/lib/services/profileService.server';
 import { randomUUID } from 'crypto';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -30,6 +34,99 @@ function deriveStatus(grade: string | null): 'completed' | 'withdrawn' | 'in-pro
   return 'completed';
 }
 
+function parseCourseCode(value: string): { subject: string; number: string; title?: string } | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^([A-Z]{1,8}(?:\s+[A-Z]{1,3})?)\s+(\d{3}[A-Z]?)(?:\s+(.+))?$/i);
+  if (!match) return null;
+  const subject = match[1].trim().toUpperCase();
+  const number = match[2].trim().toUpperCase();
+  const title = match[3]?.trim();
+  return { subject, number, title };
+}
+
+function extractNameParts(name: string): { firstName?: string; lastName?: string } {
+  if (!name) return {};
+  const trimmed = name.trim();
+  if (trimmed.includes(',')) {
+    const [last, rest] = trimmed.split(',', 2);
+    const first = rest?.trim().split(/\s+/)[0];
+    return {
+      firstName: first || undefined,
+      lastName: last?.trim() || undefined,
+    };
+  }
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0] };
+  }
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
+}
+
+function buildTransferCourses(institutions: TransferInstitution[]) {
+  const courses: Array<{
+    id: string;
+    subject: string;
+    number: string;
+    title: string;
+    credits: number;
+    grade: string | null;
+    term: string;
+    tags: string[];
+    origin: 'transfer';
+    status: 'completed' | 'withdrawn' | 'in-progress';
+    transfer: {
+      institution: string;
+      originalSubject: string;
+      originalNumber: string;
+      originalTitle: string;
+      originalCredits: number;
+      originalGrade: string;
+    };
+  }> = [];
+
+  for (const institution of institutions) {
+    for (const course of institution.courses ?? []) {
+      if (course.accepted === false) {
+        continue;
+      }
+
+      const originalParsed = parseCourseCode(course.originalCode);
+      const equivalentParsed = course.equivalent ? parseCourseCode(course.equivalent) : null;
+      const subject = equivalentParsed?.subject ?? originalParsed?.subject ?? 'TRN';
+      const number = equivalentParsed?.number ?? originalParsed?.number ?? '000';
+      const title = equivalentParsed?.title ?? course.originalTitle ?? 'Transfer Credit';
+      const grade = course.grade ?? null;
+
+      courses.push({
+        id: randomUUID(),
+        subject,
+        number,
+        title,
+        credits: course.hours,
+        grade,
+        term: 'Transfer Credit',
+        tags: [],
+        origin: 'transfer',
+        status: deriveStatus(grade),
+        transfer: {
+          institution: institution.name,
+          originalSubject: originalParsed?.subject ?? course.originalCode,
+          originalNumber: originalParsed?.number ?? '',
+          originalTitle: course.originalTitle,
+          originalCredits: course.hours,
+          originalGrade: course.grade,
+        },
+      });
+    }
+  }
+
+  return courses;
+}
+
 async function upsertParsedTranscript(options: {
   result: ByuTranscriptParseResult;
   userId: string;
@@ -38,7 +135,13 @@ async function upsertParsedTranscript(options: {
 }) {
   const { result, userId, supabase, usedOcr } = options;
 
-  if (!result.success || result.courses.length === 0) {
+  const hasAnyTranscriptData =
+    result.courses.length > 0 ||
+    (result.transferCredits?.length ?? 0) > 0 ||
+    (result.examCredits?.length ?? 0) > 0 ||
+    (result.entranceExams?.length ?? 0) > 0;
+
+  if (!result.success || !hasAnyTranscriptData) {
     return { report: null };
   }
 
@@ -55,10 +158,40 @@ async function upsertParsedTranscript(options: {
       grade,
       term: course.term,
       tags: [],
-      origin: 'parsed',
+      origin: course.transfer ? 'transfer' : 'parsed',
       status: deriveStatus(grade),
+      ...(course.transfer ? { transfer: course.transfer } : {}),
     };
   });
+
+  const transferCredits = (result.transferCredits ?? []).map((institution) => ({
+    ...institution,
+    courses: (institution.courses ?? []).map((course) => ({
+      id: randomUUID(),
+      ...course,
+    })),
+  }));
+  const examCredits: ExamCredit[] = (result.examCredits ?? []).map((exam) => ({
+    id: randomUUID(),
+    ...exam,
+  }));
+  const entranceExams: EntranceExam[] = (result.entranceExams ?? []).map((exam) => ({
+    id: randomUUID(),
+    ...exam,
+  }));
+  const termMetrics = result.termMetrics ?? [];
+
+  const transferCourses = buildTransferCourses(transferCredits);
+  const allCourses = [...coursesJson];
+  const seenKeys = new Set(allCourses.map((course) => `${course.term}::${course.subject}::${course.number}`));
+
+  for (const transferCourse of transferCourses) {
+    const key = `${transferCourse.term}::${transferCourse.subject}::${transferCourse.number}`;
+    if (!seenKeys.has(key)) {
+      allCourses.push(transferCourse);
+      seenKeys.add(key);
+    }
+  }
 
   const { data: existingRecord } = await supabase
     .from('user_courses')
@@ -69,12 +202,73 @@ async function upsertParsedTranscript(options: {
   if (existingRecord) {
     await supabase
       .from('user_courses')
-      .update({ courses: coursesJson })
+      .update({
+        courses: allCourses,
+        term_metrics: termMetrics,
+        transfer_credits: transferCredits,
+        exam_credits: examCredits,
+        entrance_exams: entranceExams,
+      })
       .eq('user_id', userId);
   } else {
     await supabase
       .from('user_courses')
-      .insert({ user_id: userId, courses: coursesJson });
+      .insert({
+        user_id: userId,
+        courses: allCourses,
+        term_metrics: termMetrics,
+        transfer_credits: transferCredits,
+        exam_credits: examCredits,
+        entrance_exams: entranceExams,
+      });
+  }
+
+  if (result.student) {
+    const { student_id, birthdate, name } = result.student;
+    try {
+      await updateStudentIdentity(supabase, userId, {
+        student_identifier: student_id ?? null,
+        birthdate: birthdate ?? null,
+      });
+    } catch (error) {
+      logError('Failed to update student identity', error, {
+        userId,
+        action: usedOcr ? 'update_student_identity_pdf' : 'update_student_identity_text',
+      });
+    }
+
+    if (name) {
+      const { firstName, lastName } = extractNameParts(name);
+      try {
+        await updateProfileNameIfPlaceholder(userId, firstName, lastName);
+      } catch (error) {
+        logError('Failed to update profile name from transcript', error, {
+          userId,
+          action: usedOcr ? 'update_profile_name_pdf' : 'update_profile_name_text',
+        });
+      }
+    }
+  }
+
+  try {
+    const { error: onboardError } = await supabase
+      .from('profiles')
+      .update({ onboarded: true })
+      .eq('id', userId);
+
+    if (onboardError) {
+      throw onboardError;
+    }
+
+    logInfo('Marked profile onboarded after transcript parse', {
+      userId,
+      action: usedOcr ? 'mark_onboarded_pdf' : 'mark_onboarded_text',
+    });
+  } catch (error) {
+    logError('Failed to mark profile onboarded after transcript parse', error, {
+      userId,
+      action: usedOcr ? 'mark_onboarded_pdf' : 'mark_onboarded_text',
+    });
   }
 
   try {
@@ -106,13 +300,13 @@ async function upsertParsedTranscript(options: {
     });
   }
 
-  const termsDetected = Array.from(new Set(dedupedCourses.map((course) => course.term)));
+  const termsDetected = Array.from(new Set(allCourses.map((course) => course.term)));
 
   return {
     report: {
       success: true,
-      courses_found: dedupedCourses.length,
-      courses_upserted: dedupedCourses.length,
+      courses_found: allCourses.length,
+      courses_upserted: allCourses.length,
       terms_detected: termsDetected,
       unknown_lines: 0,
       total_lines: 0,

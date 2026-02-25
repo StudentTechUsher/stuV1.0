@@ -42,6 +42,7 @@ export function createInitialState(
       courseSelectionMethod: null,
       selectedCourses: [],
       totalSelectedCredits: 0,
+      remainingCreditsToComplete: 0,
       electiveCourses: [],
       needsElectives: false,
       studentInterests: null,
@@ -319,6 +320,15 @@ export function getConversationProgress(state: ConversationState): ConversationP
       field: 'totalCredits',
       label: 'Total Credits',
       value: `${state.collectedData.totalSelectedCredits} credits`,
+      completed: true,
+    });
+  }
+
+  if (state.collectedData.remainingCreditsToComplete > 0) {
+    collectedFields.push({
+      field: 'remainingCredits',
+      label: 'Credits Left to Complete',
+      value: `${state.collectedData.remainingCreditsToComplete} credits`,
       completed: true,
     });
   }

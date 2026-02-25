@@ -18,7 +18,7 @@ import type { FormattedCourse } from '@/lib/services/userCoursesService';
 import { StuLoader } from '@/components/ui/StuLoader';
 import { MajorComparisonSelector } from '@/components/pathfinder/major-comparison-selector';
 import { MajorComparisonView } from '@/components/pathfinder/major-comparison-view';
-import type { MajorComparisonResult } from '@/lib/services/majorComparisonService';
+import type { MajorComparisonResult } from '@/types/major-comparison';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';

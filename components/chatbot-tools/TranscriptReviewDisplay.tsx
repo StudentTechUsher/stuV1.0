@@ -28,13 +28,18 @@ interface ParsedCourse {
 interface TranscriptReviewDisplayProps {
   courses: ParsedCourse[];
   onConfirm: () => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function TranscriptReviewDisplay({
   courses,
   onConfirm,
+  readOnly,
+  reviewMode,
 }: Readonly<TranscriptReviewDisplayProps>) {
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const isReadOnly = Boolean(readOnly || reviewMode);
 
   // Group courses by term
   const coursesByTerm = useMemo(() => {
@@ -67,6 +72,7 @@ export default function TranscriptReviewDisplay({
   }, [courses]);
 
   const handleConfirm = () => {
+    if (isReadOnly) return;
     setIsConfirmed(true);
     onConfirm();
   };
@@ -83,7 +89,7 @@ export default function TranscriptReviewDisplay({
   };
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -99,11 +105,11 @@ export default function TranscriptReviewDisplay({
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="p-4 bg-muted rounded-lg">
           <p className="text-xs text-muted-foreground mb-1">Total Courses</p>
-          <p className="text-2xl font-bold text-[var(--primary)]">{courses.length}</p>
+          <p className="text-2xl font-bold text-foreground">{courses.length}</p>
         </div>
         <div className="p-4 bg-muted rounded-lg">
           <p className="text-xs text-muted-foreground mb-1">Total Credits</p>
-          <p className="text-2xl font-bold text-[var(--primary)]">{totalCredits.toFixed(1)}</p>
+          <p className="text-2xl font-bold text-foreground">{totalCredits.toFixed(1)}</p>
         </div>
       </div>
 
@@ -151,7 +157,7 @@ export default function TranscriptReviewDisplay({
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-700">{course.title}</p>
+                          <p className="text-sm text-foreground">{course.title}</p>
 
                           {/* Transfer Credit Details */}
                           {isTransfer && course.transfer && (
@@ -206,12 +212,12 @@ export default function TranscriptReviewDisplay({
 
       {/* Confirm Button */}
       <div className="mt-6">
-        <Button
-          variant="primary"
-          onClick={handleConfirm}
-          disabled={isConfirmed}
-          className="w-full gap-2"
-        >
+      <Button
+        variant="primary"
+        onClick={handleConfirm}
+        disabled={isConfirmed || isReadOnly}
+        className="w-full gap-2"
+      >
           {isConfirmed ? (
             <>
               <CheckCircle2 size={18} />

@@ -7,9 +7,9 @@
  */
 
 interface TermMetricsDisplayProps {
-  hoursEarned: number;
-  hoursGraded: number;
-  termGpa: number;
+  hoursEarned: number | null;
+  hoursGraded: number | null;
+  termGpa: number | null;
 }
 
 export function TermMetricsDisplay({
@@ -20,15 +20,15 @@ export function TermMetricsDisplay({
   return (
     <div className="flex items-center gap-4 mt-1">
       <span className="font-body text-xs text-zinc-300 dark:text-zinc-700">
-        <span className="font-semibold">{hoursEarned}</span> hrs earned
+        <span className="font-semibold">{hoursEarned ?? '—'}</span> hrs earned
       </span>
       <span className="text-zinc-500">•</span>
       <span className="font-body text-xs text-zinc-300 dark:text-zinc-700">
-        <span className="font-semibold">{hoursGraded}</span> hrs graded
+        <span className="font-semibold">{hoursGraded ?? '—'}</span> hrs graded
       </span>
       <span className="text-zinc-500">•</span>
       <span className="font-body text-xs text-zinc-300 dark:text-zinc-700">
-        <span className="font-semibold">{termGpa.toFixed(2)}</span> GPA
+        <span className="font-semibold">{termGpa != null ? termGpa.toFixed(2) : '—'}</span> GPA
       </span>
     </div>
   );

@@ -198,7 +198,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm text-zinc-900 dark:text-zinc-900">
       <h3 className="font-semibold text-lg mb-4 text-center">Upload Transcript</h3>
 
       {status === "idle" || status === "failed" ? (
@@ -233,7 +233,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
                 className="border-2 border-dashed rounded-xl p-8 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
               >
                 <svg
-                  className="mx-auto h-12 w-12 text-muted-foreground mb-4"
+                  className="mx-auto h-12 w-12 text-zinc-500 dark:text-zinc-500 mb-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -246,7 +246,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
                   />
                 </svg>
                 <p className="text-sm mb-1">Drag &amp; drop or click to upload your transcript PDF</p>
-                <p className="text-xs text-muted-foreground">PDF only, max 10MB</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-600">PDF only, max 10MB</p>
               </div>
               <input
                 ref={fileInputRef}
@@ -258,7 +258,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
             </>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-zinc-600 dark:text-zinc-600 text-center">
                 Copy relevant text from your transcript and paste it below
               </p>
               <textarea
@@ -352,7 +352,7 @@ export default function TranscriptUpload({ onParsingComplete }: Readonly<Transcr
       )}
 
       {fileName && (
-        <p className="text-xs text-muted-foreground mt-2 text-center">{fileName}</p>
+        <p className="text-xs text-zinc-600 dark:text-zinc-600 mt-2 text-center">{fileName}</p>
       )}
     </div>
   );
