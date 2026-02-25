@@ -336,7 +336,7 @@ export function CreditDistributionStep({
         Credit Distribution Strategy
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4 }}>
-        Choose how you&apos;d like to distribute your {totalCredits} credits across semesters.
+        Choose how you&apos;d like to distribute your remaining {totalCredits} credits across semesters.
       </Typography>
 
       {/* Error Display */}
@@ -359,7 +359,7 @@ export function CreditDistributionStep({
       <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
         <CardContent>
           <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-            Total Credits to Complete
+            Remaining Credits to Complete
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
             {totalCredits} credits

@@ -32,6 +32,7 @@ export default function PersonalEventsStep({
   onEventsChange,
   onNext,
 }: PersonalEventsStepProps) {
+  const [endTimeManual, setEndTimeManual] = useState(false);
   const [formData, setFormData] = useState<{
     title: string;
     category: typeof eventCategories[number];
@@ -45,6 +46,17 @@ export default function PersonalEventsStep({
     startTime: '09:00',
     endTime: '10:00',
   });
+
+  const addMinutesToTime = (time: string, minutesToAdd: number) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return time;
+    }
+    const totalMinutes = (hours * 60 + minutes + minutesToAdd) % (24 * 60);
+    const nextHours = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+    const nextMinutes = (totalMinutes % 60).toString().padStart(2, '0');
+    return `${nextHours}:${nextMinutes}`;
+  };
 
   const handleAddEvent = () => {
     if (!formData.title.trim() || formData.daysOfWeek.length === 0) {
@@ -70,6 +82,7 @@ export default function PersonalEventsStep({
       startTime: '09:00',
       endTime: '10:00',
     });
+    setEndTimeManual(false);
   };
 
   const handleDayToggle = (day: number) => {
@@ -160,7 +173,14 @@ export default function PersonalEventsStep({
               type="time"
               fullWidth
               value={formData.startTime}
-              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+              onChange={(e) => {
+                const nextStart = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  startTime: nextStart,
+                  endTime: endTimeManual ? prev.endTime : addMinutesToTime(nextStart, 60),
+                }));
+              }}
               slotProps={{ inputLabel: { shrink: true } }}
               sx={{
                 '& .MuiOutlinedInput-root': {
@@ -177,7 +197,10 @@ export default function PersonalEventsStep({
               type="time"
               fullWidth
               value={formData.endTime}
-              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+              onChange={(e) => {
+                setEndTimeManual(true);
+                setFormData({ ...formData, endTime: e.target.value });
+              }}
               slotProps={{ inputLabel: { shrink: true } }}
               sx={{
                 '& .MuiOutlinedInput-root': {

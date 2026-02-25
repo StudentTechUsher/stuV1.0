@@ -38,6 +38,7 @@ interface CourseConfirmationStepProps {
   onBack: () => void;
   onCourseIssuesChange?: (hasIssues: boolean) => void;
   onTotalCreditsChange?: (totalCredits: number) => void;
+  onValidationStatusChange?: (status: { isValidating: boolean; hasValidated: boolean }) => void;
 }
 
 export default function CourseConfirmationStep({
@@ -53,6 +54,7 @@ export default function CourseConfirmationStep({
   onBack,
   onCourseIssuesChange,
   onTotalCreditsChange,
+  onValidationStatusChange,
 }: CourseConfirmationStepProps) {
   const [showCourseSearch, setShowCourseSearch] = useState(false);
   const [manuallyAddedCourses, setManuallyAddedCourses] = useState<Map<string, { code: string; title: string; credits: number }>>(new Map());
@@ -60,7 +62,13 @@ export default function CourseConfirmationStep({
     open: boolean;
     course: CourseOffering | null;
   }>({ open: false, course: null });
+  const [removeDialog, setRemoveDialog] = useState<{
+    open: boolean;
+    courseCode: string | null;
+  }>({ open: false, courseCode: null });
   const [isAddingToGradPlan, setIsAddingToGradPlan] = useState(false);
+  const [isUpdatingGradPlan, setIsUpdatingGradPlan] = useState(false);
+  const [removePlanError, setRemovePlanError] = useState<string | null>(null);
   const [isValidatingCourses, setIsValidatingCourses] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationSummary, setValidationSummary] = useState<{
@@ -77,14 +85,18 @@ export default function CourseConfirmationStep({
     selectedCourses
   });
 
-  const handleRemoveCourse = (courseCode: string) => {
+  const removeCourseFromSchedule = (courseCode: string) => {
     onCoursesChange(selectedCourses.filter(c => c !== courseCode));
-    // Also remove from manually added courses if it exists there
     if (manuallyAddedCourses.has(courseCode)) {
       const newMap = new Map(manuallyAddedCourses);
       newMap.delete(courseCode);
       setManuallyAddedCourses(newMap);
     }
+  };
+
+  const handleRemoveCourse = (courseCode: string) => {
+    setRemovePlanError(null);
+    setRemoveDialog({ open: true, courseCode });
   };
 
   const handleCourseSelect = (course: CourseOffering) => {
@@ -122,6 +134,58 @@ export default function CourseConfirmationStep({
     setShowCourseSearch(false);
   };
 
+  const handleConfirmRemoveFromPlan = async (action: 'delete' | 'move') => {
+    const courseCode = removeDialog.courseCode;
+    if (!courseCode) return;
+
+    setIsUpdatingGradPlan(true);
+    setRemovePlanError(null);
+    let didError = false;
+
+    try {
+      if (gradPlanId) {
+        const endpoint = action === 'delete'
+          ? '/api/grad-plan/remove-course-from-term'
+          : '/api/grad-plan/move-course-to-next-term';
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gradPlanId,
+            termIndex,
+            termName,
+            courseCode,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          didError = true;
+          setRemovePlanError(errorData?.error || 'Failed to update graduation plan');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating grad plan:', error);
+      didError = true;
+      setRemovePlanError('Failed to update graduation plan');
+    } finally {
+      setIsUpdatingGradPlan(false);
+      removeCourseFromSchedule(courseCode);
+      if (!didError) {
+        setRemoveDialog({ open: false, courseCode: null });
+      }
+    }
+  };
+
+  const handleRemoveFromScheduleOnly = () => {
+    const courseCode = removeDialog.courseCode;
+    if (!courseCode) return;
+    removeCourseFromSchedule(courseCode);
+    setRemovePlanError(null);
+    setRemoveDialog({ open: false, courseCode: null });
+  };
+
   const handleConfirmAddToGradPlan = async (addToGradPlan: boolean) => {
     const course = confirmDialog.course;
     if (!course) return;
@@ -146,6 +210,7 @@ export default function CourseConfirmationStep({
           body: JSON.stringify({
             gradPlanId,
             termIndex,
+            termName,
             course: {
               code: course.course_code,
               title: course.title,
@@ -155,14 +220,16 @@ export default function CourseConfirmationStep({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to add course to grad plan');
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.error || 'Failed to add course to grad plan');
         }
 
         // Successfully added to grad plan
         addCourseToSchedule(course);
       } catch (error) {
         console.error('Error adding course to grad plan:', error);
-        alert('Failed to add course to graduation plan. The course will still be added to your schedule.');
+        const message = error instanceof Error ? error.message : 'Failed to add course to graduation plan';
+        alert(`${message}. The course will still be added to your schedule.`);
         addCourseToSchedule(course);
       } finally {
         setIsAddingToGradPlan(false);
@@ -212,10 +279,13 @@ export default function CourseConfirmationStep({
     const validateSelectedCourses = async () => {
       if (!termName || selectedCourses.length === 0) {
         setValidationSummary(null);
+        setIsValidatingCourses(false);
+        onValidationStatusChange?.({ isValidating: false, hasValidated: false });
         return;
       }
 
       setIsValidatingCourses(true);
+      onValidationStatusChange?.({ isValidating: true, hasValidated: false });
       setValidationError(null);
 
       try {
@@ -259,6 +329,7 @@ export default function CourseConfirmationStep({
       } finally {
         if (isActive) {
           setIsValidatingCourses(false);
+          onValidationStatusChange?.({ isValidating: false, hasValidated: true });
         }
       }
     };
@@ -268,7 +339,7 @@ export default function CourseConfirmationStep({
     return () => {
       isActive = false;
     };
-  }, [selectedCourses, termName, universityId]);
+  }, [selectedCourses, termName, universityId, onValidationStatusChange]);
 
   // Merge grad plan courses with manually added courses
   const allAvailableCourses = new Map<string, { code: string; title: string; credits: number }>();
@@ -290,10 +361,15 @@ export default function CourseConfirmationStep({
 
   const localTotalCredits = selectedCourseDetails.reduce((sum, course) => sum + course.credits, 0);
   const warning = getCreditWarning(localTotalCredits);
+  const removeCourseDetails = removeDialog.courseCode
+    ? allAvailableCourses.get(removeDialog.courseCode) || null
+    : null;
 
   useEffect(() => {
-    onTotalCreditsChange?.(localTotalCredits);
-  }, [localTotalCredits, onTotalCreditsChange]);
+    if (!onTotalCreditsChange) return;
+    if (localTotalCredits === totalCredits) return;
+    onTotalCreditsChange(localTotalCredits);
+  }, [localTotalCredits, onTotalCreditsChange, totalCredits]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -532,10 +608,102 @@ export default function CourseConfirmationStep({
             className="font-body-semi"
             sx={{
               bgcolor: 'var(--primary)',
+              color: 'black',
               '&:hover': { bgcolor: 'var(--hover-green)' },
             }}
           >
             {isAddingToGradPlan ? 'Adding...' : 'Yes, Add to Plan'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Remove / Move Dialog */}
+      <Dialog
+        open={removeDialog.open}
+        onClose={() => {
+          if (isUpdatingGradPlan) return;
+          setRemovePlanError(null);
+          setRemoveDialog({ open: false, courseCode: null });
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" className="font-header">
+              Update Graduation Plan?
+            </Typography>
+            <IconButton
+              onClick={() => {
+                if (isUpdatingGradPlan) return;
+                setRemovePlanError(null);
+                setRemoveDialog({ open: false, courseCode: null });
+              }}
+              size="small"
+            >
+              <X size={20} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You’re removing <strong>{removeDialog.courseCode}</strong>
+            {removeCourseDetails?.title ? ` (${removeCourseDetails.title})` : ''} from this term.
+            Do you want to update your graduation plan as well?
+          </DialogContentText>
+          {!gradPlanId && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No active graduation plan was found. The course will be removed from this schedule only.
+            </Alert>
+          )}
+          {removePlanError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {removePlanError}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 2, display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={handleRemoveFromScheduleOnly}
+            disabled={isUpdatingGradPlan}
+            sx={{
+              borderColor: 'var(--border)',
+              color: 'var(--foreground)',
+            }}
+          >
+            Remove From Schedule Only
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => handleConfirmRemoveFromPlan('move')}
+            disabled={isUpdatingGradPlan || !gradPlanId}
+            sx={{
+              borderColor: '#06C96C',
+              color: '#047857',
+              fontWeight: 600,
+            }}
+          >
+            Move To Next Term
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => handleConfirmRemoveFromPlan('delete')}
+            disabled={isUpdatingGradPlan || !gradPlanId}
+            sx={{
+              bgcolor: '#ef4444',
+              color: 'white',
+              '&:hover': { bgcolor: '#dc2626' },
+              fontWeight: 700,
+            }}
+          >
+            Delete From Plan
           </Button>
         </DialogActions>
       </Dialog>

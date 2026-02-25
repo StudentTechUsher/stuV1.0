@@ -12,7 +12,6 @@ describe('Zod Schemas - Validation Tests', () => {
       const validData = {
         university_id: 1,
         email: 'student@example.com',
-        role: 'student',
         fname: 'John',
         lname: 'Doe',
         est_grad_sem: 'Spring 2025',
@@ -27,22 +26,10 @@ describe('Zod Schemas - Validation Tests', () => {
       }
     });
 
-    it('should validate an advisor profile with minimal fields', () => {
-      const validData = {
-        university_id: 2,
-        email: 'advisor@example.com',
-        role: 'advisor',
-      };
-
-      const result = OnboardingSchema.safeParse(validData);
-      expect(result.success).toBe(true);
-    });
-
     it('should reject invalid email format', () => {
       const invalidData = {
         university_id: 1,
         email: 'not-an-email',
-        role: 'student',
         est_grad_sem: 'Spring 2025',
         est_grad_date: '2025-05-15',
       };
@@ -60,7 +47,6 @@ describe('Zod Schemas - Validation Tests', () => {
       const invalidData = {
         university_id: 1,
         email: 'a'.repeat(250) + '@example.com',
-        role: 'student',
         est_grad_sem: 'Spring 2025',
         est_grad_date: '2025-05-15',
       };
@@ -73,38 +59,18 @@ describe('Zod Schemas - Validation Tests', () => {
       const invalidData = {
         university_id: -1,
         email: 'student@example.com',
-        role: 'student',
         est_grad_sem: 'Spring 2025',
         est_grad_date: '2025-05-15',
       };
 
       const result = OnboardingSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
-    });
-
-    it('should reject invalid role', () => {
-      const invalidData = {
-        university_id: 1,
-        email: 'student@example.com',
-        role: 'superuser',
-        est_grad_sem: 'Spring 2025',
-        est_grad_date: '2025-05-15',
-      };
-
-      const result = OnboardingSchema.safeParse(invalidData);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues.some((i) => i.path.includes('role'))).toBe(
-          true
-        );
-      }
     });
 
     it('should reject student without graduation semester', () => {
       const invalidData = {
         university_id: 1,
         email: 'student@example.com',
-        role: 'student',
         est_grad_date: '2025-05-15',
         // missing est_grad_sem
       };
@@ -117,7 +83,6 @@ describe('Zod Schemas - Validation Tests', () => {
       const invalidData = {
         university_id: 1,
         email: 'student@example.com',
-        role: 'student',
         est_grad_sem: 'Spring 2025',
         // missing est_grad_date
       };
@@ -130,7 +95,6 @@ describe('Zod Schemas - Validation Tests', () => {
       const validData = {
         university_id: 1,
         email: 'student@example.com',
-        role: 'student',
         fname: '  John  ',
         lname: '  Doe  ',
         est_grad_sem: 'Spring 2025',
@@ -149,7 +113,6 @@ describe('Zod Schemas - Validation Tests', () => {
       const invalidData = {
         university_id: 1,
         email: 'student@example.com',
-        role: 'student',
         fname: 'a'.repeat(101),
         est_grad_sem: 'Spring 2025',
         est_grad_date: '2025-05-15',
@@ -162,7 +125,7 @@ describe('Zod Schemas - Validation Tests', () => {
     it('should reject missing required fields', () => {
       const invalidData = {
         email: 'student@example.com',
-        // missing university_id, role
+        // missing university_id, est_grad_sem, est_grad_date
       };
 
       const result = OnboardingSchema.safeParse(invalidData);

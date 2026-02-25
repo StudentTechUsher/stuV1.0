@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Box } from '@mui/material';
 import ScheduleGenerationTabs from './ScheduleGenerationTabs';
 import TermStep from './steps/TermStep';
@@ -13,6 +13,13 @@ import { getCoursesForTerm, calculateTotalCredits, type GradPlanDetails } from '
 import type { CalendarEvent } from '@/components/scheduler/test/InteractiveCalendar';
 import type { SectionSelection } from '@/components/scheduler/analysis/CourseAnalysisResults';
 import type { SchedulerEvent } from '@/components/scheduler/scheduler-calendar';
+
+const areSelectionsEqual = (a: SectionSelection[], b: SectionSelection[]) =>
+  a.length === b.length && a.every((s, i) =>
+    s.courseCode === b[i]?.courseCode &&
+    s.sectionLabel === b[i]?.sectionLabel &&
+    s.rank === b[i]?.rank
+  );
 
 interface ScheduleGenerationPanelProps {
   termName: string;
@@ -82,6 +89,10 @@ export default function ScheduleGenerationPanel({
     sectionSelections: [],
   });
   const [hasCourseIssues, setHasCourseIssues] = useState(false);
+  const [courseValidationStatus, setCourseValidationStatus] = useState({
+    isValidating: false,
+    hasValidated: false,
+  });
 
   // Initialize state when term or grad plan changes (reset to step 1)
   useEffect(() => {
@@ -101,6 +112,7 @@ export default function ScheduleGenerationPanel({
       sectionSelections: [],
     });
     setHasCourseIssues(false);
+    setCourseValidationStatus({ isValidating: false, hasValidated: false });
     onSectionPreviewEventsChange?.([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [termName, gradPlanDetails]); // Only reset when term name or plan changes
@@ -158,9 +170,9 @@ export default function ScheduleGenerationPanel({
     setState({ ...state, selectedCourses: courses, totalCredits });
   };
 
-  const handleTotalCreditsChange = (totalCredits: number) => {
-    setState(prev => ({ ...prev, totalCredits }));
-  };
+  const handleTotalCreditsChange = useCallback((totalCredits: number) => {
+    setState(prev => (prev.totalCredits === totalCredits ? prev : { ...prev, totalCredits }));
+  }, []);
 
   const handlePreferencesChangeInternal = (preferences: SchedulePreferences) => {
     setState({ ...state, preferences });
@@ -172,9 +184,13 @@ export default function ScheduleGenerationPanel({
     setState(prev => ({ ...prev, currentStep: 4.5 }));
   };
 
-  const handleSelectionsChange = (selections: SectionSelection[]) => {
-    setState({ ...state, sectionSelections: selections });
-  };
+  const handleSelectionsChange = useCallback((selections: SectionSelection[]) => {
+    setState(prev => (
+      areSelectionsEqual(prev.sectionSelections, selections)
+        ? prev
+        : { ...prev, sectionSelections: selections }
+    ));
+  }, []);
 
   const convertToMastraEvents = (events: Omit<BlockedTime, 'id'>[]): CalendarEvent[] => {
     return events.map((evt, index) => ({
@@ -268,6 +284,7 @@ export default function ScheduleGenerationPanel({
             universityId={universityId}
             gradPlanId={gradPlanId}
             onCourseIssuesChange={setHasCourseIssues}
+            onValidationStatusChange={setCourseValidationStatus}
             onTotalCreditsChange={handleTotalCreditsChange}
             onNext={handleNext}
             onBack={handleBack}
@@ -281,6 +298,8 @@ export default function ScheduleGenerationPanel({
             onNext={handleCompletePreferences}
             onBack={handleBack}
             hasCourseIssues={hasCourseIssues}
+            hasValidatedCourses={courseValidationStatus.hasValidated}
+            isValidatingCourses={courseValidationStatus.isValidating}
           />
         )}
 

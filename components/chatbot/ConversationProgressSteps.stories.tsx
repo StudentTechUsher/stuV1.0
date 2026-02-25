@@ -70,3 +70,17 @@ export const VersionB_AwaitingApproval: Story = {
     awaitingApprovalStep: ConversationStep.CREDIT_DISTRIBUTION,
   },
 };
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...InProgress,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(InProgress.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
+};

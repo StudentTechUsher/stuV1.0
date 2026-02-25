@@ -3,14 +3,20 @@ import type { User } from '@supabase/supabase-js';
 import CreatePlanClient from './create-plan-client';
 import type { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 
-const meta = {
+const meta: Meta<typeof CreatePlanClient> = {
   title: 'Grad Plan/Create/CreatePlanClient',
   component: CreatePlanClient,
   parameters: {
     layout: 'fullscreen',
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: '/grad-plan/create',
+      },
+    },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof CreatePlanClient>;
+};
 
 export default meta;
 
@@ -41,6 +47,22 @@ const academicTerms: AcademicTermsConfig = {
 };
 
 export const VersionB: Story = {
+  args: {
+    user: mockUser,
+    studentProfile: {
+      id: 'profile-123',
+      university_id: 1,
+      est_grad_date: '2028-05-01',
+      est_grad_sem: 'Spring',
+      career_goals: 'Data Science',
+      student_type: 'undergraduate' as const,
+      admission_year: 2024,
+      is_transfer: 'freshman' as const,
+    },
+    hasCourses: true,
+    hasActivePlan: false,
+    academicTerms,
+  },
   render: () => (
     <CreatePlanClient
       user={mockUser}
@@ -117,4 +139,18 @@ export const VersionB: Story = {
       ]}
     />
   ),
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...VersionB,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(VersionB.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
 };

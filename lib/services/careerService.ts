@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from "../supabaseAdmin";
 import type { Career } from '@/types/career';
 
 // Custom error types for better error handling
@@ -31,7 +31,7 @@ export class CareerSaveError extends Error {
  */
 export async function fetchCareers(searchQuery?: string): Promise<Career[]> {
   try {
-    let query = supabase
+    let query = supabaseAdmin
       .from('careers')
       .select('*')
       .eq('status', 'published')
@@ -64,7 +64,7 @@ export async function fetchCareers(searchQuery?: string): Promise<Career[]> {
  * @returns The career data
  */
 export async function fetchCareerBySlug(slug: string): Promise<Career> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('careers')
     .select('*')
     .eq('slug', slug)
@@ -92,7 +92,7 @@ export async function saveCareerDraft(career: Partial<Career>): Promise<Career> 
     throw new CareerSaveError('Career ID is required');
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('careers')
     .upsert({
       ...career,
@@ -116,7 +116,7 @@ export async function saveCareerDraft(career: Partial<Career>): Promise<Career> 
  * @returns The published career
  */
 export async function publishCareer(careerSlug: string): Promise<Career> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('careers')
     .update({
       status: 'published',
@@ -143,7 +143,7 @@ export async function publishCareer(careerSlug: string): Promise<Career> {
  * @returns Array of all careers
  */
 export async function fetchAllCareers(): Promise<Career[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('careers')
     .select('*')
     .order('title', { ascending: true });

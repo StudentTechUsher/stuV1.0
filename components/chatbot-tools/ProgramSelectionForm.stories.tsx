@@ -61,3 +61,17 @@ export const VersionB_ReadOnly: Story = {
     </div>
   ),
 };
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...DocsOnly,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(DocsOnly.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
+};

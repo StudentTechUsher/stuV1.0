@@ -177,11 +177,14 @@ export const WithIcons: Story = {
  * Dark mode demonstration
  */
 export const DarkMode: Story = {
+  globals: {
+    colorMode: 'dark',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
   },
   render: () => (
-    <div className="dark p-8">
+    <div className="w-[560px] rounded-xl border border-border bg-background p-8">
       <div className="flex gap-4 flex-wrap">
         <Button variant="primary">Primary</Button>
         <Button variant="secondary">Secondary</Button>

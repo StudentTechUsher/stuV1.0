@@ -528,3 +528,21 @@ export const Empty: Story = {
     analyses: [],
   },
 };
+
+/**
+ * Dark mode preview against a themed surface
+ */
+export const DarkMode: Story = {
+  args: AllCoursesHaveOptions.args,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
+  render: (args) => (
+    <div className="rounded-xl border border-border bg-background p-6">
+      <CourseAnalysisResults {...args} />
+    </div>
+  ),
+};

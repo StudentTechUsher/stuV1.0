@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import TranscriptCheckForm from './TranscriptCheckForm';
 
-const meta = {
+const meta: Meta<typeof TranscriptCheckForm> = {
   title: 'Grad Plan/Create/TranscriptCheckForm',
   component: TranscriptCheckForm,
   parameters: {
@@ -28,7 +28,7 @@ This Storybook entry is documentation-only to avoid breaking production flows.
 	    },
 	  },
   tags: ['autodocs'],
-} satisfies Meta;
+};
 
 export default meta;
 
@@ -71,4 +71,18 @@ export const VersionB_ReadOnly: Story = {
       <TranscriptCheckForm hasCourses={false} onSubmit={() => {}} readOnly />
     </div>
   ),
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...DocsOnly,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(DocsOnly.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
 };

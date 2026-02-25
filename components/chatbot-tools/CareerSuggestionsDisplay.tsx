@@ -48,18 +48,18 @@ export default function CareerSuggestionsDisplay({
         {sortedCareers.map((career, index) => {
           const isSelected = selectedCareer === career.title;
           const matchColor =
-            career.match_score >= 80 ? 'text-green-600' :
-            career.match_score >= 60 ? 'text-blue-600' :
-            'text-orange-600';
+            career.match_score >= 80 ? 'text-emerald-700 dark:text-emerald-300' :
+            career.match_score >= 60 ? 'text-blue-700 dark:text-blue-300' :
+            'text-orange-700 dark:text-orange-300';
 
           return (
             <div
               key={career.title}
               className={`
-                p-4 rounded-lg border-2 transition-all bg-white
+                p-4 rounded-lg border-2 transition-all bg-white dark:bg-zinc-900/60
                 ${isSelected
-                  ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-[var(--primary)] bg-[var(--primary)]/5 dark:bg-[var(--primary)]/15'
+                  : 'border-gray-200 hover:border-gray-300 dark:border-zinc-700 dark:hover:border-zinc-500'
                 }
               `}
             >
@@ -67,7 +67,7 @@ export default function CareerSuggestionsDisplay({
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-base text-gray-900">{career.title}</h4>
+                    <h4 className="font-semibold text-base text-foreground">{career.title}</h4>
                     {index === 0 && (
                       <span className="px-2 py-0.5 text-xs font-medium bg-[var(--primary)] text-black rounded-full">
                         Top Match
@@ -86,28 +86,28 @@ export default function CareerSuggestionsDisplay({
               </div>
 
               {/* Reason */}
-              <p className="text-sm text-gray-700 mb-3">
-                <span className="font-medium">Why this fits:</span> {career.reason}
+              <p className="text-sm text-muted-foreground mb-3">
+                <span className="font-medium text-foreground">Why this fits:</span> {career.reason}
               </p>
 
               {/* Details */}
               <div className="space-y-2 mb-3">
                 {/* Job Growth */}
                 <div className="flex items-start gap-2 text-sm">
-                  <TrendingUp size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                  <TrendingUp size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div>
-                    <span className="font-medium text-gray-700">Job Outlook:</span>{' '}
-                    <span className="text-gray-600">{career.job_growth}</span>
+                    <span className="font-medium text-foreground">Job Outlook:</span>{' '}
+                    <span className="text-muted-foreground">{career.job_growth}</span>
                   </div>
                 </div>
 
                 {/* Salary */}
                 {career.median_salary && (
                   <div className="flex items-start gap-2 text-sm">
-                    <DollarSign size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                    <DollarSign size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="font-medium text-gray-700">Typical Salary:</span>{' '}
-                      <span className="text-gray-600">{career.median_salary}</span>
+                      <span className="font-medium text-foreground">Typical Salary:</span>{' '}
+                      <span className="text-muted-foreground">{career.median_salary}</span>
                     </div>
                   </div>
                 )}
@@ -115,10 +115,10 @@ export default function CareerSuggestionsDisplay({
                 {/* Related Programs */}
                 {career.related_programs && career.related_programs.length > 0 && (
                   <div className="flex items-start gap-2 text-sm">
-                    <GraduationCap size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                    <GraduationCap size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="font-medium text-gray-700">Related Programs:</span>{' '}
-                      <span className="text-gray-600">{career.related_programs.join(', ')}</span>
+                      <span className="font-medium text-foreground">Related Programs:</span>{' '}
+                      <span className="text-muted-foreground">{career.related_programs.join(', ')}</span>
                     </div>
                   </div>
                 )}

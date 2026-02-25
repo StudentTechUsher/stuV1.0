@@ -290,14 +290,24 @@ export const FlowDiagram: Story = {
           { phase: 'Saving', desc: 'Save to database', action: 'Wait' },
           { phase: 'Complete', desc: 'Course done, move to next', action: 'Auto-advance' },
         ].map((step, idx) => (
-          <Paper key={idx} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Paper
+            key={idx}
+            sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
             <Box
               sx={{
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
                 bgcolor: 'primary.main',
-                color: 'white',
+                color: 'primary.contrastText',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -323,4 +333,14 @@ export const FlowDiagram: Story = {
       </Box>
     </Box>
   ),
+};
+
+export const FlowDiagramDarkMode: Story = {
+  render: FlowDiagram.render,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
 };

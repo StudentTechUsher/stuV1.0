@@ -152,7 +152,7 @@ export function ServicesSection() {
     return (
         <section
             id="catalog"
-            className="border-b border-border/60 py-18 md:py-30 bg-slate-50 dark:bg-slate-900/50"
+            className="relative z-10 -mt-10 md:-mt-14 rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden border-b border-border/60 py-18 md:py-30 bg-slate-50 dark:bg-slate-900/50 scroll-mt-28"
         >
             <div className="container mx-auto px-4 md:px-8 max-w-7xl">
                 {/* Section Header */}

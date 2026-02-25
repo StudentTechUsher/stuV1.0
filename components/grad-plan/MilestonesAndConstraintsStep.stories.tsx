@@ -49,6 +49,7 @@ export const Default: Story = {
   args: {
     distribution,
     studentType: 'undergraduate',
+    onComplete: (data) => { console.log('onComplete:', data); },
     initialMilestones: [
       {
         id: 'milestone-1',
@@ -77,5 +78,19 @@ export const VersionB_Validation: Story = {
     ...Default.args,
     initialWorkStatus: undefined,
     variant: 'versionB',
+  },
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...Default,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(Default.parameters ?? {}),
+    backgrounds: { default: 'dark' },
   },
 };

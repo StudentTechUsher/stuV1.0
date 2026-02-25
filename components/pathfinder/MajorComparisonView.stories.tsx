@@ -180,3 +180,20 @@ export const Empty: Story = {
         error: null,
     },
 };
+
+export const DarkMode: Story = {
+    args: Default.args,
+    globals: {
+        colorMode: 'dark',
+    },
+    parameters: {
+        backgrounds: { default: 'dark' },
+    },
+    decorators: [
+        (Story) => (
+            <div className="rounded-xl border border-border bg-background p-4">
+                <Story />
+            </div>
+        ),
+    ],
+};

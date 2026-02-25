@@ -2,6 +2,8 @@ import type { Preview } from '@storybook/react';
 // import { withThemeByClassName } from '@storybook/addon-themes'; // TODO: Need v10 addon
 import { withUniversityTheme } from './decorators/theme-decorator';
 import { withMuiTheme } from './decorators/mui-decorator';
+import { withColorMode } from './decorators/color-mode-decorator';
+import { COLOR_MODE_GLOBAL } from '@/lib/theme/dark-mode-contract';
 import '../app/globals.css';
 
 const isStorybook =
@@ -222,6 +224,19 @@ const preview: Preview = {
     actions: { argTypesRegex: '^on[A-Z].*' },
   },
   globalTypes: {
+    [COLOR_MODE_GLOBAL]: {
+      description: 'Color mode for component rendering',
+      defaultValue: 'light',
+      toolbar: {
+        title: 'Color Mode',
+        icon: 'circlehollow',
+        items: [
+          { value: 'light', title: 'Light' },
+          { value: 'dark', title: 'Dark' },
+        ],
+        dynamicTitle: true,
+      },
+    },
     universityTheme: {
       description: 'University theme color preset',
       defaultValue: 'STU Mint (Default)',
@@ -238,6 +253,7 @@ const preview: Preview = {
     },
   },
   decorators: [
+    withColorMode,
     withMuiTheme,
     withUniversityTheme,
     // TODO: Re-enable when addon-themes v10 is available

@@ -76,7 +76,7 @@ export interface SectionConflictCheck {
  */
 export interface ConflictDetail {
   conflictingEvent: SchedulerEvent;
-  conflictType: 'time_overlap' | 'back_to_back' | 'exceeds_daily_hours' | 'blocks_lunch';
+  conflictType: 'time_overlap' | 'back_to_back' | 'exceeds_daily_hours' | 'blocks_lunch' | 'outside_time_window';
   message: string; // Human-readable description: "Overlaps with Work (M 9:00-10:00)"
 }
 

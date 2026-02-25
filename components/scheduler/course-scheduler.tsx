@@ -385,6 +385,37 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
 
   // --- UI Wrappers ---
   const allEvents = [...courseEvents, ...personalEvents, ...previewEvents];
+  const parseTimeToMinutes = (time?: string): number | null => {
+    if (!time) return null;
+    const [hours, minutes] = time.split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+  const formatMinutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:00`;
+  };
+  const earliestEventMinutes = allEvents.reduce((min, event) => {
+    const minutes = parseTimeToMinutes(event.startTime);
+    if (minutes === null) return min;
+    return Math.min(min, minutes);
+  }, Number.POSITIVE_INFINITY);
+  const latestEventMinutes = allEvents.reduce((max, event) => {
+    const minutes = parseTimeToMinutes(event.endTime);
+    if (minutes === null) return max;
+    return Math.max(max, minutes);
+  }, Number.NEGATIVE_INFINITY);
+  const preferenceStartMinutes = parseTimeToMinutes(preferences.earliest_class_time || '06:00');
+  const preferenceEndMinutes = parseTimeToMinutes(preferences.latest_class_time || '24:00');
+  const slotMinMinutes = Math.min(
+    preferenceStartMinutes ?? 6 * 60,
+    Number.isFinite(earliestEventMinutes) ? earliestEventMinutes : Number.POSITIVE_INFINITY
+  );
+  const slotMaxMinutes = Math.max(
+    preferenceEndMinutes ?? 24 * 60,
+    Number.isFinite(latestEventMinutes) ? latestEventMinutes : Number.NEGATIVE_INFINITY
+  );
 
   // Extract terms from active grad plan
   const gradPlanTerms = (() => {
@@ -442,9 +473,9 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
         <Typography variant="h4" sx={{ fontFamily: '"Red Hat Display", sans-serif', fontWeight: 800, mb: 1, fontSize: '2rem' }}>
           Course Scheduler
         </Typography>
-        <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
+        {/* <Typography variant="body1" className="font-body" color="text.secondary" sx={{ mb: 3 }}>
           Plan your optimal class schedule based on your graduation plan and personal commitments.
-        </Typography>
+        </Typography> */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -621,8 +652,8 @@ export default function CourseScheduler({ gradPlans = [] }: Props) {
                 onClassEventClick={(evt) => setClassInfoDialog({ isOpen: true, event: evt })}
                 onEventDrop={handleEventDrop}
                 onSlotSelect={(day, start, end) => setEventDialog({ isOpen: true, event: undefined, selectedSlot: { dayOfWeek: day, startTime: start, endTime: end }, isEdit: false })}
-                slotMinTime={preferences.earliest_class_time || "06:00:00"}
-                slotMaxTime={preferences.latest_class_time || "24:00:00"}
+                slotMinTime={formatMinutesToTime(slotMinMinutes)}
+                slotMaxTime={formatMinutesToTime(slotMaxMinutes)}
                 gradPlanEditUrl={`/grad-plan`}
                 exportRef={calendarExportRef}
                 headerActions={<CalendarExportButtons calendarRef={calendarExportRef} semester="Schedule" tableRows={[]} showEditButton={false} />}

@@ -130,3 +130,20 @@ export const AdvisorView: Story = {
         isAdvisor: true,
     },
 };
+
+export const DarkMode: Story = {
+    args: Default.args,
+    globals: {
+        colorMode: 'dark',
+    },
+    parameters: {
+        backgrounds: { default: 'dark' },
+    },
+    decorators: [
+        (Story) => (
+            <div className="min-h-screen bg-background p-4">
+                <Story />
+            </div>
+        ),
+    ],
+};

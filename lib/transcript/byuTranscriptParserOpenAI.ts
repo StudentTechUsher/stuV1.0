@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logError, logInfo } from '@/lib/logger';
+import { captureServerEvent } from '@/lib/observability/posthog-server';
 
 // ============================================================================
 // BYU-SPECIFIC TRANSCRIPT PARSER WITH OPENAI
@@ -27,6 +28,56 @@ export interface TransferCreditInfo {
   originalTitle: string;
   originalCredits: number;
   originalGrade: string;
+}
+
+export interface TranscriptStudentInfo {
+  name: string | null;
+  student_id: string | null;
+  birthdate: string | null;
+}
+
+export interface TransferCourse {
+  id?: string;
+  originalCode: string;
+  originalTitle: string;
+  hours: number;
+  grade: string;
+  accepted: boolean | null;
+  equivalent: string | null;
+}
+
+export interface TransferInstitution {
+  name: string;
+  location: string | null;
+  fromYear: number | null;
+  toYear: number | null;
+  courses: TransferCourse[];
+}
+
+export interface ExamCredit {
+  id?: string;
+  type: 'AP' | 'IB' | 'CLEP';
+  subject: string;
+  score: number | string;
+  equivalent: string;
+  hours: number;
+  grade: string;
+  year: number | null;
+}
+
+export interface EntranceExam {
+  id?: string;
+  name: 'ACT' | 'SAT' | 'SAT1' | 'SAT2';
+  scoreType: string | null;
+  score: number;
+  date: string | null;
+}
+
+export interface TermMetrics {
+  term: string;
+  hoursEarned: number | null;
+  hoursGraded: number | null;
+  termGpa: number | null;
 }
 
 export const ByuCourseSchema = z.object({
@@ -96,10 +147,47 @@ export const ByuCourseSchema = z.object({
  * Schema for the full OpenAI response structure
  */
 const ByuTranscriptResponseSchema = z.object({
-  gpa: z.number().nullable().optional().describe('Overall undergraduate GPA from transcript, or null if not found'),
+  gpa: z.number().nullable().describe('Overall undergraduate GPA from transcript, or null if not found'),
+  student: z.object({
+    name: z.string().nullable(),
+    student_id: z.string().nullable(),
+    birthdate: z.string().nullable(),
+  }).describe('Student identity fields from transcript'),
+  transfer_credits: z.array(z.object({
+    name: z.string().describe('Transfer institution name'),
+    location: z.string().nullable(),
+    fromYear: z.number().nullable(),
+    toYear: z.number().nullable(),
+    courses: z.array(z.object({
+      originalCode: z.string(),
+      originalTitle: z.string(),
+      hours: z.number(),
+      grade: z.string(),
+      accepted: z.boolean().nullable(),
+      equivalent: z.string().nullable(),
+    })),
+  })).describe('Transfer credit institutions and courses'),
+  exam_credits: z.array(z.object({
+    type: z.enum(['AP', 'IB', 'CLEP']),
+    subject: z.string(),
+    score: z.union([z.number(), z.string()]),
+    equivalent: z.string(),
+    hours: z.number(),
+    grade: z.string(),
+    year: z.number().nullable(),
+  })).describe('AP/IB/CLEP credits'),
+  entrance_exams: z.array(z.object({
+    name: z.enum(['ACT', 'SAT', 'SAT1', 'SAT2']),
+    scoreType: z.string().nullable(),
+    score: z.number(),
+    date: z.string().nullable(),
+  })).describe('Entrance exam scores'),
   terms: z.array(
     z.object({
       term: z.string().describe('Term/semester label'),
+      hoursEarned: z.number().nullable().describe('Semester hours earned'),
+      hoursGraded: z.number().nullable().describe('Semester hours graded'),
+      termGpa: z.number().nullable().describe('Semester GPA'),
       courses: z.array(
         z.object({
           subject: z.string(),
@@ -109,7 +197,7 @@ const ByuTranscriptResponseSchema = z.object({
           grade: z.string(), // Required field, but can be empty string
         })
       ),
-    })
+    }).describe('Term data including metrics and courses')
   ),
 });
 
@@ -121,6 +209,80 @@ const BYU_TRANSCRIPT_JSON_SCHEMA = {
       type: ['number', 'null'],
       description: 'Overall undergraduate GPA from transcript (e.g., 3.75), or null if not found',
     },
+    student: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        name: { type: ['string', 'null'] },
+        student_id: { type: ['string', 'null'] },
+        birthdate: { type: ['string', 'null'] },
+      },
+      required: ['name', 'student_id', 'birthdate'],
+    },
+    transfer_credits: {
+      type: 'array',
+      description: 'Transfer credits grouped by institution',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string' },
+          location: { type: ['string', 'null'] },
+          fromYear: { type: ['number', 'null'] },
+          toYear: { type: ['number', 'null'] },
+          courses: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                originalCode: { type: 'string' },
+                originalTitle: { type: 'string' },
+                hours: { type: 'number' },
+                grade: { type: 'string' },
+                accepted: { type: ['boolean', 'null'] },
+                equivalent: { type: ['string', 'null'] },
+              },
+              required: ['originalCode', 'originalTitle', 'hours', 'grade', 'accepted', 'equivalent'],
+            },
+          },
+        },
+        required: ['name', 'location', 'fromYear', 'toYear', 'courses'],
+      },
+    },
+    exam_credits: {
+      type: 'array',
+      description: 'AP/IB/CLEP exam credits',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          type: { type: 'string', enum: ['AP', 'IB', 'CLEP'] },
+          subject: { type: 'string' },
+          score: { type: ['number', 'string'] },
+          equivalent: { type: 'string' },
+          hours: { type: 'number' },
+          grade: { type: 'string' },
+          year: { type: ['number', 'null'] },
+        },
+        required: ['type', 'subject', 'score', 'equivalent', 'hours', 'grade', 'year'],
+      },
+    },
+    entrance_exams: {
+      type: 'array',
+      description: 'ACT/SAT scores',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string', enum: ['ACT', 'SAT', 'SAT1', 'SAT2'] },
+          scoreType: { type: ['string', 'null'] },
+          score: { type: 'number' },
+          date: { type: ['string', 'null'] },
+        },
+        required: ['name', 'scoreType', 'score', 'date'],
+      },
+    },
     terms: {
       type: 'array',
       description: 'Array of academic terms/semesters',
@@ -131,6 +293,18 @@ const BYU_TRANSCRIPT_JSON_SCHEMA = {
           term: {
             type: 'string',
             description: 'Term label (e.g., Fall Semester 2023)',
+          },
+          hoursEarned: {
+            type: ['number', 'null'],
+            description: 'Semester hours earned (SEM HR ERN)',
+          },
+          hoursGraded: {
+            type: ['number', 'null'],
+            description: 'Semester hours graded (HR GRD)',
+          },
+          termGpa: {
+            type: ['number', 'null'],
+            description: 'Semester GPA',
           },
           courses: {
             type: 'array',
@@ -167,16 +341,20 @@ const BYU_TRANSCRIPT_JSON_SCHEMA = {
             },
           },
         },
-        required: ['term', 'courses'],
+        required: ['term', 'hoursEarned', 'hoursGraded', 'termGpa', 'courses'],
       },
     },
   },
-  required: ['gpa', 'terms'],
+  required: ['gpa', 'student', 'transfer_credits', 'exam_credits', 'entrance_exams', 'terms'],
 } as const;
 
-const BYU_TRANSCRIPT_PROMPT = `Extract ALL courses AND the overall GPA from this BYU academic transcript.
+const BYU_TRANSCRIPT_PROMPT = `Extract ALL courses and the required student/semester metadata from this BYU academic transcript.
 
 **IMPORTANT INSTRUCTIONS:**
+
+0. **Required fields:**
+   - Every field in the JSON schema is required.
+   - If a value is missing, use null (do not omit keys).
 
 1. **GPA Extraction:**
    - Look for the overall undergraduate GPA on the transcript (often labeled as "Undergraduate GPA", "Cumulative GPA", or "Overall GPA")
@@ -195,22 +373,45 @@ const BYU_TRANSCRIPT_PROMPT = `Extract ALL courses AND the overall GPA from this
    - For concurrent enrollment or in-progress courses with no grade yet, use empty string
 
 5. **Terms:** Group courses by the term/semester they were taken (e.g., "Fall Semester 2023", "Winter Semester 2024")
+   - Also extract the per-term metrics printed on the transcript:
+     - SEM HR ERN (hours earned)
+     - HR GRD (hours graded)
+     - GPA (term GPA)
+   - If any term metric is missing, return null for that value.
 
-6. **What to include:**
+6. **Student Information:**
+   - Extract student name, student ID, and birthdate from the STUDENT INFORMATION section.
+   - Use null when not found.
+
+7. **Transfer Credits:**
+   - If a Transfer Credits section exists, extract each institution and its attended years.
+   - If course rows are listed, extract each course with original code/title, hours, grade, acceptance, and equivalency when present.
+
+8. **Exam Credits (AP/IB/CLEP):**
+   - Extract any AP/IB/CLEP credits listed, including subject, score, equivalent course, hours, grade, and year if present.
+
+9. **Entrance Exams:**
+   - Extract ACT/SAT/SAT2 exam scores if listed (name, score type, score, date).
+
+10. **What to include:**
    - All regular courses
    - Transfer credits (if shown)
    - AP/IB credits (if shown)
    - Concurrent enrollment courses
 
-7. **What to skip from course extraction:**
+11. **What to skip from course extraction:**
    - GPA summary lines (extract GPA separately in the gpa field)
    - Total credit lines
    - Header/footer information
    - Administrative notes
 
 Return the data in JSON format with:
+- student: { name, student_id, birthdate }
 - gpa: the overall undergraduate GPA (number) or null if not found
-- terms: array of terms, where each term contains an array of courses
+- transfer_credits: array of institutions with courses (empty array if none)
+- exam_credits: array of AP/IB/CLEP credits (empty array if none)
+- entrance_exams: array of ACT/SAT scores (empty array if none)
+- terms: array of terms, where each term contains metrics and an array of courses
 
 Extract every course you can find. Be thorough and precise.`;
 
@@ -246,6 +447,11 @@ export interface ByuTranscriptParseResult {
   success: boolean;
   courses: Array<ByuCourse>;
   gpa?: number | null;
+  student?: TranscriptStudentInfo | null;
+  termMetrics?: TermMetrics[];
+  transferCredits?: TransferInstitution[];
+  examCredits?: ExamCredit[];
+  entranceExams?: EntranceExam[];
   validationReport: ByuTranscriptValidationReport;
   rawResponse?: unknown;
   error?: string;
@@ -311,6 +517,63 @@ function extractResponseOutputText(result: unknown): string {
   }
 
   return chunks.join('');
+}
+
+function hashUserId(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    const char = userId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
+
+function extractOpenAiErrorDetails(errorText: string): {
+  type?: string;
+  code?: string;
+  param?: string;
+} {
+  try {
+    const parsed = JSON.parse(errorText) as {
+      error?: { type?: string; code?: string; param?: string };
+    };
+    return {
+      type: parsed.error?.type,
+      code: parsed.error?.code,
+      param: parsed.error?.param,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function captureTranscriptOpenAiError(options: {
+  userId: string;
+  action: string;
+  httpStatus: number;
+  model: string;
+  errorDetails?: { type?: string; code?: string; param?: string };
+  requestId?: string | null;
+}) {
+  const { userId, action, httpStatus, model, errorDetails, requestId } = options;
+  const userIdHash = hashUserId(userId);
+
+  void captureServerEvent(
+    'transcript_openai_error',
+    {
+      action,
+      http_status: httpStatus,
+      error_type: errorDetails?.type,
+      error_code: errorDetails?.code,
+      error_hint: errorDetails?.param,
+      openai_request_id: requestId ?? undefined,
+      model,
+      user_id_hash: userIdHash,
+      success: false,
+    },
+    userIdHash
+  );
 }
 
 function parseByuTranscriptJson(content: string, userId: string): ByuTranscriptResponse {
@@ -557,7 +820,10 @@ export async function parseByuTranscriptWithOpenAI(
     });
 
     if (!response.ok) {
+      const requestId =
+        response.headers.get('x-request-id') ?? response.headers.get('openai-request-id');
       const errorText = await response.text();
+      const errorDetails = extractOpenAiErrorDetails(errorText);
 
       // Log the full error response for debugging
       console.error('OpenAI API Error Response:', errorText);
@@ -566,6 +832,16 @@ export async function parseByuTranscriptWithOpenAI(
         userId,
         action: 'byu_transcript_openai_request',
         httpStatus: response.status,
+        model,
+        errorHint: errorDetails?.param,
+      });
+      captureTranscriptOpenAiError({
+        userId,
+        action: 'byu_transcript_openai_request',
+        httpStatus: response.status,
+        model,
+        errorDetails,
+        requestId,
       });
 
       throw new ByuTranscriptParseError(
@@ -631,6 +907,16 @@ export async function parseByuTranscriptWithOpenAI(
       success: true,
       courses: validCourses,
       gpa: parsedResponse.gpa ?? null,
+      student: parsedResponse.student ?? null,
+      termMetrics: parsedResponse.terms.map((termObj) => ({
+        term: termObj.term,
+        hoursEarned: termObj.hoursEarned ?? null,
+        hoursGraded: termObj.hoursGraded ?? null,
+        termGpa: termObj.termGpa ?? null,
+      })),
+      transferCredits: parsedResponse.transfer_credits ?? [],
+      examCredits: parsedResponse.exam_credits ?? [],
+      entranceExams: parsedResponse.entrance_exams ?? [],
       validationReport,
       rawResponse: parsedResponse,
       usage: usage
@@ -680,10 +966,7 @@ export async function parseByuTranscriptPdfWithOpenAI(
   const model =
     process.env.OPENAI_BYU_TRANSCRIPT_PDF_MODEL ??
     process.env.OPENAI_TRANSCRIPT_PDF_MODEL ??
-    process.env.OPENAI_BYU_TRANSCRIPT_MODEL ??
-    process.env.OPENAI_TRANSCRIPT_MODEL ??
-    process.env.OPENAI_MODEL ??
-    'gpt-4o';
+    'gpt-5';
 
   try {
     logInfo('Starting BYU transcript parse with OpenAI (pdf)', {
@@ -693,7 +976,25 @@ export async function parseByuTranscriptPdfWithOpenAI(
       byteCount: pdfBuffer.length,
     });
 
-    const basePayload = {
+    const basePayload: {
+      model: string;
+      input: Array<{
+        role: string;
+        content: Array<
+          | { type: 'input_text'; text: string }
+          | { type: 'input_file'; filename?: string; file_data?: string; file_id?: string }
+        >;
+      }>;
+      text: {
+        format: {
+          type: 'json_schema';
+          name: string;
+          strict: boolean;
+          schema: typeof BYU_TRANSCRIPT_JSON_SCHEMA;
+        };
+      };
+      temperature?: number;
+    } = {
       model,
       input: [
         {
@@ -719,8 +1020,10 @@ export async function parseByuTranscriptPdfWithOpenAI(
           schema: BYU_TRANSCRIPT_JSON_SCHEMA,
         },
       },
-      temperature: 0,
     };
+    if (!model.startsWith('gpt-5')) {
+      basePayload.temperature = 0;
+    }
 
     let response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -733,7 +1036,10 @@ export async function parseByuTranscriptPdfWithOpenAI(
 
     let uploadedFileId: string | null = null;
     if (!response.ok) {
+      const requestId =
+        response.headers.get('x-request-id') ?? response.headers.get('openai-request-id');
       const errorText = await response.text();
+      const errorDetails = extractOpenAiErrorDetails(errorText);
       if (shouldRetryWithFileId(errorText)) {
         logInfo('OpenAI rejected inline file_data, retrying with file_id', {
           userId,
@@ -773,6 +1079,16 @@ export async function parseByuTranscriptPdfWithOpenAI(
           userId,
           action: 'byu_transcript_openai_pdf_request',
           httpStatus: response.status,
+          model,
+          errorHint: errorDetails?.param,
+        });
+        captureTranscriptOpenAiError({
+          userId,
+          action: 'byu_transcript_openai_pdf_request',
+          httpStatus: response.status,
+          model,
+          errorDetails,
+          requestId,
         });
 
         throw new ByuTranscriptParseError(
@@ -782,11 +1098,24 @@ export async function parseByuTranscriptPdfWithOpenAI(
     }
 
     if (!response.ok) {
+      const requestId =
+        response.headers.get('x-request-id') ?? response.headers.get('openai-request-id');
       const errorText = await response.text();
+      const errorDetails = extractOpenAiErrorDetails(errorText);
       logError('OpenAI API request failed for BYU transcript (pdf)', new Error(errorText), {
         userId,
         action: 'byu_transcript_openai_pdf_request',
         httpStatus: response.status,
+        model,
+        errorHint: errorDetails?.param,
+      });
+      captureTranscriptOpenAiError({
+        userId,
+        action: 'byu_transcript_openai_pdf_request',
+        httpStatus: response.status,
+        model,
+        errorDetails,
+        requestId,
       });
 
       if (uploadedFileId) {
@@ -856,6 +1185,16 @@ export async function parseByuTranscriptPdfWithOpenAI(
       success: true,
       courses: validCourses,
       gpa: parsedResponse.gpa ?? null,
+      student: parsedResponse.student ?? null,
+      termMetrics: parsedResponse.terms.map((termObj) => ({
+        term: termObj.term,
+        hoursEarned: termObj.hoursEarned ?? null,
+        hoursGraded: termObj.hoursGraded ?? null,
+        termGpa: termObj.termGpa ?? null,
+      })),
+      transferCredits: parsedResponse.transfer_credits ?? [],
+      examCredits: parsedResponse.exam_credits ?? [],
+      entranceExams: parsedResponse.entrance_exams ?? [],
       validationReport,
       rawResponse: parsedResponse,
       usage: usage

@@ -17,6 +17,8 @@ interface PreferencesStepProps {
   onNext: () => void;
   onBack: () => void;
   hasCourseIssues?: boolean;
+  hasValidatedCourses?: boolean;
+  isValidatingCourses?: boolean;
 }
 
 const DAYS_OF_WEEK = [
@@ -33,6 +35,8 @@ export default function PreferencesStep({
   onNext,
   onBack,
   hasCourseIssues = false,
+  hasValidatedCourses = false,
+  isValidatingCourses = false,
 }: PreferencesStepProps) {
   const handleDayToggle = (day: number) => {
     const currentPreferred = preferences.preferred_days || [];
@@ -51,6 +55,14 @@ export default function PreferencesStep({
   };
 
   const isValid = validateTimes();
+  const canReview = isValid && !hasCourseIssues && hasValidatedCourses && !isValidatingCourses;
+  const reviewDisabledReason = isValidatingCourses
+    ? 'Validating selected courses...'
+    : !hasValidatedCourses
+      ? 'Complete course validation in Step 3 (Confirm Courses) before reviewing sections.'
+      : hasCourseIssues
+        ? 'Resolve course issues in Step 3 (Confirm Courses) before reviewing sections.'
+        : null;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -185,7 +197,7 @@ export default function PreferencesStep({
         <Button
           variant="contained"
           onClick={onNext}
-          disabled={!isValid || hasCourseIssues}
+          disabled={!canReview}
           sx={{
             bgcolor: '#06C96C',
             color: 'black',
@@ -196,6 +208,11 @@ export default function PreferencesStep({
           Review Sections
         </Button>
       </Box>
+      {reviewDisabledReason && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          {reviewDisabledReason}
+        </Alert>
+      )}
     </Box>
   );
 }

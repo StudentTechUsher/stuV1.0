@@ -55,7 +55,7 @@ export default function AgentControls({
               Resume
             </Button>
           )}
-          <Button variant="outline" onClick={onCancel} className="flex-1 gap-2" disabled={!onCancel}>
+          <Button variant="secondary" onClick={onCancel} className="flex-1 gap-2" disabled={!onCancel}>
             <XCircle size={16} />
             Cancel
           </Button>

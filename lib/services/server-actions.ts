@@ -7,6 +7,7 @@ import { decodeAnyAccessId, encodeAccessId } from '@/lib/utils/access-id';
 import { validatePlanName } from '@/lib/utils/plan-name-validation';
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 import type { TablesInsert } from '@/lib/database/types';
+import { hasRole } from './authorizationService';
 import { OrganizeCoursesIntoSemesters_ServerAction } from './openaiService';
 import { GetAiPrompt } from './aiDbService';
 import {
@@ -59,7 +60,12 @@ import {
     markAllNotificationsRead as _markAllNotificationsRead,
     deleteNotification as _deleteNotification,
     deleteAllReadNotifications as _deleteAllReadNotifications,
+    createNotifForGradPlanEdited as _createNotifForGradPlanEdited,
+    createNotifForGradPlanApproved as _createNotifForGradPlanApproved,
 } from './notifService';
+import {
+    sendGradPlanApprovalEmail as _sendGradPlanApprovalEmail,
+} from './emailService';
 import {
     updateGraduationTimeline as _updateGraduationTimeline,
     updateStudentType as _updateStudentType,
@@ -76,6 +82,7 @@ import {
     deleteBlockedTime as _deleteBlockedTime,
     updateSchedulePreferences as _updateSchedulePreferences,
     addCourseSelection as _addCourseSelection,
+    replaceCourseSelections as _replaceCourseSelections,
     updateCourseSelection as _updateCourseSelection,
     deleteCourseSelection as _deleteCourseSelection,
     validateSchedule as _validateSchedule,
@@ -180,12 +187,8 @@ export async function updateGradPlanWithAdvisorNotes(gradPlanId: string, advisor
         if (!user) {
             return { success: false, error: 'Not authenticated' };
         }
-        const { data: profile, error: profileError } = await supabaseSrv
-            .from('profiles')
-            .select('role_id')
-            .eq('id', user.id)
-            .maybeSingle();
-        if (profileError || !profile || profile.role_id !== 2) {
+        const isAdvisor = await hasRole(user.id, 'advisor');
+        if (!isAdvisor) {
             return { success: false, error: 'Not authorized' };
         }
     } catch (error) {
@@ -254,12 +257,8 @@ export async function updateGradPlanDetailsAction(gradPlanId: string, planDetail
         if (!user) {
             return { success: false, error: 'Not authenticated' };
         }
-        const { data: profile, error: profileError } = await supabaseSrv
-            .from('profiles')
-            .select('role_id')
-            .eq('id', user.id)
-            .maybeSingle();
-        if (profileError || !profile || profile.role_id !== 2) {
+        const isAdvisor = await hasRole(user.id, 'advisor');
+        if (!isAdvisor) {
             return { success: false, error: 'Not authorized' };
         }
     } catch (error) {
@@ -367,12 +366,8 @@ export async function updateGradPlanDetailsAndAdvisorNotesAction(gradPlanId: str
         if (!user) {
             return { success: false, error: 'Not authenticated' };
         }
-        const { data: profile, error: profileError } = await supabaseSrv
-            .from('profiles')
-            .select('role_id')
-            .eq('id', user.id)
-            .maybeSingle();
-        if (profileError || !profile || profile.role_id !== 2) {
+        const isAdvisor = await hasRole(user.id, 'advisor');
+        if (!isAdvisor) {
             return { success: false, error: 'Not authorized' };
         }
     } catch (error) {
@@ -449,7 +444,8 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
         }
 
         // Students can only rename their own plans
-        if (profile.role_id === 3) {
+        const isStudent = await hasRole(user.id, 'student');
+        if (isStudent) {
             const { data: studentData, error: studentError } = await supabaseSrv
                 .from('student')
                 .select('id')
@@ -505,7 +501,8 @@ export async function deleteGradPlanAction(gradPlanId: string) {
         }
 
         // Students can only delete their own plans
-        if (profile.role_id === 3) {
+        const isStudent = await hasRole(user.id, 'student');
+        if (isStudent) {
             const { data: studentData, error: studentError } = await supabaseSrv
                 .from('student')
                 .select('id')
@@ -558,7 +555,8 @@ export async function setActiveTermAction(gradPlanId: string, termIndex: number)
         }
 
         // Students can only modify their own plans
-        if (profile.role_id === 3) {
+        const isStudent = await hasRole(user.id, 'student');
+        if (isStudent) {
             const { data: studentData, error: studentError } = await supabaseSrv
                 .from('student')
                 .select('id')
@@ -611,7 +609,8 @@ export async function updateTermTitleAction(gradPlanId: string, termIndex: numbe
         }
 
         // Students can only modify their own plans
-        if (profile.role_id === 3) {
+        const isStudent = await hasRole(user.id, 'student');
+        if (isStudent) {
             const { data: studentData, error: studentError } = await supabaseSrv
                 .from('student')
                 .select('id')
@@ -1388,12 +1387,23 @@ export async function addCourseSelectionAction(scheduleId: string, courseSelecti
     return await _addCourseSelection(scheduleId, courseSelection);
 }
 
-export async function updateCourseSelectionAction(selectionId: string, updates: Partial<Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>>) {
-    return await _updateCourseSelection(selectionId, updates);
+export async function replaceCourseSelectionsAction(
+    scheduleId: string,
+    courseSelections: Array<Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>>
+) {
+    return await _replaceCourseSelections(scheduleId, courseSelections);
 }
 
-export async function deleteCourseSelectionAction(selectionId: string) {
-    return await _deleteCourseSelection(selectionId);
+export async function updateCourseSelectionAction(
+    scheduleId: string,
+    selectionId: string,
+    updates: Partial<Omit<CourseSelection, 'selection_id' | 'created_at' | 'updated_at'>>
+) {
+    return await _updateCourseSelection(scheduleId, selectionId, updates);
+}
+
+export async function deleteCourseSelectionAction(scheduleId: string, selectionId: string) {
+    return await _deleteCourseSelection(scheduleId, selectionId);
 }
 
 export async function validateScheduleAction(scheduleId: string) {
@@ -1429,5 +1439,51 @@ export async function fetchCourseOfferingsForTermAction(
     } catch (error) {
         console.error('Failed to fetch course offerings:', error);
         throw error;
+    }
+}
+
+// Notification actions for grad plan workflows
+
+export async function createNotifForGradPlanEditedAction(
+    targetUserId: string,
+    initiatorUserId: string | null,
+    accessId: string,
+    changeData?: {
+        movedCourses: Array<{ courseName: string; courseCode: string; fromTerm: number; toTerm: number }>;
+        hasSuggestions: boolean;
+    }
+) {
+    try {
+        return await _createNotifForGradPlanEdited(targetUserId, initiatorUserId, accessId, changeData);
+    } catch (error) {
+        console.error('Failed to create grad plan edited notification:', error);
+        return null;
+    }
+}
+
+export async function createNotifForGradPlanApprovedAction(
+    targetUserId: string,
+    initiatorUserId: string | null
+) {
+    try {
+        return await _createNotifForGradPlanApproved(targetUserId, initiatorUserId);
+    } catch (error) {
+        console.error('Failed to create grad plan approved notification:', error);
+        return null;
+    }
+}
+
+export async function sendGradPlanApprovalEmailAction(data: {
+    studentFirstName: string;
+    studentEmail: string;
+    planAccessId: string;
+    advisorName?: string;
+}) {
+    try {
+        await _sendGradPlanApprovalEmail(data);
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to send grad plan approval email:', error);
+        return { success: false };
     }
 }

@@ -5,7 +5,7 @@ import type { CareerSuggestionsInput } from '@/lib/chatbot/tools/careerSuggestio
 import type { ProgramSuggestionsInput } from '@/lib/chatbot/tools/programSuggestionsTool';
 import type { ProgramRow } from '@/types/program';
 
-const meta = {
+const meta: Meta<typeof ToolRenderer> = {
   title: 'Grad Plan/Create/ToolRenderer',
   component: ToolRenderer,
   parameters: {
@@ -53,7 +53,7 @@ This Storybook entry is documentation-only.
       options: ['default', 'versionB'],
     },
   },
-} satisfies Meta<typeof ToolRenderer>;
+};
 
 export default meta;
 
@@ -133,10 +133,10 @@ const mockDistribution: SemesterAllocation[] = [
 ];
 
 const mockCareerSuggestions: CareerSuggestionsInput = {
-  user_goal: 'Data Science',
-  suggested_careers: [
-    { title: 'Data Scientist', description: 'Analyze large datasets to inform decisions.' },
-    { title: 'ML Engineer', description: 'Build and deploy machine learning systems.' },
+  summary: 'Based on your interest in Data Science',
+  careers: [
+    { title: 'Data Scientist', match_score: 92, reason: 'Analyze large datasets to inform decisions.', job_growth: 'Strong' },
+    { title: 'ML Engineer', match_score: 85, reason: 'Build and deploy machine learning systems.', job_growth: 'Very Strong' },
   ],
 };
 
@@ -168,7 +168,7 @@ const buildToolData = (toolType: ToolType) => {
           est_grad_sem: 'Spring',
           career_goals: 'Data Science',
           admission_year: 2024,
-          is_transfer: 'freshman',
+          is_transfer: 'freshman' as const,
         },
         universityId: 1,
         hasActivePlan: false,
@@ -181,15 +181,15 @@ const buildToolData = (toolType: ToolType) => {
       return {};
     case 'program_selection':
       return {
-        studentType: 'undergraduate',
+        studentType: 'undergraduate' as const,
         universityId: 1,
         studentAdmissionYear: 2024,
-        studentIsTransfer: 'freshman',
+        studentIsTransfer: 'freshman' as const,
         selectedGenEdProgramId: 301,
       };
     case 'course_selection':
       return {
-        studentType: 'undergraduate',
+        studentType: 'undergraduate' as const,
         universityId: 1,
         selectedProgramIds: [101],
         genEdProgramIds: [301],
@@ -215,7 +215,7 @@ const buildToolData = (toolType: ToolType) => {
     case 'milestones_and_constraints':
       return {
         distribution: mockDistribution,
-        studentType: 'undergraduate',
+        studentType: 'undergraduate' as const,
       };
     case 'generate_plan_confirmation':
       return {
@@ -294,4 +294,18 @@ export const VersionB_ReadOnlyApproval: Story = {
       />
     </div>
   ),
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...DocsOnly,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(DocsOnly.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
 };

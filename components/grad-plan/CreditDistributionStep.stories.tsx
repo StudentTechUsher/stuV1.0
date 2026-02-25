@@ -69,3 +69,17 @@ export const VersionB_Validation: Story = {
     variant: 'versionB',
   },
 };
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...Default,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(Default.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
+};

@@ -5,7 +5,7 @@ import { UniversityThemeProvider } from '@/contexts/university-theme-context';
 import type { University } from '@/lib/types/university';
 import type { NavItem } from '@/app/(dashboard)/layout';
 
-const meta = {
+const meta: Meta<typeof DashboardLayoutClient> = {
   title: 'Dashboard/Layout',
   component: DashboardLayoutClient,
   parameters: {
@@ -39,7 +39,7 @@ const meta = {
     },
   ],
   tags: ['autodocs'],
-} satisfies Meta<typeof DashboardLayoutClient>;
+};
 
 export default meta;
 

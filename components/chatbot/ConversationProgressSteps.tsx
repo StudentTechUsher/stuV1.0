@@ -98,8 +98,8 @@ export default function ConversationProgressSteps({
                         isCompleted
                           ? 'bg-[var(--primary)] border-[var(--primary)] text-black shadow-md cursor-pointer hover:scale-125 hover:shadow-xl hover:ring-2 hover:ring-[var(--primary)] hover:ring-offset-2'
                           : isCurrent
-                          ? 'bg-white border-[var(--primary)] text-[var(--primary)] shadow-sm border-[2px]'
-                          : 'bg-white border-gray-300 text-gray-400 border-[1.5px]'
+                          ? 'bg-white dark:bg-zinc-900 border-[var(--primary)] text-[var(--primary)] shadow-sm border-[2px]'
+                          : 'bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-zinc-300 border-[1.5px]'
                       }
                     `}
                     title={isCompleted ? `Click to return to ${getStepLabel(step)}` : undefined}

@@ -32,3 +32,17 @@ export const VersionB_DecisionCard: Story = {
     feedbackReasons: ['Missing data', 'Needs adjustment', 'Not accurate', 'Other'],
   },
 };
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...Default,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(Default.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
+};

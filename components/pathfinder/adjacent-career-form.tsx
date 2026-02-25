@@ -1,5 +1,6 @@
 "use client";
 import * as React from 'react';
+import { Button } from '@/components/ui/button';
 
 export interface AdjacentCareerFormValues {
   whyLikeMajor: string;
@@ -42,45 +43,47 @@ export function AdjacentCareerForm({ currentMajor, onSubmit, onCancel, className
   return (
     <form onSubmit={handleSubmit} className={"space-y-5 " + (className || '')}>
       <div>
-        <label htmlFor="whyLikeMajor" className="block text-xs font-medium text-gray-600 mb-1">What do you like most about {currentMajor || 'your major'}?</label>
+        <label htmlFor="whyLikeMajor" className="mb-1 block text-xs font-medium text-muted-foreground">What do you like most about {currentMajor || 'your major'}?</label>
         <textarea
           id="whyLikeMajor"
           value={values.whyLikeMajor}
           onChange={e => update('whyLikeMajor', e.target.value)}
           onBlur={() => setTouched(t => ({ ...t, whyLikeMajor: true }))}
           rows={3}
-          className="w-full rounded border border-gray-300 bg-white/70 backdrop-blur px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring"
           placeholder="Concepts, projects, problem types, collaboration style..."
         />
-        {touched.whyLikeMajor && !values.whyLikeMajor.trim() && <p className="mt-1 text-[11px] text-red-500">Required</p>}
+        {touched.whyLikeMajor && !values.whyLikeMajor.trim() && <p className="mt-1 text-[11px] text-destructive">Required</p>}
       </div>
       <div>
-        <label htmlFor="targetIndustry" className="block text-xs font-medium text-gray-600 mb-1">Which industry or domain are you curious about?</label>
+        <label htmlFor="targetIndustry" className="mb-1 block text-xs font-medium text-muted-foreground">Which industry or domain are you curious about?</label>
         <input
           id="targetIndustry"
           value={values.targetIndustry}
           onChange={e => update('targetIndustry', e.target.value)}
           onBlur={() => setTouched(t => ({ ...t, targetIndustry: true }))}
-          className="w-full rounded border border-gray-300 bg-white/70 backdrop-blur px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring"
           placeholder="e.g. FinTech, Health Informatics, EdTech, Cybersecurity..."
         />
-        {touched.targetIndustry && !values.targetIndustry.trim() && <p className="mt-1 text-[11px] text-red-500">Required</p>}
+        {touched.targetIndustry && !values.targetIndustry.trim() && <p className="mt-1 text-[11px] text-destructive">Required</p>}
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button
+        <Button
           type="submit"
           disabled={submitting || missing}
-          className="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          variant="primary"
         >
           {submitting ? 'Submitting…' : 'Get Adjacent Careers'}
-        </button>
+        </Button>
         {onCancel && (
-          <button
+          <Button
             type="button"
             onClick={onCancel}
-            className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/70 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-          >Cancel</button>
+            variant="secondary"
+          >
+            Cancel
+          </Button>
         )}
       </div>
     </form>

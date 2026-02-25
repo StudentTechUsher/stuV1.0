@@ -2,6 +2,7 @@ import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import { checkUserHasCourses } from '@/lib/chatbot/tools/transcriptCheckTool';
 import { checkUserHasActivePlan } from '@/lib/services/gradPlanService';
 import { fetchUniversityAcademicTerms } from '@/lib/services/institutionService';
+import { isGradPlanAutomaticMastraWorkflowEnabled } from '@/lib/config/featureFlags';
 import CreatePlanClientV2 from './create-plan-client-v2';
 
 // Force dynamic rendering for this page because it uses cookies
@@ -32,6 +33,7 @@ export default async function CreateGradPlanV2Page() {
 
   // Fetch academic terms configuration for the university
   const academicTerms = await fetchUniversityAcademicTerms(userProfile.university_id);
+  const automaticMastraWorkflowEnabled = isGradPlanAutomaticMastraWorkflowEnabled();
 
   return (
     <CreatePlanClientV2
@@ -40,6 +42,7 @@ export default async function CreateGradPlanV2Page() {
       hasCourses={hasCourses}
       hasActivePlan={hasActivePlan}
       academicTerms={academicTerms}
+      automaticMastraWorkflowEnabled={automaticMastraWorkflowEnabled}
     />
   );
 }

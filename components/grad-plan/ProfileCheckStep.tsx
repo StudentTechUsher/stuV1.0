@@ -180,6 +180,18 @@ export function ProfileCheckStep({
     setIsEditing(true);
   };
 
+  const handleCareerPathfinder = () => {
+    if (onCareerPathfinderClick) {
+      onCareerPathfinderClick();
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      career_goals: 'Software Engineer',
+    }));
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
@@ -414,24 +426,22 @@ export function ProfileCheckStep({
                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
                   Career Goals <span style={{ fontWeight: 400, color: '#6B7280' }}>(Optional)</span>
                 </Typography>
-                {onCareerPathfinderClick && (
-                  <Box sx={{ mb: 2 }}>
-                    <Button
-                      variant="text"
-                      onClick={onCareerPathfinderClick}
-                      startIcon={<Compass size={18} />}
-                      sx={{
-                        color: '#0A0A0A',
-                        textTransform: 'none',
-                        '&:hover': {
-                          bgcolor: 'rgba(10, 10, 10, 0.05)',
-                        },
-                      }}
-                    >
-                      Need help finding your career path?
-                    </Button>
-                  </Box>
-                )}
+                <Box sx={{ mb: 2 }}>
+                  <Button
+                    variant="text"
+                    onClick={handleCareerPathfinder}
+                    startIcon={<Compass size={18} />}
+                    sx={{
+                      color: '#0A0A0A',
+                      textTransform: 'none',
+                      '&:hover': {
+                        bgcolor: 'rgba(10, 10, 10, 0.05)',
+                      },
+                    }}
+                  >
+                    Need help finding your career path?
+                  </Button>
+                </Box>
                 <TextField
                   multiline
                   rows={3}
@@ -598,12 +608,12 @@ export function ProfileCheckStep({
                 variant="text"
                 startIcon={<Edit size={16} />}
                 onClick={handleEditClick}
-                sx={{
-                  color: '#0A0A0A',
+                sx={(theme) => ({
+                  color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary,
                   '&:hover': {
-                    bgcolor: 'rgba(10, 10, 10, 0.05)',
+                    bgcolor: 'action.hover',
                   },
-                }}
+                })}
               >
                 Edit Settings
               </Button>
@@ -612,10 +622,10 @@ export function ProfileCheckStep({
                 onClick={onComplete}
                 sx={{
                   flex: 1,
-                  bgcolor: '#0A0A0A',
-                  color: 'white',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
                   '&:hover': {
-                    bgcolor: '#1A1A1A',
+                    bgcolor: 'primary.dark',
                   },
                 }}
               >

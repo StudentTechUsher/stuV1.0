@@ -50,3 +50,20 @@ export const WithoutCurrentMajor: Story = {
         ),
     ],
 };
+
+export const DarkMode: Story = {
+    args: Default.args,
+    globals: {
+        colorMode: 'dark',
+    },
+    parameters: {
+        backgrounds: { default: 'dark' },
+    },
+    decorators: [
+        (Story) => (
+            <div className="w-[520px] rounded-xl border border-border bg-background p-4">
+                <Story />
+            </div>
+        ),
+    ],
+};

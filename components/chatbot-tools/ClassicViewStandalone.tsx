@@ -278,27 +278,27 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
 
   const requirementEntries = Object.entries(groupedByRequirement);
 
-  // Color scheme based on program type
+  // Requirement header styling (consistent across program types)
   const typeColors: Record<string, { bg: string; text: string; titleText: string }> = {
     major: {
-      bg: 'bg-[#2196f3]',
-      text: 'text-[#2196f3]',
-      titleText: 'text-white',
+      bg: 'bg-[var(--primary)]',
+      text: 'text-black',
+      titleText: 'text-black',
     },
     minor: {
-      bg: 'bg-[#5E35B1]',
-      text: 'text-[#5E35B1]',
-      titleText: 'text-white',
+      bg: 'bg-[var(--primary)]',
+      text: 'text-black',
+      titleText: 'text-black',
     },
     general_ed: {
-      bg: 'bg-[#FF9800]',
-      text: 'text-[#FF9800]',
-      titleText: 'text-white',
+      bg: 'bg-[var(--primary)]',
+      text: 'text-black',
+      titleText: 'text-black',
     },
     honors: {
-      bg: 'bg-[#F59E0B]',
-      text: 'text-[#F59E0B]',
-      titleText: 'text-white',
+      bg: 'bg-[var(--primary)]',
+      text: 'text-black',
+      titleText: 'text-black',
     },
   };
 
@@ -308,7 +308,7 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
   return (
     <div className="space-y-6">
       {requirementEntries.length === 0 ? (
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm dark:bg-zinc-900/70">
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <svg className="mb-4 h-16 w-16 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
@@ -320,11 +320,11 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
         </div>
       ) : (
         requirementEntries.map(([requirementDesc, coursesInReq], reqIndex) => (
-          <div key={reqIndex} className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
+          <div key={reqIndex} className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm dark:bg-zinc-900/70">
             {/* Requirement Number Header */}
             <div className={`border-b-2 ${colors.bg} px-6 py-3`}>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-black/15 bg-white/85 shadow-sm">
                   <span className={`font-header-semi text-lg font-bold ${colors.text}`}>
                     {reqIndex + 1}
                   </span>
@@ -336,7 +336,7 @@ export default function ClassicViewStandalone({ program }: Readonly<ClassicViewS
             </div>
 
             {/* Requirement Description Header */}
-            <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--background)] to-white px-6 py-4">
+            <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--background)] to-white px-6 py-4 dark:to-zinc-900">
               <div className="flex items-center justify-between">
                 <h3 className="font-header-semi text-lg font-semibold text-[var(--foreground)]">
                   {requirementDesc}
@@ -385,22 +385,22 @@ function ClassicCourseCard({
 }) {
   const cardStyles = isRequired
     ? {
-        bg: 'bg-[#fee2e2]',
-        border: 'border-[#ef4444]',
-        titleText: 'text-[#991b1b]',
-        bodyText: 'text-[#7f1d1d]',
-        badge: 'bg-[#ef4444] text-primary-foreground',
-        infoBg: 'bg-[#fecaca]',
-        infoText: 'text-[#7f1d1d]'
+        bg: 'bg-red-100 dark:bg-red-950/35',
+        border: 'border-red-500 dark:border-red-700',
+        titleText: 'text-red-900 dark:text-red-200',
+        bodyText: 'text-red-800 dark:text-red-300',
+        badge: 'bg-red-500 text-white dark:bg-red-600',
+        infoBg: 'bg-red-200 dark:bg-red-900/55',
+        infoText: 'text-red-900 dark:text-red-200'
       }
     : {
-        bg: 'bg-[#d1fae5]',
-        border: 'border-[#10b981]',
-        titleText: 'text-[#065f46]',
-        bodyText: 'text-[#064e3b]',
-        badge: 'bg-[#10b981] text-primary-foreground',
-        infoBg: 'bg-[#a7f3d0]',
-        infoText: 'text-[#064e3b]'
+        bg: 'bg-emerald-100 dark:bg-emerald-950/35',
+        border: 'border-emerald-500 dark:border-emerald-700',
+        titleText: 'text-emerald-900 dark:text-emerald-200',
+        bodyText: 'text-emerald-800 dark:text-emerald-300',
+        badge: 'bg-emerald-500 text-white dark:bg-emerald-600',
+        infoBg: 'bg-emerald-200 dark:bg-emerald-900/55',
+        infoText: 'text-emerald-900 dark:text-emerald-200'
       };
 
   return (
@@ -445,11 +445,11 @@ function ClassicCourseCard({
         {/* Relationship Insights */}
         {isSelected && insights.length > 0 && (
           <div className="mt-3 space-y-2 border-t-2 border-zinc-300 dark:border-zinc-600 pt-3">
-            <p className="font-body-semi text-xs font-bold text-gray-700">Course Relationships:</p>
+            <p className="font-body-semi text-xs font-bold text-[var(--foreground)]">Course Relationships:</p>
             {insights.map((insight, idx) => (
               <div
                 key={idx}
-                className="rounded-md border-l-4 bg-white p-2 shadow-sm"
+                className="rounded-md border-l-4 bg-white/90 p-2 shadow-sm dark:bg-zinc-900/80"
                 style={{ borderLeftColor: insight.color }}
               >
                 <div className="flex items-start gap-2">
@@ -461,7 +461,7 @@ function ClassicCourseCard({
                     <p className="font-body-semi text-xs font-semibold" style={{ color: insight.color }}>
                       {insight.type}
                     </p>
-                    <p className="font-body text-xs text-gray-600">
+                    <p className="font-body text-xs text-[var(--muted-foreground)]">
                       {insight.description}
                     </p>
                   </div>
@@ -474,7 +474,7 @@ function ClassicCourseCard({
         {/* No relationships message */}
         {isSelected && insights.length === 0 && (
           <div className="mt-3 border-t-2 border-zinc-300 dark:border-zinc-600 pt-3">
-            <p className="font-body text-xs italic text-gray-500">
+            <p className="font-body text-xs italic text-[var(--muted-foreground)]">
               No relationships defined in course flow
             </p>
           </div>

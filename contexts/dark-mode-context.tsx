@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
+import { DARK_MODE_STORAGE_KEY } from '@/lib/theme/dark-mode-contract';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -12,19 +14,18 @@ interface DarkModeContextType {
 
 const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'stu-theme-mode';
-
 export function DarkModeProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [mode, setModeState] = useState<ThemeMode>('system');
   const [mounted, setMounted] = useState(false);
   const [systemDark, setSystemDark] = useState(false);
+  const pathname = usePathname();
 
   // Initialize from localStorage and detect system preference
   useEffect(() => {
     setMounted(true);
 
     // Load saved preference
-    const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    const saved = localStorage.getItem(DARK_MODE_STORAGE_KEY) as ThemeMode | null;
     if (saved && ['light', 'dark', 'system'].includes(saved)) {
       setModeState(saved);
     } else {
@@ -51,8 +52,9 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
 
     const htmlElement = document.documentElement;
 
-    // Don't apply dark mode if landing page has forced light mode
-    if (htmlElement.dataset.forceLightLanding === 'true') {
+    const forceLightLanding = htmlElement.dataset.forceLightLanding === 'true';
+    if (forceLightLanding) {
+      htmlElement.classList.remove('dark');
       return;
     }
 
@@ -63,11 +65,11 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
     } else {
       htmlElement.classList.remove('dark');
     }
-  }, [mode, systemDark, mounted]);
+  }, [mode, systemDark, mounted, pathname]);
 
   const setMode = (newMode: ThemeMode) => {
     setModeState(newMode);
-    localStorage.setItem(STORAGE_KEY, newMode);
+    localStorage.setItem(DARK_MODE_STORAGE_KEY, newMode);
   };
 
   const isDark = mode === 'dark' || (mode === 'system' && systemDark);

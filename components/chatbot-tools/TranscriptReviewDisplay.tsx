@@ -105,11 +105,11 @@ export default function TranscriptReviewDisplay({
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="p-4 bg-muted rounded-lg">
           <p className="text-xs text-muted-foreground mb-1">Total Courses</p>
-          <p className="text-2xl font-bold text-[var(--primary)]">{courses.length}</p>
+          <p className="text-2xl font-bold text-foreground">{courses.length}</p>
         </div>
         <div className="p-4 bg-muted rounded-lg">
           <p className="text-xs text-muted-foreground mb-1">Total Credits</p>
-          <p className="text-2xl font-bold text-[var(--primary)]">{totalCredits.toFixed(1)}</p>
+          <p className="text-2xl font-bold text-foreground">{totalCredits.toFixed(1)}</p>
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export default function TranscriptReviewDisplay({
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-700">{course.title}</p>
+                          <p className="text-sm text-foreground">{course.title}</p>
 
                           {/* Transfer Credit Details */}
                           {isTransfer && course.transfer && (

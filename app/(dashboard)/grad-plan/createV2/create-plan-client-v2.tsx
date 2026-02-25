@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,11 @@ import {
   ConversationStep,
   type ConversationState,
   type ConversationMetadata,
+  type AgentLogItem,
+  type GenerationJobEvent,
+  type GenerationJobSnapshot,
+  type GenerationJobStatus,
+  type GenerationPhase,
 } from '@/lib/chatbot/grad-plan/types';
 import {
   createInitialState,
@@ -39,7 +44,6 @@ import { shouldRequestProfileUpdate } from '@/lib/chatbot/tools/profileUpdateToo
 import { clientLogger } from '@/lib/client-logger';
 import { createToolCallPart, generateToolCallId, getToolMeta } from '@/lib/chatbot/grad-plan/toolRegistry';
 import {
-  updateProfileForChatbotAction,
   fetchUserCoursesAction,
   getAiPromptAction,
   organizeCoursesIntoSemestersAction,
@@ -68,14 +72,83 @@ const buildConversationSummary = (state: ConversationState) => {
   if (programCount > 0) {
     parts.push(`${programCount} program${programCount === 1 ? '' : 's'}`);
   }
-  const credits = state.collectedData.totalSelectedCredits || 0;
+  const credits =
+    state.collectedData.remainingCreditsToComplete ||
+    state.collectedData.totalSelectedCredits ||
+    0;
   if (credits > 0) {
-    parts.push(`${credits} credits`);
+    parts.push(`${credits} credits left`);
   }
   if (state.collectedData.hasTranscript) {
     parts.push('Transcript attached');
   }
   return parts.length > 0 ? parts.join(' · ') : 'In progress';
+};
+
+const generationStatusByEvent: Record<GenerationJobEvent['eventType'], GenerationJobStatus> = {
+  job_created: 'queued',
+  job_started: 'in_progress',
+  phase_started: 'in_progress',
+  phase_completed: 'in_progress',
+  job_progress: 'in_progress',
+  job_completed: 'completed',
+  job_failed: 'failed',
+  job_canceled: 'canceled',
+};
+
+const generationPhaseLabel: Record<GenerationPhase, string> = {
+  queued: 'Queued',
+  preparing: 'Preparing',
+  major_skeleton: 'Skeleton',
+  major_fill: 'Major Fill',
+  minor_fill: 'Minor Fill',
+  gen_ed_fill: 'Gen Ed Fill',
+  elective_balance: 'Elective Balance',
+  elective_fill: 'Elective Fill',
+  verify_heuristics: 'Verifying',
+  persisting: 'Persisting',
+  completed: 'Completed',
+  failed: 'Failed',
+  canceled: 'Canceled',
+};
+
+const generationPhaseProgress: Record<GenerationPhase, number> = {
+  queued: 0,
+  preparing: 5,
+  major_skeleton: 15,
+  major_fill: 35,
+  minor_fill: 50,
+  gen_ed_fill: 65,
+  elective_balance: 80,
+  elective_fill: 80,
+  verify_heuristics: 92,
+  persisting: 97,
+  completed: 100,
+  failed: 0,
+  canceled: 0,
+};
+
+const progressMilestones: Array<{ phase: GenerationPhase; label: string; percent: number }> = [
+  { phase: 'preparing', label: 'Prepare', percent: 5 },
+  { phase: 'major_skeleton', label: 'Skeleton', percent: 15 },
+  { phase: 'major_fill', label: 'Major', percent: 35 },
+  { phase: 'minor_fill', label: 'Minor', percent: 50 },
+  { phase: 'gen_ed_fill', label: 'Gen Ed', percent: 65 },
+  { phase: 'elective_fill', label: 'Electives', percent: 80 },
+  { phase: 'verify_heuristics', label: 'Verify', percent: 92 },
+  { phase: 'completed', label: 'Saved', percent: 100 },
+];
+
+const generationTerminalStatuses = new Set<GenerationJobStatus>(['completed', 'failed', 'canceled']);
+
+const getEventProgress = (event: GenerationJobEvent): number => {
+  if (typeof event.progressPercent === 'number') {
+    return Math.max(0, Math.min(100, event.progressPercent));
+  }
+  if (event.phase) {
+    return generationPhaseProgress[event.phase];
+  }
+  return 0;
 };
 
 // ============================================================================
@@ -88,6 +161,7 @@ interface CreatePlanClientV2Props {
   hasCourses: boolean;
   hasActivePlan: boolean;
   academicTerms: AcademicTermsConfig;
+  automaticMastraWorkflowEnabled: boolean;
 }
 
 // ============================================================================
@@ -100,6 +174,7 @@ export default function CreatePlanClientV2({
   hasCourses,
   hasActivePlan,
   academicTerms,
+  automaticMastraWorkflowEnabled,
 }: CreatePlanClientV2Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -184,6 +259,14 @@ export default function CreatePlanClientV2({
   const [resumeItems, setResumeItems] = useState<ConversationMetadata[]>([]);
   const [awaitingApprovalStep, setAwaitingApprovalStep] = useState<ConversationStep | undefined>(undefined);
   const [agentLastUpdated, setAgentLastUpdated] = useState<string>(new Date().toISOString());
+  const [generationJobId, setGenerationJobId] = useState<string | null>(null);
+  const [generationJobStatus, setGenerationJobStatus] = useState<GenerationJobStatus | null>(null);
+  const [generationPhase, setGenerationPhase] = useState<GenerationPhase | null>(null);
+  const [generationProgressPercent, setGenerationProgressPercent] = useState<number>(0);
+  const [generationStatusMessage, setGenerationStatusMessage] = useState<string | null>(null);
+  const [generationErrorMessage, setGenerationErrorMessage] = useState<string | null>(null);
+  const [generationConnected, setGenerationConnected] = useState<boolean>(false);
+  const [generationAgentLogs, setGenerationAgentLogs] = useState<AgentLogItem[]>([]);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -191,6 +274,25 @@ export default function CreatePlanClientV2({
   const lastAssistantMessageRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const planGenerationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const lastGenerationEventIdRef = useRef<number>(0);
+  const generationRedirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generationCompletionAnnouncedRef = useRef<boolean>(false);
+
+  const closeGenerationEventSource = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setGenerationConnected(false);
+  }, []);
+
+  const clearGenerationRedirectTimer = useCallback(() => {
+    if (generationRedirectTimerRef.current) {
+      clearTimeout(generationRedirectTimerRef.current);
+      generationRedirectTimerRef.current = null;
+    }
+  }, []);
 
   // ============================================================================
   // Initialization Effect
@@ -290,11 +392,16 @@ export default function CreatePlanClientV2({
       currentStep: conversationState.currentStep,
       summary,
       status,
+      generationJobId,
+      generationJobStatus,
     });
-  }, [conversationState, agentStatus]);
+  }, [conversationState, agentStatus, generationJobId, generationJobStatus]);
 
   // Load saved state on mount from URL param
   useEffect(() => {
+    const items = listConversationMetadata();
+    setResumeItems(items);
+
     const conversationId = searchParams.get('id');
     if (conversationId) {
       const saved = loadStateFromLocalStorage(conversationId);
@@ -311,12 +418,18 @@ export default function CreatePlanClientV2({
         setIsProcessing(false);
         setAwaitingApprovalStep(undefined);
       }
-    }
 
-    // Load resume items
-    const items = listConversationMetadata();
-    setResumeItems(items);
-  }, [searchParams, setConversationState, setMessages, setActiveTool, setIsProcessing]);
+      const metadata = items.find(item => item.conversationId === conversationId);
+      if (metadata?.generationJobId) {
+        setGenerationJobId(metadata.generationJobId);
+        setGenerationJobStatus(metadata.generationJobStatus || 'queued');
+        if (metadata.generationJobStatus && !generationTerminalStatuses.has(metadata.generationJobStatus)) {
+          setIsProcessing(true);
+          setAgentStatus('running');
+        }
+      }
+    }
+  }, [searchParams, setConversationState, setMessages, setActiveTool, setIsProcessing, setAgentStatus]);
 
   // ============================================================================
   // Scroll & Focus Effects
@@ -416,7 +529,10 @@ export default function CreatePlanClientV2({
         }
 
         case ConversationStep.CREDIT_DISTRIBUTION: {
-          const totalCredits = updatedState.collectedData.totalSelectedCredits || 0;
+          const totalCredits =
+            updatedState.collectedData.remainingCreditsToComplete ||
+            updatedState.collectedData.totalSelectedCredits ||
+            0;
 
           enqueueToolMessage('credit_distribution', {
             totalCredits,
@@ -456,14 +572,263 @@ export default function CreatePlanClientV2({
       ? 'Validating generation output...'
       : 'Generating your personalized graduation plan...';
 
-  const clearPlanGenerationTimer = () => {
+  const clearPlanGenerationTimer = useCallback(() => {
     if (planGenerationTimerRef.current !== null) {
       clearTimeout(planGenerationTimerRef.current);
       planGenerationTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const runPlanGeneration = async () => {
+  const resetGenerationState = useCallback(() => {
+    setGenerationJobId(null);
+    setGenerationJobStatus(null);
+    setGenerationPhase(null);
+    setGenerationProgressPercent(0);
+    setGenerationStatusMessage(null);
+    setGenerationErrorMessage(null);
+    setGenerationConnected(false);
+    setGenerationAgentLogs([]);
+    lastGenerationEventIdRef.current = 0;
+    generationCompletionAnnouncedRef.current = false;
+    clearGenerationRedirectTimer();
+  }, [clearGenerationRedirectTimer]);
+
+  const buildGenerationInputPayload = useCallback(async (): Promise<Record<string, unknown>> => {
+    const courseData = conversationState.collectedData.selectedCourses || {};
+
+    let takenCourses: Array<{
+      code: string;
+      title: string;
+      credits: number;
+      term: string;
+      grade: string;
+      status: string;
+      source: string;
+      fulfills: string[];
+    }> = [];
+
+    if (conversationState.collectedData.hasTranscript) {
+      const userCoursesResult = await fetchUserCoursesAction(user.id);
+      takenCourses =
+        userCoursesResult.success && userCoursesResult.courses
+          ? userCoursesResult.courses
+              .filter(course => course.code && course.title)
+              .map(course => ({
+                code: course.code,
+                title: course.title,
+                credits: course.credits || 3,
+                term: course.term || 'Unknown',
+                grade: course.grade || 'Completed',
+                status: 'Completed',
+                source: 'Institutional',
+                fulfills: [],
+              }))
+          : [];
+    }
+
+    const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
+
+    return {
+      ...courseData,
+      takenCourses,
+      studentType:
+        conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type),
+      selectionMode: 'MANUAL' as const,
+      selectedPrograms: programIds,
+      milestones: conversationState.collectedData.milestones || [],
+      suggestedDistribution:
+        conversationState.collectedData.creditDistributionStrategy?.suggestedDistribution,
+      planStartTerm: conversationState.collectedData.planStartTerm,
+      planStartYear: conversationState.collectedData.planStartYear,
+      remainingCreditsToComplete: conversationState.collectedData.remainingCreditsToComplete,
+      workStatus: conversationState.collectedData.workConstraints?.workStatus,
+      created_with_transcript: conversationState.collectedData.hasTranscript ?? false,
+      hasTranscript: conversationState.collectedData.hasTranscript ?? false,
+    };
+  }, [conversationState, studentProfile.student_type, user.id]);
+
+  const appendGenerationAgentLog = useCallback((event: GenerationJobEvent) => {
+    const status: AgentLogItem['status'] =
+      event.eventType === 'job_failed'
+        ? 'fail'
+        : event.eventType === 'job_canceled'
+        ? 'warn'
+        : 'ok';
+
+    const label = event.phase
+      ? `Generation ${generationPhaseLabel[event.phase]}`
+      : `Generation ${event.eventType.replaceAll('_', ' ')}`;
+
+    setGenerationAgentLogs(prev => {
+      if (prev.some(item => item.id === `generation-${event.id}`)) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          id: `generation-${event.id}`,
+          ts: event.ts,
+          type: 'system',
+          label,
+          detail: event.message || undefined,
+          status,
+        },
+      ];
+    });
+  }, []);
+
+  const applySnapshotState = useCallback((snapshot: GenerationJobSnapshot) => {
+    setGenerationJobId(snapshot.id);
+    setGenerationJobStatus(snapshot.status);
+    setGenerationPhase(snapshot.phase);
+    setGenerationProgressPercent(snapshot.progressPercent);
+    setGenerationErrorMessage(snapshot.errorMessage);
+  }, []);
+
+  const scheduleRedirectToPlan = useCallback((accessId: string) => {
+    clearGenerationRedirectTimer();
+    generationRedirectTimerRef.current = setTimeout(() => {
+      router.push(`/grad-plan/${accessId}`);
+    }, 1500);
+  }, [clearGenerationRedirectTimer, router]);
+
+  const handleGenerationCompletion = useCallback((accessId: string, message?: string | null) => {
+    if (!generationCompletionAnnouncedRef.current) {
+      generationCompletionAnnouncedRef.current = true;
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content:
+            message ||
+            '🎉 Your graduation plan has been generated and saved. Redirecting you to the plan editor...',
+          timestamp: new Date(),
+        },
+      ]);
+    }
+    setAgentStatus('complete');
+    setIsProcessing(false);
+    scheduleRedirectToPlan(accessId);
+  }, [scheduleRedirectToPlan, setAgentStatus, setIsProcessing, setMessages]);
+
+  const applyGenerationEvent = useCallback((event: GenerationJobEvent) => {
+    lastGenerationEventIdRef.current = Math.max(lastGenerationEventIdRef.current, event.id);
+    const nextStatus = generationStatusByEvent[event.eventType];
+    const nextProgress = getEventProgress(event);
+
+    setGenerationJobStatus(nextStatus);
+    if (event.phase) {
+      setGenerationPhase(event.phase);
+    }
+    setGenerationProgressPercent(prev => Math.max(prev, nextProgress));
+    setGenerationStatusMessage(event.message || null);
+    setAgentLastUpdated(event.ts);
+    appendGenerationAgentLog(event);
+
+    if (nextStatus === 'in_progress' || nextStatus === 'queued') {
+      setAgentStatus('running');
+    }
+    if (nextStatus === 'completed') {
+      const accessIdRaw = event.payloadJson?.accessId;
+      if (typeof accessIdRaw === 'string' && accessIdRaw) {
+        handleGenerationCompletion(accessIdRaw, event.message);
+      } else {
+        setIsProcessing(false);
+        setAgentStatus('complete');
+      }
+    }
+    if (nextStatus === 'failed') {
+      setGenerationErrorMessage(event.message || 'Generation failed');
+      setIsProcessing(false);
+      setAgentStatus('error');
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `I encountered an error while generating your plan:\n\n**Error:** ${
+            event.message || 'Unknown error'
+          }\n\nYou can retry generation below.`,
+          timestamp: new Date(),
+        },
+      ]);
+    }
+    if (nextStatus === 'canceled') {
+      setIsProcessing(false);
+      setAgentStatus('paused');
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Plan generation was canceled.',
+          timestamp: new Date(),
+        },
+      ]);
+    }
+  }, [appendGenerationAgentLog, handleGenerationCompletion, setAgentStatus, setIsProcessing, setMessages]);
+
+  const fetchGenerationSnapshot = useCallback(async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/grad-plan/generation-jobs/${jobId}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = await response.json() as {
+        success: boolean;
+        job?: GenerationJobSnapshot;
+      };
+
+      if (!payload.success || !payload.job) return;
+      applySnapshotState(payload.job);
+      setAgentLastUpdated(payload.job.updatedAt);
+
+      if (payload.job.status === 'completed' && payload.job.outputAccessId) {
+        handleGenerationCompletion(payload.job.outputAccessId, 'Plan generation complete.');
+      } else if (payload.job.status === 'failed') {
+        setGenerationErrorMessage(payload.job.errorMessage || 'Generation failed');
+        setIsProcessing(false);
+        setAgentStatus('error');
+      } else if (payload.job.status === 'canceled') {
+        setIsProcessing(false);
+        setAgentStatus('paused');
+      }
+    } catch (error) {
+      clientLogger.error('Failed to fetch generation snapshot', error, { action: 'fetchGenerationSnapshot' });
+    }
+  }, [applySnapshotState, handleGenerationCompletion, setAgentStatus, setIsProcessing]);
+
+  const connectGenerationEvents = useCallback((jobId: string) => {
+    closeGenerationEventSource();
+
+    const afterId = lastGenerationEventIdRef.current;
+    const url = `/api/grad-plan/generation-jobs/${jobId}/events?afterId=${afterId}`;
+    const source = new EventSource(url);
+    eventSourceRef.current = source;
+
+    source.onopen = () => {
+      setGenerationConnected(true);
+    };
+
+    source.onmessage = event => {
+      try {
+        const parsed = JSON.parse(event.data) as GenerationJobEvent;
+        applyGenerationEvent(parsed);
+      } catch (error) {
+        clientLogger.error('Failed to parse generation SSE event', error, { action: 'connectGenerationEvents' });
+      }
+    };
+
+    source.onerror = () => {
+      setGenerationConnected(false);
+      void fetchGenerationSnapshot(jobId);
+    };
+  }, [applyGenerationEvent, closeGenerationEventSource, fetchGenerationSnapshot]);
+
+  const runLegacyPlanGeneration = async () => {
     try {
       const promptName = 'automatic_generation_mode';
       const promptTemplate = await getAiPromptAction(promptName);
@@ -471,51 +836,7 @@ export default function CreatePlanClientV2({
         throw new Error('Prompt template not found');
       }
 
-      const courseData = conversationState.collectedData.selectedCourses || {};
-
-      let takenCourses: Array<{
-        code: string;
-        title: string;
-        credits: number;
-        term: string;
-        grade: string;
-        status: string;
-        source: string;
-        fulfills: string[];
-      }> = [];
-      if (conversationState.collectedData.hasTranscript) {
-        const userCoursesResult = await fetchUserCoursesAction(user.id);
-        takenCourses =
-          userCoursesResult.success && userCoursesResult.courses
-            ? userCoursesResult.courses
-                .filter(course => course.code && course.title)
-                .map(course => ({
-                  code: course.code,
-                  title: course.title,
-                  credits: course.credits || 3,
-                  term: course.term || 'Unknown',
-                  grade: course.grade || 'Completed',
-                  status: 'Completed',
-                  source: 'Institutional',
-                  fulfills: [],
-                }))
-            : [];
-      }
-
-      const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
-      const transformedCourseData = {
-        ...courseData,
-        takenCourses,
-        studentType:
-          conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type),
-        selectionMode: 'MANUAL' as const,
-        selectedPrograms: programIds,
-        milestones: conversationState.collectedData.milestones || [],
-        suggestedDistribution:
-          conversationState.collectedData.creditDistributionStrategy?.suggestedDistribution,
-        workStatus: conversationState.collectedData.workConstraints?.workStatus,
-        created_with_transcript: conversationState.collectedData.hasTranscript ?? false,
-      };
+      const transformedCourseData = await buildGenerationInputPayload();
 
       const result = await organizeCoursesIntoSemestersAction(transformedCourseData, {
         prompt_name: promptName,
@@ -558,7 +879,84 @@ export default function CreatePlanClientV2({
     }
   };
 
+  const runMastraPlanGeneration = useCallback(async () => {
+    try {
+      const inputPayload = await buildGenerationInputPayload();
+      const response = await fetch('/api/grad-plan/generation-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: conversationState.conversationId,
+          inputPayload,
+        }),
+      });
+
+      const payload = await response.json() as {
+        success: boolean;
+        error?: string;
+        reused?: boolean;
+        job?: GenerationJobSnapshot;
+        jobId?: string;
+      };
+
+      if (!response.ok || !payload.success || !payload.job) {
+        throw new Error(payload.error || 'Failed to create generation job');
+      }
+
+      applySnapshotState(payload.job);
+      setGenerationStatusMessage(payload.reused ? 'Reconnected to existing generation job.' : 'Generation job queued.');
+      setGenerationErrorMessage(null);
+      setAgentLastUpdated(payload.job.updatedAt);
+      if (payload.job.status === 'completed') {
+        setAgentStatus('complete');
+        setIsProcessing(false);
+      } else if (payload.job.status === 'failed') {
+        setAgentStatus('error');
+        setIsProcessing(false);
+      } else if (payload.job.status === 'canceled') {
+        setAgentStatus('paused');
+        setIsProcessing(false);
+      } else {
+        setAgentStatus('running');
+        setIsProcessing(true);
+      }
+
+      void fetchGenerationSnapshot(payload.job.id);
+      if (!generationTerminalStatuses.has(payload.job.status)) {
+        connectGenerationEvents(payload.job.id);
+      }
+    } catch (error) {
+      clientLogger.error('Error starting Mastra generation job', error, { action: 'runMastraPlanGeneration' });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setGenerationErrorMessage(errorMessage);
+      setAgentStatus('error');
+      setIsProcessing(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `I encountered an error while starting generation:\n\n**Error:** ${errorMessage}\n\nPlease retry.`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      clearPlanGenerationTimer();
+      setPlanGenerationStage('generating');
+    }
+  }, [
+    applySnapshotState,
+    buildGenerationInputPayload,
+    connectGenerationEvents,
+    conversationState.conversationId,
+    fetchGenerationSnapshot,
+    setAgentStatus,
+    setIsProcessing,
+    setMessages,
+  ]);
+
   const startPlanGeneration = () => {
+    closeGenerationEventSource();
+    resetGenerationState();
     setMessages([
       {
         role: 'assistant',
@@ -569,14 +967,90 @@ export default function CreatePlanClientV2({
     setIsProcessing(true);
     clearPlanGenerationTimer();
     setPlanGenerationStage('generating');
+
+    if (automaticMastraWorkflowEnabled) {
+      setAgentStatus('running');
+      setGenerationJobStatus('queued');
+      setGenerationPhase('queued');
+      setGenerationProgressPercent(0);
+      setGenerationStatusMessage('Generation job queued.');
+      setTimeout(() => {
+        void runMastraPlanGeneration();
+      }, 300);
+      return;
+    }
+
     planGenerationTimerRef.current = setTimeout(() => {
       setPlanGenerationStage('validating');
     }, 10000);
 
     setTimeout(() => {
-      void runPlanGeneration();
+      void runLegacyPlanGeneration();
     }, 1000);
   };
+
+  useEffect(() => {
+    if (!automaticMastraWorkflowEnabled) return;
+    if (!generationJobId || !generationJobStatus || generationTerminalStatuses.has(generationJobStatus)) {
+      return;
+    }
+
+    setMessages(prev => {
+      const hasGenerationMessage = prev.some(message =>
+        message.role === 'assistant' &&
+        typeof message.content === 'string' &&
+        message.content.includes('Perfect! Now let me generate your personalized graduation plan')
+      );
+      if (hasGenerationMessage) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          role: 'assistant',
+          content: generationLoadingMessage,
+          timestamp: new Date(),
+        },
+      ];
+    });
+  }, [
+    automaticMastraWorkflowEnabled,
+    generationJobId,
+    generationJobStatus,
+    generationLoadingMessage,
+    setMessages,
+  ]);
+
+  useEffect(() => {
+    if (!automaticMastraWorkflowEnabled) return;
+    if (!generationJobId) return;
+    void fetchGenerationSnapshot(generationJobId);
+
+    if (generationJobStatus && generationTerminalStatuses.has(generationJobStatus)) {
+      return;
+    }
+
+    connectGenerationEvents(generationJobId);
+
+    return () => {
+      closeGenerationEventSource();
+    };
+  }, [
+    automaticMastraWorkflowEnabled,
+    closeGenerationEventSource,
+    connectGenerationEvents,
+    fetchGenerationSnapshot,
+    generationJobId,
+    generationJobStatus,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      clearPlanGenerationTimer();
+      closeGenerationEventSource();
+      clearGenerationRedirectTimer();
+    };
+  }, [clearGenerationRedirectTimer, clearPlanGenerationTimer, closeGenerationEventSource]);
 
   // ============================================================================
   // Agent Controls
@@ -591,7 +1065,17 @@ export default function CreatePlanClientV2({
   };
 
   const handleAgentCancel = () => {
-    setAgentStatus('error');
+    if (automaticMastraWorkflowEnabled && generationJobId && generationJobStatus && !generationTerminalStatuses.has(generationJobStatus)) {
+      void fetch(`/api/grad-plan/generation-jobs/${generationJobId}/cancel`, {
+        method: 'POST',
+      }).catch(error => {
+        clientLogger.error('Failed to request generation cancellation', error, { action: 'handleAgentCancel' });
+      });
+      setGenerationJobStatus('cancel_requested');
+      setGenerationStatusMessage('Cancellation requested.');
+    }
+    closeGenerationEventSource();
+    setAgentStatus('paused');
     setIsProcessing(false);
     setActiveTool(null);
   };
@@ -613,6 +1097,8 @@ export default function CreatePlanClientV2({
   const handleResumeConversation = (conversationId: string) => {
     const saved = loadStateFromLocalStorage(conversationId);
     if (!saved) return;
+    closeGenerationEventSource();
+    resetGenerationState();
     setConversationState(saved);
     setMessages([
       {
@@ -624,10 +1110,22 @@ export default function CreatePlanClientV2({
     setActiveTool(null);
     setIsProcessing(false);
     setAwaitingApprovalStep(undefined);
+
+    const metadata = listConversationMetadata().find(item => item.conversationId === conversationId);
+    if (metadata?.generationJobId) {
+      setGenerationJobId(metadata.generationJobId);
+      setGenerationJobStatus(metadata.generationJobStatus || 'queued');
+      if (metadata.generationJobStatus && !generationTerminalStatuses.has(metadata.generationJobStatus)) {
+        setIsProcessing(true);
+        setAgentStatus('running');
+      }
+    }
     router.push(`/grad-plan/createV2?id=${conversationId}`);
   };
 
   const handleStartNewConversation = () => {
+    closeGenerationEventSource();
+    resetGenerationState();
     const conversationId = generateConversationId();
     const initial = createInitialState(conversationId, user.id, studentProfile.university_id);
     setConversationState(initial);
@@ -643,8 +1141,21 @@ export default function CreatePlanClientV2({
   // ============================================================================
 
   const handleSendMessage = (_messageText?: string) => {
-    // Phase 1: Just add user message. Pathfinder AI not wired.
-    // TODO: Wire up pathfinder AI in later phase
+    if (!inputMessage.trim()) return;
+    setMessages(prev => [
+      ...prev,
+      {
+        role: 'user',
+        content: inputMessage.trim(),
+        timestamp: new Date(),
+      },
+      {
+        role: 'assistant',
+        content: 'Free-form pathfinder chat is not yet enabled in createV2. Please continue with the guided tool steps.',
+        timestamp: new Date(),
+      },
+    ]);
+    setInputMessage('');
   };
 
   // ============================================================================
@@ -654,6 +1165,15 @@ export default function CreatePlanClientV2({
   const conversationSummary = buildConversationSummary(conversationState);
   const isAgentReadOnly = agentStatus === 'paused' || agentStatus === 'awaiting_approval' || agentStatus === 'error';
   const activeToolMeta = activeTool ? getToolMeta(activeTool) : null;
+  const combinedAgentLogs = [...agentLogs, ...generationAgentLogs]
+    .sort((a, b) => a.ts.localeCompare(b.ts));
+  const effectiveGenerationPhase = generationPhase || 'queued';
+  const generationPhaseDisplayLabel = generationPhaseLabel[effectiveGenerationPhase];
+  const isGenerationActive =
+    automaticMastraWorkflowEnabled &&
+    Boolean(generationJobId) &&
+    generationJobStatus !== null &&
+    !generationTerminalStatuses.has(generationJobStatus);
 
   // ============================================================================
   // JSX
@@ -753,13 +1273,81 @@ export default function CreatePlanClientV2({
                       <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {isGeneratingPlan ? (
                           <div className="w-full flex justify-center items-center py-8">
-                            <div className="flex flex-col items-center gap-3 text-center">
-                              <StuLoader variant="card" text={generationLoaderText} speed={2.5} />
-                              <p className="text-sm text-muted-foreground">
-                                Your grad plan is generating. It&apos;ll take a moment, so you can stay here or
-                                leave. You&apos;ll get an email when it&apos;s done!
-                              </p>
-                            </div>
+                            {automaticMastraWorkflowEnabled ? (
+                              <div className="w-full max-w-2xl rounded-xl border bg-card p-5 shadow-sm">
+                                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                                  <span>{generationPhaseDisplayLabel}</span>
+                                  <span>{Math.max(0, Math.min(100, generationProgressPercent))}%</span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary transition-all duration-500"
+                                    style={{ width: `${Math.max(0, Math.min(100, generationProgressPercent))}%` }}
+                                  />
+                                </div>
+                                <div
+                                  className="grid gap-2 mt-3"
+                                  style={{ gridTemplateColumns: `repeat(${progressMilestones.length}, minmax(0, 1fr))` }}
+                                >
+                                  {progressMilestones.map(milestone => (
+                                    <div key={milestone.phase} className="text-center">
+                                      <p
+                                        className={`text-[11px] ${
+                                          generationProgressPercent >= milestone.percent
+                                            ? 'text-foreground font-semibold'
+                                            : 'text-muted-foreground'
+                                        }`}
+                                      >
+                                        {milestone.label}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-3">
+                                  {generationStatusMessage ||
+                                    'Generating your graduation plan in the background. You can safely refresh or reopen this page.'}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {generationConnected ? 'Live updates connected.' : 'Reconnecting to live updates...'}
+                                </p>
+                                {generationErrorMessage ? (
+                                  <p className="text-xs text-red-600 mt-2">{generationErrorMessage}</p>
+                                ) : null}
+                                <div className="mt-4 flex items-center gap-2">
+                                  {generationJobStatus === 'failed' ? (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={startPlanGeneration}
+                                    >
+                                      Retry Generation
+                                    </Button>
+                                  ) : null}
+                                  {isGenerationActive ? (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={handleAgentCancel}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  ) : null}
+                                  {generationJobId ? (
+                                    <span className="text-[11px] text-muted-foreground ml-auto">
+                                      Job {generationJobId.slice(0, 8)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-3 text-center">
+                                <StuLoader variant="card" text={generationLoaderText} speed={2.5} />
+                                <p className="text-sm text-muted-foreground">
+                                  Your grad plan is generating. It&apos;ll take a moment, so you can stay here or
+                                  leave. You&apos;ll get an email when it&apos;s done!
+                                </p>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           message.content && (
@@ -801,7 +1389,7 @@ export default function CreatePlanClientV2({
                               const toolName = part.toolName as ToolType;
                               const toolMeta = getToolMeta(toolName);
                               const resultPart = message.parts?.find(
-                                candidate =>
+                                (candidate): candidate is import('@/lib/chatbot/grad-plan/types').ToolResultPart =>
                                   candidate.type === 'tool-result' &&
                                   candidate.toolCallId === part.toolCallId
                               );
@@ -890,7 +1478,7 @@ export default function CreatePlanClientV2({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Press Enter to send, Shift+Enter for new line
+                    Press Enter to send, Shift+Enter for new line. Free-form pathfinder chat is not yet enabled.
                   </p>
                 </div>
               )}
@@ -905,7 +1493,28 @@ export default function CreatePlanClientV2({
                 completedSteps={conversationState.completedSteps}
                 onStepClick={handleStepNavigation}
               />
-              <AgentActivityPanel items={agentLogs} />
+              {automaticMastraWorkflowEnabled && generationJobId ? (
+                <div className="border rounded-xl bg-card shadow-sm p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold">Generation Progress</h3>
+                    <span className="text-xs text-muted-foreground">{generationProgressPercent}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-500"
+                      style={{ width: `${Math.max(0, Math.min(100, generationProgressPercent))}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {generationPhaseDisplayLabel}
+                    {generationStatusMessage ? ` · ${generationStatusMessage}` : ''}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {generationConnected ? 'Live updates connected.' : 'Reconnecting to updates...'}
+                  </p>
+                </div>
+              ) : null}
+              <AgentActivityPanel items={combinedAgentLogs} />
               <AgentChecksPanel checks={agentChecks} />
               <AgentControls
                 status={agentStatus}

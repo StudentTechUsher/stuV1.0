@@ -1,4 +1,4 @@
-import { supabase } from "../supabase";
+import { supabaseAdmin } from "../supabaseAdmin";
 import { encodeAccessId } from "../utils/access-id";
 import { createNotifForPlanReady } from './notifService';
 import { sendGradPlanCreatedEmail } from './emailService';
@@ -10,7 +10,7 @@ import { sendGradPlanCreatedEmail } from './emailService';
  * @return
  **/
 export async function GetAiPrompt(prompt_name: string) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('ai_prompts')
     .select('*')
     .eq('prompt_name', prompt_name)
@@ -39,7 +39,7 @@ export async function InsertGeneratedGradPlan(args: {
 }): Promise<{ gradPlanId: number; accessId: string }> {
   const { studentId, planData, programsInPlan = [], isActive = false, userId } = args;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('grad_plan')
     .insert({
       student_id: studentId,
@@ -71,7 +71,7 @@ export async function InsertGeneratedGradPlan(args: {
 
       // Get user's email and name from profiles table
       console.log(`📧 Fetching user profile for email notification...`);
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('email, fname')
         .eq('id', userId)
@@ -128,7 +128,7 @@ export async function InsertAiChatExchange(args: {
 }): Promise<{ success: boolean; error?: string }> {
   const { userId, sessionId, userMessage, aiResponse, outputTokens = 0 } = args;
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('ai_responses')
       .insert({
         user_id: userId, // can be null if anonymous usage is allowed by RLS

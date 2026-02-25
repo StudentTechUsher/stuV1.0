@@ -22,6 +22,7 @@ const completeStudentData = {
   est_grad_date: '2028-05-01',
   est_grad_term: 'Spring',
   admission_year: 2024,
+  year_in_school: 'Sophomore',
   student_type: 'undergraduate' as const,
   career_goals: 'Data Science',
   is_transfer: 'freshman' as const,
@@ -31,6 +32,7 @@ const missingStudentData = {
   est_grad_date: null,
   est_grad_term: null,
   admission_year: null,
+  year_in_school: null,
   student_type: null,
   career_goals: null,
   is_transfer: null,
@@ -61,5 +63,19 @@ export const VersionB_ReadOnly: Story = {
     onUpdateStudentData: async () => {},
     onComplete: () => {},
     readOnly: true,
+  },
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...CompleteProfile,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(CompleteProfile.parameters ?? {}),
+    backgrounds: { default: 'dark' },
   },
 };

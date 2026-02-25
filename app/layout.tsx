@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/next"
 import localFont from "next/font/local";
 import "./globals.css";
 import { UniversityThemeProvider } from "@/contexts/university-theme-context";
@@ -8,6 +7,8 @@ import { DarkModeProvider } from "@/contexts/dark-mode-context";
 import { PostHogProvider } from "@/contexts/posthog-provider";
 import { ReportIssueButton } from "@/components/report-issue/report-issue-button";
 import { ClientErrorCapture } from "@/components/observability/client-error-capture";
+import { CookieConsentBanner } from "@/components/analytics/cookie-consent-banner";
+import { PostHogAuthBridge } from "@/components/analytics/posthog-auth-bridge";
 
 const geistSans = localFont({
   src: [
@@ -124,6 +125,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <PostHogProvider>
+          <PostHogAuthBridge />
           <ClientErrorCapture />
           <DarkModeProvider>
             <UniversityThemeProvider>
@@ -131,8 +133,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </UniversityThemeProvider>
           </DarkModeProvider>
           <ReportIssueButton />
+          <CookieConsentBanner />
         </PostHogProvider>
-        <Analytics />
       </body>
     </html>
   );

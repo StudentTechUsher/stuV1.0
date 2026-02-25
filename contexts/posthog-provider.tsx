@@ -2,12 +2,16 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import posthog from 'posthog-js';
+import type { AnalyticsConsent, AnalyticsConsentState } from '@/lib/identity/constants';
+import { readAnalyticsConsentFromDocument, writeAnalyticsConsentCookie } from '@/lib/identity/consent';
 
 interface PostHogContextType {
   posthog: typeof posthog | null;
   isReady: boolean;
+  analyticsConsent: AnalyticsConsentState;
   identifyUser: (userId: string, properties?: Record<string, unknown>) => void;
   captureEvent: (eventName: string, properties?: Record<string, unknown>) => void;
+  setAnalyticsConsent: (consent: AnalyticsConsent) => void;
   resetUser: () => void;
 }
 
@@ -20,9 +24,11 @@ interface PostHogProviderProps {
 export function PostHogProvider({ children }: PostHogProviderProps) {
   const [isReady, setIsReady] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [analyticsConsent, setAnalyticsConsentState] = useState<AnalyticsConsentState>('unknown');
 
   useEffect(() => {
     setMounted(true);
+    setAnalyticsConsentState(readAnalyticsConsentFromDocument());
 
     // Initialize PostHog only on client side
     const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -88,7 +94,7 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
       },
 
       // Privacy settings
-      opt_out_capturing_by_default: false,
+      opt_out_capturing_by_default: true,
       respect_dnt: true, // Respect Do Not Track browser setting
 
       // Performance
@@ -115,8 +121,13 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!mounted || !isReady) return;
+    applyConsentToPostHog(analyticsConsent);
+  }, [mounted, isReady, analyticsConsent]);
+
   const identifyUser = useCallback((userId: string, properties?: Record<string, unknown>) => {
-    if (!isReady || !mounted) return;
+    if (!isReady || !mounted || analyticsConsent !== 'granted') return;
 
     // FERPA COMPLIANCE: Only send non-PII user properties
     const safeProperties: Record<string, unknown> = {
@@ -132,14 +143,23 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
     };
 
     posthog.identify(userId, safeProperties);
-  }, [isReady, mounted]);
+  }, [isReady, mounted, analyticsConsent]);
 
   const captureEvent = useCallback((eventName: string, properties?: Record<string, unknown>) => {
-    if (!isReady || !mounted) return;
+    if (!isReady || !mounted || analyticsConsent !== 'granted') return;
 
     // FERPA COMPLIANCE: Filter out any PII from properties
     const safeProperties = sanitizeEventProperties(properties);
     posthog.capture(eventName, safeProperties);
+    persistAnonymousEvent(eventName, safeProperties);
+  }, [isReady, mounted, analyticsConsent]);
+
+  const setAnalyticsConsent = useCallback((consent: AnalyticsConsent) => {
+    writeAnalyticsConsentCookie(consent);
+    setAnalyticsConsentState(consent);
+    if (isReady && mounted) {
+      applyConsentToPostHog(consent);
+    }
   }, [isReady, mounted]);
 
   const resetUser = useCallback(() => {
@@ -150,8 +170,10 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
   const value: PostHogContextType = {
     posthog: mounted && isReady ? posthog : null,
     isReady,
+    analyticsConsent,
     identifyUser,
     captureEvent,
+    setAnalyticsConsent,
     resetUser,
   };
 
@@ -160,6 +182,41 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
       {children}
     </PostHogContext.Provider>
   );
+}
+
+function applyConsentToPostHog(consent: AnalyticsConsentState): void {
+  if (!posthog.__loaded) {
+    return;
+  }
+
+  if (consent === 'granted') {
+    posthog.opt_in_capturing();
+    return;
+  }
+
+  posthog.opt_out_capturing();
+}
+
+function persistAnonymousEvent(
+  eventName: string,
+  eventProperties?: Record<string, unknown>
+): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  void fetch('/api/identity/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      eventName,
+      properties: eventProperties ?? {},
+      path: window.location.pathname,
+    }),
+    keepalive: true,
+  }).catch((error) => {
+    console.warn('Failed to persist anonymous analytics event', error)
+  })
 }
 
 export function usePostHog() {

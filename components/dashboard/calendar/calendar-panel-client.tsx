@@ -64,34 +64,82 @@ type Props = {
   hiddenDays?: number[]; // [0] to hide Sunday
   semester?: string;     // e.g. "Winter 2025 Schedule"
   showSchedulerButton?: boolean;
+  schedulerEvents?: SchedulerEvent[];
 };
+
+type TimeParts = { hour: number; minute: number };
+
+function parseTimeParts(timeValue: string): TimeParts | null {
+  if (!timeValue) return null;
+  const trimmed = timeValue.trim();
+
+  const twentyFourMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))(?::\d{2})?$/);
+  if (twentyFourMatch) {
+    const hour = Number(twentyFourMatch[1]);
+    const minute = Number(twentyFourMatch[2]);
+    if (Number.isFinite(hour) && Number.isFinite(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return { hour, minute };
+    }
+  }
+
+  const ampmMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  if (ampmMatch) {
+    let hour = Number(ampmMatch[1]);
+    const minute = Number(ampmMatch[2] ?? "0");
+    const meridiem = ampmMatch[3].toLowerCase();
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute < 0 || minute > 59) {
+      return null;
+    }
+    if (hour === 12) {
+      hour = meridiem === "am" ? 0 : 12;
+    } else if (meridiem === "pm") {
+      hour += 12;
+    }
+    if (hour >= 0 && hour <= 23) {
+      return { hour, minute };
+    }
+  }
+
+  return null;
+}
 
 function convertSchedulerEventsToCalendarEvents(schedulerEvents: SchedulerEvent[]): CalendarEvent[] {
   const today = new Date();
   const currentWeekStart = new Date(today);
   currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Get Monday of current week
 
-  return schedulerEvents.map(event => {
-    const eventDate = new Date(currentWeekStart);
-    eventDate.setDate(currentWeekStart.getDate() + (event.dayOfWeek - 1)); // Convert to actual date
+  return schedulerEvents
+    .map((event) => {
+      const startParts = parseTimeParts(event.startTime);
+      const endParts = parseTimeParts(event.endTime);
+      if (!startParts || !endParts) {
+        console.warn("[calendar] Skipping event with invalid time value", event);
+        return null;
+      }
 
-    const startDateTime = new Date(eventDate);
-    const endDateTime = new Date(eventDate);
+      const eventDate = new Date(currentWeekStart);
+      eventDate.setDate(currentWeekStart.getDate() + (event.dayOfWeek - 1)); // Convert to actual date
 
-    const [startHour, startMinute] = event.startTime.split(':').map(Number);
-    const [endHour, endMinute] = event.endTime.split(':').map(Number);
+      const startDateTime = new Date(eventDate);
+      const endDateTime = new Date(eventDate);
 
-    startDateTime.setHours(startHour, startMinute, 0, 0);
-    endDateTime.setHours(endHour, endMinute, 0, 0);
+      startDateTime.setHours(startParts.hour, startParts.minute, 0, 0);
+      endDateTime.setHours(endParts.hour, endParts.minute, 0, 0);
 
-    return {
-      id: event.id,
-      title: event.course_code || event.title,
-      start: startDateTime.toISOString(),
-      end: endDateTime.toISOString(),
-      status: event.status || (event.type === "personal" ? "blocked" : "registered"),
-    };
-  });
+      if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime())) {
+        console.warn("[calendar] Skipping event with invalid Date after parsing", event);
+        return null;
+      }
+
+      return {
+        id: event.id,
+        title: event.course_code || event.title,
+        start: startDateTime.toISOString(),
+        end: endDateTime.toISOString(),
+        status: event.status || (event.type === "personal" ? "blocked" : "registered"),
+      };
+    })
+    .filter((event): event is CalendarEvent => Boolean(event));
 }
 
 export default function CalendarPanelClient({
@@ -102,47 +150,20 @@ export default function CalendarPanelClient({
   hiddenDays = [0, 6], // Hide Sunday and Saturday
   semester = getCurrentSemester(),
   showSchedulerButton = false,
+  schedulerEvents,
 }: Readonly<Props>) {
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>(initialEvents);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
   const slotHeightPx = 7;
 
   useEffect(() => {
-    if (showSchedulerButton && typeof window !== 'undefined') {
-      // Load scheduler data from localStorage
-      const savedSchedule = localStorage.getItem('scheduler-generated-schedule');
-      const savedPersonalEvents = localStorage.getItem('scheduler-personal-events');
-
-      let schedulerEvents: SchedulerEvent[] = [];
-
-      if (savedSchedule) {
-        try {
-          const parsedSchedule = JSON.parse(savedSchedule);
-          schedulerEvents = [...schedulerEvents, ...parsedSchedule];
-        } catch (error) {
-          console.warn('Invalid scheduler schedule in localStorage', error);
-        }
-      }
-
-      if (savedPersonalEvents) {
-        try {
-          const parsedPersonalEvents = JSON.parse(savedPersonalEvents);
-          schedulerEvents = [...schedulerEvents, ...parsedPersonalEvents];
-        } catch (error) {
-          console.warn('Invalid personal events in localStorage', error);
-        }
-      }
-
-      if (schedulerEvents.length > 0) {
-        const convertedEvents = convertSchedulerEventsToCalendarEvents(schedulerEvents);
-        setAllEvents(convertedEvents);
-      } else {
-        setAllEvents(initialEvents);
-      }
+    if (schedulerEvents && schedulerEvents.length > 0) {
+      const convertedEvents = convertSchedulerEventsToCalendarEvents(schedulerEvents);
+      setAllEvents(convertedEvents);
     } else {
       setAllEvents(initialEvents);
     }
-  }, [initialEvents, showSchedulerButton]);
+  }, [initialEvents, schedulerEvents]);
   return (
     // Modern card layout with rounded corners and bold header
     <div className="flex h-full max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--muted-foreground)_10%,transparent)] bg-[var(--card)] shadow-sm">

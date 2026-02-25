@@ -456,6 +456,7 @@ function handleCourseSelection(
     data: {
       selectedCourses: courseData as unknown as CourseSelection[],
       totalSelectedCredits: courseData.totalSelectedCredits || 0,
+      remainingCreditsToComplete: courseData.totalCreditsToComplete || courseData.remainingRequirementCredits || 0,
     },
     completedStep: ConversationStep.COURSE_SELECTION,
   });
@@ -465,7 +466,13 @@ function handleCourseSelection(
     step: ConversationStep.CREDIT_DISTRIBUTION,
   });
 
-  const resolvedTotalCredits = courseData.totalSelectedCredits || countTotalCredits(courseData);
+  const resolvedTotalCredits = (
+    courseData.totalCreditsToComplete ||
+    courseData.remainingRequirementCredits ||
+    courseData.totalSelectedCredits ||
+    countTotalCredits(courseData)
+  );
+  const legacyTotalSelectedCredits = courseData.totalSelectedCredits || countTotalCredits(courseData);
   const confirmationMessage = getCourseSelectionConfirmationMessage(programCount, totalCourses);
 
   // Calculate total credits for credit distribution
@@ -477,7 +484,8 @@ function handleCourseSelection(
       data: {
         courseSelectionMethod: 'manual',
         selectedCourses: courseData as unknown as CourseSelection[],
-        totalSelectedCredits: resolvedTotalCredits,
+        totalSelectedCredits: legacyTotalSelectedCredits,
+        remainingCreditsToComplete: resolvedTotalCredits,
       },
       completedStep: ConversationStep.COURSE_SELECTION,
     },
@@ -498,14 +506,14 @@ function handleCourseSelection(
       id: 'course_selection',
       label: 'Course selections validated',
       status: 'ok',
-      evidence: [`${totalCourses} courses`, `${resolvedTotalCredits} credits`],
+      evidence: [`${totalCourses} courses`, `${resolvedTotalCredits} credits remaining`],
     },
     sideEffects: [],
     delayMs: 1000,
     decisionMeta: {
       title: 'Course decision',
       badges: ['Course selection'],
-      evidence: [`${totalCourses} courses`, `${resolvedTotalCredits} credits`],
+      evidence: [`${totalCourses} courses`, `${resolvedTotalCredits} credits remaining`],
     },
     showFeedback: true,
   };

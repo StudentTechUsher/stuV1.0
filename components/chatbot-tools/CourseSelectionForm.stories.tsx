@@ -18,6 +18,10 @@ This step depends on program requirements, GenEd requirements, transcript data, 
 2. Navigate to \`/grad-plan/create\`
 3. Complete Program Selection to reach Course Selection
 
+**Required env vars for app runtime:**
+- \`NEXT_PUBLIC_SUPABASE_URL\`
+- \`NEXT_PUBLIC_SUPABASE_ANON_KEY\`
+
 **Data dependencies:**
 - Program requirements (course flows)
 - GenEd requirements
@@ -117,4 +121,32 @@ export const VersionB_ReadOnly: Story = {
       />
     </div>
   ),
+};
+
+/**
+ * Dark mode preview (docs-only placeholder)
+ */
+export const DarkMode: Story = {
+  ...DocsOnly,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(DocsOnly.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
+};
+
+/**
+ * Dark mode preview for Version B read-only component
+ */
+export const VersionB_ReadOnly_DarkMode: Story = {
+  ...VersionB_ReadOnly,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(VersionB_ReadOnly.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
 };

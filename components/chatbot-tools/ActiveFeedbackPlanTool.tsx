@@ -50,8 +50,8 @@ export default function ActiveFeedbackPlanTool({
 }: Readonly<ActiveFeedbackPlanToolProps>) {
   const isReadOnly = Boolean(readOnly || reviewMode);
   const initialPlan = useMemo(
-    () => createDraftPlan({ courseData: [], suggestedDistribution, hasTranscript, academicTerms }),
-    [suggestedDistribution, hasTranscript, academicTerms]
+    () => createDraftPlan({ courseData, suggestedDistribution, hasTranscript, academicTerms }),
+    [courseData, suggestedDistribution, hasTranscript, academicTerms]
   );
   const [draftPlan, setDraftPlan] = useState<DraftPlan>(initialPlan);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -342,7 +342,7 @@ export default function ActiveFeedbackPlanTool({
         <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
           Guidance
         </div>
-        <div className="mt-2 rounded-lg border border-border/60 bg-white/80 p-3 text-xs text-muted-foreground">
+        <div className="mt-2 rounded-lg border border-border/60 bg-white/80 p-3 text-xs text-muted-foreground dark:bg-zinc-900/50">
           <div className="font-semibold text-foreground">General AI Notes</div>
           <div className="mt-1">
             Use this for overall guidance (pace, workload, constraints).

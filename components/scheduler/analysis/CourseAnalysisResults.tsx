@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Card,
@@ -16,6 +16,7 @@ import {
   AccordionDetails,
   Button,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   CheckCircle,
   XCircle,
@@ -27,12 +28,13 @@ import {
 } from 'lucide-react';
 
 export interface ConflictDetail {
-  conflictType: 'time_overlap' | 'back_to_back' | 'exceeds_daily_hours' | 'blocks_lunch';
+  conflictType: 'time_overlap' | 'back_to_back' | 'exceeds_daily_hours' | 'blocks_lunch' | 'outside_time_window';
   message: string;
   conflictingWith: string;
 }
 
 export interface SectionAnalysis {
+  offering_id?: number;
   section_label: string;
   instructor: string;
   days?: string;
@@ -73,6 +75,8 @@ interface CourseAnalysisResultsProps {
 }
 
 function ScoreMeter({ score, compact = false }: { score: number; compact?: boolean }) {
+  const theme = useTheme();
+
   const getColor = (score: number) => {
     if (score >= 80) return '#10b981'; // Green
     if (score >= 60) return '#f59e0b'; // Orange
@@ -108,7 +112,7 @@ function ScoreMeter({ score, compact = false }: { score: number; compact?: boole
         sx={{
           height: compact ? 4 : 6,
           borderRadius: 1,
-          backgroundColor: 'rgba(0,0,0,0.1)',
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.1)',
           '& .MuiLinearProgress-bar': {
             backgroundColor: getColor(score),
           },
@@ -323,9 +327,15 @@ function CourseAnalysisCard({
   onDeselectSection?: (courseCode: string, sectionLabel: string) => void;
   allowBackups?: boolean;
 }) {
+  const theme = useTheme();
+
   // Get selections for this course
   const courseSelections = selections.filter(s => s.courseCode === analysis.courseCode);
   const usedRanks = courseSelections.map(s => s.rank);
+  const primarySelection = courseSelections.find(s => s.rank === 'primary');
+  const primarySectionLabel = primarySelection?.sectionLabel ?? null;
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const lastPrimaryRef = useRef<string | null>(null);
 
   const getSelectionRank = (sectionLabel: string): 'primary' | 'backup1' | 'backup2' | undefined => {
     const selection = courseSelections.find(s => s.sectionLabel === sectionLabel);
@@ -361,11 +371,44 @@ function CourseAnalysisCard({
 
     return disabled;
   };
+
+  useEffect(() => {
+    if (allowBackups || !primarySectionLabel) {
+      setIsCollapsed(false);
+      lastPrimaryRef.current = primarySectionLabel;
+      return;
+    }
+
+    if (lastPrimaryRef.current !== primarySectionLabel) {
+      setIsCollapsed(true);
+      lastPrimaryRef.current = primarySectionLabel;
+    }
+  }, [allowBackups, primarySectionLabel]);
+
+  const visibleSections = isCollapsed && primarySectionLabel
+    ? analysis.sections.filter(section => section.section_label === primarySectionLabel)
+    : analysis.sections;
+
   return (
-    <Card elevation={0} sx={{ border: '1px solid var(--border)', borderRadius: 2, mb: compact ? 1.5 : 2 }}>
+    <Card
+      elevation={0}
+      sx={{
+        border: '2px solid var(--border)',
+        borderRadius: 2,
+        mb: compact ? 1.5 : 2,
+        boxShadow: theme.palette.mode === 'dark' ? '0 1px 4px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.04)',
+      }}
+    >
       <CardContent sx={{ p: compact ? 1.5 : 2, '&:last-child': { pb: compact ? 1.5 : 2 } }}>
         {/* Header - Compact */}
-        <Box sx={{ mb: 1.5 }}>
+        <Box
+          sx={{
+            mb: 1.5,
+            p: 1,
+            borderRadius: 1,
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(6, 201, 108, 0.12)' : 'rgba(6, 201, 108, 0.08)',
+          }}
+        >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: compact ? '1rem' : '1.125rem' }}>
               {analysis.courseCode}
@@ -387,7 +430,7 @@ function CourseAnalysisCard({
             display: 'flex',
             gap: 1.5,
             p: 1,
-            backgroundColor: 'rgba(0,0,0,0.02)',
+            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
             borderRadius: 1,
             mb: 1.5,
             flexWrap: 'wrap',
@@ -433,13 +476,25 @@ function CourseAnalysisCard({
 
         {/* All Sections */}
         <Box>
-          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-            Sections ({analysis.sections.length}):
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Sections ({analysis.sections.length}):
+            </Typography>
+            {isCollapsed && primarySectionLabel && !allowBackups && (
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setIsCollapsed(false)}
+                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              >
+                Change primary
+              </Button>
+            )}
+          </Box>
           <Stack spacing={compact ? 0.75 : 1}>
-            {analysis.sections.map((section, idx) => (
+            {visibleSections.map((section) => (
               <SectionCard
-                key={idx}
+                key={section.section_label}
                 section={section}
                 courseCode={analysis.courseCode}
                 compact={compact}
@@ -465,6 +520,8 @@ export function CourseAnalysisResults({
   onDeselectSection,
   allowBackups = true,
 }: CourseAnalysisResultsProps) {
+  const theme = useTheme();
+
   if (!analyses || analyses.length === 0) {
     return (
       <Alert severity="info">
@@ -483,7 +540,12 @@ export function CourseAnalysisResults({
       {/* Overall Summary - Compact */}
       <Card
         elevation={0}
-        sx={{ border: '1px solid var(--border)', borderRadius: 2, mb: compact ? 1.5 : 2, bgcolor: 'rgba(6, 201, 108, 0.05)' }}
+        sx={{
+          border: '1px solid var(--border)',
+          borderRadius: 2,
+          mb: compact ? 1.5 : 2,
+          bgcolor: theme.palette.mode === 'dark' ? 'rgba(6, 201, 108, 0.1)' : 'rgba(6, 201, 108, 0.05)',
+        }}
       >
         <CardContent sx={{ py: compact ? 1.5 : 2, '&:last-child': { pb: compact ? 1.5 : 2 } }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>

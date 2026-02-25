@@ -1,9 +1,10 @@
 // app/dashboard/layout.tsx
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import DashboardLayoutClient from "@/components/dashboard/dashboard-layout-client";
 import { getPendingGradPlansCount, getUnreadNotificationsCount } from '@/lib/services/notifService';
+import { needsOnboarding } from '@/lib/utils/onboardingUtils';
 import type { Role } from '@/lib/mock-role';
-import { OnboardingModalWrapper } from '@/components/onboarding/onboarding-modal-wrapper';
 
 // 👇 NEW: read Supabase session in a server component
 import { cookies } from "next/headers";
@@ -18,36 +19,6 @@ const ROLE_MAP: Record<string, Role> = {
   3: "student",
   4: "super_admin",
 };
-
-/**
- * Determines if a user needs to complete onboarding based on their profile data.
- * A user needs onboarding if ANY of the following are true:
- * - First name is "New" (case-insensitive) AND last name is "User" (case-insensitive)
- * - university_id is null
- * - role_id is null
- * - onboarded is not explicitly true
- */
-function needsOnboarding(profile: {
-  fname?: string | null;
-  lname?: string | null;
-  university_id?: number | null;
-  role_id?: number | null;
-  onboarded?: boolean | null;
-}): boolean {
-  // Check for default "New User" name (case-insensitive)
-  const hasDefaultName =
-    profile.fname?.toLowerCase().trim() === 'new' ||
-    profile.lname?.toLowerCase().trim() === 'user';
-
-  // Check for missing required fields
-  const missingUniversity = profile.university_id === null || profile.university_id === undefined;
-  const missingRole = profile.role_id === null || profile.role_id === undefined;
-
-  // Check if explicitly onboarded
-  const notOnboarded = profile.onboarded !== true;
-
-  return hasDefaultName || missingUniversity || missingRole || notOnboarded;
-}
 
 // A serializable icon key the client can turn into an actual icon element
 type IconKey =
@@ -124,33 +95,26 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
 
   // 3) Check if user needs onboarding
   if (profile && needsOnboarding(profile)) {
-    // Show onboarding modal for users who haven't completed onboarding
-    const displayName = profile.fname && profile.lname && !(profile.fname.toLowerCase() === 'new' && profile.lname.toLowerCase() === 'user')
-      ? `${profile.fname} ${profile.lname}`
-      : undefined;
-
-    return <OnboardingModalWrapper userName={displayName} />;
+    redirect('/onboarding');
   }
 
   // 4) Pick a Role string (you can also fetch role name via FK join)
   const role: Role =
     ROLE_MAP[roleId ?? "3"]; // sensible default to "student" if roleId is null or undefined
 
-  // If advisor or admin hasn't been approved yet, show pending approval message
-  const requiresApproval = role === 'advisor' || role === 'admin';
+  // If advisor hasn't been approved yet, show pending approval message
+  const requiresApproval = role === 'advisor';
   const hasSelectedUniversity = universityId !== null;
-  const isOnboarded = profile?.onboarded === true;
 
-  if (isOnboarded && hasSelectedUniversity && requiresApproval && user) {
-    // Check if advisor/admin has been approved
-    // This is a separate check from onboarding - user has completed onboarding but may not be approved yet
+  if (hasSelectedUniversity && requiresApproval && user) {
+    // This is separate from onboarding - advisor has completed profile setup but may still be pending approval.
     const { data: advisorData } = await supabase
       .from('advisors')
       .select('approved')
       .eq('profile_id', userId)
       .maybeSingle();
 
-    const needsApproval = advisorData && !advisorData.approved;
+    const needsApproval = advisorData?.approved !== true;
 
     if (needsApproval) {
       return (

@@ -69,7 +69,7 @@ const mockCareer: Career = {
     ],
     status: 'PUBLISHED' as const,
     lastUpdatedISO: new Date().toISOString(),
-    updatedBy: { name: 'Guidance Team', id: 'admin1' },
+    updatedBy: { name: 'Guidance Team', id: 'admin1', role: 'ADMIN' as const },
 };
 
 export const Default: Story = {
@@ -87,4 +87,21 @@ export const AdvisorView: Story = {
         onClose: () => { },
         isAdvisor: true,
     },
+};
+
+export const DarkMode: Story = {
+    args: Default.args,
+    globals: {
+        colorMode: 'dark',
+    },
+    parameters: {
+        backgrounds: { default: 'dark' },
+    },
+    decorators: [
+        (Story) => (
+            <div className="min-h-screen bg-background p-4">
+                <Story />
+            </div>
+        ),
+    ],
 };

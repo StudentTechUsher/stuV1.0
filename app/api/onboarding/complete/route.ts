@@ -50,8 +50,18 @@ async function handleCompleteOnboarding(request: NextRequest) {
     }
 
     // Update the profile using service layer with validated data
-    const { university_id, fname, lname, email, role, est_grad_sem, est_grad_date } = validatedData;
-    await completeOnboarding(user.id, university_id, role, fname, lname, email, est_grad_sem, est_grad_date);
+    const { university_id, role, fname, lname, email, est_grad_sem, est_grad_date } = validatedData;
+    const resolvedEmail = email ?? user.email ?? undefined;
+    await completeOnboarding(
+      user.id,
+      university_id,
+      role,
+      fname,
+      lname,
+      resolvedEmail,
+      est_grad_sem,
+      est_grad_date
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -114,6 +114,7 @@ export interface ConversationState {
     courseSelectionMethod: CourseSelectionMethod | null;
     selectedCourses: CourseSelection[];
     totalSelectedCredits: number; // Total credits from course selection
+    remainingCreditsToComplete: number; // Requirement-diff remaining credits used for distribution
 
     // Electives
     electiveCourses: ElectiveCourse[];
@@ -246,4 +247,66 @@ export type ConversationMetadata = {
   currentStep: ConversationStep;
   summary?: string;
   status?: 'active' | 'paused' | 'complete' | 'error';
+  generationJobId?: string | null;
+  generationJobStatus?: GenerationJobStatus | null;
+};
+
+export type GenerationPhase =
+  | 'queued'
+  | 'preparing'
+  | 'major_skeleton'
+  | 'major_fill'
+  | 'minor_fill'
+  | 'gen_ed_fill'
+  | 'elective_balance'
+  | 'elective_fill'
+  | 'verify_heuristics'
+  | 'persisting'
+  | 'completed'
+  | 'failed'
+  | 'canceled';
+
+export type GenerationJobStatus =
+  | 'queued'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'cancel_requested'
+  | 'canceled';
+
+export type GenerationJobEventType =
+  | 'job_created'
+  | 'job_started'
+  | 'phase_started'
+  | 'phase_completed'
+  | 'job_progress'
+  | 'job_completed'
+  | 'job_failed'
+  | 'job_canceled';
+
+export type GenerationJobEvent = {
+  id: number;
+  jobId: string;
+  ts: string;
+  eventType: GenerationJobEventType;
+  phase: GenerationPhase | null;
+  message: string | null;
+  progressPercent: number | null;
+  payloadJson?: Record<string, unknown> | null;
+};
+
+export type GenerationJobSnapshot = {
+  id: string;
+  conversationId: string;
+  status: GenerationJobStatus;
+  phase: GenerationPhase;
+  progressPercent: number;
+  outputAccessId: string | null;
+  errorMessage: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  heartbeatAt: string | null;
+  attempt: number;
+  createdAt: string;
+  updatedAt: string;
 };

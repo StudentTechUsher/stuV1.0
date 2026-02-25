@@ -41,6 +41,7 @@ const mockCompletedCourses = [
 export const Default: Story = {
     args: {
         open: true,
+        onClose: () => {},
         major: mockMajor,
         completedCourses: mockCompletedCourses,
         matchedClasses: 2, // ENG 101 + BUS 101
@@ -51,6 +52,7 @@ export const Default: Story = {
 export const HighOverlap: Story = {
     args: {
         open: true,
+        onClose: () => {},
         major: mockMajor,
         completedCourses: [
             { code: 'BUS 101', title: 'Intro to Business', credits: 3 },
@@ -67,6 +69,7 @@ export const HighOverlap: Story = {
 export const NoOverlap: Story = {
     args: {
         open: true,
+        onClose: () => {},
         major: mockMajor,
         completedCourses: [
             { code: 'PHYS 151', title: 'Physics I', credits: 4 },
@@ -75,4 +78,21 @@ export const NoOverlap: Story = {
         matchedClasses: 0,
         totalClassesInSemester: 2,
     },
+};
+
+export const DarkMode: Story = {
+    args: Default.args,
+    globals: {
+        colorMode: 'dark',
+    },
+    parameters: {
+        backgrounds: { default: 'dark' },
+    },
+    decorators: [
+        (Story) => (
+            <div className="min-h-screen bg-background p-4">
+                <Story />
+            </div>
+        ),
+    ],
 };

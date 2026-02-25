@@ -30,18 +30,14 @@ export default function OptionTile({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      style={selected ? {
-        borderColor: 'var(--primary)',
-        backgroundColor: 'rgba(18, 249, 135, 0.1)'
-      } : undefined}
       className={`
         relative w-full px-4 py-3 md:px-5 md:py-4 rounded-lg border transition-all duration-150
         text-left cursor-pointer group
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-sm'}
         ${
-          !selected
-            ? 'border-gray-200 bg-white hover:border-gray-300'
-            : ''
+          selected
+            ? 'border-[var(--primary)] bg-[rgba(18,249,135,0.1)] dark:bg-[rgba(18,249,135,0.2)]'
+            : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900/70 dark:hover:border-zinc-500'
         }
         ${className}
       `}
@@ -57,11 +53,11 @@ export default function OptionTile({
 
       {/* Content area */}
       <div className="pr-8">
-        <p className="font-medium text-gray-900 text-base leading-tight">
+        <p className="text-base font-medium leading-tight text-foreground">
           {title}
         </p>
         {description && (
-          <p className="text-xs md:text-sm text-gray-600 mt-1.5 leading-relaxed">
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground md:text-sm">
             {description}
           </p>
         )}

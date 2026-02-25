@@ -82,9 +82,23 @@ export function UnifiedLandingClient() {
 
   useLayoutEffect(() => {
     const htmlElement = document.documentElement
+    const previousScrollBehavior = htmlElement.style.scrollBehavior
+    const previousColorScheme = htmlElement.style.colorScheme
+    const previousForceLight = htmlElement.dataset.forceLightLanding
+
+    htmlElement.dataset.forceLightLanding = "true"
+    htmlElement.classList.remove("dark")
+    htmlElement.style.colorScheme = "light"
     htmlElement.style.scrollBehavior = "smooth"
+
     return () => {
-      htmlElement.style.scrollBehavior = ""
+      if (previousForceLight === undefined) {
+        delete htmlElement.dataset.forceLightLanding
+      } else {
+        htmlElement.dataset.forceLightLanding = previousForceLight
+      }
+      htmlElement.style.colorScheme = previousColorScheme
+      htmlElement.style.scrollBehavior = previousScrollBehavior
     }
   }, [])
 

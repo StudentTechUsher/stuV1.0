@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/grad-plan-generation-worker",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}
+
