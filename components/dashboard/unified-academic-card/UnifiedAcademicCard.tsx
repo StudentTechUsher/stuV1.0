@@ -231,31 +231,35 @@ export function UnifiedAcademicCard() {
           ? planRecord.programs_in_plan.map((id) => String(id))
           : [];
 
-        if (programIds.length > 0 && universityId) {
-          const programsRes = await fetch(
-            `/api/programs/batch?ids=${programIds.join(',')}&universityId=${universityId}`
-          );
-          if (programsRes.ok) {
-            const programsJson = await programsRes.json();
-            setProgramsData(Array.isArray(programsJson) ? programsJson : []);
-          }
+        // Fetch programs in parallel
+        const [programsRes, genEdRes] = await Promise.all([
+          programIds.length > 0 && universityId
+            ? fetch(`/api/programs/batch?ids=${programIds.join(',')}&universityId=${universityId}`)
+            : Promise.resolve(null),
+          universityId
+            ? fetch(`/api/programs?type=gen_ed&universityId=${universityId}`)
+            : Promise.resolve(null),
+        ]);
+
+        // Handle programs batch response
+        if (programsRes && programsRes.ok) {
+          const programsJson = await programsRes.json();
+          setProgramsData(Array.isArray(programsJson) ? programsJson : []);
         } else {
           setProgramsData([]);
         }
-      }
 
-      if (universityId) {
-        const genEdRes = await fetch(`/api/programs?type=gen_ed&universityId=${universityId}`);
-        if (genEdRes.ok) {
+        // Handle gen_ed response
+        if (genEdRes && genEdRes.ok) {
           const genEdJson = await genEdRes.json();
           if (Array.isArray(genEdJson) && genEdJson.length > 0) {
             setGenEdProgram(genEdJson[0] as ProgramRow);
+          } else {
+            setGenEdProgram(null);
           }
         } else {
           setGenEdProgram(null);
         }
-      } else {
-        setGenEdProgram(null);
       }
 
       // Initialize dialog values from graduation date

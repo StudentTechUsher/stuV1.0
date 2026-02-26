@@ -15,7 +15,7 @@ const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined
 const STORAGE_KEY = 'stu-theme-mode';
 
 export function DarkModeProvider({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('light');
   const [mounted, setMounted] = useState(false);
   const [systemDark, setSystemDark] = useState(false);
 
@@ -28,7 +28,7 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
     if (saved && ['light', 'dark', 'system'].includes(saved)) {
       setModeState(saved);
     } else {
-      setModeState('system');
+      setModeState('light');
     }
 
     // Detect system preference

@@ -618,18 +618,6 @@ function computeTotalsForRequirement(
     );
     const progress = allocated.completed + allocated.inProgress + allocated.planned;
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[CreditBucket]', {
-        description: requirement.description,
-        constraints: requirement.constraints,
-        creditsRequired,
-        extractedFromDescription,
-        creditTotals,
-        allocated,
-        courses: courses.length,
-      });
-    }
-
     return {
       total: creditsRequired,
       completed: allocated.completed,
@@ -662,18 +650,6 @@ function computeTotalsForRequirement(
       requiredCount
     );
     const progress = allocated.completed + allocated.inProgress + allocated.planned;
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[ChooseNOf]', {
-        description: requirement.description,
-        constraints: requirement.constraints,
-        requiredCount,
-        extractedFromDescription,
-        counts,
-        allocated,
-        courses: courses.length,
-      });
-    }
 
     return {
       total: requiredCount,
@@ -741,14 +717,6 @@ function getRequirementStatus(totals: RequirementTotals): 'completed' | 'in-prog
   return 'not-started';
 }
 
-// DEBUG: Log requirements with potential status issues
-function logRequirementStatus(title: string, totals: RequirementTotals, status: ReturnType<typeof getRequirementStatus>) {
-  if (process.env.NODE_ENV === 'development') {
-    if (totals.progress > 0 && status !== 'completed') {
-      console.log(`[RequirementStatus] "${title}": status=${status}, completed=${totals.completed}/${totals.total} (progress=${totals.progress})`);
-    }
-  }
-}
 
 function summarizeRequirement(
   requirement: ProgramRequirement,
@@ -845,20 +813,7 @@ function toSubrequirement(
   courses: OverviewCourse[]
 ): Subrequirement {
   const status = getRequirementStatus(totals);
-  logRequirementStatus(title, totals, status);
 
-  if (process.env.NODE_ENV === 'development') {
-    if (title.includes('Complete') || title.includes('Organizational') || title.includes('Ethics')) {
-      const creditsByStatus = courses.reduce<Record<string, number>>(
-        (acc, c) => {
-          acc[c.status] = (acc[c.status] || 0) + (c.credits || 0);
-          return acc;
-        },
-        {}
-      );
-      console.log(`[RequirementCredits] "${title}": status=${status}, credits={completed: ${creditsByStatus.completed || 0}, inProgress: ${creditsByStatus['in-progress'] || 0}, planned: ${creditsByStatus.planned || 0}, total: ${courses.reduce((s, c) => s + (c.credits || 0), 0)}}`);
-    }
-  }
 
   return {
     id,
@@ -1015,7 +970,6 @@ function buildRequirementsForProgram(
     }
 
     const status = getRequirementStatus(totals);
-    logRequirementStatus(title, totals, status);
     return {
       id: index + 1,
       title,
@@ -1208,9 +1162,7 @@ export function buildPlanProgress(args: {
         coursesCounted.add(uniqueKey);
 
         // Find the normalized course to get its actual status
-        const normalized = Array.from(courseMap.values()).find(
-          (c) => normalizeCourseCode(c.code) === courseKey
-        );
+        const normalized = courseMap.get(courseKey);
 
         if (normalized) {
           if (normalized.status === 'completed') {
@@ -1253,17 +1205,6 @@ export function buildPlanProgress(args: {
         ? Math.round((totals.completed / totalCredits) * 100)
         : 0;
 
-      if (process.env.NODE_ENV === 'development' && name === 'Entrepreneurial Management (BS)') {
-        console.log(`[CategoryDebug] ${name}:`, {
-          totalCredits,
-          completed: totals.completed,
-          inProgress: totals.inProgress,
-          planned: totals.planned,
-          assignedCredits,
-          percentComplete,
-          calculation: `${totals.completed} / ${totalCredits} * 100 = ${percentComplete}%`,
-        });
-      }
 
       let color = CATEGORY_COLORS[name] || '#71717a';
       if (programsByName.has(name)) {
@@ -1363,27 +1304,6 @@ export function buildPlanProgress(args: {
   const totalCourses = normalizedCourses.length;
   const completedCourses = normalizedCourses.filter((course) => course.status === 'completed').length;
 
-  if (process.env.NODE_ENV === 'development') {
-    const statusBreakdown = normalizedCourses.reduce<Record<string, number>>(
-      (acc, course) => {
-        acc[course.status] = (acc[course.status] || 0) + 1;
-        return acc;
-      },
-      {}
-    );
-    console.log('[OverallProgress]', {
-      overallCompletedCredits,
-      overallInProgressCredits,
-      overallPlannedCredits,
-      totalCredits,
-      percentComplete: totalCredits > 0 ? Math.round((overallCompletedCredits / totalCredits) * 100) : 0,
-      totalCourses,
-      completedCourses,
-      statusBreakdown,
-      plannedCount: normalizedCourses.filter(c => c.status === 'planned').length,
-      notMatchedPlanned: normalizedCourses.filter(c => c.status === 'planned').map(c => `${c.code} (${c.credits}cr)`).slice(0, 5),
-    });
-  }
 
   const overallProgress: OverallProgress = {
     percentComplete: totalCredits > 0 ? Math.round((overallCompletedCredits / totalCredits) * 100) : 0,
