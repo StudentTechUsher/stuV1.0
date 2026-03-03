@@ -21,7 +21,7 @@ export default async function AdviseesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-header-bold text-3xl sm:text-4xl font-bold text-[#0A0A0A]">
-            My Advisees
+            My Case Load
           </h1>
           <p className="font-body text-sm text-[var(--muted-foreground)] mt-2">
             Manage and view all students under your advisory

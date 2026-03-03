@@ -19,6 +19,8 @@ import { EventType } from '@/components/grad-planner/types';
 
 interface MilestoneFormProps {
   onSubmit: (data: MilestoneInput) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 // Available milestone types
@@ -38,7 +40,10 @@ const MILESTONE_TYPES: EventType[] = [
 
 export default function MilestoneForm({
   onSubmit,
+  readOnly,
+  reviewMode,
 }: Readonly<MilestoneFormProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
   const [hasMilestones, setHasMilestones] = useState<boolean | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
@@ -47,6 +52,7 @@ export default function MilestoneForm({
   const [currentMilestoneTiming, setCurrentMilestoneTiming] = useState<MilestoneTiming>('ai_choose');
 
   const handleAddMilestone = () => {
+    if (isReadOnly) return;
     if (!currentMilestoneType) return;
 
     const newMilestone: Milestone = {
@@ -63,10 +69,12 @@ export default function MilestoneForm({
   };
 
   const handleRemoveMilestone = (index: number) => {
+    if (isReadOnly) return;
     setMilestones(milestones.filter((_, i) => i !== index));
   };
 
   const handleSubmitWithMilestones = () => {
+    if (isReadOnly) return;
     onSubmit({
       hasMilestones: true,
       milestones: milestones.length > 0 ? milestones : undefined,
@@ -74,6 +82,7 @@ export default function MilestoneForm({
   };
 
   const handleSkip = () => {
+    if (isReadOnly) return;
     onSubmit({
       hasMilestones: false,
     });
@@ -82,7 +91,7 @@ export default function MilestoneForm({
   // Initial question screen
   if (hasMilestones === null) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-6">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Target size={20} />
@@ -121,7 +130,7 @@ export default function MilestoneForm({
 
   // Milestones form
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Target size={20} />

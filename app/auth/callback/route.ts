@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { ANON_ID_COOKIE_NAME } from '@/lib/identity/constants';
+import { claimAnonymousIdentityForUser } from '@/lib/services/anonymousIdentityService';
 
 /**
  * Verify that the session cookie is readable after being set
@@ -184,9 +186,30 @@ export async function GET(req: Request) {
     await ensureProfileExists(user.id, user.email);
   }
 
-  // Always redirect to dashboard - onboarding modal will handle first-time setup
-  const dest = next;
-  const finalUrl = new URL(dest, origin);
+  // Link anonymous browser history to authenticated identity.
+  // This supports both same-device cookie linking and email-hash fallback.
+  try {
+    const anonId = cookieStore.get(ANON_ID_COOKIE_NAME)?.value ?? null;
+    await claimAnonymousIdentityForUser({
+      userId: user.id,
+      anonId,
+      email: user.email ?? null,
+    });
+  } catch (linkError) {
+    console.error('Anonymous identity claim failed:', linkError);
+    // Do not block login completion if identity linking fails.
+  }
+
+  // Determine destination: route new users to onboarding, existing users to dashboard
+  const { needsOnboarding } = await import('@/lib/utils/onboardingUtils');
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role_id, onboarded, university_id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const destination = profile && needsOnboarding(profile) ? '/onboarding' : next;
+  const finalUrl = new URL(destination, origin);
 
   // Use client-side redirect to ensure cookies are fully persisted before navigation
   return htmlRedirect(finalUrl.toString());

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from "../supabaseAdmin";
 import { createClient } from '@supabase/supabase-js';
 import { uploadPdfToOpenAI, extractCoursesWithOpenAI } from '@/lib/openaiTranscript';
 import { logError, logInfo } from '@/lib/logger';
@@ -59,7 +59,7 @@ export async function parseTranscript(
 ): Promise<ParseTranscriptResult> {
   try {
     // Fetch document to get storage path
-    const { data: document, error: docError } = await supabase
+    const { data: document, error: docError } = await supabaseAdmin
       .from('documents')
       .select('*')
       .eq('id', documentId)
@@ -76,7 +76,7 @@ export async function parseTranscript(
     const storagePath = document.storage_path;
 
     // Update status to 'parsing'
-    await supabase
+    await supabaseAdmin
       .from('documents')
       .update({ status: 'parsing' })
       .eq('id', documentId);
@@ -218,7 +218,7 @@ export async function parseTranscript(
     };
   } catch (error) {
     // Mark document as failed
-    await supabase
+    await supabaseAdmin
       .from('documents')
       .update({ status: 'failed' })
       .eq('id', documentId);
@@ -238,7 +238,7 @@ export async function parseTranscript(
  * @returns Array of transcript documents
  */
 export async function fetchUserTranscripts(userId: string): Promise<TranscriptDocument[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('documents')
     .select('*')
     .eq('user_id', userId)
@@ -259,7 +259,7 @@ export async function fetchUserTranscripts(userId: string): Promise<TranscriptDo
  * @returns Array of parsed courses
  */
 export async function fetchUserCourses(userId: string): Promise<unknown[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_courses')
     .select('*')
     .eq('user_id', userId)
@@ -325,7 +325,7 @@ export async function bulkUpsertCourses(userId: string, courses: CourseInput[]) 
     }));
 
     // Bulk upsert courses
-    const { data, error: upsertError } = await supabase
+    const { data, error: upsertError } = await supabaseAdmin
       .from('user_courses')
       .upsert(records, {
         onConflict: 'user_id,subject,number,term',

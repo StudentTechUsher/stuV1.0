@@ -30,7 +30,7 @@ export default async function GradPlanPage() {
   const allGradPlans = userProfile.id ? await GetAllGradPlans(userProfile.id) : [];
 
   // Find the currently active plan from all plans
-  const activeGradPlan = allGradPlans.find(plan => plan.is_active) || null;
+  const activeGradPlan = allGradPlans.find((plan: { is_active: boolean }) => plan.is_active) || null;
 
   // STEP 4: Get AI prompt for organizing grad plan
   // Program data will be fetched dynamically on the client side when needed

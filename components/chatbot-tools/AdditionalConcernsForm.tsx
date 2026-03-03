@@ -15,11 +15,16 @@ import {
 
 interface AdditionalConcernsFormProps {
   onSubmit: (data: AdditionalConcernsInput) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function AdditionalConcernsForm({
   onSubmit,
+  readOnly,
+  reviewMode,
 }: Readonly<AdditionalConcernsFormProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
   const [hasAdditionalConcerns, setHasAdditionalConcerns] = useState<boolean | null>(null);
   const [workStatus, setWorkStatus] = useState<WorkStatus | ''>('');
   const [academicPriority, setAcademicPriority] = useState<AcademicPriority | ''>('');
@@ -27,6 +32,7 @@ export default function AdditionalConcernsForm({
 
   const handleSubmitWithConcerns = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
 
     onSubmit({
       hasAdditionalConcerns: true,
@@ -37,6 +43,7 @@ export default function AdditionalConcernsForm({
   };
 
   const handleSkip = () => {
+    if (isReadOnly) return;
     onSubmit({
       hasAdditionalConcerns: false,
     });
@@ -45,7 +52,7 @@ export default function AdditionalConcernsForm({
   // Initial question screen
   if (hasAdditionalConcerns === null) {
     return (
-      <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-6">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <MessageSquarePlus size={20} />
@@ -81,7 +88,7 @@ export default function AdditionalConcernsForm({
 
   // Preferences form
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <MessageSquarePlus size={20} />

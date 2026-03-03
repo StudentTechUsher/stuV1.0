@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import ProgramSuggestionsDisplay from './ProgramSuggestionsDisplay';
 
-const meta = {
+const meta: Meta<typeof ProgramSuggestionsDisplay> = {
   title: 'Grad Plan/Create/ProgramSuggestionsDisplay',
   component: ProgramSuggestionsDisplay,
   parameters: {
@@ -11,7 +11,7 @@ const meta = {
   argTypes: {
     onSelectProgram: { action: 'select programs' },
   },
-} satisfies Meta<typeof ProgramSuggestionsDisplay>;
+};
 
 export default meta;
 
@@ -51,5 +51,35 @@ export const Default: Story = {
         estimated_credits: 12,
       },
     ],
+  },
+};
+
+export const VersionB_ReadOnly: Story = {
+  args: Default.args,
+  parameters: {
+    layout: 'fullscreen',
+  },
+  render: (_args, { args }) => (
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+      <ProgramSuggestionsDisplay
+        {...args}
+        readOnly
+        variant="versionB"
+      />
+    </div>
+  ),
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...Default,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(Default.parameters ?? {}),
+    backgrounds: { default: 'dark' },
   },
 };

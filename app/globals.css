@@ -205,24 +205,24 @@
 }
 
 .dark {
-  --background: #18181b;
-  --foreground: #fafafa;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --popover: #18181b;
-  --popover-foreground: #fafafa;
+  --background: #23262f;
+  --foreground: #e6e8ee;
+  --card: #2a2f39;
+  --card-foreground: #e6e8ee;
+  --popover: #2a2f39;
+  --popover-foreground: #e6e8ee;
   --primary: #12F987;
   --primary-foreground: #18181b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
+  --secondary: #343a46;
+  --secondary-foreground: #e6e8ee;
+  --muted: #343a46;
+  --muted-foreground: #b7becc;
   --accent: #ea580c;
   --accent-foreground: #ffffff;
   --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
+  --destructive-foreground: #e6e8ee;
+  --border: #3d4453;
+  --input: #3d4453;
   --ring: #12F987;
 
   /* 🔹 Dark mode transparent variants */

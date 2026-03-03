@@ -269,7 +269,12 @@ export function canProceedToNextStep(state: ConversationState): boolean {
     case ConversationStep.COURSE_SELECTION:
       // If manual, need courses selected
       return collectedData.courseSelectionMethod === 'ai' ||
-        collectedData.selectedCourses.length > 0;
+        collectedData.selectedCourses.length > 0 ||
+        Boolean(
+          collectedData.selectedCoursePayload &&
+          Array.isArray(collectedData.selectedCoursePayload.programs) &&
+          collectedData.selectedCoursePayload.programs.length > 0
+        );
 
     case ConversationStep.ELECTIVES:
       // Optional step, always can proceed

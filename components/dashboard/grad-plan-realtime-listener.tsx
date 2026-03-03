@@ -42,26 +42,14 @@ export default function GradPlanRealtimeListener({ userId }: Readonly<GradPlanRe
         (payload) => {
           // Only show notification for INSERT events
           if (payload.eventType === 'INSERT') {
-            // Check if this grad plan belongs to the current user
-            // We need to get the student record to check the profile_id
-            const checkStudentOwnership = async () => {
-              const { data: student } = await supabase
-                .from('student')
-                .select('profile_id')
-                .eq('id', payload.new.student_id)
-                .single();
-
-              if (student?.profile_id === userId) {
-                // This grad plan belongs to the current user!
-                setNotification({
-                  open: true,
-                  message: '🎓 Your graduation plan is ready!',
-                  planAccessId: payload.new.access_id,
-                });
-              }
-            };
-
-            checkStudentOwnership();
+            // Check if this grad plan belongs to the current user via profile_id
+            if (payload.new.profile_id === userId) {
+              setNotification({
+                open: true,
+                message: '🎓 Your graduation plan is ready!',
+                planAccessId: payload.new.access_id,
+              });
+            }
           }
         }
       )

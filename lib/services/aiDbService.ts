@@ -1,4 +1,4 @@
-import { supabase } from "../supabase";
+import { supabaseAdmin } from "../supabaseAdmin";
 import { encodeAccessId } from "../utils/access-id";
 import { createNotifForPlanReady } from './notifService';
 import { sendGradPlanCreatedEmail } from './emailService';
@@ -10,7 +10,7 @@ import { sendGradPlanCreatedEmail } from './emailService';
  * @return
  **/
 export async function GetAiPrompt(prompt_name: string) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('ai_prompts')
     .select('*')
     .eq('prompt_name', prompt_name)
@@ -30,19 +30,18 @@ export async function GetAiPrompt(prompt_name: string) {
  * Returns { gradPlanId, accessId } or throws on fatal errors.
  */
 export async function InsertGeneratedGradPlan(args: {
-  studentId: number;
+  profileId: string;
   planData: unknown; // structured plan object or array
   rawJsonText?: string; // optional raw JSON text if you still want to retain
   programsInPlan?: number[]; // optional associated program IDs
   isActive?: boolean; // default false for newly generated pending plan
-  userId?: string; // user profile ID for notification
 }): Promise<{ gradPlanId: number; accessId: string }> {
-  const { studentId, planData, programsInPlan = [], isActive = false, userId } = args;
+  const { profileId, planData, programsInPlan = [], isActive = false } = args;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('grad_plan')
     .insert({
-      student_id: studentId,
+      profile_id: profileId,
       is_active: isActive,
       pending_edits: false,
       pending_approval: true,
@@ -59,23 +58,22 @@ export async function InsertGeneratedGradPlan(args: {
 
   const accessId = encodeAccessId(data.id);
 
-  console.log(`📧 InsertGeneratedGradPlan: Plan inserted with ID ${data.id}, accessId: ${accessId}, userId: ${userId}`);
+  console.log(`📧 InsertGeneratedGradPlan: Plan inserted with ID ${data.id}, accessId: ${accessId}, profileId: ${profileId}`);
 
   // Send notification and email to user that the plan is ready
-  if (userId) {
-    try {
-      // Create in-app notification
-      console.log(`📧 Calling createNotifForPlanReady for user ${userId}, accessId: ${accessId}`);
-      const notifResult = await createNotifForPlanReady(userId, accessId);
-      console.log(`✅ In-app notification created successfully:`, notifResult);
+  try {
+    // Create in-app notification
+    console.log(`📧 Calling createNotifForPlanReady for user ${profileId}, accessId: ${accessId}`);
+    const notifResult = await createNotifForPlanReady(profileId, accessId);
+    console.log(`✅ In-app notification created successfully:`, notifResult);
 
-      // Get user's email and name from profiles table
-      console.log(`📧 Fetching user profile for email notification...`);
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email, fname')
-        .eq('id', userId)
-        .single();
+    // Get user's email and name from profiles table
+    console.log(`📧 Fetching user profile for email notification...`);
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('email, fname')
+      .eq('id', profileId)
+      .single();
 
       if (profileError) {
         console.error('⚠️ Failed to fetch user profile for email:', profileError);
@@ -104,12 +102,9 @@ export async function InsertGeneratedGradPlan(args: {
         console.warn('⚠️ User profile found but has no email address');
         console.warn('   - Profile data:', JSON.stringify(profile));
       }
-    } catch (notifError) {
-      console.error('⚠️ Failed to create plan ready notification or send email:', notifError);
-      // Don't throw - notification failure shouldn't block plan creation
-    }
-  } else {
-    console.warn('⚠️ No userId provided to InsertGeneratedGradPlan - notification will NOT be created!');
+  } catch (notifError) {
+    console.error('⚠️ Failed to create plan ready notification or send email:', notifError);
+    // Don't throw - notification failure shouldn't block plan creation
   }
 
   return { gradPlanId: data.id, accessId };
@@ -128,7 +123,7 @@ export async function InsertAiChatExchange(args: {
 }): Promise<{ success: boolean; error?: string }> {
   const { userId, sessionId, userMessage, aiResponse, outputTokens = 0 } = args;
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('ai_responses')
       .insert({
         user_id: userId, // can be null if anonymous usage is allowed by RLS

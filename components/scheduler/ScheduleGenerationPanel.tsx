@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Box } from '@mui/material';
 import ScheduleGenerationTabs from './ScheduleGenerationTabs';
 import TermStep from './steps/TermStep';
@@ -8,12 +8,18 @@ import PersonalEventsStep from './steps/PersonalEventsStep';
 import CourseConfirmationStep from './steps/CourseConfirmationStep';
 import PreferencesStep from './steps/PreferencesStep';
 import { SectionReviewStep } from './steps/SectionReviewStep';
-import { AgentSchedulerWithSetup } from './agent/AgentSchedulerWithSetup';
 import { BlockedTime, SchedulePreferences } from '@/lib/services/scheduleService';
 import { getCoursesForTerm, calculateTotalCredits, type GradPlanDetails } from '@/lib/utils/gradPlanHelpers';
-import type { SchedulerEvent as MastraSchedulerEvent } from '@/lib/mastra/types';
 import type { CalendarEvent } from '@/components/scheduler/test/InteractiveCalendar';
 import type { SectionSelection } from '@/components/scheduler/analysis/CourseAnalysisResults';
+import type { SchedulerEvent } from '@/components/scheduler/scheduler-calendar';
+
+const areSelectionsEqual = (a: SectionSelection[], b: SectionSelection[]) =>
+  a.length === b.length && a.every((s, i) =>
+    s.courseCode === b[i]?.courseCode &&
+    s.sectionLabel === b[i]?.sectionLabel &&
+    s.rank === b[i]?.rank
+  );
 
 interface ScheduleGenerationPanelProps {
   termName: string;
@@ -39,11 +45,11 @@ interface ScheduleGenerationPanelProps {
   isLoading?: boolean;
   studentId?: number;
   scheduleId?: string;
-  onAgentCalendarUpdate?: (events: MastraSchedulerEvent[]) => void;
+  onSectionPreviewEventsChange?: (events: SchedulerEvent[]) => void;
 }
 
 interface ScheduleGenerationState {
-  currentStep: number; // 1, 2, 3, 4, 4.5, or 5
+  currentStep: number; // 1, 2, 3, 4, or 4.5
   personalEvents: Omit<BlockedTime, 'id'>[];
   selectedCourses: string[];
   preferences: SchedulePreferences;
@@ -72,7 +78,7 @@ export default function ScheduleGenerationPanel({
   isLoading = false,
   studentId,
   scheduleId,
-  onAgentCalendarUpdate,
+  onSectionPreviewEventsChange,
 }: ScheduleGenerationPanelProps) {
   const [state, setState] = useState<ScheduleGenerationState>({
     currentStep: 1,
@@ -82,15 +88,11 @@ export default function ScheduleGenerationPanel({
     totalCredits: 0,
     sectionSelections: [],
   });
-
-  // Refs to prevent agent re-initialization on parent re-renders
-  const scheduleIdRef = useRef(scheduleId);
-  const isAgentInitializedRef = useRef(false);
-
-  // Update ref when scheduleId changes
-  useEffect(() => {
-    scheduleIdRef.current = scheduleId;
-  }, [scheduleId]);
+  const [hasCourseIssues, setHasCourseIssues] = useState(false);
+  const [courseValidationStatus, setCourseValidationStatus] = useState({
+    isValidating: false,
+    hasValidated: false,
+  });
 
   // Initialize state when term or grad plan changes (reset to step 1)
   useEffect(() => {
@@ -109,6 +111,9 @@ export default function ScheduleGenerationPanel({
       totalCredits,
       sectionSelections: [],
     });
+    setHasCourseIssues(false);
+    setCourseValidationStatus({ isValidating: false, hasValidated: false });
+    onSectionPreviewEventsChange?.([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [termName, gradPlanDetails]); // Only reset when term name or plan changes
 
@@ -136,7 +141,7 @@ export default function ScheduleGenerationPanel({
     if (state.currentStep === 4) {
       nextStep = 4.5;
     }
-    if (nextStep <= 5) {
+    if (nextStep <= 4.5) {
       handleStepChange(nextStep);
     }
   };
@@ -158,12 +163,16 @@ export default function ScheduleGenerationPanel({
   };
 
   const handleCoursesChange = (courses: string[]) => {
-    const allCourses = getCoursesForTerm(gradPlanDetails, termIndex);
+    const allCourses = getCoursesForTerm(gradPlanDetails, termName || termIndex);
     const selectedCourseDetails = allCourses.filter(c => courses.includes(c.code));
     const totalCredits = calculateTotalCredits(selectedCourseDetails);
 
     setState({ ...state, selectedCourses: courses, totalCredits });
   };
+
+  const handleTotalCreditsChange = useCallback((totalCredits: number) => {
+    setState(prev => (prev.totalCredits === totalCredits ? prev : { ...prev, totalCredits }));
+  }, []);
 
   const handlePreferencesChangeInternal = (preferences: SchedulePreferences) => {
     setState({ ...state, preferences });
@@ -175,32 +184,17 @@ export default function ScheduleGenerationPanel({
     setState(prev => ({ ...prev, currentStep: 4.5 }));
   };
 
-  const handleSkipToAgent = () => {
-    // Validation
-    if (!scheduleId || !studentId) {
-      console.error('Missing required IDs:', { scheduleId, studentId });
-      return;
-    }
-
-    console.log('Skipping to AI agent with:', {
-      scheduleId,
-      termName,
-      termIndex,
-      preferences: state.preferences,
-      blockedTimes: state.personalEvents.length
-    });
-
-    // Move to Step 5 (agent) directly
-    setState(prev => ({ ...prev, currentStep: 5 }));
-  };
-
-  const handleSelectionsChange = (selections: SectionSelection[]) => {
-    setState({ ...state, sectionSelections: selections });
-  };
+  const handleSelectionsChange = useCallback((selections: SectionSelection[]) => {
+    setState(prev => (
+      areSelectionsEqual(prev.sectionSelections, selections)
+        ? prev
+        : { ...prev, sectionSelections: selections }
+    ));
+  }, []);
 
   const convertToMastraEvents = (events: Omit<BlockedTime, 'id'>[]): CalendarEvent[] => {
-    return events.map(evt => ({
-      id: `temp-${Math.random()}`,
+    return events.map((evt, index) => ({
+      id: `blocked-${index}-${evt.day_of_week}-${evt.start_time}-${evt.end_time}`,
       title: evt.title,
       dayOfWeek: evt.day_of_week,
       startTime: evt.start_time,
@@ -237,10 +231,10 @@ export default function ScheduleGenerationPanel({
       return;
     }
 
-    console.log('Section review complete, moving to AI agent with selections:', state.sectionSelections);
+    console.log('Section review complete:', state.sectionSelections);
 
-    // Move to Step 5 (agent)
-    setState(prev => ({ ...prev, currentStep: 5 }));
+    setState(prev => ({ ...prev, currentStep: 1 }));
+    _onComplete();
   };
 
   // Use term name instead of index to avoid mismatch with filtered terms
@@ -248,8 +242,8 @@ export default function ScheduleGenerationPanel({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Tabs - Fixed (hide when on step 4.5 or 5) */}
-      {state.currentStep !== 4.5 && state.currentStep !== 5 && (
+      {/* Tabs - Fixed (hide when on step 4.5) */}
+      {state.currentStep !== 4.5 && (
         <Box sx={{ flexShrink: 0 }}>
           <ScheduleGenerationTabs
             currentStep={state.currentStep as 1 | 2 | 3 | 4}
@@ -289,6 +283,9 @@ export default function ScheduleGenerationPanel({
             totalCredits={state.totalCredits}
             universityId={universityId}
             gradPlanId={gradPlanId}
+            onCourseIssuesChange={setHasCourseIssues}
+            onValidationStatusChange={setCourseValidationStatus}
+            onTotalCreditsChange={handleTotalCreditsChange}
             onNext={handleNext}
             onBack={handleBack}
           />
@@ -300,6 +297,9 @@ export default function ScheduleGenerationPanel({
             onPreferencesChange={handlePreferencesChangeInternal}
             onNext={handleCompletePreferences}
             onBack={handleBack}
+            hasCourseIssues={hasCourseIssues}
+            hasValidatedCourses={courseValidationStatus.hasValidated}
+            isValidatingCourses={courseValidationStatus.isValidating}
           />
         )}
 
@@ -314,54 +314,12 @@ export default function ScheduleGenerationPanel({
             existingSelections={state.sectionSelections}
             onSelectionsChange={handleSelectionsChange}
             onCalendarChange={handleCalendarChangeFromReview}
+            onPreviewEventsChange={onSectionPreviewEventsChange}
             onNext={handleReviewComplete}
             onBack={handleBack}
-            onSkip={handleSkipToAgent}
           />
         )}
 
-        {state.currentStep === 5 && studentId && scheduleIdRef.current && (
-          <Box>
-            <AgentSchedulerWithSetup
-              key={scheduleIdRef.current}
-              termName={termName}
-              termIndex={termIndex}
-              universityId={universityId}
-              studentId={studentId}
-              scheduleId={scheduleIdRef.current}
-              gradPlanDetails={gradPlanDetails}
-              gradPlanId={gradPlanId}
-              existingPersonalEvents={state.personalEvents.map(evt => ({
-                ...evt,
-                id: `temp-${Math.random()}`,
-              }))}
-              existingPreferences={state.preferences}
-              existingSelections={state.sectionSelections}
-              onCalendarUpdate={(newEvents) => {
-                // Pass to parent without triggering re-render
-                onAgentCalendarUpdate?.(newEvents);
-              }}
-              onComplete={() => {
-                // Agent done - reset to step 1
-                setState(prev => ({
-                  ...prev,
-                  currentStep: 1,
-                }));
-                isAgentInitializedRef.current = false;
-                _onComplete();
-              }}
-              onExit={() => {
-                // Exit agent - go back to step 4.5 (section review)
-                console.log('Exiting agent, returning to section review');
-                setState(prev => ({
-                  ...prev,
-                  currentStep: 4.5,
-                }));
-                isAgentInitializedRef.current = false;
-              }}
-            />
-          </Box>
-        )}
       </Box>
     </Box>
   );

@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { MajorComparisonResult, CourseWithAnnotation } from '@/lib/services/majorComparisonService';
-import type { RequirementAuditResult } from '@/lib/services/degreeAuditService';
+import type { MajorComparisonResult, CourseWithAnnotation } from '@/types/major-comparison';
+import type { RequirementAuditResult } from '@/types/degree-audit';
 import {
   SegmentedProgressBar,
   InlineProgressBar,
@@ -152,19 +152,17 @@ function RequirementNode({
 
   return (
     <div
-      className={`${
-        level > 0
+      className={`${level > 0
           ? 'ml-4 border-l-2 border-[color-mix(in_srgb,var(--border)_50%,transparent)] pl-3 mt-2'
           : 'border-b border-[color-mix(in_srgb,var(--border)_30%,transparent)] last:border-b-0'
-      }`}
+        }`}
     >
       <button
         onClick={() => hasContent && setExpanded(!expanded)}
-        className={`w-full text-left py-2 px-1 ${
-          hasContent
+        className={`w-full text-left py-2 px-1 ${hasContent
             ? 'hover:bg-[color-mix(in_srgb,var(--muted)_12%,transparent)] rounded-lg cursor-pointer'
             : ''
-        } transition-colors`}
+          } transition-colors`}
         type="button"
         disabled={!hasContent}
       >

@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -17,7 +17,7 @@ import {
   Checkbox,
   Alert,
 } from '@mui/material';
-import { Zap, Scale, Compass } from 'lucide-react';
+import { Zap, Scale, Compass, CheckCircle2 } from 'lucide-react';
 import {
   calculateSemesterDistribution,
   SemesterAllocation,
@@ -51,6 +51,9 @@ interface CreditDistributionStepProps {
   initialStrategy?: 'fast_track' | 'balanced' | 'explore';
   initialIncludeSecondary?: boolean;
   onStudentDataChanged?: () => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
+  variant?: 'default' | 'versionB';
 }
 
 const STRATEGIES = [
@@ -97,10 +100,23 @@ export function CreditDistributionStep({
   initialStrategy,
   initialIncludeSecondary = false,
   onStudentDataChanged,
+  readOnly,
+  reviewMode,
+  variant = 'default',
 }: CreditDistributionStepProps) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
+  const isVersionB = variant === 'versionB';
   const [selectedStrategy, setSelectedStrategy] = useState<'fast_track' | 'balanced' | 'explore' | null>(
     initialStrategy || null
   );
+
+  const [hasConfirmedTerms, setHasConfirmedTerms] = useState<boolean>(!isVersionB);
+
+  useEffect(() => {
+    if (!isVersionB) {
+      setHasConfirmedTerms(true);
+    }
+  }, [isVersionB]);
 
   // Initialize with all primary terms selected by default, secondary terms based on initialIncludeSecondary
   const [selectedTermIds, setSelectedTermIds] = useState<string[]>(() => {
@@ -116,6 +132,40 @@ export function CreditDistributionStep({
   const includeSecondaryCourses = academicTerms.terms.secondary.some(t =>
     selectedTermIds.includes(t.id)
   );
+
+  const recommendedTermIds = useMemo(() => {
+    const primaryTermIds = academicTerms.terms.primary.map(t => t.id);
+    if (initialIncludeSecondary) {
+      const secondaryTermIds = academicTerms.terms.secondary.map(t => t.id);
+      return [...primaryTermIds, ...secondaryTermIds];
+    }
+    return primaryTermIds;
+  }, [academicTerms, initialIncludeSecondary]);
+
+  const hasTermSelectionChanged = useMemo(() => {
+    if (selectedTermIds.length !== recommendedTermIds.length) return true;
+    return selectedTermIds.some(id => !recommendedTermIds.includes(id));
+  }, [selectedTermIds, recommendedTermIds]);
+
+  const handleToggleTerm = (termId: string) => {
+    if (isReadOnly) return;
+    setSelectedTermIds(prev =>
+      prev.includes(termId)
+        ? prev.filter(id => id !== termId)
+        : [...prev, termId]
+    );
+    if (isVersionB) {
+      setHasConfirmedTerms(false);
+    }
+  };
+
+  const handleResetTerms = () => {
+    if (isReadOnly) return;
+    setSelectedTermIds(recommendedTermIds);
+    if (isVersionB) {
+      setHasConfirmedTerms(false);
+    }
+  };
 
   const resolveTermLabel = React.useCallback((termId: string) => {
     const allTerms = [...academicTerms.terms.primary, ...academicTerms.terms.secondary];
@@ -250,14 +300,16 @@ export function CreditDistributionStep({
   ]);
 
   const handleDateUpdated = () => {
-    // Notify parent to refresh student data
+    if (isReadOnly) return;
     if (onStudentDataChanged) {
       onStudentDataChanged();
     }
   };
 
   const handleContinue = () => {
+    if (isReadOnly) return;
     if (!selectedStrategy || !distribution) return;
+    if (isVersionB && !hasConfirmedTerms) return;
 
     onComplete({
       type: selectedStrategy,
@@ -267,16 +319,24 @@ export function CreditDistributionStep({
     });
   };
 
-  const canContinue = selectedStrategy !== null && distribution !== null && !error;
+  const canContinue = selectedStrategy !== null && distribution !== null && !error && (!isVersionB || hasConfirmedTerms);
+  const missingStrategy = isVersionB && !selectedStrategy;
+  const needsTermConfirmation = isVersionB && Boolean(selectedStrategy) && !hasConfirmedTerms;
+  const continueHelperId = 'credit-distribution-continue-helper';
+  const continueHelperText = missingStrategy
+    ? 'Select a strategy to continue.'
+    : needsTermConfirmation
+    ? 'Confirm your term selection to continue.'
+    : undefined;
 
   return (
-    <Box sx={{ maxWidth: 900, mx: 'auto', py: 4 }}>
+    <Box sx={{ maxWidth: 900, mx: 'auto', py: 4, ...(isReadOnly ? { pointerEvents: 'none', opacity: 0.8 } : {}) }}>
       {/* Header */}
       <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
         Credit Distribution Strategy
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4 }}>
-        Choose how you&apos;d like to distribute your {totalCredits} credits across semesters.
+        Choose how you&apos;d like to distribute your remaining {totalCredits} credits across semesters.
       </Typography>
 
       {/* Error Display */}
@@ -299,7 +359,7 @@ export function CreditDistributionStep({
       <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
         <CardContent>
           <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-            Total Credits to Complete
+            Remaining Credits to Complete
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
             {totalCredits} credits
@@ -313,7 +373,23 @@ export function CreditDistributionStep({
       </Card>
 
       {/* Strategy Cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+          gap: 2,
+          mb: 3,
+          ...(isVersionB
+            ? {
+              p: 2,
+              borderRadius: 2,
+              border: '1.5px solid',
+              borderColor: missingStrategy ? '#F59E0B' : 'divider',
+              bgcolor: missingStrategy ? '#FFF7ED' : 'transparent',
+            }
+            : {}),
+        }}
+      >
         {STRATEGIES.map((strategy) => {
           const Icon = strategy.icon;
           const isSelected = selectedStrategy === strategy.id;
@@ -346,6 +422,25 @@ export function CreditDistributionStep({
                     gap: 1.5,
                   }}
                 >
+                  {isVersionB && isSelected && (
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 999,
+                        bgcolor: `${strategy.color}20`,
+                        color: strategy.color,
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      <CheckCircle2 size={12} />
+                      Selected
+                    </Box>
+                  )}
                   <Box
                     sx={{
                       width: 48,
@@ -421,13 +516,7 @@ export function CreditDistributionStep({
               return (
                 <Card
                   key={term.id}
-                  onClick={() => {
-                    setSelectedTermIds(prev =>
-                      prev.includes(term.id)
-                        ? prev.filter(id => id !== term.id)
-                        : [...prev, term.id]
-                    );
-                  }}
+                  onClick={() => handleToggleTerm(term.id)}
                   sx={{
                     cursor: 'pointer',
                     border: '2px solid',
@@ -475,13 +564,7 @@ export function CreditDistributionStep({
                   return (
                     <Card
                       key={term.id}
-                      onClick={() => {
-                        setSelectedTermIds(prev =>
-                          prev.includes(term.id)
-                            ? prev.filter(id => id !== term.id)
-                            : [...prev, term.id]
-                        );
-                      }}
+                      onClick={() => handleToggleTerm(term.id)}
                       sx={{
                         cursor: 'pointer',
                         border: '1.5px solid',
@@ -521,16 +604,79 @@ export function CreditDistributionStep({
               </Box>
             </>
           )}
+
+          {isVersionB && (
+            <Box
+              sx={{
+                mt: 3,
+                p: 2,
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: needsTermConfirmation ? 'warning.main' : 'divider',
+                bgcolor: needsTermConfirmation ? '#FFF7ED' : 'background.paper',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 1.5,
+              }}
+            >
+              <Checkbox
+                checked={hasConfirmedTerms}
+                onChange={(e) => setHasConfirmedTerms(e.target.checked)}
+                disabled={isReadOnly}
+              />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Confirm term selection
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                  Primary terms are pre-selected; review and confirm.
+                </Typography>
+                {hasTermSelectionChanged && (
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={handleResetTerms}
+                    sx={{ mt: 1, p: 0, minWidth: 'auto', textTransform: 'none' }}
+                  >
+                    Reset to recommended terms
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          )}
         </Box>
       )}
 
       {/* Continue Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, alignItems: 'center' }}>
+        {isVersionB && (
+          <Box sx={{ mr: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 999,
+                bgcolor: canContinue ? 'success.light' : 'warning.light',
+                color: canContinue ? 'success.dark' : 'warning.dark',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+              }}
+            >
+              {canContinue ? 'Ready to continue' : 'Not ready'}
+            </Box>
+            {continueHelperText && (
+              <Typography id={continueHelperId} variant="caption" sx={{ color: 'text.secondary' }}>
+                {continueHelperText}
+              </Typography>
+            )}
+          </Box>
+        )}
         <Button
           variant="contained"
           size="large"
           onClick={handleContinue}
           disabled={!canContinue}
+          aria-describedby={isVersionB && continueHelperText ? continueHelperId : undefined}
           sx={{
             backgroundColor: 'var(--primary)',
             color: 'var(--foreground)',

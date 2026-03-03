@@ -45,6 +45,9 @@ interface MilestonesAndConstraintsStepProps {
   initialMilestones?: Milestone[];
   initialWorkStatus?: 'not_working' | 'part_time' | 'full_time' | 'variable';
   initialNotes?: string;
+  readOnly?: boolean;
+  reviewMode?: boolean;
+  variant?: 'default' | 'versionB';
 }
 
 const MILESTONE_TYPES: Array<{
@@ -104,7 +107,12 @@ export function MilestonesAndConstraintsStep({
   initialMilestones = [],
   initialWorkStatus,
   initialNotes = '',
+  readOnly,
+  reviewMode,
+  variant = 'default',
 }: MilestonesAndConstraintsStepProps) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
+  const isVersionB = variant === 'versionB';
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
   const [workStatus, setWorkStatus] = useState<typeof WORK_STATUS_OPTIONS[number]['id'] | null>(
     initialWorkStatus || null
@@ -132,18 +140,21 @@ export function MilestonesAndConstraintsStep({
   const availableTerms = distribution?.map(d => ({ term: d.term, year: d.year })) || [];
 
   const handleAddMilestone = (type: Milestone['type']) => {
+    if (isReadOnly) return;
     setSelectedMilestoneType(type);
     setEditingMilestone(null);
     setShowMilestoneDialog(true);
   };
 
   const handleEditMilestone = (milestone: Milestone) => {
+    if (isReadOnly) return;
     setSelectedMilestoneType(milestone.type);
     setEditingMilestone(milestone);
     setShowMilestoneDialog(true);
   };
 
   const handleSaveMilestone = (milestone: Milestone) => {
+    if (isReadOnly) return;
     if (editingMilestone) {
       // Update existing
       setMilestones(prev => prev.map(m => (m.id === milestone.id ? milestone : m)));
@@ -154,10 +165,12 @@ export function MilestonesAndConstraintsStep({
   };
 
   const handleRemoveMilestone = (milestoneId: string) => {
+    if (isReadOnly) return;
     setMilestones(prev => prev.filter(m => m.id !== milestoneId));
   };
 
   const handleContinue = () => {
+    if (isReadOnly) return;
     if (!workStatus) return;
 
     onComplete({
@@ -170,9 +183,11 @@ export function MilestonesAndConstraintsStep({
   };
 
   const canContinue = workStatus !== null;
+  const missingWorkStatus = isVersionB && !workStatus;
+  const continueHelperId = 'milestones-continue-helper';
 
   return (
-    <Box sx={{ maxWidth: 900, mx: 'auto', py: 4 }}>
+    <Box sx={{ maxWidth: 900, mx: 'auto', py: 4, ...(isReadOnly ? { pointerEvents: 'none', opacity: 0.8 } : {}) }}>
       {/* Header */}
       <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
         Milestones and Constraints
@@ -301,13 +316,31 @@ export function MilestonesAndConstraintsStep({
       <Divider sx={{ my: 4 }} />
 
       {/* Work Constraints Section */}
-      <Box sx={{ mb: 4 }}>
+      <Box
+        sx={{
+          mb: 4,
+          ...(isVersionB
+            ? {
+              borderRadius: 2,
+              border: '1.5px solid',
+              borderColor: missingWorkStatus ? 'warning.main' : 'divider',
+              bgcolor: missingWorkStatus ? '#FFF7ED' : 'transparent',
+              p: 2,
+            }
+            : {}),
+        }}
+      >
         <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
           Work Constraints <span style={{ color: '#DC2626' }}>*</span>
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
           Let us know about your work situation during your studies
         </Typography>
+        {missingWorkStatus && (
+          <Typography variant="caption" sx={{ color: 'warning.dark', display: 'block', mb: 2 }}>
+            Select a work status to continue.
+          </Typography>
+        )}
 
         {/* Work Status Cards */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
@@ -373,12 +406,35 @@ export function MilestonesAndConstraintsStep({
       </Box>
 
       {/* Continue Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, alignItems: 'center' }}>
+        {isVersionB && (
+          <Box sx={{ mr: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 999,
+                bgcolor: canContinue ? 'success.light' : 'warning.light',
+                color: canContinue ? 'success.dark' : 'warning.dark',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+              }}
+            >
+              {canContinue ? 'Ready to continue' : 'Not ready'}
+            </Box>
+            {missingWorkStatus && (
+              <Typography id={continueHelperId} variant="caption" sx={{ color: 'text.secondary' }}>
+                Select a work status to continue.
+              </Typography>
+            )}
+          </Box>
+        )}
         <Button
           variant="contained"
           size="large"
           onClick={handleContinue}
           disabled={!canContinue}
+          aria-describedby={isVersionB && missingWorkStatus ? continueHelperId : undefined}
           sx={{
             bgcolor: 'var(--primary)',
             color: 'black',

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from "../supabaseAdmin";
 import { RouteContext } from '@/hooks/useRouteContext';
 
 export interface ConversationMessage {
@@ -32,7 +32,7 @@ export class ConversationService {
 
   async getOrCreateConversation(userId: string, routeContext: RouteContext): Promise<string> {
     // Check for existing active conversation for this user and context
-    const { data: existingConversation } = await supabase
+    const { data: existingConversation } = await supabaseAdmin
       .from('ai_responses')
       .select('*')
       .eq('user_id', userId)
@@ -53,7 +53,7 @@ export class ConversationService {
   }
 
   async getConversationHistory(conversationId: string): Promise<ConversationMessage[]> {
-    const { data: responses } = await supabase
+    const { data: responses } = await supabaseAdmin
       .from('ai_responses')
       .select('*')
       .eq('response->conversation_id', conversationId)
@@ -117,12 +117,12 @@ export class ConversationService {
       escalation_flag: metadata.escalation_suggested || false,
     };
 
-    await supabase.from('ai_responses').insert(insertData);
+    await supabaseAdmin.from('ai_responses').insert(insertData);
   }
 
   async checkEscalationNeeded(conversationId: string, routeContext: RouteContext): Promise<boolean> {
     // Get recent messages from this conversation
-    const { data: recentMessages } = await supabase
+    const { data: recentMessages } = await supabaseAdmin
       .from('ai_responses')
       .select('*')
       .eq('response->conversation_id', conversationId)
@@ -143,7 +143,7 @@ export class ConversationService {
   }
 
   async getTotalTokensInConversation(conversationId: string): Promise<number> {
-    const { data: messages } = await supabase
+    const { data: messages } = await supabaseAdmin
       .from('ai_responses')
       .select('response')
       .eq('response->conversation_id', conversationId);
@@ -157,7 +157,7 @@ export class ConversationService {
   }
 
   private async getNextSequenceNumber(conversationId: string): Promise<number> {
-    const { data: lastMessage } = await supabase
+    const { data: lastMessage } = await supabaseAdmin
       .from('ai_responses')
       .select('response')
       .eq('response->conversation_id', conversationId)

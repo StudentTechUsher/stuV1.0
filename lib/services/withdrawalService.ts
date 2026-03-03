@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from "../supabaseAdmin";
 import type { WithdrawalRow } from '@/types/withdrawals';
 
 // Custom error types for better error handling
@@ -47,7 +47,7 @@ export async function fetchAdvisorWeeklyWithdrawals(
 
   try {
     // Fetch advisor to determine scope
-    const { data: advisor, error: advisorError } = await supabase
+    const { data: advisor, error: advisorError } = await supabaseAdmin
       .from('advisors')
       .select('*')
       .eq('id', advisorId)
@@ -61,7 +61,7 @@ export async function fetchAdvisorWeeklyWithdrawals(
     }
 
     // Build query based on advisor scope
-    let query = supabase
+    let query = supabaseAdmin
       .from('withdrawals')
       .select(`
         *,
@@ -129,7 +129,7 @@ export async function fetchAdvisorWeeklyWithdrawals(
  * @returns Array of pending withdrawal notifications
  */
 export async function fetchWithdrawalOutbox(advisorId: string): Promise<unknown[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('withdrawal_outbox')
     .select('*')
     .eq('advisor_id', advisorId)
@@ -152,7 +152,7 @@ export async function fetchWithdrawalOutbox(advisorId: string): Promise<unknown[
 export async function runWeeklyWithdrawalDigest(): Promise<{ success: boolean; message: string }> {
   try {
     // Call edge function or job processor
-    const { data, error } = await supabase.functions.invoke('weekly-withdrawal-digest');
+    const { data, error } = await supabaseAdmin.functions.invoke('weekly-withdrawal-digest');
 
     if (error) {
       throw new WithdrawalFetchError('Failed to run weekly digest', error);

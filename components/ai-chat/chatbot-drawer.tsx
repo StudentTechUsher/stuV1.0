@@ -19,7 +19,6 @@ import Fab from "@mui/material/Fab";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import { getEnvRole, type Role } from "@/lib/mock-role";
-import { chatbotSendMessage } from "@/lib/services/server-actions";
 
 type QuickAction = { label: string; prompt: string };
 
@@ -57,6 +56,10 @@ const DEFAULT_PRESETS: Record<Role, QuickAction[]> = {
     { label: "User management", prompt: "List recent user registrations and flag any accounts requiring attention." },
   ],
 };
+
+type ChatbotApiResponse =
+  | { success: true; content: string | null }
+  | { success: false; error?: string };
 
 export default function ChatbotDrawer({
   open,
@@ -120,28 +123,42 @@ export default function ChatbotDrawer({
         if (onSend) {
           await onSend(text, { role });
         }
-        const result = await chatbotSendMessage(text, currentSession || undefined);
-        const reply = result?.success && result.reply ? result.reply : "I'm having trouble right now. Please try again in a moment.";
-        const confidence = result?.confidence ?? 50; // Default to 50 if not provided
 
-        // Add AI response
+        const apiResponse: ChatbotApiResponse = await fetch('/api/chatbot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            // Build a minimal OpenAI-style transcript from the local chat.
+            messages: [
+              ...messages.map((m) => ({
+                role: m.type === 'user' ? 'user' : 'assistant',
+                content: m.text,
+              })),
+              { role: 'user', content: text },
+            ],
+            systemPrompt:
+              role === 'advisor'
+                ? 'You are STU Assistant for academic advisors. Be concise, practical, and policy-aware.'
+                : role === 'admin' || role === 'super_admin'
+                  ? 'You are STU Assistant for university administrators. Be concise and focus on governance and reporting.'
+                  : 'You are STU Assistant for students. Be supportive, concise, and focus on actionable next steps.',
+          }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const body = await res.json().catch(() => null);
+              return { success: false as const, error: body?.error || `Request failed (${res.status})` };
+            }
+            return (await res.json()) as ChatbotApiResponse;
+          })
+          .catch((err) => ({ success: false as const, error: err instanceof Error ? err.message : 'Request failed' }));
+
+        const reply =
+          apiResponse.success && apiResponse.content
+            ? apiResponse.content
+            : "I'm having trouble right now. Please try again in a moment.";
+
         setMessages(prev => [...prev, { type: 'bot', text: reply, id: `bot-${Date.now()}` }]);
-
-        // Check confidence level - if below 65%, suggest talking to an advisor
-        if (confidence < 65 && result?.success) {
-          // Wait a beat before showing advisor suggestion
-          setTimeout(() => {
-            const advisorSuggestion = "I may not have all the information you need for this question. Would you like to schedule a meeting with your advisor? They can provide more personalized guidance.";
-            setMessages(prev => [...prev, { type: 'bot', text: advisorSuggestion, id: `bot-advisor-${Date.now()}` }]);
-
-            // Auto-redirect after additional delay to give user time to read
-            setTimeout(() => {
-              if (typeof window !== 'undefined') {
-                window.location.href = '/meet-with-advisor';
-              }
-            }, 6000); // 6 seconds after showing the advisor suggestion
-          }, 1000); // 1 second after initial response
-        }
       } catch (aiErr) {
         console.error('AI send failed:', aiErr);
         setMessages(prev => [...prev, { type: 'bot', text: "I'm having trouble right now. Please try again in a moment.", id: `bot-${Date.now()}` }]);

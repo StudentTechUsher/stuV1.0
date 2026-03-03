@@ -2,15 +2,17 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { PlanOverview } from '@/components/grad-planner/PlanOverview';
 import { SpaceView } from '@/components/space/SpaceView';
 import { usePlanParser } from '@/components/grad-planner/usePlanParser';
 import PlanHeader from '@/components/grad-planner/PlanHeader';
+import { UserCoursesPanel } from '@/components/grad-planner/UserCoursesPanel';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Event, EventType } from '@/components/grad-planner/types';
 import { ProgressOverviewContainer } from '@/components/progress-overview/ProgressOverviewContainer';
 import { buildPlanProgress } from '@/components/progress-overview/planProgressAdapter';
+import { Minimize2, Maximize2 } from 'lucide-react';
 import type { ProgramRow } from '@/types/program';
+import type { ParsedCourse } from '@/lib/services/userCoursesService';
 
 interface GradPlanRecord {
   id: string;
@@ -33,6 +35,7 @@ interface GradPlanClientProps {
   gradPlan: GradPlanRecord | null;
   allGradPlans: GradPlanRecord[];
   prompt: string;
+  userCourses: ParsedCourse[];
 }
 
 export default function GradPlanClient({
@@ -40,6 +43,7 @@ export default function GradPlanClient({
   gradPlan,
   allGradPlans,
   prompt,
+  userCourses,
 }: Readonly<GradPlanClientProps>) {
   const [isZoomOut, setIsZoomOut] = useState(true); // Default to space view (sandbox UX)
   const [isEditMode] = useState(false); // Clean code from main (no unused setter)
@@ -171,193 +175,211 @@ export default function GradPlanClient({
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen p-6 space-y-6">
-        {/* Plan Header - Always show */}
+      <div className="flex flex-col h-screen p-6 gap-4 overflow-hidden">
+        {/* Full-width plan header */}
         <PlanHeader
-        selectedGradPlan={selectedGradPlan}
-        allGradPlans={allGradPlans}
-        onPlanChange={setSelectedGradPlan}
-        universityId={studentProfile.university_id}
-        prompt={prompt}
-        showCreateButton={true}
-        showEditButton={!!selectedGradPlan}
-        showPlanSelector={allGradPlans.length > 0}
-        showStatusBadge={!!selectedGradPlan}
-        useChatbotFlow={true}
-        studentProfile={studentProfile}
-        onProfileUpdate={handleProfileUpdate}
-      />
+          selectedGradPlan={selectedGradPlan}
+          allGradPlans={allGradPlans}
+          onPlanChange={setSelectedGradPlan}
+          universityId={studentProfile.university_id}
+          prompt={prompt}
+          showCreateButton={true}
+          showEditButton={!!selectedGradPlan}
+          showPlanSelector={allGradPlans.length > 0}
+          useChatbotFlow={true}
+          studentProfile={studentProfile}
+          onProfileUpdate={handleProfileUpdate}
+        />
 
-      {/* Show fallback if no plan selected */}
-      {!selectedGradPlan ? (
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-center max-w-md">
-            <div className="mb-4 text-6xl">📋</div>
-            <h2 className="text-2xl font-bold mb-2">No Graduation Plan Yet</h2>
-            <p className="text-muted-foreground mb-4">
-              You haven&apos;t created any graduation plans yet. Click &quot;Create New Plan&quot; above to get started with our AI-powered planner!
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Main Content Area */}
-          <div className="flex-1 min-w-0 space-y-6">
-            {/* Plan Overview Component - Show in both views */}
-            <PlanOverview
-              currentPlanData={planData}
-              durationYears={Math.ceil(planData.length / 2)} // Rough estimate
-              fulfilledRequirements={[]} // TODO: Calculate from plan data
-              isEditMode={isEditMode}
-              isSpaceView={isZoomOut}
-              onToggleView={() => setIsZoomOut(!isZoomOut)}
-              onAddEvent={() => {/* TODO: Implement */}}
-              programs={(selectedGradPlan?.programs as Array<{ id: number; name: string }>) || []}
-              estGradSem={(selectedGradPlan?.est_grad_sem as string) || undefined}
-            />
-
-      {/* Terms View - Grid or Zoom out */}
-      <div>
-        {isZoomOut ? (
-          <div>
-            <SpaceView
-              plan={{
-                planName: (selectedGradPlan?.plan_name as string) || 'My Graduation Plan',
-                degree: (selectedGradPlan?.programs as Array<{ name: string }>)?.map(p => p.name).join(', ') || 'No programs selected',
-                gradSemester: (selectedGradPlan?.est_grad_sem as string) || 'Not set',
-                terms: planData.map((term, index) => ({
-                  id: `term-${index}`,
-                  label: term.term || `Term ${index + 1}`,
-                  courses: (term.courses || []).map((course, courseIndex) => ({
-                    id: `course-${index}-${courseIndex}`,
-                    code: course.code || '',
-                    title: course.title || '',
-                    credits: course.credits || 0,
-                    requirements: course.fulfills || [],
-                    termIndex: index,
-                    courseIndex,
-                    rawCourse: course,
-                  })),
-                  termIndex: index,
-                  rawTerm: term,
-                })),
-                events: events,
-              }}
-              isEditMode={isEditMode}
-            />
+        {/* Show fallback if no plan selected */}
+        {!selectedGradPlan ? (
+          <div className="flex items-center justify-center flex-1">
+            <div className="text-center max-w-md">
+              <div className="mb-4 text-6xl">📋</div>
+              <h2 className="text-2xl font-bold mb-2">No Graduation Plan Yet</h2>
+              <p className="text-muted-foreground mb-4">
+                You haven&apos;t created any graduation plans yet. Click &quot;Create New Plan&quot; above to get started with our AI-powered planner!
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-header-bold text-zinc-900 dark:text-zinc-100">Detailed View</h2>
-              <button
-                type="button"
-                onClick={() => setIsZoomOut(!isZoomOut)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
-              >
-                Return to Space View
-              </button>
+          /* 3-column scrollable row — spans all remaining height */
+          <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
+
+            {/* Left: Completed Courses */}
+            <div className="w-[280px] flex-shrink-0 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+              <UserCoursesPanel courses={userCourses} />
             </div>
-            <div className={`grid gap-6 ${
-              planData.length <= 4 ? 'grid-cols-4' :
-              planData.length <= 6 ? 'grid-cols-3' :
-              'grid-cols-4'
-            }`}>
-              {planData.map((term, index) => (
-                <div key={index} className="relative min-h-[450px]">
-                  {/* Term Card */}
-                  <div className="border border-[var(--border)] rounded-lg p-5 bg-[var(--card)] shadow-sm h-full flex flex-col transition-all duration-300 hover:shadow-md">
-                    <div className="flex items-start justify-between mb-4 pb-3 border-b border-[var(--border)]">
-                      <h3 className="font-header-bold text-lg text-[var(--primary)] uppercase tracking-wide">{term.term || `Term ${index + 1}`}</h3>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1.5 text-sm font-body-semi text-white whitespace-nowrap">
-                        {term.courses?.reduce((sum, course) => sum + (course.credits || 0), 0) || 0} credits
-                      </span>
+
+            {/* Middle: Grad Plan */}
+            <div className="w-[440px] flex-shrink-0 flex flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">
+
+              {/* Compact plan header */}
+              {(() => {
+                const programs = (selectedGradPlan?.programs as Array<{ id: number; name: string }>) || [];
+                const totalCredits = planData.reduce((sum, t) => sum + (t.courses?.reduce((s, c) => s + (c.credits || 0), 0) ?? 0), 0);
+                const totalCourses = planData.reduce((sum, t) => sum + (t.courses?.length ?? 0), 0);
+                const ViewIcon = isZoomOut ? Minimize2 : Maximize2;
+                return (
+                  <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      {programs.slice(0, 2).map(p => (
+                        <span key={p.id} className="rounded-[5px] border border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--foreground)] truncate max-w-[140px]">
+                          {p.name}
+                        </span>
+                      ))}
+                      <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">{totalCredits} cr · {totalCourses} courses · {planData.length} terms</span>
                     </div>
-                    <div className="space-y-2 flex-1">
-                      {term.courses?.map((course, courseIndex) => (
-                        <div
-                          key={courseIndex}
-                          className="p-3 bg-white border border-gray-200 rounded-md text-sm transition-all duration-200 hover:shadow-md hover:border-gray-300"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-header-bold text-zinc-900 dark:text-zinc-100">{course.code}</div>
-                              <div className="text-xs text-[var(--muted-foreground)] truncate">{course.title}</div>
+                    <button
+                      type="button"
+                      onClick={() => setIsZoomOut(!isZoomOut)}
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-[6px] border border-[color-mix(in_srgb,var(--muted-foreground)_40%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted)_30%,transparent)] transition-colors"
+                    >
+                      <ViewIcon size={13} strokeWidth={2} />
+                      {isZoomOut ? 'Detail' : 'Space'}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Scrollable plan content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {isZoomOut ? (
+                  <SpaceView
+                    plan={{
+                      planName: (selectedGradPlan?.plan_name as string) || 'My Graduation Plan',
+                      degree: (selectedGradPlan?.programs as Array<{ name: string }>)?.map(p => p.name).join(', ') || 'No programs selected',
+                      gradSemester: (selectedGradPlan?.est_grad_sem as string) || 'Not set',
+                      terms: planData.map((term, index) => ({
+                        id: `term-${index}`,
+                        label: term.term || `Term ${index + 1}`,
+                        courses: (term.courses || []).map((course, courseIndex) => ({
+                          id: `course-${index}-${courseIndex}`,
+                          code: course.code || '',
+                          title: course.title || '',
+                          credits: course.credits || 0,
+                          requirements: course.fulfills || [],
+                          termIndex: index,
+                          courseIndex,
+                          rawCourse: course,
+                        })),
+                        termIndex: index,
+                        rawTerm: term,
+                      })),
+                      events: events,
+                    }}
+                    isEditMode={isEditMode}
+                  />
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl font-header-bold text-zinc-900 dark:text-zinc-100">Detailed View</h2>
+                      <button
+                        type="button"
+                        onClick={() => setIsZoomOut(!isZoomOut)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+                      >
+                        Return to Space View
+                      </button>
+                    </div>
+                    <div className={`grid gap-6 ${
+                      planData.length <= 4 ? 'grid-cols-4' :
+                      planData.length <= 6 ? 'grid-cols-3' :
+                      'grid-cols-4'
+                    }`}>
+                      {planData.map((term, index) => (
+                        <div key={index} className="relative min-h-[450px]">
+                          {/* Term Card */}
+                          <div className="border border-[var(--border)] rounded-lg p-5 bg-[var(--card)] shadow-sm h-full flex flex-col transition-all duration-300 hover:shadow-md">
+                            <div className="flex items-start justify-between mb-4 pb-3 border-b border-[var(--border)]">
+                              <h3 className="font-header-bold text-lg text-[var(--primary)] uppercase tracking-wide">{term.term || `Term ${index + 1}`}</h3>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1.5 text-sm font-body-semi text-white whitespace-nowrap">
+                                {term.courses?.reduce((sum, course) => sum + (course.credits || 0), 0) || 0} credits
+                              </span>
                             </div>
-                            <span className="text-xs font-body-semi text-[var(--foreground)] whitespace-nowrap">
-                              {course.credits || 0} cr
-                            </span>
+                            <div className="space-y-2 flex-1">
+                              {term.courses?.map((course, courseIndex) => (
+                                <div
+                                  key={courseIndex}
+                                  className="p-3 bg-white border border-gray-200 rounded-md text-sm transition-all duration-200 hover:shadow-md hover:border-gray-300"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-header-bold text-zinc-900 dark:text-zinc-100">{course.code}</div>
+                                      <div className="text-xs text-[var(--muted-foreground)] truncate">{course.title}</div>
+                                    </div>
+                                    <span className="text-xs font-body-semi text-[var(--foreground)] whitespace-nowrap">
+                                      {course.credits || 0} cr
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                              {(!term.courses || term.courses.length === 0) && (
+                                <p className="text-xs text-[var(--muted-foreground)] text-center py-8">No courses</p>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Arrow to next term (if not last in row and not last term) */}
+                          {index < planData.length - 1 && (
+                            (planData.length <= 4 ? (index + 1) % 4 !== 0 :
+                             planData.length <= 6 ? (index + 1) % 3 !== 0 :
+                             (index + 1) % 4 !== 0) && (
+                              <div className="absolute left-full top-1/2 -translate-y-1/2 w-6 flex items-center justify-center">
+                                <div className="bg-[var(--secondary)] rounded-full p-1.5">
+                                  <svg
+                                    width="32"
+                                    height="32"
+                                    viewBox="0 0 32 32"
+                                    fill="none"
+                                    className="text-[var(--primary)] drop-shadow-lg"
+                                  >
+                                    <path
+                                      d="M4 16 L22 16 M22 16 L17 11 M22 16 L17 21"
+                                      stroke="currentColor"
+                                      strokeWidth="3.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+                            )
+                          )}
                         </div>
                       ))}
-                      {!term.courses || term.courses.length === 0 && (
-                        <p className="text-xs text-[var(--muted-foreground)] text-center py-8">No courses</p>
-                      )}
                     </div>
-
                   </div>
+                )}
 
-                  {/* Arrow to next term (if not last in row and not last term) */}
-                  {index < planData.length - 1 && (
-                    (planData.length <= 4 ? (index + 1) % 4 !== 0 :
-                     planData.length <= 6 ? (index + 1) % 3 !== 0 :
-                     (index + 1) % 4 !== 0) && (
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 w-6 flex items-center justify-center">
-                        <div className="bg-[var(--secondary)] rounded-full p-1.5">
-                          <svg
-                            width="32"
-                            height="32"
-                            viewBox="0 0 32 32"
-                            fill="none"
-                            className="text-[var(--primary)] drop-shadow-lg"
-                          >
-                            <path
-                              d="M4 16 L22 16 M22 16 L17 11 M22 16 L17 21"
-                              stroke="currentColor"
-                              strokeWidth="3.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
+                {/* Plan Assumptions */}
+                {assumptions && assumptions.length > 0 && (
+                  <div className="border-t pt-6">
+                    <details>
+                      <summary className="cursor-pointer font-semibold">Plan Assumptions</summary>
+                      <div className="mt-2 space-y-1">
+                        {assumptions.map((assumption, index) => (
+                          <p key={index} className="text-sm text-muted-foreground">
+                            • {assumption}
+                          </p>
+                        ))}
                       </div>
-                    )
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-            {/* Collapsible Plan Assumptions - TODO */}
-            {assumptions && assumptions.length > 0 && (
-              <div className="border-t pt-6">
-                <details>
-                  <summary className="cursor-pointer font-semibold">Plan Assumptions</summary>
-                  <div className="mt-2 space-y-1">
-                    {assumptions.map((assumption, index) => (
-                      <p key={index} className="text-sm text-muted-foreground">
-                        • {assumption}
-                      </p>
-                    ))}
+                    </details>
                   </div>
-                </details>
-              </div>
-            )}
-          </div>
+                )}
+              </div>{/* closes flex-1 overflow-y-auto scroll area */}
+            </div>{/* closes w-[440px] flex flex-col middle column */}
 
-          {/* Progress Overview Sidebar */}
-          <div className="lg:w-[550px] lg:min-w-[530px] lg:max-w-[550px] lg:sticky lg:top-6 self-start">
-            <div className="rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)] overflow-auto max-h-[calc(100vh-70px)]">
+            {/* Right: Degree Progress */}
+            <div className="flex-1 overflow-y-auto rounded-[7px] border border-[color-mix(in_srgb,rgba(10,31,26,0.16)_30%,var(--border)_70%)] bg-[var(--card)] p-4 shadow-[0_42px_120px_-68px_rgba(8,35,24,0.55)]">
               <ProgressOverviewContainer
                 categories={progressData.categories}
                 overallProgress={progressData.overallProgress}
               />
             </div>
+
           </div>
-        </div>
-      )}
+        )}
       </div>
     </TooltipProvider>
   );

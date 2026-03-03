@@ -17,6 +17,7 @@ export type SchedulerEvent = {
   startTime: string; // "09:00"
   endTime: string; // "10:30"
   type: "class" | "personal";
+  isUnofficial?: boolean;
   status?: "registered" | "waitlisted" | "blocked" | "planned" | "dropped";
   course_code?: string;
   professor?: string;
@@ -246,6 +247,10 @@ export default function SchedulerCalendar({
                 color: "var(--foreground)",
               },
 
+              "& .fc-event.unofficial-event": {
+                opacity: 0.55,
+              },
+
               "& .fc-select-helper": {
                 background: "var(--primary-15)",
                 border: "2px dashed var(--primary)",
@@ -306,7 +311,8 @@ export default function SchedulerCalendar({
                   classNames: [
                     event.type === "class" ? "class-event" : "personal-event",
                     event.status || "",
-                  ],
+                    event.isUnofficial ? "unofficial-event" : "",
+                  ].filter(Boolean),
                   editable: event.type === "personal",
                   startEditable: event.type === "personal",
                   durationEditable: event.type === "personal",

@@ -307,6 +307,9 @@ export interface CourseSection extends CourseOffering {
   seats_capacity: number | null;
   waitlist_count: number | null;
   term_name: string;
+  days_raw?: string | null;
+  start_time_raw?: string | null;
+  end_time_raw?: string | null;
   location_raw: string | null;
 }
 

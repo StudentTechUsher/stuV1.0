@@ -159,11 +159,14 @@ export const Grid: Story = {
  * Dark mode demonstration
  */
 export const DarkMode: Story = {
+  globals: {
+    colorMode: 'dark',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
   },
   render: () => (
-    <div className="dark p-8">
+    <div className="rounded-xl border border-border bg-background p-8">
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>Graduation Plan</CardTitle>

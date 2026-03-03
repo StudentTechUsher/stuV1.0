@@ -8,25 +8,38 @@ import { z } from 'zod';
 export const OnboardingSchema = z
   .object({
     university_id: z.number().int().positive('University ID must be a positive integer'),
+    role: z.enum(['student', 'advisor']).default('student'),
     email: z
       .string()
       .email('Invalid email format')
-      .max(254, 'Email must be at most 254 characters'),
-    role: z
-      .enum(['student', 'advisor', 'admin']),
+      .max(254, 'Email must be at most 254 characters')
+      .optional(),
     fname: z.string().trim().min(1).max(100).optional(),
     lname: z.string().trim().min(1).max(100).optional(),
-    est_grad_sem: z.string().min(1).optional(),
-    est_grad_date: z.string().optional(),
+    est_grad_sem: z.string().trim().min(1).optional(),
+    est_grad_date: z.string().trim().min(1).optional(),
   })
-  .refine(
-    (data) =>
-      data.role !== 'student' || (data.est_grad_sem && data.est_grad_date),
-    {
-      message: 'Graduation semester and date are required for student role',
-      path: ['est_grad_sem'],
+  .superRefine((value, ctx) => {
+    if (value.role !== 'student') {
+      return;
     }
-  );
+
+    if (!value.est_grad_sem) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['est_grad_sem'],
+        message: 'Expected graduation semester is required for students',
+      });
+    }
+
+    if (!value.est_grad_date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['est_grad_date'],
+        message: 'Expected graduation date is required for students',
+      });
+    }
+  });
 
 export type OnboardingInput = z.infer<typeof OnboardingSchema>;
 

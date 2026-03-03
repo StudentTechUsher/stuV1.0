@@ -8,6 +8,7 @@ export type ServerEventProperties = {
   error_type?: string;
   error_code?: string;
   error_hint?: string;
+  openai_request_id?: string;
   model?: string;
   text_length?: number;
   byte_count?: number;

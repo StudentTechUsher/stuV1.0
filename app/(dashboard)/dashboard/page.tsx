@@ -7,7 +7,6 @@ import {
 } from "@/components/dashboard/unified-academic-card";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { AdvisorDashboard } from "@/components/dashboard/advisor-dashboard";
-import { OnboardingModalWrapper } from "@/components/onboarding/onboarding-modal-wrapper";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -78,14 +77,10 @@ export default async function DashboardPage() {
     console.error("profiles fetch error:", profileErr.message);
   }
 
-  // Check if user needs onboarding (no university selected)
-  const needsOnboarding = !profile?.university_id;
-
   const role: Role = (profile?.role_id && ROLE_MAP[profile.role_id]) ?? "student";
 
   return (
     <>
-      {needsOnboarding && <OnboardingModalWrapper userName={profile?.fname} />}
       {/* Unified padding for all dashboard views - responsive spacing for better mobile/desktop experience */}
       <div className="p-4 sm:p-6">
         <RoleView role={role} userId={userId} />

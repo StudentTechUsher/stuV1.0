@@ -101,10 +101,17 @@ async function handleAnalyzeSections(request: NextRequest) {
 function convertSection(section: CourseAnalysis['sections'][0]) {
   // Extract meeting info for display
   const firstMeeting = section.parsedMeetings?.[0];
-  const days = firstMeeting?.days || '';
-  const time = firstMeeting ? `${firstMeeting.startTime} - ${firstMeeting.endTime}` : '';
+  const rawDays = section.days_raw || '';
+  const rawStart = section.start_time_raw || '';
+  const rawEnd = section.end_time_raw || '';
+
+  const days = firstMeeting?.days || rawDays;
+  const time = firstMeeting
+    ? `${firstMeeting.startTime} - ${firstMeeting.endTime}`
+    : (rawStart && rawEnd ? `${rawStart} - ${rawEnd}` : '');
 
   return {
+    offering_id: section.offering_id,
     section_label: section.section_label,
     instructor: section.instructor || 'TBA',
     days,

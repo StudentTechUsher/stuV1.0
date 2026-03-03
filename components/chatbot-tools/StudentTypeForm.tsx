@@ -7,14 +7,20 @@ import { StudentTypeInput, getStudentTypeDescription } from '@/lib/chatbot/tools
 
 interface StudentTypeFormProps {
   onSubmit: (data: StudentTypeInput) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 export default function StudentTypeForm({
   onSubmit,
+  readOnly,
+  reviewMode,
 }: Readonly<StudentTypeFormProps>) {
   const [selectedType, setSelectedType] = useState<'undergraduate' | 'honor' | 'graduate' | null>(null);
+  const isReadOnly = Boolean(readOnly || reviewMode);
 
   const handleSelect = (type: 'undergraduate' | 'honor' | 'graduate') => {
+    if (isReadOnly) return;
     setSelectedType(type);
     // Small delay for visual feedback
     setTimeout(() => {
@@ -44,7 +50,7 @@ export default function StudentTypeForm({
             }
             text-zinc-900 dark:text-zinc-100
           `}
-          disabled={selectedType !== null}
+          disabled={selectedType !== null || isReadOnly}
         >
           <div className="flex flex-col items-center text-center gap-3">
             <div className={`
@@ -77,7 +83,7 @@ export default function StudentTypeForm({
             }
             text-zinc-900 dark:text-zinc-100
           `}
-          disabled={selectedType !== null}
+          disabled={selectedType !== null || isReadOnly}
         >
           <div className="flex flex-col items-center text-center gap-3">
             <div className={`
@@ -110,7 +116,7 @@ export default function StudentTypeForm({
             }
             text-zinc-900 dark:text-zinc-100
           `}
-          disabled={selectedType !== null}
+          disabled={selectedType !== null || isReadOnly}
         >
           <div className="flex flex-col items-center text-center gap-3">
             <div className={`

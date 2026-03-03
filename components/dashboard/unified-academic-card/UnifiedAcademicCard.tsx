@@ -190,11 +190,11 @@ export function UnifiedAcademicCard() {
         universityId,
       });
 
-      if (studentResult.data?.id) {
+      {
         const { data: activePlan } = await supabase
           .from('grad_plan')
           .select('plan_details, programs_in_plan, is_active, created_at')
-          .eq('student_id', studentResult.data.id)
+          .eq('profile_id', user.id)
           .eq('is_active', true)
           .maybeSingle();
 
@@ -203,7 +203,7 @@ export function UnifiedAcademicCard() {
           const { data: latestPlan } = await supabase
             .from('grad_plan')
             .select('plan_details, programs_in_plan, is_active, created_at')
-            .eq('student_id', studentResult.data.id)
+            .eq('profile_id', user.id)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();

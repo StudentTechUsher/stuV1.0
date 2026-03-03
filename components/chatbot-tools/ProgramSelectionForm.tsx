@@ -29,6 +29,9 @@ interface ProgramSelectionFormProps {
   onSubmit: (data: ProgramSelectionInput) => void;
   onProgramPathfinderClick?: () => void;
   suggestedPrograms?: Array<{ programName: string; programType: string }>;
+  readOnly?: boolean;
+  reviewMode?: boolean;
+  variant?: 'default' | 'v2';
 }
 
 export default function ProgramSelectionForm({
@@ -41,7 +44,13 @@ export default function ProgramSelectionForm({
   onSubmit,
   onProgramPathfinderClick,
   suggestedPrograms,
+  readOnly,
+  reviewMode,
+  variant = 'default',
 }: Readonly<ProgramSelectionFormProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
+  const isV2 = variant === 'v2';
+
   // Undergraduate state
   const [majors, setMajors] = useState<ProgramOption[]>([]);
   const [minors, setMinors] = useState<ProgramOption[]>([]);
@@ -59,6 +68,10 @@ export default function ProgramSelectionForm({
   const [selectedCertificates, setSelectedCertificates] = useState<string[]>([]);
   const [selectedGenEd, setSelectedGenEd] = useState<ProgramOption | null>(null);
   const [selectedHonorsProgram, setSelectedHonorsProgram] = useState<ProgramOption | null>(null);
+
+  // V2: Optional minor/certificate state
+  const [showMinorField, setShowMinorField] = useState(false);
+  const [showCertificateField, setShowCertificateField] = useState(false);
 
   // Graduate state
   const [graduatePrograms, setGraduatePrograms] = useState<ProgramOption[]>([]);
@@ -84,6 +97,7 @@ export default function ProgramSelectionForm({
 
   // Fetch programs based on student type
   useEffect(() => {
+    if (isReadOnly) return;
     if (studentType !== 'graduate') {
       // Fetch majors
       setLoadingMajors(true);
@@ -139,10 +153,11 @@ export default function ProgramSelectionForm({
         .then(setGraduatePrograms)
         .finally(() => setLoadingGraduate(false));
     }
-  }, [studentType, universityId, selectedGenEdProgramId, studentAdmissionYear, studentIsTransfer]);
+  }, [studentType, universityId, selectedGenEdProgramId, studentAdmissionYear, studentIsTransfer, isReadOnly]);
 
   // Fetch honors program when applicable
   useEffect(() => {
+    if (isReadOnly) return;
     if (studentType !== 'honor') {
       setSelectedHonorsProgram(null);
       return;
@@ -181,10 +196,11 @@ export default function ProgramSelectionForm({
         console.error('Error fetching honors programs:', error);
         setSelectedHonorsProgram(null);
       });
-  }, [studentType, universityId, studentAdmissionYear]);
+  }, [studentType, universityId, studentAdmissionYear, isReadOnly]);
 
   // Fetch active grad plan programs if profileId is provided
   useEffect(() => {
+    if (isReadOnly) return;
     if (profileId) {
       fetchActiveGradPlanProgramsAction(profileId)
         .then(result => {
@@ -197,10 +213,11 @@ export default function ProgramSelectionForm({
           console.error('Error fetching active grad plan programs:', error);
         });
     }
-  }, [profileId]);
+  }, [profileId, isReadOnly]);
 
   // Auto-select suggested programs after they're fetched
   useEffect(() => {
+    if (isReadOnly) return;
     if (!suggestedPrograms || suggestedPrograms.length === 0) return;
 
     if (studentType !== 'graduate') {
@@ -252,9 +269,10 @@ export default function ProgramSelectionForm({
         setSelectedGraduatePrograms(matchedGraduatePrograms);
       }
     }
-  }, [suggestedPrograms, majors, minors, graduatePrograms, studentType, loadingMajors, loadingMinors, loadingGraduate]);
+  }, [suggestedPrograms, majors, minors, graduatePrograms, studentType, loadingMajors, loadingMinors, loadingGraduate, isReadOnly]);
 
   const handleLoadPriorGradPlan = () => {
+    if (isReadOnly) return;
     if (!priorGradPlanPrograms || priorGradPlanPrograms.length === 0) return;
 
     if (studentType !== 'graduate') {
@@ -290,6 +308,7 @@ export default function ProgramSelectionForm({
   };
 
   const handleSubmit = () => {
+    if (isReadOnly) return;
     if (studentType !== 'graduate') {
       if (selectedMajors.length === 0) {
         alert('Please select at least one major');
@@ -325,23 +344,27 @@ export default function ProgramSelectionForm({
     : selectedGraduatePrograms.length > 0;
 
   const handleViewCourseFlow = (program: ProgramOption, event: React.MouseEvent) => {
+    if (isReadOnly) return;
     event.stopPropagation(); // Prevent the chip from being removed
     setSelectedProgramForFlow(program);
     setCourseFlowModalOpen(true);
   };
 
   const handleCloseCourseFlowModal = () => {
+    if (isReadOnly) return;
     setCourseFlowModalOpen(false);
     setSelectedProgramForFlow(null);
   };
 
   const handleViewProgramDescription = (program: ProgramOption, event: React.MouseEvent) => {
+    if (isReadOnly) return;
     event.stopPropagation();
     setSelectedProgramForDesc(program);
     setProgramDescModalOpen(true);
   };
 
   const handleCloseProgramDescModal = () => {
+    if (isReadOnly) return;
     setProgramDescModalOpen(false);
     setSelectedProgramForDesc(null);
   };
@@ -365,7 +388,7 @@ export default function ProgramSelectionForm({
   };
 
   return (
-    <div className="my-4 p-6 border rounded-xl bg-card shadow-sm">
+    <div className={`my-4 p-6 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           {studentType !== 'graduate' ? (
@@ -414,9 +437,23 @@ export default function ProgramSelectionForm({
           <>
             {/* Majors */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Major(s) <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-foreground">
+                  Major(s) <span className="text-red-500">*</span>
+                </label>
+                {isV2 && onProgramPathfinderClick && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={onProgramPathfinderClick}
+                    className="gap-1.5 text-sm"
+                  >
+                    <Compass size={16} />
+                    I'm not sure
+                  </Button>
+                )}
+              </div>
               <Autocomplete
                 multiple
                 options={majors}
@@ -493,74 +530,85 @@ export default function ProgramSelectionForm({
               <label className="block text-sm font-medium text-foreground mb-2">
                 Minor(s) <span className="text-muted-foreground text-xs">(Optional)</span>
               </label>
-              <Autocomplete
-                multiple
-                options={minors}
-                getOptionLabel={(option: ProgramOption) => option.name}
-                value={selectedMinors}
-                onChange={(_event: React.SyntheticEvent, newValue: ProgramOption[]) => setSelectedMinors(newValue)}
-                loading={loadingMinors}
-                renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
-                  const { key, ...otherProps } = props;
-                  const creditInfo = formatCreditRequirements(option);
-                  return (
-                    <li key={key} {...otherProps}>
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <div className="flex-1">
-                          <div className="font-medium">{option.name}</div>
-                          {creditInfo && (
-                            <div className="text-xs text-muted-foreground">{creditInfo}</div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {!!option.program_description && (
-                            <button
-                              type="button"
-                              onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
-                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
-                            >
-                              Program Description
-                            </button>
-                          )}
-                          {!!option.course_flow && (
-                            <button
-                              type="button"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleViewCourseFlow(option, e);
-                              }}
-                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
-                            >
-                              View Program
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                }}
-                renderInput={(params: AutocompleteRenderInputParams) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search for minors..."
-                    helperText="Add any minors you're pursuing"
-                  />
-                )}
-                renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
-                  value.map((option: ProgramOption, index: number) => {
-                    // Extract key from getTagProps to avoid spreading it (React warning)
-                    const { key: _key, ...chipProps } = getTagProps({ index });
+              {isV2 && !showMinorField ? (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setShowMinorField(true)}
+                  className="w-full"
+                >
+                  I want to add a minor to my plan
+                </Button>
+              ) : (
+                <Autocomplete
+                  multiple
+                  options={minors}
+                  getOptionLabel={(option: ProgramOption) => option.name}
+                  value={selectedMinors}
+                  onChange={(_event: React.SyntheticEvent, newValue: ProgramOption[]) => setSelectedMinors(newValue)}
+                  loading={loadingMinors}
+                  renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: string | number }, option: ProgramOption) => {
+                    const { key, ...otherProps } = props;
+                    const creditInfo = formatCreditRequirements(option);
                     return (
-                      <Chip
-                        key={option.id}
-                        {...chipProps}
-                        label={option.name}
-                        size="small"
-                      />
+                      <li key={key} {...otherProps}>
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <div className="flex-1">
+                            <div className="font-medium">{option.name}</div>
+                            {creditInfo && (
+                              <div className="text-xs text-muted-foreground">{creditInfo}</div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {!!option.program_description && (
+                              <button
+                                type="button"
+                                onClick={(e: React.MouseEvent) => handleViewProgramDescription(option, e)}
+                                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
+                              >
+                                Program Description
+                              </button>
+                            )}
+                            {!!option.course_flow && (
+                              <button
+                                type="button"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handleViewCourseFlow(option, e);
+                                }}
+                                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded transition-colors"
+                              >
+                                View Program
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
                     );
-                  })
-                }
-              />
+                  }}
+                  renderInput={(params: AutocompleteRenderInputParams) => (
+                    <TextField
+                      {...params}
+                      placeholder="Search for minors..."
+                      helperText="Add any minors you're pursuing"
+                    />
+                  )}
+                  renderTags={(value: ProgramOption[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
+                    value.map((option: ProgramOption, index: number) => {
+                      // Extract key from getTagProps to avoid spreading it (React warning)
+                      const { key: _key, ...chipProps } = getTagProps({ index });
+                      return (
+                        <Chip
+                          key={option.id}
+                          {...chipProps}
+                          label={option.name}
+                          size="small"
+                        />
+                      );
+                    })
+                  }
+                />
+              )}
             </div>
 
             {/* Certificates (placeholder) */}
@@ -568,32 +616,43 @@ export default function ProgramSelectionForm({
               <label className="block text-sm font-medium text-foreground mb-2">
                 Certificate(s) <span className="text-muted-foreground text-xs">(Optional)</span>
               </label>
-              <Autocomplete
-                multiple
-                options={certificateOptions}
-                value={selectedCertificates}
-                onChange={(_event: React.SyntheticEvent, newValue: string[]) => setSelectedCertificates(newValue)}
-                renderInput={(params: AutocompleteRenderInputParams) => (
-                  <TextField
-                    {...params}
-                    placeholder="Select certificates..."
-                    helperText="Examples: Data Analytics, Cybersecurity, Project Management, UX Design, GIS, Digital Marketing"
-                  />
-                )}
-                renderTags={(value: string[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
-                  value.map((option: string, index: number) => {
-                    const { key: _key, ...chipProps } = getTagProps({ index });
-                    return (
-                      <Chip
-                        key={option}
-                        {...chipProps}
-                        label={option}
-                        size="small"
-                      />
-                    );
-                  })
-                }
-              />
+              {isV2 && !showCertificateField ? (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setShowCertificateField(true)}
+                  className="w-full"
+                >
+                  I want to add a certificate to my plan
+                </Button>
+              ) : (
+                <Autocomplete
+                  multiple
+                  options={certificateOptions}
+                  value={selectedCertificates}
+                  onChange={(_event: React.SyntheticEvent, newValue: string[]) => setSelectedCertificates(newValue)}
+                  renderInput={(params: AutocompleteRenderInputParams) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select certificates..."
+                      helperText="Examples: Data Analytics, Cybersecurity, Project Management, UX Design, GIS, Digital Marketing"
+                    />
+                  )}
+                  renderTags={(value: string[], getTagProps: (arg: { index: number }) => Record<string, unknown>) =>
+                    value.map((option: string, index: number) => {
+                      const { key: _key, ...chipProps } = getTagProps({ index });
+                      return (
+                        <Chip
+                          key={option}
+                          {...chipProps}
+                          label={option}
+                          size="small"
+                        />
+                      );
+                    })
+                  }
+                />
+              )}
             </div>
 
             {/* Gen Eds - Card-based selection */}
@@ -605,7 +664,7 @@ export default function ProgramSelectionForm({
                 {loadingGenEds ? (
                   <div className="text-muted-foreground text-sm">Loading general education options...</div>
                 ) : (
-                  <div className="grid gap-3">
+                  <div className={`grid gap-3 ${isV2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     {genEds.map((genEd) => {
                       const isSelected = selectedGenEd?.id === genEd.id;
                       const creditInfo = formatCreditRequirements(genEd);
@@ -775,6 +834,7 @@ export default function ProgramSelectionForm({
           open={courseFlowModalOpen}
           onClose={handleCloseCourseFlowModal}
           program={selectedProgramForFlow}
+          readOnly={readOnly}
         />
       )}
 

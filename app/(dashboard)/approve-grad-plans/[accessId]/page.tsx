@@ -7,9 +7,7 @@ import { CheckCircle, Save } from '@mui/icons-material';
 import { Add, Remove } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { StuLoader } from '@/components/ui/StuLoader';
-import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction, fetchProfileBasicInfoAction } from '@/lib/services/server-actions';
-import { createNotifForGradPlanEdited, createNotifForGradPlanApproved } from '@/lib/services/notifService';
-import { sendGradPlanApprovalEmail } from '@/lib/services/emailService';
+import { fetchGradPlanById, approveGradPlan, decodeAccessIdServerAction, updateGradPlanDetailsAndAdvisorNotesAction, fetchProfileBasicInfoAction, createNotifForGradPlanEditedAction, createNotifForGradPlanApprovedAction, sendGradPlanApprovalEmailAction } from '@/lib/services/server-actions';
 import GraduationPlanner from '@/components/grad-planner/graduation-planner';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { clientLogger } from '@/lib/client-logger';
@@ -24,7 +22,7 @@ interface GradPlanDetails {
   student_last_name: string;
   created_at: string;
   plan_details: unknown;
-  student_id: number;
+  profile_id: string;
   programs: Array<{ id: number; name: string }>;
 }
 
@@ -414,27 +412,15 @@ export default function ApproveGradPlanPage() {
           const { data: { session } } = await supabase.auth.getSession();
           const advisorUserId = session?.user?.id || null;
           const accessId = params.accessId as string;
-          // Look up student.profile_id from numeric student_id in grad plan
-          let targetUserId: string | null = null;
-          if (gradPlan.student_id) {
-            const { data: studentRow, error: studentErr } = await supabase
-              .from('student')
-              .select('profile_id')
-              .eq('id', gradPlan.student_id)
-              .maybeSingle();
-            if (studentErr) {
-              console.warn('⚠️ Could not fetch student row for notification:', studentErr.message);
-            } else if (studentRow?.profile_id) {
-              targetUserId = studentRow.profile_id;
-            }
-          }
+          // profile_id is now directly on gradPlan
+          const targetUserId = gradPlan.profile_id || null;
           if (targetUserId) {
-            void createNotifForGradPlanEdited(targetUserId, advisorUserId, accessId, {
+            void createNotifForGradPlanEditedAction(targetUserId, advisorUserId, accessId, {
               movedCourses,
               hasSuggestions
             });
           } else {
-            console.warn('⚠️ Could not resolve target_user_id (profile_id) from student_id for notification.');
+            console.warn('⚠️ Could not resolve target_user_id (profile_id) for notification.');
           }
         } catch (notifyErr) {
           console.warn('Notification dispatch failed (non-blocking):', notifyErr);
@@ -468,21 +454,10 @@ export default function ApproveGradPlanPage() {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           const advisorUserId = session?.user?.id || null;
-          let targetUserId: string | null = null;
-          if (gradPlan.student_id) {
-            const { data: studentRow, error: studentErr } = await supabase
-              .from('student')
-              .select('profile_id')
-              .eq('id', gradPlan.student_id)
-              .maybeSingle();
-            if (studentErr) {
-              console.warn('⚠️ Could not fetch student row for approval notification:', studentErr.message);
-            } else if (studentRow?.profile_id) {
-              targetUserId = studentRow.profile_id;
-            }
-          }
+          // profile_id is now directly on gradPlan
+          const targetUserId = gradPlan.profile_id || null;
           if (targetUserId) {
-            void createNotifForGradPlanApproved(targetUserId, advisorUserId);
+            void createNotifForGradPlanApprovedAction(targetUserId, advisorUserId);
           } else {
             console.warn('⚠️ Could not resolve target_user_id for approval notification.');
           }
@@ -494,7 +469,7 @@ export default function ApproveGradPlanPage() {
 
             if (studentProfile && studentProfile.email) {
               const accessId = params.accessId as string;
-              await sendGradPlanApprovalEmail({
+              await sendGradPlanApprovalEmailAction({
                 studentFirstName: studentProfile.fname || 'Student',
                 studentEmail: studentProfile.email,
                 planAccessId: accessId,

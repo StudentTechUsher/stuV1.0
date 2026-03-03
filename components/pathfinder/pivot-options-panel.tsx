@@ -18,15 +18,15 @@ interface PivotOption {
 const ICON_COLORS: Record<PivotOption['icon'], string> = {
   sparkles: 'var(--primary)', // bright green
   lightbulb: '#f59e0b', // amber
-  cap: '#003D82', // medium blue (minor color)
-  compare: 'var(--primary)', // bright green
+  cap: '#3b82f6', // primary blue for Near-Completion Minor Audit
+  compare: '#6366f1', // indigo for Compare Majors
 };
 
 const ICON_MAP: Record<PivotOption['icon'], React.ReactElement> = {
   sparkles: <AutoAwesomeIcon className="text-[var(--primary)]" fontSize="large" />,
   lightbulb: <LightbulbOutlinedIcon className="text-amber-500" fontSize="large" />,
   cap: <SchoolOutlinedIcon className="text-blue-600" fontSize="large" />,
-  compare: <CompareArrowsIcon className="text-[var(--primary)]" fontSize="large" />,
+  compare: <CompareArrowsIcon className="text-indigo-500" fontSize="large" />,
 };
 
 interface PivotOptionsPanelProps {

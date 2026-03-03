@@ -7,14 +7,14 @@ import type { CourseValidationResult, CourseValidationSummaryData } from './Cour
  * being scheduled. It shows which courses are available, which need rescheduling,
  * and which weren't found.
  */
-const meta = {
+const meta: Meta<typeof CourseValidationResults> = {
   title: 'Scheduler/Course Validation Results',
   component: CourseValidationResults,
   parameters: {
     layout: 'padded',
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof CourseValidationResults>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -641,4 +641,49 @@ export const StandardVsCompact: Story = {
       </div>
     );
   },
+};
+
+/**
+ * Dark mode - primary validation view with mixed results
+ */
+export const DarkMode: Story = {
+  args: {
+    ...MixedResults.args,
+  },
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: '900px', margin: '0 auto', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', background: 'var(--background)' }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/**
+ * Dark mode compact layout - covers the compact rendering path
+ */
+export const CompactDarkMode: Story = {
+  args: {
+    ...MixedResults.args,
+    compact: true,
+  },
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: '600px', margin: '0 auto', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', background: 'var(--background)' }}>
+        <Story />
+      </div>
+    ),
+  ],
 };

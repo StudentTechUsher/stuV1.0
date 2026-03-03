@@ -6,20 +6,14 @@ const UNIVERSITY_THEMES = {
   'STU Mint (Default)': {
     primary: '#37DBC3',
     accent: '#FF6B6B',
-    background: '#FFFFFF',
-    foreground: '#1A1A1A',
   },
   'Custom Blue': {
     primary: '#3B82F6',
     accent: '#F59E0B',
-    background: '#FFFFFF',
-    foreground: '#1A1A1A',
   },
   'Custom Purple': {
     primary: '#A855F7',
     accent: '#EC4899',
-    background: '#FFFFFF',
-    foreground: '#1A1A1A',
   },
 } as const;
 
@@ -57,9 +51,6 @@ const ThemeManager = ({ themeName }: { themeName: string }) => {
     root.style.setProperty('--accent-15', `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.15)`);
     root.style.setProperty('--accent-22', `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.22)`);
 
-    // Apply background and foreground
-    root.style.setProperty('--background', theme.background);
-    root.style.setProperty('--foreground', theme.foreground);
   }, [theme]);
 
   return null;

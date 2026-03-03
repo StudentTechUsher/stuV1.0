@@ -267,6 +267,9 @@ importers:
       '@vitest/ui':
         specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18)
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -285,9 +288,15 @@ importers:
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
+      process:
+        specifier: ^0.11.10
+        version: 0.11.10
       storybook:
         specifier: ^10.2.4
         version: 10.2.4(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      stream-browserify:
+        specifier: ^3.0.0
+        version: 3.0.0
       supabase:
         specifier: ^2.75.0
         version: 2.75.0
@@ -300,6 +309,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      util:
+        specifier: ^0.12.5
+        version: 0.12.5
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@edge-runtime/vm@3.2.0)(@opentelemetry/api@1.9.0)(@types/node@25.2.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)

@@ -82,6 +82,10 @@ export interface UserCourse {
   user_id: string;
   inserted_at: string;
   courses: ParsedCourse[];
+  term_metrics?: unknown;
+  transfer_credits?: unknown;
+  exam_credits?: unknown;
+  entrance_exams?: unknown;
 }
 
 export interface FormattedCourse {
@@ -318,32 +322,50 @@ export async function upsertUserCourses(
       origin: course.origin === 'manual' ? 'manual' : 'parsed',
     }));
 
-    const { error: deleteError } = await supabase
+    const { data: existingRecord, error: fetchError } = await supabase
       .from('user_courses')
-      .delete()
-      .eq('user_id', userId);
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    if (deleteError) {
-      logError('Failed to delete existing courses', deleteError, {
+    if (fetchError) {
+      logError('Failed to fetch existing courses record', fetchError, {
         userId,
-        action: 'delete_user_courses',
+        action: 'fetch_user_courses',
       });
-      throw new CourseUpsertError('Failed to delete existing courses', deleteError);
+      throw new CourseUpsertError('Failed to fetch existing courses', fetchError);
     }
 
-    const { error: insertError } = await supabase
-      .from('user_courses')
-      .insert({
-        user_id: userId,
-        courses: normalizedCourses,
-      });
+    if (existingRecord) {
+      const { error: updateError } = await supabase
+        .from('user_courses')
+        .update({
+          courses: normalizedCourses,
+        })
+        .eq('user_id', userId);
 
-    if (insertError) {
-      logError('Failed to insert courses', insertError, {
-        userId,
-        action: 'insert_user_courses',
-      });
-      throw new CourseUpsertError('Failed to insert courses', insertError);
+      if (updateError) {
+        logError('Failed to update courses', updateError, {
+          userId,
+          action: 'update_user_courses',
+        });
+        throw new CourseUpsertError('Failed to update courses', updateError);
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from('user_courses')
+        .insert({
+          user_id: userId,
+          courses: normalizedCourses,
+        });
+
+      if (insertError) {
+        logError('Failed to insert courses', insertError, {
+          userId,
+          action: 'insert_user_courses',
+        });
+        throw new CourseUpsertError('Failed to insert courses', insertError);
+      }
     }
 
     return {

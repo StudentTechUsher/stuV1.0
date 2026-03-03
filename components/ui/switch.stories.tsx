@@ -167,11 +167,14 @@ export const SettingsPanel: Story = {
  * Dark mode demonstration
  */
 export const DarkMode: Story = {
+  globals: {
+    colorMode: 'dark',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
   },
   render: () => (
-    <div className="dark p-8">
+    <div className="w-[360px] rounded-xl border border-border bg-background p-8">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Switch id="dark-unchecked" checked={false} />

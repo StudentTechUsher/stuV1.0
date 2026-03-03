@@ -36,24 +36,10 @@ async function handleUpdatePlanName(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the student record for the current user
-    const { data: studentData, error: studentError } = await supabase
-      .from('student')
-      .select('id')
-      .eq('profile_id', session.user.id)
-      .single();
-
-    if (studentError || !studentData) {
-      console.error('Error fetching student record:', studentError);
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-    }
-
-    const studentId = studentData.id;
-
-    // Verify the plan belongs to this student
+    // Verify the plan belongs to this user
     const { data: planData, error: planError } = await supabase
       .from('grad_plan')
-      .select('student_id')
+      .select('profile_id')
       .eq('id', actualPlanId)
       .single();
 
@@ -61,7 +47,7 @@ async function handleUpdatePlanName(request: NextRequest) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
-    if (planData.student_id !== studentId) {
+    if (planData.profile_id !== session.user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -69,7 +55,7 @@ async function handleUpdatePlanName(request: NextRequest) {
     try {
       const updatedName = await updateGradPlanNameWithUniquenessCheck(
         actualPlanId,
-        studentId,
+        session.user.id,
         name
       );
 

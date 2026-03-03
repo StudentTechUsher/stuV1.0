@@ -1,44 +1,156 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import type { User } from '@supabase/supabase-js';
+import CreatePlanClient from './create-plan-client';
+import type { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 
-const meta = {
+const meta: Meta<typeof CreatePlanClient> = {
   title: 'Grad Plan/Create/CreatePlanClient',
-  component: () => null,
+  component: CreatePlanClient,
   parameters: {
-    layout: 'centered',
-    docs: {
-      description: {
-        component: `
-# CreatePlanClient (Page Client)
-
-This is the main client for /grad-plan/create. It depends on authenticated session state, server-provided props, and API calls.
-
-**In-app testing path:**
-1. npm run dev
-2. Navigate to /grad-plan/create
-
-This Storybook entry is documentation-only to avoid coupling to live data sources.
-        `,
+    layout: 'fullscreen',
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: '/grad-plan/create',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta;
+};
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const DocsOnly: Story = {
+const mockUser = {
+  id: 'user-123',
+  email: 'student@example.com',
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+  app_metadata: {},
+  user_metadata: {},
+} as User;
+
+const academicTerms: AcademicTermsConfig = {
+  terms: {
+    primary: [
+      { id: 'fall', label: 'Fall' },
+      { id: 'spring', label: 'Spring' },
+    ],
+    secondary: [
+      { id: 'summer', label: 'Summer' },
+    ],
+  },
+  system: 'semester_with_terms',
+  ordering: ['fall', 'spring', 'summer'],
+  academic_year_start: 'fall',
+};
+
+export const VersionB: Story = {
+  args: {
+    user: mockUser,
+    studentProfile: {
+      id: 'profile-123',
+      university_id: 1,
+      est_grad_date: '2028-05-01',
+      est_grad_sem: 'Spring',
+      career_goals: 'Data Science',
+      student_type: 'undergraduate' as const,
+      admission_year: 2024,
+      is_transfer: 'freshman' as const,
+    },
+    hasCourses: true,
+    hasActivePlan: false,
+    academicTerms,
+  },
   render: () => (
-    <div style={{ maxWidth: 520, padding: 24, border: '1px solid #e5e7eb', borderRadius: 12 }}>
-      <h3 style={{ margin: 0, fontSize: 18 }}>CreatePlanClient</h3>
-      <p style={{ marginTop: 8, color: '#6b7280' }}>
-        This component requires authenticated server props and runtime APIs. Use the running app to test.
-      </p>
-      <pre style={{ marginTop: 12, background: '#f9fafb', padding: 12, borderRadius: 8 }}>
-        npm run dev
-        {'\n'}Open /grad-plan/create
-      </pre>
-    </div>
+    <CreatePlanClient
+      user={mockUser}
+      studentProfile={{
+        id: 'profile-123',
+        university_id: 1,
+        est_grad_date: '2028-05-01',
+        est_grad_sem: 'Spring',
+        career_goals: 'Data Science',
+        student_type: 'undergraduate',
+        admission_year: 2024,
+        is_transfer: 'freshman',
+      }}
+      hasCourses
+      hasActivePlan={false}
+      academicTerms={academicTerms}
+      mockMode
+      variant="versionB"
+      mockActiveTool="generate_plan_confirmation"
+      mockToolData={{
+        academicTerms,
+        lastCompletedTerm: 'Spring 2026',
+        preferredStartTerms: ['Fall'],
+      }}
+      mockAgent={{
+        status: 'awaiting_approval',
+        lastUpdated: new Date().toISOString(),
+        logs: [
+          {
+            id: 'log-1',
+            ts: new Date().toISOString(),
+            type: 'tool',
+            label: 'Parsed transcript',
+            detail: 'Detected 42 completed credits',
+            status: 'ok',
+          },
+          {
+            id: 'log-2',
+            ts: new Date().toISOString(),
+            type: 'decision',
+            label: 'Draft schedule',
+            detail: 'Balanced load with summer term',
+            status: 'warn',
+          },
+        ],
+        checks: [
+          {
+            id: 'check-1',
+            label: 'Prerequisites satisfied',
+            status: 'ok',
+            evidence: ['Transcript match', 'Program requirements'],
+          },
+          {
+            id: 'check-2',
+            label: 'Credit load within range',
+            status: 'warn',
+            evidence: ['15–18 credits', 'Summer included'],
+          },
+        ],
+      }}
+      mockMessages={[
+        {
+          role: 'assistant',
+          content: 'I created a draft schedule and flagged the items that need your approval.',
+          timestamp: new Date(),
+          decisionMeta: {
+            title: 'Decision card',
+            badges: ['Balanced load', 'Milestones aligned'],
+            evidence: ['Transcript match', 'Program requirements', 'Constraint check'],
+          },
+          showFeedback: true,
+          feedbackReasons: ['Missing data', 'Needs adjustment', 'Not accurate', 'Other'],
+        },
+      ]}
+    />
   ),
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...VersionB,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(VersionB.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
 };

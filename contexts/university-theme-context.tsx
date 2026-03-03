@@ -17,15 +17,20 @@ const UniversityThemeContext = createContext<UniversityThemeContextType | undefi
 interface UniversityThemeProviderProps {
   children: ReactNode;
   initialUniversity?: University | null;
+  /**
+   * When true, skip the automatic Supabase fetch / middleware header parsing.
+   * Useful for Storybook and isolated rendering.
+   */
+  disableAutoLoad?: boolean;
 }
 
 const DEFAULT_SUBDOMAIN = process.env.NEXT_PUBLIC_DEFAULT_UNIVERSITY_SUBDOMAIN || 'stu';
 
-export function UniversityThemeProvider({ children, initialUniversity }: UniversityThemeProviderProps) {
+export function UniversityThemeProvider({ children, initialUniversity, disableAutoLoad }: UniversityThemeProviderProps) {
   const [university, setUniversity] = useState<University | null>(initialUniversity || null);
   const [theme, setTheme] = useState<UniversityTheme>(DEFAULT_THEME);
   const [loading, setLoading] = useState(true);
-  const supabase = createSupabaseBrowserClient();
+  const supabase = disableAutoLoad ? null : createSupabaseBrowserClient();
 
   /* Effects moved to bottom */
 
@@ -128,6 +133,9 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
 
   const updateUniversityTheme = async (universityId: number, themeUpdates: Partial<UniversityTheme>) => {
     try {
+      if (!supabase) {
+        throw new Error('Supabase client unavailable (disableAutoLoad enabled)');
+      }
       if (!universityId) {
         throw new Error('University ID is required');
       }
@@ -160,6 +168,9 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
 
   const resetToDefault = async (universityId: number) => {
     try {
+      if (!supabase) {
+        throw new Error('Supabase client unavailable (disableAutoLoad enabled)');
+      }
       const resetData = {
         ...DEFAULT_THEME,
         logo_url: undefined
@@ -186,6 +197,21 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
 
   // Load university data from middleware headers or fetch by subdomain
   useEffect(() => {
+    if (disableAutoLoad) {
+      try {
+        if (initialUniversity) {
+          setUniversity(initialUniversity);
+          applyUniversityTheme(initialUniversity);
+        } else {
+          setUniversity(null);
+          applyTheme(DEFAULT_THEME);
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const loadUniversityData = async () => {
       setLoading(true);
 
@@ -201,6 +227,11 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
           // Fallback: parse subdomain and fetch university data
           const host = window.location.host;
           const subdomain = parseSubdomain(host);
+
+          if (!supabase) {
+            applyTheme(DEFAULT_THEME);
+            return;
+          }
 
           const { data: universityData, error } = await supabase
             .from('university')
@@ -230,7 +261,7 @@ export function UniversityThemeProvider({ children, initialUniversity }: Univers
     };
 
     loadUniversityData();
-  }, [supabase /*, applyUniversityTheme */]); // Removed dep to avoid cycle/defined-before-use issues. Ideally use useCallback.
+  }, [disableAutoLoad, initialUniversity, supabase /*, applyUniversityTheme */]); // Removed dep to avoid cycle/defined-before-use issues. Ideally use useCallback.
 
   const value: UniversityThemeContextType = {
     university,

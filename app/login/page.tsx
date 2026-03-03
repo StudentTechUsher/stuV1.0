@@ -32,6 +32,27 @@ function LoginContent() {
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       : `/auth/callback?next=${encodeURIComponent(next)}`;
 
+  const rememberAnonymousIdentityHint = async (candidateEmail: string) => {
+    const normalized = candidateEmail.trim();
+    if (!/\S+@\S+\.\S+/.test(normalized)) {
+      return;
+    }
+
+    try {
+      await fetch('/api/identity/remember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: normalized,
+          path: '/login',
+        }),
+        keepalive: true,
+      });
+    } catch (identityError) {
+      console.warn('Unable to persist anonymous identity hint:', identityError);
+    }
+  };
+
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -39,6 +60,8 @@ function LoginContent() {
     setError('');
 
     try {
+      await rememberAnonymousIdentityHint(email);
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -64,6 +87,8 @@ function LoginContent() {
     setError('');
 
     try {
+      await rememberAnonymousIdentityHint(email);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -102,6 +127,7 @@ function LoginContent() {
             src="/hero-graduation-runner.png"
             alt="Graduate running"
             fill
+            sizes="(max-width: 1023px) 0px, 50vw"
             className="object-contain"
             priority
           />
@@ -242,12 +268,17 @@ function LoginContent() {
 
           {/* Google Button */}
           <button
-            onClick={() =>
-              supabase.auth.signInWithOAuth({
+            onClick={async () => {
+              setError('');
+              const { error: oauthError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: { redirectTo },
-              })
-            }
+              });
+              if (oauthError) {
+                console.error('Google OAuth error:', oauthError);
+                setError(oauthError.message);
+              }
+            }}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-border rounded-lg hover:bg-accent transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

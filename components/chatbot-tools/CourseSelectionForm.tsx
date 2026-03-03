@@ -57,6 +57,7 @@ import {
   type RequirementOption,
   type CourseMatch,
 } from '@/lib/utils/course-requirement-matcher';
+import { isGradPlanQuickCourseSearchEnabled } from '@/lib/config/featureFlags';
 
 interface CourseSelectionFormProps {
   studentType: 'undergraduate' | 'honor' | 'graduate';
@@ -69,6 +70,12 @@ interface CourseSelectionFormProps {
   studentInterests?: string | null;
   selectedMajorMinors?: string[];
   onSubmit: (data: CourseSelectionInput) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
+  mockMode?: boolean;
+  mockProgramsData?: ProgramRow[];
+  mockGenEdData?: ProgramRow[];
+  mockTranscriptCourses?: Array<{ code: string; title: string; credits: number }>;
 }
 
 // Color palette for requirement backgrounds
@@ -83,6 +90,9 @@ const REQUIREMENT_COLORS = [
   'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800',
 ];
 
+const normalizeCourseCode = (value: string | null | undefined): string =>
+  (value ?? '').trim().toUpperCase();
+
 export default function CourseSelectionForm({
   studentType,
   universityId,
@@ -94,7 +104,16 @@ export default function CourseSelectionForm({
   studentInterests = null,
   selectedMajorMinors = [],
   onSubmit,
+  readOnly,
+  reviewMode,
+  mockMode,
+  mockProgramsData,
+  mockGenEdData,
+  mockTranscriptCourses,
 }: Readonly<CourseSelectionFormProps>) {
+  const isReadOnly = Boolean(readOnly || reviewMode);
+  const isMockMode = Boolean(mockMode);
+  const quickCourseSearchEnabled = isGradPlanQuickCourseSearchEnabled();
   // Program data state
   const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
   const [genEdData, setGenEdData] = useState<ProgramRow[]>([]);
@@ -142,6 +161,15 @@ export default function CourseSelectionForm({
   const [autoMatches, setAutoMatches] = useState<CourseMatch[]>([]);
   const [autoMatchedKeys, setAutoMatchedKeys] = useState<Set<string>>(new Set());
   const [completedRequirementKeys, setCompletedRequirementKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!isMockMode) return;
+    setProgramsData(mockProgramsData ?? []);
+    setGenEdData(mockGenEdData ?? []);
+    setTranscriptCourses(mockTranscriptCourses ?? []);
+    setLoadingProgramData(false);
+    setDataLoadError(null);
+  }, [isMockMode, mockProgramsData, mockGenEdData, mockTranscriptCourses]);
 
   // Course preference dialog state
   const [preferenceDialogOpen, setPreferenceDialogOpen] = useState(false);
@@ -255,6 +283,7 @@ export default function CourseSelectionForm({
 
   // Fetch program data when component mounts
   useEffect(() => {
+    if (isReadOnly || isMockMode) return;
     async function fetchProgramData() {
       if (selectedProgramIds.length === 0 && genEdProgramIds.length === 0) return;
 
@@ -286,10 +315,11 @@ export default function CourseSelectionForm({
     }
 
     fetchProgramData();
-  }, [selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent]);
+  }, [selectedProgramIds, genEdProgramIds, universityId, isGraduateStudent, isReadOnly, isMockMode]);
 
   // Fetch user's transcript courses (only if user opted to use transcript)
   useEffect(() => {
+    if (isReadOnly || isMockMode) return;
     async function fetchTranscriptCourses() {
       if (!userId || !hasTranscript) return;
 
@@ -311,7 +341,7 @@ export default function CourseSelectionForm({
     }
 
     fetchTranscriptCourses();
-  }, [userId, hasTranscript]);
+  }, [userId, hasTranscript, isReadOnly, isMockMode]);
 
   // Auto-match transcript courses to requirements when data is available
   useEffect(() => {
@@ -420,7 +450,11 @@ export default function CourseSelectionForm({
     setCompletedRequirementKeys(completedKeys);
 
     // Mark auto-matched transcript courses as completed
-    const matchedCourseCodes = new Set(matches.map(m => m.transcriptCourse.code));
+    const matchedCourseCodes = new Set(
+      matches
+        .map(m => normalizeCourseCode(m.transcriptCourse.code))
+        .filter(Boolean)
+    );
     setCompletedCourses(matchedCourseCodes);
 
   }, [transcriptCourses, programsData, genEdData, hasTranscript]);
@@ -666,6 +700,93 @@ export default function CourseSelectionForm({
     return total;
   }, [selectedCourses, selectedProgramCourses, userElectives, requirementCoursesMap, programRequirementsMap]);
 
+  const remainingRequirementCredits = useMemo(() => {
+    let total = 0;
+
+    const extractCredits = (
+      credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null
+    ): number => {
+      if (typeof credits === 'number') {
+        return credits;
+      }
+      if (credits && typeof credits === 'object') {
+        if ('fixed' in credits) {
+          return credits.fixed;
+        }
+        if ('min' in credits && credits.min) {
+          return credits.min;
+        }
+      }
+      return 3;
+    };
+
+    Object.entries(selectedCourses).forEach(([subtitle, courseCodes]) => {
+      const coursesList = requirementCoursesMap[subtitle] || [];
+      courseCodes.forEach(courseCode => {
+        if (
+          !courseCode ||
+          courseCode.trim() === '' ||
+          completedCourses.has(normalizeCourseCode(courseCode))
+        ) {
+          return;
+        }
+        const course = coursesList.find(c => c.code === courseCode);
+        total += course ? extractCredits(course.credits) : 3;
+      });
+    });
+
+    Object.entries(selectedProgramCourses).forEach(([key, courseCodes]) => {
+      const programIdMatch = key.match(/^(\d+)-(req|subreq)-(.+)$/);
+      if (!programIdMatch) return;
+
+      const [, programId, reqType, reqId] = programIdMatch;
+      const programReqs = programRequirementsMap[programId] || [];
+      let coursesList: Array<{
+        code: string;
+        title: string;
+        credits: number | { fixed: number } | { variable: true; min?: number; max?: number } | null;
+      }> = [];
+
+      if (reqType === 'req') {
+        const req = programReqs.find(r => String(r.requirementId) === reqId);
+        if (req?.courses) {
+          coursesList = req.courses;
+        }
+      } else if (reqType === 'subreq') {
+        for (const req of programReqs) {
+          if (!req.subRequirements) continue;
+          const subReq = req.subRequirements.find(sr => String(sr.requirementId) === reqId);
+          if (subReq?.courses) {
+            coursesList = subReq.courses;
+            break;
+          }
+        }
+      }
+
+      courseCodes.forEach(courseCode => {
+        if (
+          !courseCode ||
+          courseCode.trim() === '' ||
+          completedCourses.has(normalizeCourseCode(courseCode))
+        ) {
+          return;
+        }
+        const course = coursesList.find(c => c.code === courseCode);
+        total += course ? extractCredits(course.credits) : 3;
+      });
+    });
+
+    return total;
+  }, [selectedCourses, selectedProgramCourses, requirementCoursesMap, programRequirementsMap, completedCourses]);
+
+  const requestedElectiveCredits = useMemo(() => {
+    return userElectives.reduce((sum, elective) => sum + elective.credits, 0);
+  }, [userElectives]);
+
+  const totalCreditsToComplete = useMemo(() => {
+    return remainingRequirementCredits + requestedElectiveCredits;
+  }, [remainingRequirementCredits, requestedElectiveCredits]);
+
   // Ensure state array length matches dropdown count
   const ensureSlots = useCallback((subtitle: string, count: number) => {
     setSelectedCourses(prev => {
@@ -813,7 +934,7 @@ export default function CourseSelectionForm({
 
             if (transcriptMatch && (!next[index] || next[index].trim() === '')) {
               next[index] = reqCourse.code;
-              newCompletedCourses.add(reqCourse.code);
+              newCompletedCourses.add(normalizeCourseCode(reqCourse.code));
             }
           });
 
@@ -845,7 +966,7 @@ export default function CourseSelectionForm({
                 if (transcriptMatch && (!next[index] || next[index].trim() === '')) {
                   next[index] = reqCourse.code || '';
                   if (reqCourse.code) {
-                    newCompletedCourses.add(reqCourse.code);
+                    newCompletedCourses.add(normalizeCourseCode(reqCourse.code));
                   }
                 }
               });
@@ -876,7 +997,7 @@ export default function CourseSelectionForm({
                   if (transcriptMatch && (!next[index] || next[index].trim() === '')) {
                     next[index] = reqCourse.code || '';
                     if (reqCourse.code) {
-                      newCompletedCourses.add(reqCourse.code);
+                      newCompletedCourses.add(normalizeCourseCode(reqCourse.code));
                     }
                   }
                 });
@@ -1291,10 +1412,14 @@ export default function CourseSelectionForm({
         }),
         genEdDistribution,
         totalSelectedCredits,
+        remainingRequirementCredits,
+        requestedElectiveCredits,
+        totalCreditsToComplete,
       };
 
       // Type assertion: AI mode intentionally has different shape than schema
       // We cast through 'unknown' to bypass strict type checking since AI mode is a special case
+      if (isReadOnly) return;
       onSubmit(aiModeData as unknown as CourseSelectionInput);
       return;
     }
@@ -1397,8 +1522,12 @@ export default function CourseSelectionForm({
       }),
       genEdDistribution,
       totalSelectedCredits,
+      remainingRequirementCredits,
+      requestedElectiveCredits,
+      totalCreditsToComplete,
     };
 
+    if (isReadOnly) return;
     onSubmit(courseSelectionData);
   };
 
@@ -1422,7 +1551,7 @@ export default function CourseSelectionForm({
   }
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
       <div className="mb-4">
         <h3 className="text-base font-semibold flex items-center gap-2">
           <BookOpen size={18} />
@@ -1439,48 +1568,50 @@ export default function CourseSelectionForm({
         </p>
       </div>
 
-      {/* Quick Course Search - Top */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800 rounded-lg">
-        <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Search size={16} />
-          Quick Course Search
-        </h4>
-        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-          Search for any course by code (e.g., TMA 101, CS 235) or name (e.g., Intro to Film) and add it to your plan
-        </p>
-        <CourseSearch
-          universityId={universityId}
-          onSelect={handleAddElective}
-          placeholder="Search by course code or name..."
-          size="small"
-          fullWidth
-        />
-        {userElectives.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {userElectives.map((elective) => (
-              <Chip
-                key={elective.id}
-                label={`${elective.code} — ${elective.title} (${elective.credits} cr)`}
-                onDelete={() => handleRemoveElective(elective.id)}
-                deleteIcon={<X size={14} />}
-                size="small"
-                sx={{
-                  backgroundColor: 'var(--primary)',
-                  color: '#ffffff',
-                  '& .MuiChip-deleteIcon': {
+      {quickCourseSearchEnabled && (
+        // TODO(grad-plan): quick course search is feature-flagged until reliability issues are resolved.
+        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800 rounded-lg">
+          <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Search size={16} />
+            Quick Course Search
+          </h4>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+            Search for any course by code (e.g., TMA 101, CS 235) or name (e.g., Intro to Film) and add it to your plan
+          </p>
+          <CourseSearch
+            universityId={universityId}
+            onSelect={handleAddElective}
+            placeholder="Search by course code or name..."
+            size="small"
+            fullWidth
+          />
+          {userElectives.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {userElectives.map((elective) => (
+                <Chip
+                  key={elective.id}
+                  label={`${elective.code} — ${elective.title} (${elective.credits} cr)`}
+                  onDelete={() => handleRemoveElective(elective.id)}
+                  deleteIcon={<X size={14} />}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'var(--primary)',
                     color: '#ffffff',
-                  },
-                }}
-              />
-            ))}
-          </div>
-        )}
-        {electiveError && (
-          <Alert severity="warning" sx={{ mt: 2, fontSize: '0.75rem' }}>
-            {electiveError}
-          </Alert>
-        )}
-      </div>
+                    '& .MuiChip-deleteIcon': {
+                      color: '#ffffff',
+                    },
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {electiveError && (
+            <Alert severity="warning" sx={{ mt: 2, fontSize: '0.75rem' }}>
+              {electiveError}
+            </Alert>
+          )}
+        </div>
+      )}
 
       {/* Course Selection Method Preference */}
       <div className="mb-4 flex justify-center">
@@ -1704,7 +1835,7 @@ export default function CourseSelectionForm({
                 const hasCompletedFromAutoMatch = completedRequirementKeys.has(req.subtitle);
                 const selectedCoursesForReq = selectedCourses[req.subtitle] || [];
                 const hasCompletedSelected = selectedCoursesForReq.some((courseCode: string) =>
-                  courseCode && completedCourses.has(courseCode)
+                  courseCode && completedCourses.has(normalizeCourseCode(courseCode))
                 );
                 const hasCompletedCourse = hasCompletedFromAutoMatch || hasCompletedSelected;
 
@@ -1775,6 +1906,7 @@ export default function CourseSelectionForm({
                               recommendations={recommendations}
                               dropdownCount={courses.length}
                               onCourseSelect={(courseCode) => handleCourseSelection(req.subtitle, 0, courseCode)}
+                              readOnly={isReadOnly}
                             />
                           </div>
                         )}
@@ -1873,7 +2005,7 @@ export default function CourseSelectionForm({
                                       .sort((a, b) => a.code.localeCompare(b.code))
                                       .filter(c => !otherSelectedCourses.includes(c.code))
                                       .map((c, courseIdx) => {
-                                        const isCompleted = completedCourses.has(c.code);
+                                        const isCompleted = completedCourses.has(normalizeCourseCode(c.code));
                                         // Get other programs/requirements this course fulfills
                                         const otherFulfillments = (courseToProgramsMap.get(c.code) || [])
                                           .filter(f => f.requirementDesc !== req.subtitle); // Exclude current requirement
@@ -2049,6 +2181,7 @@ export default function CourseSelectionForm({
                                 recommendations={progRecommendations}
                                 dropdownCount={validCourses.length}
                                 onCourseSelect={(courseCode) => handleProgramCourseSelection(requirementKey, 0, courseCode)}
+                                readOnly={isReadOnly}
                               />
                             </div>
                           )}
@@ -2142,7 +2275,7 @@ export default function CourseSelectionForm({
                                         .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
                                         .filter(c => !otherSelectedCourses.includes(c.code || ''))
                                         .map((c) => {
-                                          const isCompleted = c.code && completedCourses.has(c.code);
+                                          const isCompleted = c.code && completedCourses.has(normalizeCourseCode(c.code));
                                           // Get other programs/requirements this course fulfills
                                           const otherFulfillments = c.code ? (courseToProgramsMap.get(c.code) || [])
                                             .filter(f => f.requirementDesc !== req.description) : []; // Exclude current requirement

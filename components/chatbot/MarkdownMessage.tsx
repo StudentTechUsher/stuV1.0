@@ -1,16 +1,33 @@
 'use client';
 
 import React from 'react';
+import AgentFeedback from '@/components/grad-plan/agentic/AgentFeedback';
+
+interface DecisionMeta {
+  title?: string;
+  badges?: string[];
+  evidence?: string[];
+}
 
 interface MarkdownMessageProps {
   content: string;
+  decisionMeta?: DecisionMeta;
+  showFeedback?: boolean;
+  feedbackReasons?: string[];
+  onFeedback?: (value: 'up' | 'down', reason?: string) => void;
 }
 
 /**
  * Simple markdown renderer for chat messages
  * Supports: **bold**, *italic*, bullet lists, numbered lists
  */
-export default function MarkdownMessage({ content }: Readonly<MarkdownMessageProps>) {
+export default function MarkdownMessage({
+  content,
+  decisionMeta,
+  showFeedback,
+  feedbackReasons,
+  onFeedback,
+}: Readonly<MarkdownMessageProps>) {
   const parseMarkdown = (text: string) => {
     const lines = text.split('\n');
     const elements: React.ReactNode[] = [];
@@ -140,5 +157,42 @@ export default function MarkdownMessage({ content }: Readonly<MarkdownMessagePro
     return elements;
   };
 
-  return <div className="text-sm">{parseMarkdown(content)}</div>;
+  return (
+    <div className="text-sm space-y-3">
+      {decisionMeta && (
+        <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {decisionMeta.title || 'Decision summary'}
+            </p>
+            {decisionMeta.badges && decisionMeta.badges.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {decisionMeta.badges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-foreground"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {decisionMeta.evidence && decisionMeta.evidence.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {decisionMeta.evidence.map((item) => (
+                <span key={item} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                  {item}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <div>{parseMarkdown(content)}</div>
+      {showFeedback && (
+        <AgentFeedback onFeedback={onFeedback} reasons={feedbackReasons} compact />
+      )}
+    </div>
+  );
 }

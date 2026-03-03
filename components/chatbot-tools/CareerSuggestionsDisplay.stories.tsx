@@ -53,3 +53,24 @@ export const Default: Story = {
     },
   },
 };
+
+export const VersionB_ReadOnly: Story = {
+  args: {
+    ...Default.args,
+    readOnly: true,
+  },
+};
+
+/**
+ * Dark mode preview
+ */
+export const DarkMode: Story = {
+  ...Default,
+  globals: {
+    colorMode: 'dark',
+  },
+  parameters: {
+    ...(Default.parameters ?? {}),
+    backgrounds: { default: 'dark' },
+  },
+};

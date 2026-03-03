@@ -21,6 +21,8 @@ interface ProfileUpdateFormProps {
   onSubmit: (data: ProfileUpdateInput) => void;
   onSkip?: () => void;
   onCareerPathfinderClick?: (industries?: string) => void;
+  readOnly?: boolean;
+  reviewMode?: boolean;
 }
 
 const SEMESTER_OPTIONS = ['Winter', 'Spring', 'Summer', 'Fall'] as const;
@@ -80,8 +82,11 @@ export default function ProfileUpdateForm({
   onSubmit,
   onSkip,
   onCareerPathfinderClick,
+  readOnly,
+  reviewMode,
 }: Readonly<ProfileUpdateFormProps>) {
   const currentYear = new Date().getFullYear();
+  const isReadOnly = Boolean(readOnly || reviewMode);
 
   // Initialize from currentValues if available
   const initialData = useMemo(() => {
@@ -115,6 +120,7 @@ export default function ProfileUpdateForm({
 
   // Fetch gen-ed programs when entering admission step
   useEffect(() => {
+    if (isReadOnly) return;
     if (step === 'admission' && universityId && genEdPrograms.length === 0) {
       setLoadingGenEds(true);
       fetchProgramsByType(universityId, 'gen_ed')
@@ -127,7 +133,7 @@ export default function ProfileUpdateForm({
         })
         .finally(() => setLoadingGenEds(false));
     }
-  }, [step, universityId, genEdPrograms.length]);
+  }, [step, universityId, genEdPrograms.length, isReadOnly]);
 
   // Generate year options (current year to 10 years from now)
   const yearOptions = useMemo(() => {
@@ -153,6 +159,7 @@ export default function ProfileUpdateForm({
   const isCareerValid = careerGoals.trim().length > 0;
 
   const handleGraduationContinue = () => {
+    if (isReadOnly) return;
     if (isGraduationValid) {
       // Move to admission info step
       setStep('admission');
@@ -160,6 +167,7 @@ export default function ProfileUpdateForm({
   };
 
   const handleAdmissionContinue = () => {
+    if (isReadOnly) return;
     if (admissionYear && selectedGenEdProgramId !== null) {
       // Submit graduation and admission info together
       const gradDate = calculateGraduationDate(semester, Number(year));
@@ -178,6 +186,7 @@ export default function ProfileUpdateForm({
   };
 
   const handleIndustryChoice = (choice: 'select' | 'know' | 'keep') => {
+    if (isReadOnly) return;
     if (choice === 'select') {
       setStep('industry-selection');
     } else if (choice === 'keep') {
@@ -193,6 +202,7 @@ export default function ProfileUpdateForm({
   };
 
   const handleIndustryToggle = (industry: string) => {
+    if (isReadOnly) return;
     setSelectedIndustries(prev => {
       const newSelection = prev.includes(industry)
         ? prev.filter(i => i !== industry)
@@ -203,6 +213,7 @@ export default function ProfileUpdateForm({
   };
 
   const handleIndustryContinue = () => {
+    if (isReadOnly) return;
     if (isIndustryValid && onCareerPathfinderClick) {
       // User selected industry, trigger career pathfinder with context
       const industries = selectedIndustries.length > 0
@@ -213,6 +224,7 @@ export default function ProfileUpdateForm({
   };
 
   const handleFinalSubmit = () => {
+    if (isReadOnly) return;
     if (!isCareerValid) return;
 
     // Only submit career goals (graduation was already submitted)
@@ -224,7 +236,7 @@ export default function ProfileUpdateForm({
   // Step 1: Graduation Date & Semester
   if (step === 'graduation') {
     return (
-      <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-5 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-4">
           <h3 className="text-lg font-semibold">When do you plan to graduate?</h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -310,8 +322,8 @@ export default function ProfileUpdateForm({
       return parts.join(' • ');
     };
 
-    return (
-      <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
+  return (
+    <div className={`my-4 p-5 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-4">
           <h3 className="text-lg font-semibold">When were you admitted?</h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -397,7 +409,7 @@ export default function ProfileUpdateForm({
     const hasExistingCareerGoal = currentValues.career_goals && currentValues.career_goals.trim().length > 0;
 
     return (
-      <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-5 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-4">
           <h3 className="text-lg font-semibold">
             {hasExistingCareerGoal ? 'Do you want to update your career goal?' : 'Do you know what career you want?'}
@@ -469,7 +481,7 @@ export default function ProfileUpdateForm({
   // Step 4: Industry Selection
   if (step === 'industry-selection') {
     return (
-      <div className="my-4 p-5 border rounded-xl bg-card shadow-sm">
+      <div className={`my-4 p-5 border rounded-xl bg-card shadow-sm ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
         <div className="mb-4">
           <h3 className="text-lg font-semibold">Which industry interests you?</h3>
           <p className="text-sm text-muted-foreground mt-1">

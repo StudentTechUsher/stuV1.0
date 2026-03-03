@@ -99,9 +99,10 @@ interface SidebarProps {
   onSignOut: () => void;
   role?: Role;
   onOpenChat?: () => void;
+  onWidthChange?: (width: number) => void;
 }
 
-export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
+export function Sidebar({ items, onSignOut, role, onOpenChat, onWidthChange }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -119,6 +120,10 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
     }
   }, []);
 
+  const profileItem = useMemo(() => {
+    return items.find((item) => item.href === '/profile' || item.segment === 'profile');
+  }, [items]);
+
   // Persist state to localStorage
   useEffect(() => {
     if (mounted) {
@@ -128,11 +133,12 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
 
   // Group items by section
   const groupedItems = useMemo(() => {
+    const itemsWithoutProfile = items.filter((item) => item.href !== profileItem?.href);
     return {
-      primary: items.filter(item => item.section === 'primary'),
-      secondary: items.filter(item => item.section === 'secondary'),
+      primary: itemsWithoutProfile.filter(item => item.section === 'primary'),
+      secondary: itemsWithoutProfile.filter(item => item.section === 'secondary'),
     };
-  }, [items]);
+  }, [items, profileItem?.href]);
 
   const portalLinks = useMemo(() => {
     const subdomain = university?.subdomain?.toLowerCase() ?? '';
@@ -144,7 +150,11 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
   const sidebarWidth = isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
 
   const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
+    setIsExpanded((prev) => {
+      const next = !prev;
+      onWidthChange?.(next ? EXPANDED_WIDTH : COLLAPSED_WIDTH);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -166,7 +176,11 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
           // Don't toggle if clicking on interactive elements (links, buttons, icon spans)
           const isInteractive = target.closest('a') || target.closest('button') || target.closest('span[role="tooltip"]');
           if (!isInteractive) {
-            setIsExpanded(!isExpanded);
+            setIsExpanded((prev) => {
+              const next = !prev;
+              onWidthChange?.(next ? EXPANDED_WIDTH : COLLAPSED_WIDTH);
+              return next;
+            });
           }
         }}
       >
@@ -296,6 +310,18 @@ export function Sidebar({ items, onSignOut, role, onOpenChat }: SidebarProps) {
             )}
 
             <ul className="space-y-1">
+              {/* Profile (all roles, if present in nav items) */}
+              {profileItem && (
+                <li>
+                  <NavItem
+                    item={{ ...profileItem, section: 'bottom' }}
+                    isActive={pathname === profileItem.href}
+                    isExpanded={isExpanded}
+                    isDark={isDark}
+                  />
+                </li>
+              )}
+
               {/* AI Assistant (only for students) */}
               {role === 'student' && onOpenChat && (
                 <li>

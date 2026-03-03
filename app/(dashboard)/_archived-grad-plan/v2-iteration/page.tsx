@@ -30,11 +30,11 @@ export default async function GradPlan2Page() {
   const prompt = (await GetAiPrompt('organize_grad_plan')) ?? '';
 
   // Find active plan, or fallback to most recent plan
-  let activePlan = allGradPlans.find(plan => plan.is_active) || null;
+  let activePlan = allGradPlans.find((plan: { is_active: boolean }) => plan.is_active) || null;
 
   // If no active plan, get most recent one
   if (!activePlan && allGradPlans.length > 0) {
-    activePlan = allGradPlans.sort((a, b) =>
+    activePlan = allGradPlans.sort((a: { created_at: string }, b: { created_at: string }) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )[0];
   }

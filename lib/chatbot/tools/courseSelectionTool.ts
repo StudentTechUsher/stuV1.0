@@ -36,6 +36,9 @@ export const CourseSelectionSchema = z.object({
   userAddedElectives: z.array(CourseEntrySchema).optional(),
   genEdDistribution: z.enum(['early', 'balanced']).optional(),
   totalSelectedCredits: z.number().optional(),
+  remainingRequirementCredits: z.number().optional(),
+  requestedElectiveCredits: z.number().optional(),
+  totalCreditsToComplete: z.number().optional(),
 });
 
 export type CourseSelectionInput = z.infer<typeof CourseSelectionSchema>;
@@ -162,6 +165,18 @@ export const courseSelectionToolDefinition = {
             },
             required: ['code', 'title', 'credits'],
           },
+        },
+        remainingRequirementCredits: {
+          type: 'number',
+          description: 'Credits still needed for required program/gen-ed requirements after transcript fulfillment',
+        },
+        requestedElectiveCredits: {
+          type: 'number',
+          description: 'Credits requested from user-added elective courses',
+        },
+        totalCreditsToComplete: {
+          type: 'number',
+          description: 'Total remaining credits to complete (remainingRequirementCredits + requestedElectiveCredits)',
         },
       },
       required: ['selectionMode', 'programs'],

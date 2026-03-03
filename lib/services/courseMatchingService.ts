@@ -49,7 +49,8 @@ interface FlattenedRequirementCourse {
 /**
  * Normalizes a course code for comparison (removes spaces, hyphens, converts to uppercase)
  */
-function normalizeCourseCode(code: string): string {
+function normalizeCourseCode(code: string | null | undefined): string {
+  if (!code) return '';
   return code.replace(/[\s-]/g, '').toUpperCase();
 }
 
@@ -58,7 +59,8 @@ function normalizeCourseCode(code: string): string {
  * E.g., "CS 142" -> "CS", "MATH 110" -> "MATH", "M COM 320" -> "MCOM", "REL A 275" -> "RELA"
  * Handles subjects with spaces by removing them for comparison
  */
-function extractSubject(code: string): string {
+function extractSubject(code: string | null | undefined): string {
+  if (!code) return '';
   // Remove spaces and extract letters before the first digit
   const normalized = code.replace(/[\s-]/g, '');
   const match = normalized.match(/^([A-Z]+)/i);

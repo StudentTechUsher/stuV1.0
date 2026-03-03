@@ -12,31 +12,11 @@
 import type { ParsedCourse } from './userCoursesService';
 import type { ProgramRow } from '@/types/program';
 import type { Course as RequirementCourse } from '@/types/programRequirements';
-import { auditProgram, type RequirementAuditResult } from './degreeAuditService';
+import { auditProgram } from './degreeAuditService';
+import type { RequirementAuditResult } from '@/types/degree-audit';
 import { fetchProgramsBatch, GetGenEdsForUniversity } from './programService';
 import { matchCoursesToProgram } from './courseMatchingService';
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export interface CourseWithAnnotation {
-  course: ParsedCourse;
-  isDoubleCount: boolean;
-  doubleCountsWith: string[];  // Program names this course satisfies
-  satisfiesRequirements: string[];  // Requirement IDs
-}
-
-export interface MajorComparisonResult {
-  program: ProgramRow;
-  percentComplete: number;
-  requirementsSatisfied: number;
-  totalRequirements: number;
-  coursesThatCount: CourseWithAnnotation[];
-  stillNeeded: RequirementCourse[];
-  notUsed: ParsedCourse[];
-  auditDetails: RequirementAuditResult[];
-}
+import type { CourseWithAnnotation, MajorComparisonResult } from '@/types/major-comparison';
 
 // ============================================================================
 // DOUBLE-COUNTING DETECTION

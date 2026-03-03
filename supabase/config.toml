@@ -10,12 +10,12 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [studio]
 enabled = true
 port = 54323
-api_url = "http://100.74.72.81:54321"
+api_url = "http://127.0.0.1:54321"
 
 [inbucket]
 enabled = true
@@ -41,4 +41,8 @@ enable_confirmations = true
 
 # OAuth providers can be configured later
 [auth.external.google]
+enabled = false
+
+# Disable analytics/vector service (optional - used for logging)
+[analytics]
 enabled = false
