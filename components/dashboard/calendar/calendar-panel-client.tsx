@@ -108,38 +108,40 @@ function convertSchedulerEventsToCalendarEvents(schedulerEvents: SchedulerEvent[
   const currentWeekStart = new Date(today);
   currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Get Monday of current week
 
-  return schedulerEvents
-    .map((event) => {
-      const startParts = parseTimeParts(event.startTime);
-      const endParts = parseTimeParts(event.endTime);
-      if (!startParts || !endParts) {
-        console.warn("[calendar] Skipping event with invalid time value", event);
-        return null;
-      }
+  const convertedEvents: CalendarEvent[] = [];
 
-      const eventDate = new Date(currentWeekStart);
-      eventDate.setDate(currentWeekStart.getDate() + (event.dayOfWeek - 1)); // Convert to actual date
+  for (const event of schedulerEvents) {
+    const startParts = parseTimeParts(event.startTime);
+    const endParts = parseTimeParts(event.endTime);
+    if (!startParts || !endParts) {
+      console.warn("[calendar] Skipping event with invalid time value", event);
+      continue;
+    }
 
-      const startDateTime = new Date(eventDate);
-      const endDateTime = new Date(eventDate);
+    const eventDate = new Date(currentWeekStart);
+    eventDate.setDate(currentWeekStart.getDate() + (event.dayOfWeek - 1)); // Convert to actual date
 
-      startDateTime.setHours(startParts.hour, startParts.minute, 0, 0);
-      endDateTime.setHours(endParts.hour, endParts.minute, 0, 0);
+    const startDateTime = new Date(eventDate);
+    const endDateTime = new Date(eventDate);
 
-      if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime())) {
-        console.warn("[calendar] Skipping event with invalid Date after parsing", event);
-        return null;
-      }
+    startDateTime.setHours(startParts.hour, startParts.minute, 0, 0);
+    endDateTime.setHours(endParts.hour, endParts.minute, 0, 0);
 
-      return {
-        id: event.id,
-        title: event.course_code || event.title,
-        start: startDateTime.toISOString(),
-        end: endDateTime.toISOString(),
-        status: event.status || (event.type === "personal" ? "blocked" : "registered"),
-      };
-    })
-    .filter((event): event is CalendarEvent => Boolean(event));
+    if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime())) {
+      console.warn("[calendar] Skipping event with invalid Date after parsing", event);
+      continue;
+    }
+
+    convertedEvents.push({
+      id: event.id,
+      title: event.course_code || event.title,
+      start: startDateTime.toISOString(),
+      end: endDateTime.toISOString(),
+      status: event.status || (event.type === "personal" ? "blocked" : "registered"),
+    });
+  }
+
+  return convertedEvents;
 }
 
 export default function CalendarPanelClient({

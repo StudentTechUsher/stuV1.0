@@ -73,20 +73,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: student, error: studentError } = await supabase
-      .from('student')
-      .select('id')
-      .eq('profile_id', user.id)
-      .single();
-
-    if (studentError || !student) {
-      console.error('Failed to fetch student record:', studentError);
-      return NextResponse.json({ error: 'Student record not found' }, { status: 404 });
-    }
-
     const { data: gradPlan, error: fetchError } = await supabase
       .from('grad_plan')
-      .select('plan_details, student_id')
+      .select('plan_details, profile_id')
       .eq('id', gradPlanId)
       .single();
 
@@ -95,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Grad plan not found' }, { status: 404 });
     }
 
-    if (gradPlan.student_id !== student.id) {
+    if (gradPlan.profile_id !== user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

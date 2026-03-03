@@ -288,22 +288,10 @@ export async function updateStudentGradPlanAction(gradPlanId: string, planDetail
             return { success: false, error: 'Not authenticated' };
         }
 
-        // Get student_id from profile
-        const { data: studentData, error: studentError } = await supabaseSrv
-            .from('student')
-            .select('id')
-            .eq('profile_id', user.id)
-            .single();
-
-        if (studentError || !studentData) {
-            console.error('Error fetching student record:', studentError);
-            return { success: false, error: 'Student record not found' };
-        }
-
         // Verify the student owns this grad plan
         const { data: gradPlan, error: planError } = await supabaseSrv
             .from('grad_plan')
-            .select('student_id')
+            .select('profile_id')
             .eq('id', gradPlanId)
             .single();
 
@@ -312,7 +300,7 @@ export async function updateStudentGradPlanAction(gradPlanId: string, planDetail
             return { success: false, error: 'Graduation plan not found' };
         }
 
-        if (gradPlan.student_id !== studentData.id) {
+        if (gradPlan.profile_id !== user.id) {
             return { success: false, error: 'Not authorized to edit this plan' };
         }
 
@@ -337,20 +325,8 @@ export async function setGradPlanActiveAction(gradPlanId: string) {
             return { success: false, error: 'Not authenticated' };
         }
 
-        // Get student_id from profile
-        const { data: studentData, error: studentError } = await supabaseSrv
-            .from('student')
-            .select('id')
-            .eq('profile_id', user.id)
-            .single();
-
-        if (studentError || !studentData) {
-            console.error('Error fetching student record:', studentError);
-            return { success: false, error: 'Student record not found' };
-        }
-
         // Call the service function
-        return await setGradPlanActive(gradPlanId, studentData.id);
+        return await setGradPlanActive(gradPlanId, user.id);
     } catch (error) {
         console.error('Error setting active grad plan:', error);
         return { success: false, error: 'Failed to set active graduation plan' };
@@ -434,7 +410,7 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
 
         const { data: planRecord, error: planError } = await supabaseSrv
             .from('grad_plan')
-            .select('student_id')
+            .select('profile_id')
             .eq('id', gradPlanId)
             .maybeSingle();
 
@@ -445,17 +421,8 @@ export async function updateGradPlanNameAction(gradPlanId: string, planName: str
 
         // Students can only rename their own plans
         const isStudent = await hasRole(user.id, 'student');
-        if (isStudent) {
-            const { data: studentData, error: studentError } = await supabaseSrv
-                .from('student')
-                .select('id')
-                .eq('profile_id', user.id)
-                .maybeSingle();
-
-            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
-                console.error('❌ Student authorization error:', studentError);
-                return { success: false, error: 'Not authorized to rename this plan' };
-            }
+        if (isStudent && planRecord.profile_id !== user.id) {
+            return { success: false, error: 'Not authorized to rename this plan' };
         }
 
         const result = await _updateGradPlanName(gradPlanId, sanitizedName);
@@ -492,7 +459,7 @@ export async function deleteGradPlanAction(gradPlanId: string) {
 
         const { data: planRecord, error: planError } = await supabaseSrv
             .from('grad_plan')
-            .select('student_id, is_active')
+            .select('profile_id, is_active')
             .eq('id', gradPlanId)
             .maybeSingle();
 
@@ -502,16 +469,8 @@ export async function deleteGradPlanAction(gradPlanId: string) {
 
         // Students can only delete their own plans
         const isStudent = await hasRole(user.id, 'student');
-        if (isStudent) {
-            const { data: studentData, error: studentError } = await supabaseSrv
-                .from('student')
-                .select('id')
-                .eq('profile_id', user.id)
-                .maybeSingle();
-
-            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
-                return { success: false, error: 'Not authorized to delete this plan' };
-            }
+        if (isStudent && planRecord.profile_id !== user.id) {
+            return { success: false, error: 'Not authorized to delete this plan' };
         }
 
         // Call the service function to delete
@@ -546,7 +505,7 @@ export async function setActiveTermAction(gradPlanId: string, termIndex: number)
 
         const { data: planRecord, error: planError } = await supabaseSrv
             .from('grad_plan')
-            .select('student_id')
+            .select('profile_id')
             .eq('id', gradPlanId)
             .maybeSingle();
 
@@ -556,16 +515,8 @@ export async function setActiveTermAction(gradPlanId: string, termIndex: number)
 
         // Students can only modify their own plans
         const isStudent = await hasRole(user.id, 'student');
-        if (isStudent) {
-            const { data: studentData, error: studentError } = await supabaseSrv
-                .from('student')
-                .select('id')
-                .eq('profile_id', user.id)
-                .maybeSingle();
-
-            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
-                return { success: false, error: 'Not authorized to modify this plan' };
-            }
+        if (isStudent && planRecord.profile_id !== user.id) {
+            return { success: false, error: 'Not authorized to modify this plan' };
         }
 
         // Call the service function to set active term
@@ -600,7 +551,7 @@ export async function updateTermTitleAction(gradPlanId: string, termIndex: numbe
 
         const { data: planRecord, error: planError } = await supabaseSrv
             .from('grad_plan')
-            .select('student_id')
+            .select('profile_id')
             .eq('id', gradPlanId)
             .maybeSingle();
 
@@ -610,16 +561,8 @@ export async function updateTermTitleAction(gradPlanId: string, termIndex: numbe
 
         // Students can only modify their own plans
         const isStudent = await hasRole(user.id, 'student');
-        if (isStudent) {
-            const { data: studentData, error: studentError } = await supabaseSrv
-                .from('student')
-                .select('id')
-                .eq('profile_id', user.id)
-                .maybeSingle();
-
-            if (studentError || !studentData || studentData.id !== planRecord.student_id) {
-                return { success: false, error: 'Not authorized to modify this plan' };
-            }
+        if (isStudent && planRecord.profile_id !== user.id) {
+            return { success: false, error: 'Not authorized to modify this plan' };
         }
 
         // Call the service function to update term title

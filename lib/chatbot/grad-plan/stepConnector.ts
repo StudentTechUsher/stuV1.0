@@ -15,6 +15,7 @@ import { updateState } from './stateManager';
 import { getNextStep } from './conversationState';
 import { getProgramSelectionConfirmationMessage } from '@/lib/chatbot/tools/programSelectionTool';
 import { countTotalCourses, countTotalCredits, getCourseSelectionConfirmationMessage } from '@/lib/chatbot/tools/courseSelectionTool';
+import type { CourseSelectionInput } from '@/lib/chatbot/tools/courseSelectionTool';
 import type { CourseSelection } from './types';
 import type { AcademicTermsConfig } from '@/lib/services/gradPlanGenerationService';
 
@@ -115,6 +116,68 @@ function resolveStudentType(
  */
 function getCareerSelectionConfirmationMessage(career: string): string {
   return `Great choice! ${career} is an exciting field with many opportunities.`;
+}
+
+function normalizeCourseCredits(credits: unknown): number {
+  if (typeof credits === 'number' && Number.isFinite(credits)) return credits;
+  if (typeof credits === 'string') {
+    const parsed = Number.parseFloat(credits);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function toFlatCourseSelections(courseData: CourseSelectionInput): CourseSelection[] {
+  const flattened: CourseSelection[] = [];
+  let index = 0;
+
+  const pushCourses = (args: {
+    requirementId: string;
+    selectedCourses: Array<{ code: string; title: string; credits: number | string }>;
+  }) => {
+    const { requirementId, selectedCourses } = args;
+    for (const course of selectedCourses) {
+      flattened.push({
+        courseId: `${requirementId}:${course.code}:${index}`,
+        courseCode: course.code,
+        courseTitle: course.title,
+        credits: normalizeCourseCredits(course.credits),
+        term: '',
+        fulfillsRequirements: [requirementId],
+      });
+      index += 1;
+    }
+  };
+
+  if (Array.isArray(courseData.generalEducation)) {
+    for (const requirement of courseData.generalEducation) {
+      if (!Array.isArray(requirement.selectedCourses)) continue;
+      pushCourses({
+        requirementId: requirement.requirementId || requirement.requirementDescription || 'gen_ed',
+        selectedCourses: requirement.selectedCourses,
+      });
+    }
+  }
+
+  const programs = Array.isArray(courseData.programs) ? courseData.programs : [];
+  for (const program of programs) {
+    for (const requirement of program.requirements) {
+      if (!Array.isArray(requirement.selectedCourses)) continue;
+      pushCourses({
+        requirementId: requirement.requirementId || requirement.requirementDescription || `program-${program.programId}`,
+        selectedCourses: requirement.selectedCourses,
+      });
+    }
+  }
+
+  if (Array.isArray(courseData.userAddedElectives)) {
+    pushCourses({
+      requirementId: 'user-elective',
+      selectedCourses: courseData.userAddedElectives,
+    });
+  }
+
+  return flattened;
 }
 
 // ============================================================================
@@ -436,6 +499,7 @@ function handleCourseSelection(
   context: StepConnectorContext
 ): StepTransition {
   const courseData = result;
+  const flattenedSelections = toFlatCourseSelections(courseData);
 
   // Count total courses
   const totalCourses = countTotalCourses(courseData);
@@ -454,7 +518,8 @@ function handleCourseSelection(
   const withSelection = updateState(withMethod, {
     step: ConversationStep.COURSE_SELECTION,
     data: {
-      selectedCourses: courseData as unknown as CourseSelection[],
+      selectedCourses: flattenedSelections,
+      selectedCoursePayload: courseData,
       totalSelectedCredits: courseData.totalSelectedCredits || 0,
       remainingCreditsToComplete: courseData.totalCreditsToComplete || courseData.remainingRequirementCredits || 0,
     },
@@ -483,7 +548,8 @@ function handleCourseSelection(
       step: nextState.currentStep,
       data: {
         courseSelectionMethod: 'manual',
-        selectedCourses: courseData as unknown as CourseSelection[],
+        selectedCourses: flattenedSelections,
+        selectedCoursePayload: courseData,
         totalSelectedCredits: legacyTotalSelectedCredits,
         remainingCreditsToComplete: resolvedTotalCredits,
       },
@@ -666,7 +732,7 @@ function handleGeneratePlanConfirmation(
       },
       nextTool: 'active_feedback_plan',
       nextToolData: {
-        courseData: withStartInfo.collectedData.selectedCourses,
+        courseData: withStartInfo.collectedData.selectedCoursePayload || withStartInfo.collectedData.selectedCourses,
         suggestedDistribution: withStartInfo.collectedData.creditDistributionStrategy?.suggestedDistribution,
         hasTranscript: withStartInfo.collectedData.hasTranscript ?? false,
         academicTermsConfig: context.academicTerms,

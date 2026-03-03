@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { getVerifiedUser } from '@/lib/supabase/auth';
 import {
   createOrReuseGenerationJob,
@@ -54,8 +54,12 @@ export async function POST(request: NextRequest) {
       inputPayload: inputPayload as Record<string, unknown>,
     });
 
-    void triggerGenerationJob(job.id).catch(error => {
-      console.error('Generation worker trigger failed:', error);
+    after(async () => {
+      try {
+        await triggerGenerationJob(job.id);
+      } catch (error) {
+        console.error('Generation worker trigger failed:', error);
+      }
     });
 
     return NextResponse.json(

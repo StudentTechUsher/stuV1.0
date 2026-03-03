@@ -67,22 +67,10 @@ async function handleAddCourseToTerm(request: NextRequest) {
       );
     }
 
-    // Get the student record for this user
-    const { data: student, error: studentError } = await supabase
-      .from('student')
-      .select('id')
-      .eq('profile_id', user.id)
-      .single();
-
-    if (studentError || !student) {
-      console.error('Failed to fetch student record:', studentError);
-      return NextResponse.json({ error: 'Student record not found' }, { status: 404 });
-    }
-
     // Fetch the grad plan
     const { data: gradPlan, error: fetchError } = await supabase
       .from('grad_plan')
-      .select('plan_details, student_id')
+      .select('plan_details, profile_id')
       .eq('id', gradPlanId)
       .single();
 
@@ -92,7 +80,7 @@ async function handleAddCourseToTerm(request: NextRequest) {
     }
 
     // Verify user owns this grad plan
-    if (gradPlan.student_id !== student.id) {
+    if (gradPlan.profile_id !== user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

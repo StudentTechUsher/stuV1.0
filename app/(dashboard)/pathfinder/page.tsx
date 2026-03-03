@@ -37,22 +37,15 @@ export default async function PathfinderPage() {
     redirect('/login');
   }
 
-  // Fetch student data to get student id
-  const { data: studentData } = await supabase
-    .from('student')
-    .select('id, profile_id')
-    .eq('profile_id', user.id)
-    .maybeSingle();
-
   // Fetch active grad plan and programs
   let currentPrograms: Array<{ id: number; name: string }> = [];
 
-  if (studentData?.id) {
-    // Fetch active grad plan
+  {
+    // Fetch active grad plan directly via profile_id
     const { data: gradPlan } = await supabase
       .from('grad_plan')
       .select('programs_in_plan')
-      .eq('student_id', studentData.id)
+      .eq('profile_id', user.id)
       .eq('is_active', true)
       .maybeSingle();
 

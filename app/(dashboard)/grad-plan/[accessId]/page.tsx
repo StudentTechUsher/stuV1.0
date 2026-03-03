@@ -25,7 +25,7 @@ interface GradPlanDetails {
   student_last_name: string;
   created_at: string;
   plan_details: unknown;
-  student_id: number;
+  profile_id: string;
   programs: Array<{ id: number; name: string }>;
   est_grad_sem?: string;
   est_grad_date?: string;
@@ -314,19 +314,11 @@ export default function EditGradPlanPage() {
           throw new Error('Graduation plan not found');
         }
 
-        // For students, verify they own this plan
-        if (role === "student") {
-          const { data: studentData, error: studentError } = await supabase
-            .from('student')
-            .select('id')
-            .eq('profile_id', session.user.id)
-            .single();
-
-          if (studentError || !studentData || studentData.id !== planData.student_id) {
-            clientLogger.warn('Access denied: Student does not own this plan', { action: 'EditGradPlanPage.checkUserAccess', userId: session.user.id, planId: planData.id });
-            router.push('/grad-plan');
-            return;
-          }
+        // For students, verify they own this plan via profile_id
+        if (role === "student" && planData.profile_id !== session.user.id) {
+          clientLogger.warn('Access denied: Student does not own this plan', { action: 'EditGradPlanPage.checkUserAccess', userId: session.user.id, planId: planData.id });
+          router.push('/grad-plan');
+          return;
         }
         setGradPlan(planData);
         setIsActivePlan(planData.is_active);

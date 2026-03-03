@@ -2,6 +2,8 @@ import { getVerifiedUser, getVerifiedUserProfile } from '@/lib/supabase/auth';
 import GradPlanClient from './grad-plan-client';
 import { GetAllGradPlans } from '@/lib/services/gradPlanService';
 import { GetAiPrompt } from '@/lib/services/aiDbService';
+import { fetchUserCoursesArray } from '@/lib/services/userCoursesService';
+import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
 
 // Force dynamic rendering for this page because it uses cookies
 export const dynamic = 'force-dynamic';
@@ -26,6 +28,12 @@ export default async function GradPlanPage() {
   // Get all graduation plans for this student
   const allGradPlans = userProfile.id ? await GetAllGradPlans(userProfile.id) : [];
 
+  // Get user's completed courses for the left panel
+  const supabase = await createSupabaseServerComponentClient();
+  const userCourses = userProfile.id
+    ? await fetchUserCoursesArray(supabase, userProfile.id)
+    : [];
+
   // Get AI prompt for organizing grad plan
   const prompt = (await GetAiPrompt('organize_grad_plan')) ?? '';
 
@@ -46,6 +54,7 @@ export default async function GradPlanPage() {
       gradPlan={activePlan}
       allGradPlans={allGradPlans}
       prompt={prompt}
+      userCourses={userCourses}
     />
   );
 }

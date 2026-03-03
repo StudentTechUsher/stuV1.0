@@ -3,6 +3,7 @@
  */
 
 import { SemesterAllocation } from '@/lib/services/gradPlanGenerationService';
+import type { CourseSelectionInput } from '@/lib/chatbot/tools/courseSelectionTool';
 
 // Conversation steps in the grad plan creation flow
 export enum ConversationStep {
@@ -113,6 +114,7 @@ export interface ConversationState {
     // Course selection
     courseSelectionMethod: CourseSelectionMethod | null;
     selectedCourses: CourseSelection[];
+    selectedCoursePayload?: CourseSelectionInput | null;
     totalSelectedCredits: number; // Total credits from course selection
     remainingCreditsToComplete: number; // Requirement-diff remaining credits used for distribution
 

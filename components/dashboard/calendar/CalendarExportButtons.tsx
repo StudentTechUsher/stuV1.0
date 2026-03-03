@@ -232,17 +232,17 @@ export function CalendarExportButtons({
       <div className="flex items-center gap-1">
         {showEditButton && (
           <Tooltip title="Edit Schedule" arrow>
-            <Link href="/course-scheduler">
-              <IconButton
-                size="small"
-                sx={{
-                  color: 'var(--primary)',
-                  '&:hover': { bgcolor: 'rgba(18, 249, 135, 0.1)' },
-                }}
-              >
-                <Pencil size={16} />
-              </IconButton>
-            </Link>
+            <IconButton
+              component={Link}
+              href="/course-scheduler"
+              size="small"
+              sx={{
+                color: 'var(--primary)',
+                '&:hover': { bgcolor: 'rgba(18, 249, 135, 0.1)' },
+              }}
+            >
+              <Pencil size={16} />
+            </IconButton>
           </Tooltip>
         )}
 

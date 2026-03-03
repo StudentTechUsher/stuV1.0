@@ -1,0 +1,3 @@
+display_name: Grad Plan V3 Heuristics
+short_description: Deterministic heuristic checks and repair triage for createV3 planning.
+default_prompt: Use deterministic validation first, then targeted repair hints by phase.

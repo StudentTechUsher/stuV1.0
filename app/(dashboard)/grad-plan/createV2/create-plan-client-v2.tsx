@@ -594,7 +594,18 @@ export default function CreatePlanClientV2({
   }, [clearGenerationRedirectTimer]);
 
   const buildGenerationInputPayload = useCallback(async (): Promise<Record<string, unknown>> => {
-    const courseData = conversationState.collectedData.selectedCourses || {};
+    const structuredCoursePayload = conversationState.collectedData.selectedCoursePayload;
+    const legacyCoursePayloadCandidate = conversationState.collectedData.selectedCourses as unknown;
+    const legacyCoursePayload =
+      legacyCoursePayloadCandidate &&
+      typeof legacyCoursePayloadCandidate === 'object' &&
+      !Array.isArray(legacyCoursePayloadCandidate)
+        ? legacyCoursePayloadCandidate as Record<string, unknown>
+        : null;
+    const courseData =
+      structuredCoursePayload && typeof structuredCoursePayload === 'object'
+        ? structuredCoursePayload as Record<string, unknown>
+        : legacyCoursePayload || {};
 
     let takenCourses: Array<{
       code: string;
@@ -627,13 +638,29 @@ export default function CreatePlanClientV2({
     }
 
     const programIds = conversationState.collectedData.selectedPrograms.map(p => p.programId);
+    const selectionModeRaw = typeof courseData.selectionMode === 'string'
+      ? courseData.selectionMode.toUpperCase()
+      : 'MANUAL';
+    const selectionMode =
+      selectionModeRaw === 'AI' || selectionModeRaw === 'AUTO'
+        ? 'AUTO'
+        : 'MANUAL';
+
+    const hasRequirementPayload =
+      Array.isArray(courseData.programs) ||
+      Array.isArray(courseData.generalEducation) ||
+      Array.isArray(courseData.userAddedElectives);
+
+    if (!hasRequirementPayload) {
+      throw new Error('Course selections are missing. Please return to Course Selection and submit your classes again.');
+    }
 
     return {
       ...courseData,
       takenCourses,
       studentType:
         conversationState.collectedData.studentType ?? resolveStudentType(studentProfile.student_type),
-      selectionMode: 'MANUAL' as const,
+      selectionMode,
       selectedPrograms: programIds,
       milestones: conversationState.collectedData.milestones || [],
       suggestedDistribution:

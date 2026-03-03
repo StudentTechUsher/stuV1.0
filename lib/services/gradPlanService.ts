@@ -22,31 +22,11 @@ export class DuplicatePlanNameError extends Error {
  */
 export async function GetAllGradPlans(profile_id: string) {
 
-  // First, get the student record to get the numeric student_id
-  const { data: studentData, error: studentError } = await supabase
-    .from('student')
-    .select('id')
-    .eq('profile_id', profile_id)
-    .single();
-
-  if (studentError) {
-    // PGRST116 means no rows returned - this is normal for new users
-    if (studentError.code === 'PGRST116') {
-      return [];
-    }
-    console.error('❌ Error fetching student record:', studentError);
-    return [];
-  }
-
-  if (!studentData) {
-    return [];
-  }
-
   // Get all grad plans for this student, ordered by creation date (newest first)
   const { data, error } = await supabase
     .from('grad_plan')
     .select('*')
-    .eq('student_id', studentData.id)
+    .eq('profile_id', profile_id)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -86,22 +66,11 @@ export async function GetAllGradPlans(profile_id: string) {
  * @returns boolean - true if user has an active plan
  */
 export async function checkUserHasActivePlan(profile_id: string): Promise<boolean> {
-  // First, get the student record to get the numeric student_id
-  const { data: studentData, error: studentError } = await supabase
-    .from('student')
-    .select('id')
-    .eq('profile_id', profile_id)
-    .single();
-
-  if (studentError || !studentData) {
-    return false;
-  }
-
   // Check if there's an active grad plan
   const { data, error } = await supabase
     .from('grad_plan')
     .select('id')
-    .eq('student_id', studentData.id)
+    .eq('profile_id', profile_id)
     .eq('is_active', true)
     .maybeSingle();
 
@@ -120,32 +89,12 @@ export async function checkUserHasActivePlan(profile_id: string): Promise<boolea
  * @returns
  */
 export async function GetActiveGradPlan(profile_id: string) {
-  
-  // First, get the student record to get the numeric student_id
-  const { data: studentData, error: studentError } = await supabase
-    .from('student')
-    .select('id')
-    .eq('profile_id', profile_id)
-    .single();
 
-  if (studentError) {
-    // PGRST116 means no rows returned - this is normal for new users
-    if (studentError.code === 'PGRST116') {
-      return null;
-    }
-    console.error('❌ Error fetching student record:', studentError);
-    return null;
-  }
-
-  if (!studentData) {
-    return null;
-  }
-
-  // Now get the active grad plan using the numeric student_id
+  // Get the active grad plan directly via profile_id
   const { data, error } = await supabase
     .from('grad_plan')
     .select('*')
-    .eq('student_id', studentData.id)
+    .eq('profile_id', profile_id)
     .eq('is_active', true)
     .single();
 
@@ -174,7 +123,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
     student_last_name: string;
     created_at: string;
     plan_details: unknown;
-    student_id: number;
+    profile_id: string;
     programs: Array<{ id: number; name: string }>;
     est_grad_sem?: string;
     est_grad_date?: string;
@@ -186,7 +135,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
         // 1. Base grad plan (no pending_approval filter so advisors/students can edit)
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('id, created_at, student_id, plan_details, programs_in_plan, advisor_notes, plan_name, is_active')
+            .select('id, created_at, profile_id, plan_details, programs_in_plan, advisor_notes, plan_name, is_active')
             .eq('id', gradPlanId)
             .single();
 
@@ -201,33 +150,22 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             throw new GradPlanNotFoundError();
         }
 
-        // 2. Student row (profile id)
-        const { data: studentData, error: studentError } = await supabase
-            .from('student')
-            .select('profile_id')
-            .eq('id', gradPlanData.student_id)
-            .single();
-        if (studentError) {
-            console.error('❌ Error fetching student record:', studentError);
-            throw new GradPlanFetchError('Failed to fetch related student record', studentError);
-        }
-
-        // 3. Profile names
+        // 2. Profile names (direct lookup via profile_id on grad_plan)
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('fname, lname')
-            .eq('id', studentData.profile_id)
+            .eq('id', gradPlanData.profile_id)
             .single();
         if (profileError) {
             console.error('❌ Error fetching profile data:', profileError);
             throw new GradPlanFetchError('Failed to fetch profile data', profileError);
         }
 
-        // 3b. Student graduation timeline
+        // 3. Student graduation timeline
         const { data: studentGradData, error: studentGradError } = await supabase
             .from('student')
             .select('est_grad_term, est_grad_date')
-            .eq('id', gradPlanData.student_id)
+            .eq('profile_id', gradPlanData.profile_id)
             .maybeSingle();
         if (studentGradError) {
             console.error('❌ Error fetching student graduation data:', studentGradError);
@@ -253,7 +191,7 @@ export async function fetchGradPlanForEditing(gradPlanId: string): Promise<{
             student_last_name: profileData.lname,
             created_at: gradPlanData.created_at,
             plan_details: gradPlanData.plan_details,
-            student_id: gradPlanData.student_id,
+            profile_id: gradPlanData.profile_id,
             programs,
             est_grad_sem: studentGradData?.est_grad_term || null,
             est_grad_date: studentGradData?.est_grad_date || null,
@@ -282,13 +220,13 @@ export async function fetchGradPlanById(gradPlanId: string): Promise<{
     student_last_name: string;
     created_at: string;
     plan_details: unknown;
-    student_id: number;
+    profile_id: string;
     programs: Array<{ id: number; name: string }>;
 } | null> {
     // First, get the grad plan
     const { data: gradPlanData, error: gradPlanError } = await supabase
         .from('grad_plan')
-        .select('id, created_at, student_id, plan_details, programs_in_plan')
+        .select('id, created_at, profile_id, plan_details, programs_in_plan')
         .eq('id', gradPlanId)
         .eq('pending_approval', true)
         .single();
@@ -302,23 +240,11 @@ export async function fetchGradPlanById(gradPlanId: string): Promise<{
         return null;
     }
 
-    // Get the student's profile_id
-    const { data: studentData, error: studentError } = await supabase
-        .from('student')
-        .select('profile_id')
-        .eq('id', gradPlanData.student_id)
-        .single();
-
-    if (studentError) {
-        console.error('❌ Error fetching student record:', studentError);
-        throw studentError;
-    }
-
-    // Get the profile data
+    // Get the profile data directly via profile_id on grad_plan
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('fname, lname')
-        .eq('id', studentData.profile_id)
+        .eq('id', gradPlanData.profile_id)
         .single();
 
     if (profileError) {
@@ -348,7 +274,7 @@ export async function fetchGradPlanById(gradPlanId: string): Promise<{
         student_last_name: profileData.lname || 'Unknown',
         created_at: gradPlanData.created_at,
         plan_details: gradPlanData.plan_details,
-        student_id: gradPlanData.student_id,
+        profile_id: gradPlanData.profile_id,
         programs: programs
     };
 }
@@ -362,12 +288,12 @@ export async function fetchPendingGradPlans(): Promise<Array<{
     student_first_name: string;
     student_last_name: string;
     created_at: string;
-    student_id: number;
+    profile_id: string;
   }>> {
-      // First, get all grad plans where pending_approval = true
+      // Get all grad plans where pending_approval = true
       const { data: gradPlansData, error: gradPlansError } = await supabase
           .from('grad_plan')
-          .select('id, created_at, student_id')
+          .select('id, created_at, profile_id')
           .eq('pending_approval', true)
           .order('created_at', { ascending: false });
 
@@ -380,35 +306,10 @@ export async function fetchPendingGradPlans(): Promise<Array<{
           return [];
       }
 
-      // Get unique student_ids
-      const studentIds = [...new Set(gradPlansData.map(plan => plan.student_id))];
-
-      // Get profile_ids for these students
-      const { data: studentsData, error: studentsError } = await supabase
-          .from('student')
-          .select('id, profile_id')
-          .in('id', studentIds);
-
-      if (studentsError) {
-          console.error('❌ Error fetching student records:', studentsError);
-          throw studentsError;
-      }
-
-      if (!studentsData || studentsData.length === 0) {
-          console.warn('⚠️ No student records found for grad plans');
-          return gradPlansData.map(plan => ({
-              id: plan.id,
-              student_first_name: 'Unknown',
-              student_last_name: 'Unknown',
-              created_at: plan.created_at,
-              student_id: plan.student_id
-          }));
-      }
-
       // Get unique profile_ids
-      const profileIds = [...new Set(studentsData.map(student => student.profile_id))];
+      const profileIds = [...new Set(gradPlansData.map(plan => plan.profile_id))];
 
-      // Get profile data (fname, lname)
+      // Get profile data (fname, lname) directly
       const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, fname, lname')
@@ -419,21 +320,18 @@ export async function fetchPendingGradPlans(): Promise<Array<{
           throw profilesError;
       }
 
-      // Create maps for efficient lookup
-      const studentMap = new Map(studentsData.map(student => [student.id, student.profile_id]));
       const profileMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
 
       // Transform the data to flatten the nested structure
       return gradPlansData.map(plan => {
-          const profileId = studentMap.get(plan.student_id);
-          const profile = profileId ? profileMap.get(profileId) : null;
+          const profile = profileMap.get(plan.profile_id);
 
           return {
               id: plan.id,
               student_first_name: profile?.fname || 'Unknown',
               student_last_name: profile?.lname || 'Unknown',
               created_at: plan.created_at,
-              student_id: plan.student_id
+              profile_id: plan.profile_id
           };
       });
 }
@@ -485,10 +383,10 @@ export async function approveGradPlan(
     try {
         console.log('✅ Approving grad plan:', { gradPlanId });
 
-        // First, get the grad plan to find the student_id
+        // First, get the grad plan to find the profile_id
         const { data: gradPlanData, error: gradPlanError } = await supabase
             .from('grad_plan')
-            .select('student_id')
+            .select('profile_id')
             .eq('id', gradPlanId)
             .single();
 
@@ -501,14 +399,14 @@ export async function approveGradPlan(
             return { success: false, error: 'Graduation plan not found' };
         }
 
-        const studentId = gradPlanData.student_id;
+        const profileId = gradPlanData.profile_id;
 
         // Start a transaction-like operation
         // First, set all existing active plans for this student to inactive
         const { error: deactivateError } = await supabase
             .from('grad_plan')
             .update({ is_active: false })
-            .eq('student_id', studentId)
+            .eq('profile_id', profileId)
             .eq('is_active', true);
 
         if (deactivateError) {
@@ -531,7 +429,7 @@ export async function approveGradPlan(
             return { success: false, error: approvalError.message };
         }
 
-        console.log('✅ Grad plan approved successfully:', { gradPlanId, studentId });
+        console.log('✅ Grad plan approved successfully:', { gradPlanId, profileId });
         return { success: true };
 
     } catch (error) {
@@ -554,22 +452,10 @@ export async function submitGradPlanForApproval(
     planName?: string
 ): Promise<{ success: boolean; message?: string; accessId?: string }> {
     try {
-        // First, get the student_id (number) from the students table using the profile_id (UUID)
-        const { data: studentData, error: studentError } = await supabase
-            .from('student')
-            .select('id')
-            .eq('profile_id', profileId)
-            .single();
-
-        if (studentError || !studentData?.id) {
-            console.error('Error fetching student_id from students table:', studentError);
-            throw new Error('Could not find student record');
-        }
-
         const { data, error } = await supabase
             .from('grad_plan')
             .insert({
-                student_id: studentData.id,
+                profile_id: profileId,
                 is_active: false,
                 plan_details: planDetails,
                 programs_in_plan: programIds,
@@ -715,10 +601,10 @@ export async function updateGradPlanName(
 
 /**
  * AUTHORIZED FOR STUDENTS AND ABOVE
- * Updates plan name with uniqueness check per owner (student).
- * Throws DuplicatePlanNameError if a plan with same name already exists for this student.
+ * Updates plan name with uniqueness check per owner (profile).
+ * Throws DuplicatePlanNameError if a plan with same name already exists for this profile.
  * @param gradPlanId - The ID of the graduation plan to update
- * @param studentId - The numeric student ID (owner of the plan)
+ * @param profileId - The profile UUID (owner of the plan)
  * @param planName - The new plan name
  * @returns The normalized/trimmed plan name if successful
  * @throws DuplicatePlanNameError if duplicate found
@@ -726,7 +612,7 @@ export async function updateGradPlanName(
  */
 export async function updateGradPlanNameWithUniquenessCheck(
     gradPlanId: string,
-    studentId: number,
+    profileId: string,
     planName: string
 ): Promise<string> {
     // Normalize: trim whitespace, collapse internal spaces
@@ -740,11 +626,11 @@ export async function updateGradPlanNameWithUniquenessCheck(
     }
 
     try {
-        // Check for duplicate (case-insensitive) among OTHER plans for this student
+        // Check for duplicate (case-insensitive) among OTHER plans for this profile
         const { data: existingPlans, error: checkError } = await supabase
             .from('grad_plan')
             .select('id')
-            .eq('student_id', studentId)
+            .eq('profile_id', profileId)
             .ilike('plan_name', normalized); // Case-insensitive comparison
 
         if (checkError) {
@@ -1054,25 +940,25 @@ export function recalculatePlanCompletion(planDetails: unknown): unknown {
 /**
  * AUTHORIZED FOR STUDENTS AND ABOVE
  * Sets a graduation plan as active for a student
- * Automatically deactivates any other active plans for the same student
+ * Automatically deactivates any other active plans for the same profile
  *
  * @param gradPlanId - The ID of the grad plan to set as active
- * @param studentId - The student ID (for verification)
+ * @param profileId - The profile UUID (for ownership verification)
  * @returns Success/error result with information about deactivated plans
  */
 export async function setGradPlanActive(
     gradPlanId: string,
-    studentId: number
+    profileId: string
 ): Promise<{
     success: boolean;
     error?: string;
     deactivatedPlanName?: string;
 }> {
     try {
-        // First, verify the plan exists and belongs to this student
+        // First, verify the plan exists and belongs to this profile
         const { data: planData, error: planError } = await supabase
             .from('grad_plan')
-            .select('id, student_id, plan_name')
+            .select('id, profile_id, plan_name')
             .eq('id', gradPlanId)
             .single();
 
@@ -1085,7 +971,7 @@ export async function setGradPlanActive(
         }
 
         // Verify ownership
-        if (planData.student_id !== studentId) {
+        if (planData.profile_id !== profileId) {
             return { success: false, error: 'Access denied: Plan belongs to another student' };
         }
 
@@ -1093,7 +979,7 @@ export async function setGradPlanActive(
         const { data: activePlan, error: activeError } = await supabase
             .from('grad_plan')
             .select('id, plan_name')
-            .eq('student_id', studentId)
+            .eq('profile_id', profileId)
             .eq('is_active', true)
             .maybeSingle();
 

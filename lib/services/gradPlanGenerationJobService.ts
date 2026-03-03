@@ -138,8 +138,46 @@ export async function createOrReuseGenerationJob(args: {
   }
 
   if (existing && existing.length > 0) {
+    const existingJob = existing[0] as JobRow;
+    const payloadChanged =
+      JSON.stringify(existingJob.input_payload || {}) !== JSON.stringify(inputPayload || {});
+
+    if (existingJob.status === 'queued' && payloadChanged) {
+      const now = new Date().toISOString();
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from('grad_plan_generation_jobs')
+        .update({
+          input_payload: inputPayload,
+          updated_at: now,
+          heartbeat_at: now,
+          error_message: null,
+        })
+        .eq('id', existingJob.id)
+        .eq('status', 'queued')
+        .select('*')
+        .maybeSingle();
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      const snapshotSource = (updated as JobRow | null) || existingJob;
+      await appendEvent({
+        jobId: snapshotSource.id,
+        eventType: 'job_progress',
+        phase: 'queued',
+        message: 'Updated queued job with latest course selections',
+        progressPercent: snapshotSource.progress_percent,
+      });
+
+      return {
+        job: toSnapshot(snapshotSource),
+        reused: true,
+      };
+    }
+
     return {
-      job: toSnapshot(existing[0] as JobRow),
+      job: toSnapshot(existingJob),
       reused: true,
     };
   }
@@ -507,15 +545,6 @@ async function persistFinalPlan(args: {
   finalPlan: Record<string, unknown>;
 }): Promise<{ accessId: string }> {
   const { userId, payload, finalPlan } = args;
-  const { data: studentData, error: studentError } = await supabaseAdmin
-    .from('student')
-    .select('id')
-    .eq('profile_id', userId)
-    .single();
-
-  if (studentError || !studentData?.id) {
-    throw new Error(studentError?.message || 'Could not find student record');
-  }
 
   const selectedPrograms = Array.isArray(payload.selectedPrograms)
     ? payload.selectedPrograms
@@ -529,11 +558,10 @@ async function persistFinalPlan(args: {
   };
 
   const { accessId } = await InsertGeneratedGradPlan({
-    studentId: studentData.id,
+    profileId: userId,
     planData: withMetadata,
     programsInPlan: selectedPrograms,
     isActive: false,
-    userId,
   });
 
   return { accessId };

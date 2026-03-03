@@ -60,7 +60,6 @@ export default function GradPlan2Client({
         showCreateButton={true}
         showEditButton={true}
         showPlanSelector={true}
-        showStatusBadge={true}
         studentProfile={studentProfile}
         onProfileUpdate={handleProfileUpdate}
       />

@@ -255,40 +255,17 @@ export async function GetGenEdsForUniversity(university_id: number) {
 
 export async function GetActiveGradPlan(profile_id: string) {
 
-  // First, get the student record to get the numeric student_id
-  const { data: studentData, error: studentError } = await supabase
-    .from('student')
-    .select('id')
-    .eq('profile_id', profile_id)
-    .single();
-
-  if (studentError) {
-    // PGRST116 means no rows returned - this is normal for new users
-    if (studentError.code === 'PGRST116') {
-      console.log('ℹ️ No student record found for profile_id:', profile_id, '(new user)');
-      return null;
-    }
-    console.error('❌ Error fetching student record:', studentError);
-    return null;
-  }
-
-  if (!studentData) {
-    console.log('ℹ️ No student data returned for profile_id:', profile_id);
-    return null;
-  }
-
-  // Now get the active grad plan using the numeric student_id
+  // Get the active grad plan directly via profile_id
   const { data, error } = await supabase
     .from('grad_plan')
     .select('*')
-    .eq('student_id', studentData.id)
+    .eq('profile_id', profile_id)
     .eq('is_active', true)
     .single();
 
   if (error) {
     // PGRST116 means no rows returned - this is normal for users without grad plans
     if (error.code === 'PGRST116') {
-      console.log('ℹ️ No active graduation plan found for student_id:', studentData.id, '(normal for new users)');
       return null;
     }
     console.error('❌ Error fetching active grad plan:', error);
@@ -296,7 +273,6 @@ export async function GetActiveGradPlan(profile_id: string) {
     return null;
   }
 
-  console.log('✅ Active graduation plan found for student_id:', studentData.id);
   return data;
 }
 
@@ -321,22 +297,10 @@ export async function submitGradPlanForApproval(
   planName?: string
 ): Promise<{ success: boolean; message: string; planId?: string }> {
   try {
-    // First, get the student_id (number) from the students table using the profile_id (UUID)
-    const { data: studentData, error: studentError } = await supabase
-      .from('student')
-      .select('id')
-      .eq('profile_id', profileId)
-      .single();
-
-    if (studentError || !studentData?.id) {
-      console.error('Error fetching student_id from students table:', studentError);
-      throw new Error('Could not find student record');
-    }
-
     const { data, error } = await supabase
       .from('grad_plan')
       .insert({
-        student_id: studentData.id,
+        profile_id: profileId,
         is_active: false,
         plan_details: planDetails,
         pending_approval: true,
@@ -353,7 +317,6 @@ export async function submitGradPlanForApproval(
         errorHint: error.hint,
         errorCode: error.code,
         profileId: profileId,
-        studentId: studentData?.id,
         planDetailsType: typeof planDetails,
         planDetailsLength: Array.isArray(planDetails) ? planDetails.length : 'not an array'
       });

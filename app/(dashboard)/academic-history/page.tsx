@@ -44,7 +44,7 @@ import {
 
 interface GradPlan {
   id: string;
-  student_id: number;
+  profile_id: string;
   programs_in_plan: number[];
   plan_details: unknown;
   is_active: boolean;

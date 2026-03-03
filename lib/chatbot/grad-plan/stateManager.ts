@@ -11,6 +11,11 @@ import {
   ConversationProgress,
 } from './types';
 
+function hasStructuredCourseSelection(state: ConversationState): boolean {
+  const payload = state.collectedData.selectedCoursePayload;
+  return Boolean(payload && Array.isArray(payload.programs) && payload.programs.length > 0);
+}
+
 /**
  * Creates a new conversation state
  */
@@ -41,6 +46,7 @@ export function createInitialState(
       selectedPrograms: [],
       courseSelectionMethod: null,
       selectedCourses: [],
+      selectedCoursePayload: null,
       totalSelectedCredits: 0,
       remainingCreditsToComplete: 0,
       electiveCourses: [],
@@ -143,7 +149,8 @@ export function validateStepCompletion(
     case ConversationStep.COURSE_SELECTION:
       if (
         state.collectedData.courseSelectionMethod === 'manual' &&
-        state.collectedData.selectedCourses.length === 0
+        state.collectedData.selectedCourses.length === 0 &&
+        !hasStructuredCourseSelection(state)
       ) {
         errors.push('At least one course must be selected');
       }
@@ -460,7 +467,8 @@ export function isReadyForGeneration(state: ConversationState): ValidationResult
 
   if (
     state.collectedData.courseSelectionMethod === 'manual' &&
-    state.collectedData.selectedCourses.length === 0
+    state.collectedData.selectedCourses.length === 0 &&
+    !hasStructuredCourseSelection(state)
   ) {
     errors.push('Courses must be selected for manual mode');
   }

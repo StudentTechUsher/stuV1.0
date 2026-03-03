@@ -445,18 +445,6 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
       });
     }
 
-    // Get the student_id (number) from the students table using the profile_id (UUID)
-    const { data: studentData, error: studentError } = await supabaseAdmin
-      .from('student')
-      .select('id')
-      .eq('profile_id', user.id)
-      .single();
-
-    if (studentError || !studentData?.id) {
-      logError('Error fetching student_id from students table', studentError, { action: 'OrganizeCoursesIntoSemesters_ServerAction', userId: user.id });
-      throw new Error('Could not find student record');
-    }
-
     // Persist generated plan via helper (store structured object/array, not raw JSON string)
     let planData: unknown = semesterPlan;
     if (typeof planData === 'string') {
@@ -469,7 +457,7 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
     }
 
     const { accessId } = await InsertGeneratedGradPlan({
-      studentId: studentData.id,
+      profileId: user.id,
       planData,
       programsInPlan: Array.isArray(cd.selectedPrograms)
         ? cd.selectedPrograms
@@ -477,7 +465,6 @@ export async function OrganizeCoursesIntoSemesters_ServerAction(
           .filter((n: number) => !Number.isNaN(n))
         : [],
       isActive: false,
-      userId: user.id,
     });
 
     return {

@@ -55,7 +55,6 @@ interface PlanHeaderProps {
   showCreateButton?: boolean;
   showEditButton?: boolean;
   showPlanSelector?: boolean;
-  showStatusBadge?: boolean;
   useChatbotFlow?: boolean;
   studentProfile?: {
     id?: string;
@@ -78,7 +77,6 @@ export default function PlanHeader({
   showCreateButton = true,
   showEditButton = true,
   showPlanSelector = true,
-  showStatusBadge = false,
   useChatbotFlow = false,
   studentProfile,
   onProfileUpdate,
@@ -142,11 +140,16 @@ export default function PlanHeader({
   const handleCreatePlan = useCallback(() => {
     // Use chatbot flow or traditional flow based on prop
     if (useChatbotFlow) {
-      router.push('/grad-plan/create');
+      const launchForm = document.createElement('form');
+      launchForm.method = 'POST';
+      launchForm.action = '/api/grad-plan-agent/launch';
+      launchForm.style.display = 'none';
+      document.body.appendChild(launchForm);
+      launchForm.submit();
     } else {
       setShowProfileInfo(true);
     }
-  }, [useChatbotFlow, router]);
+  }, [useChatbotFlow]);
 
 
   const handleProfileInfoNext = useCallback((data: ProfileData) => {
@@ -348,38 +351,27 @@ export default function PlanHeader({
 
   return (
     <>
-      <section className="rounded-lg border border-gray-400 bg-gray-200/50 px-6 py-6">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex flex-col gap-3">
+      <section className="rounded-lg border border-gray-400 bg-gray-200/50 px-4 py-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
               <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[color-mix(in_srgb,var(--muted-foreground)_60%,black_40%)]">
                 Graduation Plan
               </span>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 {selectedGradPlan ? (
                   <EditablePlanTitle
                     planId={selectedGradPlan.id}
                     initialName={selectedPlanName}
                     onSaved={handleTitleSave}
-                    className="text-2xl font-semibold tracking-tight text-[#0a1f1a]"
+                    className="text-xl font-semibold tracking-tight text-[#0a1f1a]"
                   />
                 ) : (
-                  <h1 className="text-2xl font-semibold tracking-tight text-[#0a1f1a]">
+                  <h1 className="text-xl font-semibold tracking-tight text-[#0a1f1a]">
                     Untitled Graduation Plan
                   </h1>
                 )}
-                {showStatusBadge && selectedGradPlan && (
-                  selectedGradPlan.is_active ? (
-                    <span className="inline-flex items-center rounded-full bg-green-100 border border-green-300 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-700">
-                      Approved
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-yellow-50 border border-yellow-300 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-700">
-                      Not Yet Approved
-                    </span>
-                  )
-                )}
-                {!showStatusBadge && selectedPlanCreatedAt && (
+                {selectedPlanCreatedAt && (
                   <span className="inline-flex items-center rounded-full bg-[#0a1f1a] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_-20px_rgba(10,31,26,0.65)]">
                     Created {selectedPlanCreatedAt}
                   </span>

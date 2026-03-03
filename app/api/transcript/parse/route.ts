@@ -18,6 +18,7 @@ import { updateProfileNameIfPlaceholder } from '@/lib/services/profileService.se
 import { randomUUID } from 'crypto';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+type UuidLike = `${string}-${string}-${string}-${string}-${string}`;
 
 /**
  * Determines the status of a course based on its grade
@@ -68,14 +69,14 @@ function extractNameParts(name: string): { firstName?: string; lastName?: string
 
 function buildTransferCourses(institutions: TransferInstitution[]) {
   const courses: Array<{
-    id: string;
+    id: UuidLike;
     subject: string;
     number: string;
     title: string;
     credits: number;
     grade: string | null;
     term: string;
-    tags: string[];
+    tags: never[];
     origin: 'transfer';
     status: 'completed' | 'withdrawn' | 'in-progress';
     transfer: {
@@ -102,7 +103,7 @@ function buildTransferCourses(institutions: TransferInstitution[]) {
       const grade = course.grade ?? null;
 
       courses.push({
-        id: randomUUID(),
+        id: randomUUID() as UuidLike,
         subject,
         number,
         title,
@@ -150,7 +151,7 @@ async function upsertParsedTranscript(options: {
   const coursesJson = dedupedCourses.map((course) => {
     const grade = course.grade.trim() === '' ? null : course.grade;
     return {
-      id: randomUUID(),
+      id: randomUUID() as UuidLike,
       subject: course.subject,
       number: course.number,
       title: course.title,
@@ -167,16 +168,16 @@ async function upsertParsedTranscript(options: {
   const transferCredits = (result.transferCredits ?? []).map((institution) => ({
     ...institution,
     courses: (institution.courses ?? []).map((course) => ({
-      id: randomUUID(),
+      id: randomUUID() as UuidLike,
       ...course,
     })),
   }));
   const examCredits: ExamCredit[] = (result.examCredits ?? []).map((exam) => ({
-    id: randomUUID(),
+    id: randomUUID() as UuidLike,
     ...exam,
   }));
   const entranceExams: EntranceExam[] = (result.entranceExams ?? []).map((exam) => ({
-    id: randomUUID(),
+    id: randomUUID() as UuidLike,
     ...exam,
   }));
   const termMetrics = result.termMetrics ?? [];

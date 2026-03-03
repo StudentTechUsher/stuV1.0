@@ -50,7 +50,12 @@ export const STEP_DATA_FIELDS: Record<ConversationStep, Array<keyof Conversation
   [ConversationStep.TRANSCRIPT_CHECK]: ['hasTranscript', 'needsTranscriptUpdate', 'transcriptUploaded'],
   [ConversationStep.PROGRAM_SELECTION]: ['selectedPrograms'],
   [ConversationStep.COURSE_METHOD]: ['courseSelectionMethod'],
-  [ConversationStep.COURSE_SELECTION]: ['selectedCourses'],
+  [ConversationStep.COURSE_SELECTION]: [
+    'selectedCourses',
+    'selectedCoursePayload',
+    'totalSelectedCredits',
+    'remainingCreditsToComplete',
+  ],
   [ConversationStep.ELECTIVES]: ['electiveCourses', 'needsElectives'],
   [ConversationStep.STUDENT_INTERESTS]: ['studentInterests'],
   [ConversationStep.CREDIT_DISTRIBUTION]: ['creditDistributionStrategy'],

@@ -11,3 +11,27 @@ export function isGradPlanAutomaticMastraWorkflowEnabled(): boolean {
 export function isGradPlanQuickCourseSearchEnabled(): boolean {
   return parseBooleanFlag(process.env.NEXT_PUBLIC_GRAD_PLAN_QUICK_COURSE_SEARCH_ENABLED);
 }
+
+export function isGradPlanV3Enabled(): boolean {
+  return parseBooleanFlag(process.env.GRAD_PLAN_V3_ENABLED);
+}
+
+export function isGradPlanV3ClientEnabled(): boolean {
+  return parseBooleanFlag(process.env.NEXT_PUBLIC_GRAD_PLAN_V3_ENABLED);
+}
+
+export function isGradPlanV3DevtoolsEnabled(): boolean {
+  return parseBooleanFlag(process.env.GRAD_PLAN_V3_DEVTOOLS_ENABLED);
+}
+
+export function isGradPlanV3ClientDevtoolsEnabled(): boolean {
+  return parseBooleanFlag(process.env.NEXT_PUBLIC_GRAD_PLAN_V3_DEVTOOLS_ENABLED);
+}
+
+export function isGradPlanV3LiveJobsEnabled(): boolean {
+  return parseBooleanFlag(process.env.GRAD_PLAN_V3_LIVE_JOBS_ENABLED);
+}
+
+export function isGradPlanV3ClientMiniChatEnabled(): boolean {
+  return parseBooleanFlag(process.env.NEXT_PUBLIC_GRAD_PLAN_V3_MINI_CHAT_ENABLED);
+}

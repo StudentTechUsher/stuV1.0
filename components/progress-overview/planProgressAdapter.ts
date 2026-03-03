@@ -53,7 +53,8 @@ const OVERVIEW_STATUS_PRIORITY: Record<OverviewCourseStatus, number> = {
 
 const WITHDRAWN_GRADES = new Set(['W', 'WF', 'WP', 'WU']);
 
-function normalizeCourseCode(code: string): string {
+function normalizeCourseCode(code: string | null | undefined): string {
+  if (!code) return '';
   return code.replace(/[\s-]/g, '').toUpperCase();
 }
 
@@ -390,7 +391,8 @@ function getRequirementCopy(requirement: ProgramRequirement): { title: string; d
   return { title, description };
 }
 
-function extractSubject(code: string): string {
+function extractSubject(code: string | null | undefined): string {
+  if (!code) return '';
   const normalized = code.replace(/[\s-]/g, '');
   const match = normalized.match(/^([A-Z]+)/i);
   return match ? match[1].toUpperCase() : '';
