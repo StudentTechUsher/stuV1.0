@@ -17,6 +17,8 @@ import { updateStudentGpa, updateStudentIdentity } from '@/lib/services/studentS
 import { updateProfileNameIfPlaceholder } from '@/lib/services/profileService.server';
 import { randomUUID } from 'crypto';
 
+export const maxDuration = 120;
+
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 type UuidLike = `${string}-${string}-${string}-${string}-${string}`;
 

@@ -8,7 +8,6 @@ interface UserProfile {
   id: string;
   university_id?: number;
   role_id?: number;
-  year_in_school?: string;
   created_at?: string;
 }
 
@@ -39,7 +38,7 @@ export function usePostHogIdentify() {
         // Fetch user profile for additional safe properties
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, university_id, role_id, year_in_school, created_at')
+          .select('id, university_id, role_id, created_at')
           .eq('id', user.id)
           .single();
 
@@ -48,7 +47,6 @@ export function usePostHogIdentify() {
           identifyUser(user.id, {
             university_id: profile.university_id,
             role: profile.role_id ? ROLE_MAP[profile.role_id] : 'student',
-            year_in_school: profile.year_in_school,
             created_at: profile.created_at,
           });
         } else {
