@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { usePostHog } from '@/contexts/posthog-provider'
+
+const LANDING_ORIGIN = process.env.NEXT_PUBLIC_LANDING_ORIGIN || 'https://stuplanning.com'
 
 export function CookieConsentBanner() {
   const { analyticsConsent, setAnalyticsConsent } = usePostHog()
@@ -35,9 +36,12 @@ export function CookieConsentBanner() {
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
         You can change this later in settings. See our{' '}
-        <Link className="underline underline-offset-2" href="/privacy-policy">
+        <a
+          className="underline underline-offset-2"
+          href={`${LANDING_ORIGIN}/privacy-policy`}
+        >
           Privacy Policy
-        </Link>
+        </a>
         .
       </p>
       <div className="mt-4 flex gap-2">
