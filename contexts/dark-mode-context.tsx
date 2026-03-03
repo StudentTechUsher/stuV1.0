@@ -4,6 +4,13 @@ import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { DARK_MODE_STORAGE_KEY } from '@/lib/theme/dark-mode-contract';
 
+/**
+ * Feature flag: set to true to re-enable dark mode across the app.
+ * While false the provider always resolves to light mode and the
+ * toggle components (sidebar / navbar) should be hidden.
+ */
+export const DARK_MODE_ENABLED = false;
+
 type ThemeMode = 'light' | 'dark' | 'system';
 
 interface DarkModeContextType {
@@ -15,7 +22,7 @@ interface DarkModeContextType {
 const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined);
 
 export function DarkModeProvider({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('light');
   const [mounted, setMounted] = useState(false);
   const [systemDark, setSystemDark] = useState(false);
   const pathname = usePathname();
@@ -24,12 +31,12 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
   useEffect(() => {
     setMounted(true);
 
+    if (!DARK_MODE_ENABLED) return;
+
     // Load saved preference
     const saved = localStorage.getItem(DARK_MODE_STORAGE_KEY) as ThemeMode | null;
     if (saved && ['light', 'dark', 'system'].includes(saved)) {
       setModeState(saved);
-    } else {
-      setModeState('system');
     }
 
     // Detect system preference
@@ -52,6 +59,11 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
 
     const htmlElement = document.documentElement;
 
+    if (!DARK_MODE_ENABLED) {
+      htmlElement.classList.remove('dark');
+      return;
+    }
+
     const forceLightLanding = htmlElement.dataset.forceLightLanding === 'true';
     if (forceLightLanding) {
       htmlElement.classList.remove('dark');
@@ -68,11 +80,12 @@ export function DarkModeProvider({ children }: Readonly<{ children: React.ReactN
   }, [mode, systemDark, mounted, pathname]);
 
   const setMode = (newMode: ThemeMode) => {
+    if (!DARK_MODE_ENABLED) return;
     setModeState(newMode);
     localStorage.setItem(DARK_MODE_STORAGE_KEY, newMode);
   };
 
-  const isDark = mode === 'dark' || (mode === 'system' && systemDark);
+  const isDark = DARK_MODE_ENABLED && (mode === 'dark' || (mode === 'system' && systemDark));
 
   const value = useMemo<DarkModeContextType>(() => ({
     mode,

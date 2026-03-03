@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useUniversityTheme } from '@/contexts/university-theme-context';
-import { useDarkMode } from '@/contexts/dark-mode-context';
+import { useDarkMode, DARK_MODE_ENABLED } from '@/contexts/dark-mode-context';
 import { StuAiIcon } from '@/components/icons/StuAiIcon';
 
 // Icons from lucide-react
@@ -349,10 +349,12 @@ export function Sidebar({ items, onSignOut, role, onOpenChat, onWidthChange }: S
                 />
               </li>
 
-              {/* Dark Mode Toggle */}
+              {/* Dark Mode Toggle — hidden while DARK_MODE_ENABLED is false */}
+              {DARK_MODE_ENABLED && (
               <li>
                 <ThemeModeToggle isExpanded={isExpanded} />
               </li>
+              )}
 
               {/* Sign Out Button */}
               <li>
