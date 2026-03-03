@@ -6,7 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 import { useUniversityTheme } from "@/contexts/university-theme-context"
-import { useDarkMode } from "@/contexts/dark-mode-context"
+import { useDarkMode, DARK_MODE_ENABLED } from "@/contexts/dark-mode-context"
 
 interface NavbarProps {
   variant?: "universities" | "students" | "about"
@@ -87,7 +87,8 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
 
         {variant === "students" ? (
           <div className="hidden md:flex items-center gap-6">
-            {/* Dark mode toggle */}
+            {/* Dark mode toggle — hidden while DARK_MODE_ENABLED is false */}
+            {DARK_MODE_ENABLED && (
             <button
               onClick={() => setMode(isDark ? 'light' : 'dark')}
               className="p-2 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
@@ -95,6 +96,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
+            )}
             <Link href="/" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
               For Universities
             </Link>
@@ -111,7 +113,8 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
           </div>
         ) : (
           <div className="hidden md:flex items-center gap-6">
-            {/* Dark mode toggle */}
+            {/* Dark mode toggle — hidden while DARK_MODE_ENABLED is false */}
+            {DARK_MODE_ENABLED && (
             <button
               onClick={() => setMode(isDark ? 'light' : 'dark')}
               className="p-2 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
@@ -119,6 +122,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
+            )}
             <Link href="/" className="text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2">
               For Students
             </Link>
@@ -156,7 +160,8 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
               </Link>
             ))}
 
-            {/* Dark mode toggle */}
+            {/* Dark mode toggle — hidden while DARK_MODE_ENABLED is false */}
+            {DARK_MODE_ENABLED && (
             <button
               onClick={() => setMode(isDark ? 'light' : 'dark')}
               className="flex items-center gap-2 text-base font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-md px-3 py-2"
@@ -173,6 +178,7 @@ export function Navbar({ variant = "universities" }: NavbarProps) {
                 </>
               )}
             </button>
+            )}
 
             <div className="flex flex-col gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               {variant === "students" ? (
