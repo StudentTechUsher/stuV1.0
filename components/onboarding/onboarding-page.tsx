@@ -86,7 +86,7 @@ export function OnboardingPage({
   const submitDisabled =
     saving ||
     !selectedUniversity ||
-    (requiresStudentFields && (!gradTerm || !gradYear || !transcriptParsed))
+    (requiresStudentFields && (!gradTerm || !gradYear))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,10 +102,7 @@ export function OnboardingPage({
         return
       }
 
-      if (!transcriptParsed) {
-        setError("Please upload and parse your transcript to continue")
-        return
-      }
+
     }
 
     setSaving(true)
@@ -308,9 +305,9 @@ export function OnboardingPage({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Transcript upload</Label>
+                  <Label>Transcript upload <span className="text-muted-foreground font-normal">(optional)</span></Label>
                   <p className="text-sm text-muted-foreground">
-                    Upload a transcript so we can prefill completed courses and match requirements.
+                    Upload a transcript to prefill completed courses. You can also do this later from your dashboard.
                   </p>
                   <TranscriptUpload onParsingComplete={() => setTranscriptParsed(true)} />
                 </div>
