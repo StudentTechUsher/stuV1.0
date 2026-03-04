@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Dialog,
   DialogTitle,
@@ -14,7 +15,7 @@ import {
   IconButton,
   Box,
 } from "@mui/material";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchUserCoursesArray, type ParsedCourse } from "@/lib/services/userCoursesService";
 import { fetchStudentGpa } from "@/lib/services/studentService";
@@ -29,7 +30,6 @@ import { SummaryStatsRow } from "./SummaryStatsRow";
 import { OverallProgressSection } from "./OverallProgressSection";
 import { SuggestedActionsSection } from "./SuggestedActionsSection";
 import { PersonalInfoPanel } from "./PersonalInfoPanel";
-import { DASHBOARD_MOCK_CATEGORIES, DUMMY_CREDITS } from "./dashboardMockData";
 import type { ProgramRow } from "@/types/program";
 import { usePlanParser } from "@/components/grad-planner/usePlanParser";
 
@@ -40,7 +40,6 @@ interface UserData {
   avatarUrl: string | null;
   standing: string;
   earnedCredits: number;
-  requiredCredits: number;
   gpa: number | null;
   estimatedGraduation: string;
   hasTranscript: boolean;
@@ -53,8 +52,7 @@ const DEFAULT_USER_DATA: UserData = {
   name: "Loading...",
   avatarUrl: null,
   standing: "Student",
-  earnedCredits: DUMMY_CREDITS.earned,
-  requiredCredits: DUMMY_CREDITS.required,
+  earnedCredits: 0,
   gpa: null,
   estimatedGraduation: "December 2028",
   hasTranscript: false,
@@ -65,7 +63,7 @@ const DEFAULT_USER_DATA: UserData = {
 /**
  * Unified Academic Card - combines AcademicSummary and AcademicProgressCard
  * Uses REAL data for: Name, Photo, GPA, Estimated Graduation
- * Uses DUMMY data for: Progress metrics, credit breakdowns
+ * Encourages plan creation when no grad plan exists (no mocked progress values)
  */
 export function UnifiedAcademicCard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +74,7 @@ export function UnifiedAcademicCard() {
   const [selectedYear, setSelectedYear] = useState(2028);
   const [headerExpanded, setHeaderExpanded] = useState(false);
   const [planDetails, setPlanDetails] = useState<Record<string, unknown> | null>(null);
+  const [hasGradPlan, setHasGradPlan] = useState(false);
   const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
   const [genEdProgram, setGenEdProgram] = useState<ProgramRow | null>(null);
   const [transcriptCourses, setTranscriptCourses] = useState<ParsedCourse[]>([]);
@@ -90,12 +89,9 @@ export function UnifiedAcademicCard() {
     });
   }, [planData, programsData, genEdProgram, transcriptCourses]);
 
-  const resolvedCategories: ProgressCategory[] = progressData.categories.length > 0
-    ? progressData.categories
-    : DASHBOARD_MOCK_CATEGORIES;
-  const resolvedOverallProgress: OverallProgress | undefined = progressData.categories.length > 0
-    ? progressData.overallProgress
-    : undefined;
+  const hasProgressData = progressData.categories.length > 0;
+  const resolvedCategories: ProgressCategory[] = progressData.categories;
+  const resolvedOverallProgress: OverallProgress = progressData.overallProgress;
 
   // Consolidated data fetching
   const loadUserData = useCallback(async () => {
@@ -142,7 +138,7 @@ export function UnifiedAcademicCard() {
       setTranscriptCourses(coursesResult);
 
       // Calculate earned credits from courses
-      let earnedCredits = DUMMY_CREDITS.earned;
+      let earnedCredits = 0;
       if (hasTranscript) {
         earnedCredits = coursesResult.reduce((total, course) => {
           const credits = typeof course.credits === 'number' ? course.credits : 0;
@@ -184,7 +180,6 @@ export function UnifiedAcademicCard() {
         avatarUrl,
         standing,
         earnedCredits,
-        requiredCredits: DUMMY_CREDITS.required, // Using dummy for now
         gpa,
         estimatedGraduation,
         hasTranscript,
@@ -212,6 +207,7 @@ export function UnifiedAcademicCard() {
             .maybeSingle();
           planRecord = latestPlan;
         }
+        setHasGradPlan(Boolean(planRecord));
 
         if (planRecord?.plan_details && typeof planRecord.plan_details === 'object') {
           setPlanDetails(planRecord.plan_details as Record<string, unknown>);
@@ -282,11 +278,11 @@ export function UnifiedAcademicCard() {
   }, [loadUserData]);
 
   useEffect(() => {
-    if (!resolvedCategories.length) return;
+    if (!hasProgressData) return;
     if (!selectedCategory || !resolvedCategories.some((cat) => cat.name === selectedCategory)) {
       setSelectedCategory(resolvedCategories[0].name);
     }
-  }, [resolvedCategories, selectedCategory]);
+  }, [hasProgressData, resolvedCategories, selectedCategory]);
 
   // Handle graduation date save
   const handleSaveGradDate = useCallback(() => {
@@ -340,15 +336,51 @@ export function UnifiedAcademicCard() {
 
         {/* Content Area */}
         <div className="p-4 space-y-4">
-          {/* Overall Progress Bar - Large & Prominent */}
-          <OverallProgressSection overallProgress={resolvedOverallProgress} />
+          {hasGradPlan && hasProgressData ? (
+            <>
+              {/* Overall Progress Bar - Large & Prominent */}
+              <OverallProgressSection overallProgress={resolvedOverallProgress} />
 
-          {/* Program progress bars (condensed) */}
-          <CategoryTabs
-            categories={resolvedCategories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-          />
+              {/* Program progress bars (condensed) */}
+              <CategoryTabs
+                categories={resolvedCategories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+              />
+            </>
+          ) : hasGradPlan ? (
+            <div className="rounded-xl border border-[color-mix(in_srgb,var(--muted-foreground)_16%,transparent)] bg-[color-mix(in_srgb,var(--muted)_28%,transparent)] p-4">
+              <p className="font-body-semi text-sm text-[var(--foreground)]">Plan progress is not ready yet</p>
+              <p className="mt-1 font-body text-xs text-[var(--muted-foreground)]">
+                Open your grad plan and add courses to start tracking Overall Degree Progress.
+              </p>
+              <Link
+                href="/grad-plan"
+                className="mt-3 inline-flex items-center gap-1 rounded-md border border-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
+              >
+                Open grad plan
+              </Link>
+            </div>
+          ) : (
+            <Link href="/grad-plan" className="block">
+              <div className="rounded-xl border-2 border-dashed border-[color-mix(in_srgb,var(--muted-foreground)_24%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] p-4 transition-all duration-200 hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--primary)_15%,transparent)]">
+                      <Plus size={18} className="text-[var(--primary)]" />
+                    </div>
+                    <div>
+                      <p className="font-body-semi text-sm text-[var(--foreground)]">Start your grad plan</p>
+                      <p className="mt-0.5 font-body text-xs text-[var(--muted-foreground)]">
+                        Create a grad plan to unlock Overall Degree Progress.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-body-semi text-xs text-[var(--primary)]">Create</span>
+                </div>
+              </div>
+            </Link>
+          )}
 
           {/* Suggested actions for student next steps */}
           <SuggestedActionsSection />
