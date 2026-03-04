@@ -8,7 +8,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { OVERALL_PROGRESS_MOCK, PLAN_DETAILS_MOCK } from './dashboardMockData';
 import type { OverallProgress } from '@/components/progress-overview/types';
 import {
   getCompletedColor,
@@ -16,54 +15,6 @@ import {
   getPlannedColor,
   getPlannedColorDark,
 } from '@/components/progress-overview/colorUtils';
-
-/**
- * Optimization score thresholds for color coding
- * These determine what color the optimization indicator shows
- * Easy to adjust - just change these constants
- */
-const OPTIMIZATION_THRESHOLDS = {
-  RED_MAX: 40,      // < 40% = red (needs attention)
-  ORANGE_MAX: 60,   // 40-59% = orange (could improve)
-  YELLOW_MAX: 80,   // 60-79% = yellow (good)
-  // >= 80% = green (excellent)
-};
-
-/**
- * Get the appropriate color for an optimization score
- * Uses theme-safe colors that work in light/dark mode
- */
-function getOptimizationColor(score: number): {
-  color: string;
-  bgColor: string;
-  label: string;
-} {
-  if (score < OPTIMIZATION_THRESHOLDS.RED_MAX) {
-    return {
-      color: 'rgb(220, 38, 38)', // red-600
-      bgColor: 'rgb(254, 226, 226)', // red-100
-      label: 'Needs Attention',
-    };
-  } else if (score < OPTIMIZATION_THRESHOLDS.ORANGE_MAX) {
-    return {
-      color: 'rgb(234, 88, 12)', // orange-600
-      bgColor: 'rgb(255, 237, 213)', // orange-100
-      label: 'Could Improve',
-    };
-  } else if (score < OPTIMIZATION_THRESHOLDS.YELLOW_MAX) {
-    return {
-      color: 'rgb(202, 138, 4)', // yellow-600
-      bgColor: 'rgb(254, 249, 195)', // yellow-100
-      label: 'Good',
-    };
-  } else {
-    return {
-      color: 'rgb(22, 163, 74)', // green-600
-      bgColor: 'rgb(220, 252, 231)', // green-100
-      label: 'Excellent',
-    };
-  }
-}
 
 /**
  * Large overall progress bar with expandable plan details
@@ -76,22 +27,20 @@ const DEGREE_COLOR = 'var(--degree-progress)';
 export function OverallProgressSection({
   overallProgress,
 }: {
-  overallProgress?: OverallProgress;
+  overallProgress: OverallProgress;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const resolvedProgress = overallProgress
-    ? {
-        percentage: overallProgress.percentComplete,
-        creditsCompleted: overallProgress.completedCredits,
-        creditsInProgress: overallProgress.inProgressCredits,
-        creditsPlanned: overallProgress.plannedCredits,
-        totalCredits: overallProgress.totalCredits,
-        coursesCompleted: overallProgress.completedCourses,
-        coursesRemaining: Math.max(overallProgress.totalCourses - overallProgress.completedCourses, 0),
-        tooltip: 'Based on your active graduation plan and completed coursework.',
-      }
-    : OVERALL_PROGRESS_MOCK;
+  const resolvedProgress = {
+    percentage: overallProgress.percentComplete,
+    creditsCompleted: overallProgress.completedCredits,
+    creditsInProgress: overallProgress.inProgressCredits,
+    creditsPlanned: overallProgress.plannedCredits,
+    totalCredits: overallProgress.totalCredits,
+    coursesCompleted: overallProgress.completedCourses,
+    coursesRemaining: Math.max(overallProgress.totalCourses - overallProgress.completedCourses, 0),
+    tooltip: 'Based on your active graduation plan and completed coursework.',
+  };
 
   const {
     percentage,
@@ -103,7 +52,13 @@ export function OverallProgressSection({
     coursesRemaining,
     tooltip,
   } = resolvedProgress;
-  const { graduationPlan, planFollowThrough, optimization } = PLAN_DETAILS_MOCK;
+  const totalTrackedCredits = creditsCompleted + creditsInProgress + creditsPlanned;
+  const graduationPlanPercent = totalCredits > 0
+    ? Math.round((totalTrackedCredits / totalCredits) * 100)
+    : 0;
+  const followThroughPercent = totalTrackedCredits > 0
+    ? Math.round((creditsCompleted / totalTrackedCredits) * 100)
+    : 0;
 
   // Calculate segment percentages for the progress bar
   const completedPercent = totalCredits > 0 ? (creditsCompleted / totalCredits) * 100 : 0;
@@ -235,26 +190,21 @@ export function OverallProgressSection({
         <div className="space-y-3 pt-2">
           {/* Graduation Plan Progress */}
           <ProgressDetailRow
-            label={graduationPlan.label}
-            percentage={graduationPlan.percentage}
-            tooltip={graduationPlan.tooltip}
+            label="Graduation Plan Coverage"
+            percentage={graduationPlanPercent}
+            tooltip="How much of your degree has been completed, is in progress, or is planned in your grad plan."
             color="var(--primary)"
           />
 
           {/* Plan Follow Through Progress */}
           <ProgressDetailRow
-            label={planFollowThrough.label}
-            percentage={planFollowThrough.percentage}
-            tooltip={planFollowThrough.tooltip}
+            label="Plan Follow Through"
+            percentage={followThroughPercent}
+            tooltip="How much of your currently tracked credits are already completed."
             color="#3B82F6"
           />
 
-          {/* Optimization Progress (POC with color logic) */}
-          <OptimizationRow
-            label={optimization.label}
-            percentage={optimization.percentage}
-            tooltip={optimization.tooltip}
-          />
+          <ComingSoonDetailRow />
         </div>
       </div>
     </div>
@@ -313,77 +263,23 @@ function ProgressDetailRow({
   );
 }
 
-interface OptimizationRowProps {
-  label: string;
-  percentage: number;
-  tooltip: string;
-}
-
-/**
- * Optimization row with dynamic color based on score thresholds
- * Color changes: red < 40, orange 40-59, yellow 60-79, green >= 80
- */
-function OptimizationRow({
-  label,
-  percentage,
-  tooltip,
-}: OptimizationRowProps) {
-  const { color, label: statusLabel } = getOptimizationColor(percentage);
-
+function ComingSoonDetailRow() {
   return (
     <div className="rounded-xl p-4 border-2 border-dashed border-[var(--border)] bg-[color-mix(in_srgb,var(--muted)_30%,transparent)]">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="font-body-semi text-sm font-semibold text-[var(--foreground)]">
-            {label}
+            Optimization
           </span>
           <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">
             Coming Soon
           </span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button type="button" className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
-                  <Info size={14} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <p>{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
-              color: color,
-            }}
-          >
-            {statusLabel}
-          </span>
-          <span className="font-header-bold text-sm font-bold" style={{ color }}>
-            {percentage}%
-          </span>
         </div>
       </div>
 
-      {/* Progress bar with dynamic color */}
-      <div className="relative w-full h-3 rounded-full bg-zinc-200 dark:bg-zinc-600 overflow-hidden">
-        <div
-          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out opacity-70"
-          style={{
-            width: `${percentage}%`,
-            backgroundColor: color,
-          }}
-        />
-      </div>
+      <p className="font-body text-xs text-[var(--muted-foreground)]">
+        Optimization scoring will appear here once we ship live sequence and workload analytics.
+      </p>
     </div>
   );
 }
-
-/**
- * Export thresholds for easy configuration/testing
- */
-export { OPTIMIZATION_THRESHOLDS, getOptimizationColor };
