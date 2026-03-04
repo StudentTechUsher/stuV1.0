@@ -274,7 +274,7 @@ export default function CalendarPanelClient({
               },
               "& .evt-registered .fc-event-main": {
                 backgroundColor: "var(--primary)",
-                color: "#fff",
+                color: "#000",
               },
               "& .evt-waitlisted .fc-event-main": {
                 backgroundColor: "var(--muted)",

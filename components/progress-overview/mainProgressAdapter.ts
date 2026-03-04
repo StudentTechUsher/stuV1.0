@@ -91,6 +91,11 @@ export function computeMainProgressData(
       color: category.color,
       percentComplete: category.percentComplete,
       completedCredits: category.completed,
+      inProgressCredits: category.inProgress,
+      plannedCredits: category.planned,
+      progressPercent: category.totalCredits > 0
+        ? Math.round(((category.completed + category.inProgress + category.planned) / category.totalCredits) * 100)
+        : 0,
       totalCredits: category.totalCredits,
     });
   }

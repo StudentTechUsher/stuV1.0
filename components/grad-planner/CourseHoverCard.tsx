@@ -75,7 +75,7 @@ export function CourseHoverCard({
         {/* Course Code & Status Badge */}
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h4 className="font-header-bold text-sm text-[var(--primary)] uppercase tracking-wide">
+            <h4 className="font-header-bold text-sm text-foreground uppercase tracking-wide">
               {course.code}
             </h4>
             <p className="font-body text-xs text-[var(--muted-foreground)] mt-0.5">

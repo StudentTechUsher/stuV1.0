@@ -330,7 +330,7 @@ export default function SchedulerCalendar({
               eventClick={handleEventClick}
               eventChange={handleEventChange}
               eventContent={(arg) => (
-                <div style={{ padding: "2px 6px", lineHeight: 1.1 }}>
+                <div style={{ padding: "2px 6px", lineHeight: 1.1, color: "black" }}>
                   <div style={{ fontWeight: 700, fontSize: "9px" }}>
                     {arg.event.extendedProps.course_code || arg.event.title}
                   </div>

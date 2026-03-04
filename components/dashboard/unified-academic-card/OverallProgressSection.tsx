@@ -119,7 +119,7 @@ export function OverallProgressSection({
             Overall Degree Progress
           </h3>
           <p className="font-body text-xs text-[var(--muted-foreground)]">
-            Based on your active graduation plan
+            Based on your active graduation plan and completed coursework
           </p>
         </div>
       </div>

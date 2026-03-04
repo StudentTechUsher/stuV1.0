@@ -91,7 +91,11 @@ export function CategoryTabs({
 
         {categories.map((category) => {
           const isSelected = category.name === selectedCategory;
-          const progressPercent = category.percentComplete;
+          const completedPercent = category.percentComplete;
+          const totalPlannedPercent = category.totalCredits > 0
+            ? Math.round(((category.completed + category.inProgress + category.planned) / category.totalCredits) * 100)
+            : 0;
+          const plannedOnlyPercent = Math.max(totalPlannedPercent - completedPercent, 0);
 
           return (
             <Tooltip key={category.name}>
@@ -118,19 +122,33 @@ export function CategoryTabs({
                       isSelected ? 'h-8' : 'h-7'
                     }`}
                   >
-                    {/* Filled portion (overlaid on top) */}
-                    <div
-                      className="absolute inset-0 rounded-lg transition-all duration-300"
-                      style={{
-                        width: `${progressPercent}%`,
-                        backgroundColor: category.color,
-                      }}
-                    />
+                    <div className="flex h-full">
+                      {/* Completed segment */}
+                      {completedPercent > 0 && (
+                        <div
+                          className="transition-all duration-300"
+                          style={{
+                            width: `${completedPercent}%`,
+                            backgroundColor: category.color,
+                          }}
+                        />
+                      )}
+
+                      {/* Planned segment (in progress + planned) */}
+                      {plannedOnlyPercent > 0 && (
+                        <div
+                          className="transition-all duration-300 bg-zinc-300 dark:bg-zinc-600"
+                          style={{ width: `${plannedOnlyPercent}%` }}
+                        />
+                      )}
+                    </div>
                   </div>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p className="font-semibold">{getFullName(category.name)}: {progressPercent}% complete</p>
+                <p className="font-semibold">
+                  {getFullName(category.name)}: {completedPercent}% completed, {plannedOnlyPercent}% planned
+                </p>
               </TooltipContent>
             </Tooltip>
           );

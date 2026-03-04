@@ -90,7 +90,11 @@ export interface SectionProgress {
   displayName: string;        // "MAJOR", "GE", "REL", etc.
   color: string;              // Category color
   percentComplete: number;    // 0-100
+  /** Completed + in-progress + planned percentage */
+  progressPercent?: number;   // 0-100
   completedCredits: number;   // Credits completed in this section
+  inProgressCredits?: number; // Credits in progress in this section
+  plannedCredits?: number;    // Credits planned in this section
   totalCredits: number;       // Total credits for this section
 }
 

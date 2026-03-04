@@ -59,8 +59,9 @@ export default function GradPlanClient({
       terms: planData,
       programs: programsData,
       genEdProgram,
+      transcriptCourses: userCourses,
     });
-  }, [planData, programsData, genEdProgram]);
+  }, [planData, programsData, genEdProgram, userCourses]);
 
   useEffect(() => {
     let isActive = true;
@@ -221,23 +222,35 @@ export default function GradPlanClient({
                 const totalCourses = planData.reduce((sum, t) => sum + (t.courses?.length ?? 0), 0);
                 const ViewIcon = isZoomOut ? Minimize2 : Maximize2;
                 return (
-                  <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border)]">
-                    <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      {programs.slice(0, 2).map(p => (
-                        <span key={p.id} className="rounded-[5px] border border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--foreground)] truncate max-w-[140px]">
-                          {p.name}
-                        </span>
-                      ))}
-                      <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">{totalCredits} cr · {totalCourses} courses · {planData.length} terms</span>
+                  <div className="flex-shrink-0 border-b border-[var(--border)] p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="font-header-bold text-sm uppercase tracking-wide text-[var(--foreground)]">
+                        Grad Plan
+                      </h2>
+                      <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-xs font-body-semi text-white whitespace-nowrap">
+                        {totalCredits} cr
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsZoomOut(!isZoomOut)}
-                      className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-[6px] border border-[color-mix(in_srgb,var(--muted-foreground)_40%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted)_30%,transparent)] transition-colors"
-                    >
-                      <ViewIcon size={13} strokeWidth={2} />
-                      {isZoomOut ? 'Detail' : 'Space'}
-                    </button>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        {programs.slice(0, 2).map(p => (
+                          <span key={p.id} className="rounded-[5px] border border-[color-mix(in_srgb,var(--primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--foreground)] truncate max-w-[140px]">
+                            {p.name}
+                          </span>
+                        ))}
+                        <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">{totalCourses} courses · {planData.length} terms</span>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsZoomOut(!isZoomOut)}
+                          className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color-mix(in_srgb,var(--muted-foreground)_40%,transparent)] bg-[color-mix(in_srgb,var(--muted)_20%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted)_30%,transparent)] transition-colors"
+                        >
+                          <ViewIcon size={13} strokeWidth={2} />
+                          {isZoomOut ? 'Detail' : 'Space'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
