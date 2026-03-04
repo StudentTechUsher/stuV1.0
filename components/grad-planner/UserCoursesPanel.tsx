@@ -85,7 +85,7 @@ export function UserCoursesPanel({ courses }: UserCoursesPanelProps) {
           return (
             <div key={term}>
               <div className="flex items-center justify-between mb-1.5">
-                <h3 className="text-xs font-header-bold text-[var(--primary)] uppercase tracking-wide">
+                <h3 className="text-xs font-header-bold text-foreground uppercase tracking-wide">
                   {term}
                 </h3>
                 <span className="text-xs text-[var(--muted-foreground)]">{termCredits} cr</span>
@@ -129,7 +129,7 @@ export function UserCoursesPanel({ courses }: UserCoursesPanelProps) {
         {transferCourses.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <h3 className="text-xs font-header-bold text-[var(--primary)] uppercase tracking-wide">
+              <h3 className="text-xs font-header-bold text-foreground uppercase tracking-wide">
                 Transfer Credits
               </h3>
               <span className="text-xs text-[var(--muted-foreground)]">

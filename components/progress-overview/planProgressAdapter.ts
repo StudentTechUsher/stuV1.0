@@ -52,10 +52,98 @@ const OVERVIEW_STATUS_PRIORITY: Record<OverviewCourseStatus, number> = {
 };
 
 const WITHDRAWN_GRADES = new Set(['W', 'WF', 'WP', 'WU']);
+const IN_PROGRESS_MARKERS = new Set(['in-progress', 'in progress', 'inprogress', 'ip']);
+
+const TERM_SEASON_ORDER: Record<string, number> = {
+  winter: 1,
+  spring: 2,
+  summer: 3,
+  fall: 4,
+};
+
+function parseTermSortIndex(term: string | null | undefined): number | null {
+  if (!term) return null;
+  const trimmed = term.trim();
+  if (!trimmed) return null;
+
+  if (/^\d{5}$/.test(trimmed)) {
+    const year = Number.parseInt(trimmed.slice(0, 4), 10);
+    const code = trimmed.slice(4);
+    const season = code === '1'
+      ? TERM_SEASON_ORDER.winter
+      : code === '2' || code === '3'
+        ? TERM_SEASON_ORDER.spring
+        : code === '4'
+          ? TERM_SEASON_ORDER.summer
+          : code === '5'
+            ? TERM_SEASON_ORDER.fall
+            : null;
+    if (Number.isFinite(year) && season) {
+      return (year * 10) + season;
+    }
+  }
+
+  const seasonMatch = trimmed.match(/\b(winter|spring|summer|fall)\b/i);
+  const yearMatch = trimmed.match(/\b(19|20)\d{2}\b/);
+  if (!seasonMatch || !yearMatch) {
+    return null;
+  }
+
+  const season = TERM_SEASON_ORDER[seasonMatch[1].toLowerCase()];
+  const year = Number.parseInt(yearMatch[0], 10);
+  if (!season || !Number.isFinite(year)) {
+    return null;
+  }
+
+  return (year * 10) + season;
+}
+
+function getCurrentTermSortIndex(now: Date = new Date()): number {
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+
+  let season = TERM_SEASON_ORDER.fall;
+  if (month <= 4) {
+    season = TERM_SEASON_ORDER.winter;
+  } else if (month <= 6) {
+    season = TERM_SEASON_ORDER.spring;
+  } else if (month <= 8) {
+    season = TERM_SEASON_ORDER.summer;
+  }
+
+  return (year * 10) + season;
+}
+
+function isLikelyPastTerm(term: string | null | undefined): boolean {
+  const termIndex = parseTermSortIndex(term);
+  if (termIndex === null) return false;
+  return termIndex < getCurrentTermSortIndex();
+}
+
+function splitCourseCode(code: string | null | undefined): { subject: string; number: string } {
+  if (!code) return { subject: '', number: '' };
+
+  const compact = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!compact) return { subject: '', number: '' };
+
+  const match = compact.match(/^([A-Z]+)([0-9]+[A-Z]*)?/);
+  if (!match) {
+    return { subject: compact, number: '' };
+  }
+
+  return {
+    subject: match[1] ?? '',
+    number: match[2] ?? '',
+  };
+}
 
 function normalizeCourseCode(code: string | null | undefined): string {
   if (!code) return '';
-  return code.replace(/[\s-]/g, '').toUpperCase();
+  const { subject, number } = splitCourseCode(code);
+  if (subject || number) {
+    return `${subject}${number}`;
+  }
+  return code.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 function getProgramTabType(program: ProgramRow): TabCategoryType | null {
@@ -69,12 +157,11 @@ function getProgramTabType(program: ProgramRow): TabCategoryType | null {
 }
 
 function parseCourseCode(code: string): { subject: string; number: string } {
+  const { subject, number } = splitCourseCode(code);
   const normalized = normalizeCourseCode(code);
-  const subjectMatch = normalized.match(/^([A-Z]+)/i);
-  const numberMatch = normalized.match(/([0-9].*)$/);
   return {
-    subject: subjectMatch ? subjectMatch[1].toUpperCase() : normalized,
-    number: numberMatch ? numberMatch[1] : '',
+    subject: subject || normalized,
+    number,
   };
 }
 
@@ -103,7 +190,7 @@ function gradeRank(grade?: string | null): number {
 
 function isWithdrawn(status?: string | null, grade?: string | null): boolean {
   const statusUpper = status?.toUpperCase().trim();
-  if (statusUpper === 'WITHDRAWN') return true;
+  if (statusUpper === 'WITHDRAWN' || statusUpper === 'WITHDRAW') return true;
   const gradeUpper = grade?.toUpperCase().trim();
   return gradeUpper ? WITHDRAWN_GRADES.has(gradeUpper) : false;
 }
@@ -117,14 +204,17 @@ function normalizePlanStatus(course: {
     return 'withdrawn';
   }
 
-  const statusLower = course.status?.toLowerCase().trim();
+  const statusLower = course.status?.toLowerCase().trim().replace(/\s+/g, '-');
   const gradeLower = course.grade?.toLowerCase().trim();
 
-  if (course.isCompleted === true || statusLower === 'completed') {
+  if (course.isCompleted === true || statusLower === 'completed' || statusLower === 'complete') {
     return 'completed';
   }
 
-  if (statusLower === 'in progress' || gradeLower === 'in progress') {
+  if (
+    IN_PROGRESS_MARKERS.has(statusLower ?? '')
+    || IN_PROGRESS_MARKERS.has(gradeLower ?? '')
+  ) {
     return 'in-progress';
   }
 
@@ -140,16 +230,55 @@ function normalizeTranscriptStatus(course: ParsedCourse): CourseStatus {
     return 'withdrawn';
   }
 
-  switch (course.status) {
+  const normalizedStatus = course.status?.toLowerCase().trim().replace(/\s+/g, '-');
+  const normalizedGrade = course.grade?.toLowerCase().trim();
+  const inPastTerm = isLikelyPastTerm(course.term);
+
+  switch (normalizedStatus) {
     case 'completed':
+    case 'complete':
+    case 'passed':
+    case 'pass':
       return 'completed';
     case 'in-progress':
-      return 'in-progress';
+    case 'inprogress':
+    case 'ip':
+      return inPastTerm ? 'completed' : 'in-progress';
     case 'withdrawn':
+    case 'withdraw':
       return 'withdrawn';
     default:
-      return course.grade ? 'completed' : 'in-progress';
+      if (!course.grade) {
+        return inPastTerm ? 'completed' : 'in-progress';
+      }
+      if (IN_PROGRESS_MARKERS.has(normalizedGrade ?? '')) {
+        return inPastTerm ? 'completed' : 'in-progress';
+      }
+      return 'completed';
   }
+}
+
+function areEquivalentCourseCodes(leftCode: string, rightCode: string): boolean {
+  const leftNormalized = normalizeCourseCode(leftCode);
+  const rightNormalized = normalizeCourseCode(rightCode);
+  if (leftNormalized && rightNormalized && leftNormalized === rightNormalized) {
+    return true;
+  }
+
+  const left = splitCourseCode(leftCode);
+  const right = splitCourseCode(rightCode);
+  if (!left.subject || !right.subject || !left.number || !right.number) {
+    return false;
+  }
+  if (left.number !== right.number) {
+    return false;
+  }
+
+  return (
+    left.subject === right.subject
+    || left.subject.startsWith(right.subject)
+    || right.subject.startsWith(left.subject)
+  );
 }
 
 function mergeFulfillments(existing: string[], incoming: string[]): string[] {
@@ -174,8 +303,19 @@ function upsertCourse(
   map: Map<string, NormalizedCourse>,
   course: NormalizedCourse
 ) {
-  const key = normalizeCourseCode(course.code);
-  const existing = map.get(key);
+  let key = normalizeCourseCode(course.code);
+  let existing = map.get(key);
+
+  if (!existing) {
+    const equivalentEntry = Array.from(map.entries()).find(([, existingCourse]) =>
+      areEquivalentCourseCodes(existingCourse.code, course.code)
+    );
+    if (equivalentEntry) {
+      key = equivalentEntry[0];
+      existing = equivalentEntry[1];
+    }
+  }
+
   if (!existing) {
     map.set(key, course);
     return;
@@ -313,6 +453,71 @@ function convertGenEdToProgramRequirement(
   } as ProgramRequirement;
 }
 
+function parseChooseCount(description: string | undefined): number | null {
+  if (!description) return null;
+  const match = description.match(/(\d+)\s+of\s+\d+/i);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeRequirementSemantics(requirement: ProgramRequirement): ProgramRequirement {
+  if (requirement.type === 'optionGroup') {
+    return {
+      ...requirement,
+      options: requirement.options.map((option) => ({
+        ...option,
+        requirements: option.requirements.map((req) => normalizeRequirementSemantics(req)),
+      })),
+    };
+  }
+
+  let normalized: ProgramRequirement = requirement;
+
+  if ('subRequirements' in requirement && Array.isArray(requirement.subRequirements)) {
+    normalized = {
+      ...normalized,
+      subRequirements: requirement.subRequirements.map((req) => normalizeRequirementSemantics(req)),
+    } as ProgramRequirement;
+  } else if ('subrequirements' in requirement && Array.isArray(requirement.subrequirements)) {
+    normalized = {
+      ...normalized,
+      subrequirements: requirement.subrequirements.map((req) => normalizeRequirementSemantics(req)),
+    } as ProgramRequirement;
+  }
+
+  if (normalized.type !== 'allOf' && normalized.type !== 'chooseNOf') {
+    return normalized;
+  }
+
+  const constraints = normalized.constraints ? { ...normalized.constraints } : undefined;
+  const nFromConstraints = typeof constraints?.n === 'number' && Number.isFinite(constraints.n)
+    ? constraints.n
+    : null;
+  const nFromDescription = parseChooseCount(normalized.description);
+  const inferredN = nFromConstraints ?? nFromDescription;
+
+  if (!inferredN) {
+    return normalized;
+  }
+
+  const availableCourses = getCourses(normalized)?.length ?? 0;
+  const subRequirements = getSubRequirements(normalized);
+  const hasSubRequirements = Array.isArray(subRequirements) && subRequirements.length > 0;
+  if (availableCourses === 0 && !hasSubRequirements) {
+    return normalized;
+  }
+
+  return {
+    ...normalized,
+    type: 'chooseNOf',
+    constraints: {
+      ...(constraints ?? {}),
+      n: inferredN,
+    },
+  } as ProgramRequirement;
+}
+
 function parseProgramRequirements(program: ProgramRow): ProgramRequirement[] {
   if (!program.requirements) {
     return [];
@@ -332,7 +537,7 @@ function parseProgramRequirements(program: ProgramRow): ProgramRequirement[] {
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const candidate = parsed as ProgramRequirementsStructure;
     if (Array.isArray(candidate.programRequirements)) {
-      return candidate.programRequirements;
+      return candidate.programRequirements.map((req) => normalizeRequirementSemantics(req));
     }
 
     const keys = Object.keys(parsed);
@@ -341,17 +546,20 @@ function parseProgramRequirements(program: ProgramRow): ProgramRequirement[] {
       return numericKeys
         .sort((a, b) => Number(a) - Number(b))
         .map((key) => (parsed as Record<string, ProgramRequirement>)[key])
-        .filter(Boolean);
+        .filter(Boolean)
+        .map((req) => normalizeRequirementSemantics(req));
     }
   }
 
   if (Array.isArray(parsed)) {
     if (isGenEdFormat(parsed)) {
-      return parsed.map((req, index) => convertGenEdToProgramRequirement(req, index));
+      return parsed
+        .map((req, index) => convertGenEdToProgramRequirement(req, index))
+        .map((req) => normalizeRequirementSemantics(req));
     }
 
     if (parsed.every((req) => typeof req === 'object' && req !== null && 'requirementId' in req)) {
-      return parsed as ProgramRequirement[];
+      return (parsed as ProgramRequirement[]).map((req) => normalizeRequirementSemantics(req));
     }
   }
 
@@ -392,10 +600,11 @@ function getRequirementCopy(requirement: ProgramRequirement): { title: string; d
 }
 
 function extractSubject(code: string | null | undefined): string {
-  if (!code) return '';
-  const normalized = code.replace(/[\s-]/g, '');
-  const match = normalized.match(/^([A-Z]+)/i);
-  return match ? match[1].toUpperCase() : '';
+  return splitCourseCode(code).subject;
+}
+
+function extractCourseNumber(code: string | null | undefined): string {
+  return splitCourseCode(code).number;
 }
 
 function doesRequirementCourseMatch(
@@ -415,10 +624,26 @@ function doesRequirementCourseMatch(
     return true;
   }
 
+  const userSubject = extractSubject(userCourseCode);
+  const reqSubject = extractSubject(requirementCourseCode);
+  const userNumber = extractCourseNumber(userCourseCode);
+  const reqNumber = extractCourseNumber(requirementCourseCode);
+
+  if (
+    userNumber
+    && reqNumber
+    && userNumber === reqNumber
+    && (
+      userSubject === reqSubject
+      || userSubject.startsWith(reqSubject)
+      || reqSubject.startsWith(userSubject)
+    )
+  ) {
+    return true;
+  }
+
   const reqHasNumber = /\d/.test(normalizedReqCode);
   if (allowSubjectMatch || !reqHasNumber) {
-    const userSubject = extractSubject(userCourseCode);
-    const reqSubject = extractSubject(requirementCourseCode);
     if (userSubject && reqSubject && userSubject === reqSubject) {
       return true;
     }

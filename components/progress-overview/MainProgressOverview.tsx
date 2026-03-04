@@ -139,8 +139,26 @@ function SectionProgressCard({
   section: MainProgressOverviewProps['sectionProgress'][number];
   onClick?: () => void;
 }) {
-  const { displayName, color, percentComplete, completedCredits, totalCredits } = section;
+  const {
+    displayName,
+    color,
+    percentComplete,
+    progressPercent,
+    completedCredits,
+    inProgressCredits = 0,
+    plannedCredits = 0,
+    totalCredits,
+  } = section;
   const isClickable = !!onClick;
+  const resolvedProgressPercent = typeof progressPercent === 'number'
+    ? progressPercent
+    : totalCredits > 0
+      ? Math.round(((completedCredits + inProgressCredits + plannedCredits) / totalCredits) * 100)
+      : 0;
+  const plannedProgressPercent = Math.max(resolvedProgressPercent - percentComplete, 0);
+  const completedSegmentPercent = totalCredits > 0 ? (completedCredits / totalCredits) * 100 : 0;
+  const inProgressSegmentPercent = totalCredits > 0 ? (inProgressCredits / totalCredits) * 100 : 0;
+  const plannedSegmentPercent = totalCredits > 0 ? (plannedCredits / totalCredits) * 100 : 0;
 
   return (
     <button
@@ -161,10 +179,15 @@ function SectionProgressCard({
         <span className="text-sm font-black uppercase tracking-wider text-[var(--foreground)]">
           {displayName}
         </span>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-[var(--foreground)]">
-            {percentComplete}%
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="text-right leading-tight">
+            <div className="text-sm font-semibold text-[var(--foreground)]">
+              {percentComplete}% completed
+            </div>
+            <div className="text-[10px] text-[var(--muted-foreground)]">
+              {plannedProgressPercent}% planned
+            </div>
+          </div>
           {isClickable && (
             <svg
               className="w-4 h-4 text-[var(--muted-foreground)]"
@@ -185,19 +208,39 @@ function SectionProgressCard({
 
       {/* Progress bar */}
       <div className="relative w-full h-8 rounded-lg bg-white dark:bg-zinc-800 shadow-sm overflow-hidden mb-2">
-        <div
-          className="absolute inset-y-0 left-0 transition-all duration-500 rounded-lg"
-          style={{
-            width: `${percentComplete}%`,
-            backgroundColor: color,
-          }}
-        />
+        <div className="flex h-full">
+          {completedSegmentPercent > 0 && (
+            <div
+              className="transition-all duration-500"
+              style={{
+                width: `${completedSegmentPercent}%`,
+                backgroundColor: color,
+              }}
+            />
+          )}
+          {inProgressSegmentPercent > 0 && (
+            <div
+              className="transition-all duration-500 bg-zinc-400 dark:bg-zinc-500"
+              style={{ width: `${inProgressSegmentPercent}%` }}
+            />
+          )}
+          {plannedSegmentPercent > 0 && (
+            <div
+              className="transition-all duration-500 bg-zinc-300 dark:bg-zinc-600"
+              style={{ width: `${plannedSegmentPercent}%` }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Credits label */}
       <div className="text-xs text-[var(--muted-foreground)]">
         <span className="font-semibold text-[var(--foreground)]">{completedCredits}</span>
-        <span> / {totalCredits} credits</span>
+        <span> completed · </span>
+        <span className="font-semibold text-[var(--foreground)]">{inProgressCredits}</span>
+        <span> in progress · </span>
+        <span className="font-semibold text-[var(--foreground)]">{plannedCredits}</span>
+        <span> planned / {totalCredits} credits</span>
       </div>
     </button>
   );

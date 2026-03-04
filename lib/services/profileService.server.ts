@@ -25,6 +25,7 @@
  */
 
 import { createSupabaseServerComponentClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { AdvisorStudentRow } from './profileService';
 import { ProfileNotFoundError, ProfileUpdateError, ProfileFetchError } from './errors/profileErrors';
 
@@ -457,7 +458,7 @@ export async function completeOnboarding(
   estGradDate?: string
 ) {
   try {
-    const supabase = await createSupabaseServerComponentClient();
+    const supabase = supabaseAdmin;
 
     // Map role string to role_id
     const roleIdMap = {

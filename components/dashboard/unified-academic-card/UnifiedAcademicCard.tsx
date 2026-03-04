@@ -16,11 +16,10 @@ import {
 } from "@mui/material";
 import { X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { fetchUserCourses } from "@/lib/services/userCoursesService";
+import { fetchUserCoursesArray, type ParsedCourse } from "@/lib/services/userCoursesService";
 import { fetchStudentGpa } from "@/lib/services/studentService";
 import { classifyCredits } from "@/lib/classifyCredits";
 import { CategoryTabs } from "@/components/progress-overview/CategoryTabs";
-import { ProgressOverviewCard } from "@/components/progress-overview/ProgressOverviewCard";
 import { buildPlanProgress } from "@/components/progress-overview/planProgressAdapter";
 import type { ProgressCategory, OverallProgress } from "@/components/progress-overview/types";
 
@@ -28,6 +27,7 @@ import { UnifiedAcademicCardSkeleton } from "./UnifiedAcademicCardSkeleton";
 import { UserHeaderBar } from "./UserHeaderBar";
 import { SummaryStatsRow } from "./SummaryStatsRow";
 import { OverallProgressSection } from "./OverallProgressSection";
+import { SuggestedActionsSection } from "./SuggestedActionsSection";
 import { PersonalInfoPanel } from "./PersonalInfoPanel";
 import { DASHBOARD_MOCK_CATEGORIES, DUMMY_CREDITS } from "./dashboardMockData";
 import type { ProgramRow } from "@/types/program";
@@ -78,6 +78,7 @@ export function UnifiedAcademicCard() {
   const [planDetails, setPlanDetails] = useState<Record<string, unknown> | null>(null);
   const [programsData, setProgramsData] = useState<ProgramRow[]>([]);
   const [genEdProgram, setGenEdProgram] = useState<ProgramRow | null>(null);
+  const [transcriptCourses, setTranscriptCourses] = useState<ParsedCourse[]>([]);
 
   const { planData } = usePlanParser(planDetails ?? undefined);
   const progressData = useMemo(() => {
@@ -85,8 +86,9 @@ export function UnifiedAcademicCard() {
       terms: planData,
       programs: programsData,
       genEdProgram,
+      transcriptCourses,
     });
-  }, [planData, programsData, genEdProgram]);
+  }, [planData, programsData, genEdProgram, transcriptCourses]);
 
   const resolvedCategories: ProgressCategory[] = progressData.categories.length > 0
     ? progressData.categories
@@ -116,7 +118,7 @@ export function UnifiedAcademicCard() {
           .select("id, est_grad_date")
           .eq("profile_id", user.id)
           .maybeSingle(),
-        fetchUserCourses(supabase, user.id).catch(() => null),
+        fetchUserCoursesArray(supabase, user.id).catch(() => []),
         fetchStudentGpa(supabase, user.id).catch(() => null),
       ]);
 
@@ -136,12 +138,13 @@ export function UnifiedAcademicCard() {
         null;
 
       // Check transcript data
-      const hasTranscript = !!coursesResult && coursesResult.courses.length > 0;
+      const hasTranscript = coursesResult.length > 0;
+      setTranscriptCourses(coursesResult);
 
       // Calculate earned credits from courses
       let earnedCredits = DUMMY_CREDITS.earned;
-      if (hasTranscript && coursesResult) {
-        earnedCredits = coursesResult.courses.reduce((total, course) => {
+      if (hasTranscript) {
+        earnedCredits = coursesResult.reduce((total, course) => {
           const credits = typeof course.credits === 'number' ? course.credits : 0;
           return total + credits;
         }, 0);
@@ -309,11 +312,6 @@ export function UnifiedAcademicCard() {
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
-  // Get current category for display
-  const currentCategory = resolvedCategories.find(
-    (cat) => cat.name === selectedCategory
-  ) || resolvedCategories[0];
-
   if (isLoading) {
     return <UnifiedAcademicCardSkeleton />;
   }
@@ -341,9 +339,19 @@ export function UnifiedAcademicCard() {
         />
 
         {/* Content Area */}
-        <div className="p-5 space-y-5">
-          {/* Overall Progress Bar - Large & Prominent - DUMMY data */}
+        <div className="p-4 space-y-4">
+          {/* Overall Progress Bar - Large & Prominent */}
           <OverallProgressSection overallProgress={resolvedOverallProgress} />
+
+          {/* Program progress bars (condensed) */}
+          <CategoryTabs
+            categories={resolvedCategories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+
+          {/* Suggested actions for student next steps */}
+          <SuggestedActionsSection />
 
           {/* Summary Stats Row - REAL data */}
           <SummaryStatsRow
@@ -352,21 +360,6 @@ export function UnifiedAcademicCard() {
             onEditGraduation={() => setGradDialogOpen(true)}
             hasTranscript={userData.hasTranscript}
           />
-
-          {/* Category Tabs - DUMMY data */}
-          <CategoryTabs
-            categories={resolvedCategories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-          />
-
-          {/* Progress Overview Card - DUMMY data, compact mode */}
-          {currentCategory && (
-            <ProgressOverviewCard
-              category={currentCategory}
-              compact={true}
-            />
-          )}
         </div>
       </div>
 
